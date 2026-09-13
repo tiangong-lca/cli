@@ -326,6 +326,8 @@ Data API schema 不依赖 PostgREST 的默认 `public`。默认且唯一支持�
 
 ## 调试项目
 
+多属性本地验证可用 `flow build-plan verify --input <plan> --candidate <flow>` 与 `process build-plan verify --input <plan> --candidate <process>`。含 `calculation_provenance.flow_property_conversion` 的 Process 计划通过现有 `TIDAS_BIN` 显式选择 Toolkit `0.3.x`；其余 BuildPlan 不需要原生 converter。来源量安全公式、exact Flow/FlowProperty/UnitGroup 绑定、native 精度与区间、候选不变量由各自现有边界验证；不改变 OAuth、写权限或已发布 runtime pin。
+
 公开推荐的跨平台执行入口按优先级是：
 
 - `node ./bin/tiangong-lca.js ...`

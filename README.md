@@ -104,6 +104,8 @@ Review note, 2026-07-25: Bounded flow deletion can instead accept an explicitly 
 
 ## Run
 
+Local Flow/Process BuildPlan work supports `validate`, `materialize`, and `verify --candidate`. Product/Waste secondary-property additions preserve the existing reference basis and metadata; calculated Process amounts use a complete, replayed native Toolkit conversion report. See the multi-property section in [the implementation guide](docs/IMPLEMENTATION_GUIDE_CN.md) for exact input and report contracts. This source implementation does not change the published runtime pin.
+
 One-off published run:
 
 ```bash

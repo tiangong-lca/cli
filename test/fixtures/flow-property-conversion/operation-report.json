@@ -1,0 +1,87 @@
+{
+  "schema_version": "tidas.operation-report.v1",
+  "command": "convert",
+  "status": "succeeded",
+  "exit_class": "success",
+  "completeness": "complete",
+  "invocation": {
+    "schema_version": "tidas.invocation-context.v1",
+    "config_source": "none",
+    "config_path": null,
+    "log_level": "warn",
+    "progress_mode": "never",
+    "progress_enabled": false,
+    "memory_budget_bytes": 536870912,
+    "queue_capacity": 256,
+    "input_policy": "explicit-path-or-dash",
+    "report_destination": "stdout",
+    "diagnostic_destination": "stderr"
+  },
+  "summary": {
+    "flow_property_conversion": {
+      "schema_version": "tidas.flow-property-conversion.v1",
+      "request_sha256": "a916be7b7f35c93d1a62c0c17198e1bc844d28b6c3b45f4891b7c7cb5ad8f126",
+      "documents": [
+        {
+          "category": "flowproperties",
+          "id": "20000000-0000-4000-8000-000000000001",
+          "version": "01.00.000",
+          "sha256": "77180e2a0b2cdeb026050e9030f9456da10d82a2ecfe469c8761910d0c26d04a"
+        },
+        {
+          "category": "flowproperties",
+          "id": "20000000-0000-4000-8000-000000000002",
+          "version": "01.00.000",
+          "sha256": "6cdd738efa8c0b8e182b3c6bd84bf6172b3b77963d29e64e87618c6005fdd17c"
+        },
+        {
+          "category": "flows",
+          "id": "10000000-0000-4000-8000-000000000001",
+          "version": "01.00.000",
+          "sha256": "2a51150c205943c0cd1057ef59a7de29b70c43074937c6756874cb3be49283ea"
+        },
+        {
+          "category": "unitgroups",
+          "id": "30000000-0000-4000-8000-000000000001",
+          "version": "01.00.000",
+          "sha256": "95c1d5a38279391674511b9955bf7f129c6fb165ec7d5f8785b94b92b4f2821c"
+        },
+        {
+          "category": "unitgroups",
+          "id": "30000000-0000-4000-8000-000000000002",
+          "version": "01.00.000",
+          "sha256": "c22c35bffd3fe2219cbaecd396bd28c23bcb161330dcfc886afc3eb656aa0156"
+        }
+      ],
+      "source": {
+        "flow_property_internal_id": "2",
+        "unit_internal_id": "9",
+        "amount": "2",
+        "minimum_amount": "1.9",
+        "maximum_amount": "2.1",
+        "formula": null
+      },
+      "reference": {
+        "flow_property_internal_id": "7",
+        "flow_property_id": "20000000-0000-4000-8000-000000000001",
+        "flow_property_version": "01.00.000",
+        "unit_group_id": "30000000-0000-4000-8000-000000000001",
+        "unit_group_version": "01.00.000",
+        "unit_internal_id": "9",
+        "unit_name": "kg"
+      },
+      "factor": { "numerator": "1", "denominator": "0.001", "decimal": "1000" },
+      "result": { "amount": "2000", "minimum_amount": "1900", "maximum_amount": "2100" },
+      "round_trip": { "amount": "2", "residual": "0" },
+      "precision": 100,
+      "rounding": "half-even",
+      "direction": "to-reference",
+      "conditions": "Synthetic test fixture; fixed density 1000 kg/m3, not a material recommendation.",
+      "evidence": ["test-fixture:fixed-density"],
+      "applicability": "not_assessed"
+    }
+  },
+  "diagnostics": [],
+  "artifacts": [],
+  "next_actions": []
+}

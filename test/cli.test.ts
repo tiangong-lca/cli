@@ -288,7 +288,10 @@ test('executeCli returns help for publish and validation subcommands', async () 
 
   const flowBuildPlanHelp = await executeCli(['flow', 'build-plan', '--help'], makeDeps());
   assert.equal(flowBuildPlanHelp.exitCode, 0);
-  assert.match(flowBuildPlanHelp.stdout, /tiangong-lca flow build-plan <validate\|materialize>/u);
+  assert.match(
+    flowBuildPlanHelp.stdout,
+    /tiangong-lca flow build-plan <validate\|materialize\|verify>/u,
+  );
   assert.match(flowBuildPlanHelp.stdout, /build-plan-gate-report\.json/u);
   assert.doesNotMatch(flowBuildPlanHelp.stdout, /Planned command/u);
 
@@ -2718,7 +2721,7 @@ test('executeCli returns help for the process namespace and implemented subcomma
   assert.equal(processBuildPlanHelp.exitCode, 0);
   assert.match(
     processBuildPlanHelp.stdout,
-    /tiangong-lca process build-plan <validate\|materialize>/u,
+    /tiangong-lca process build-plan <validate\|materialize\|verify>/u,
   );
   assert.match(processBuildPlanHelp.stdout, /build-plan-gate-report\.json/u);
   assert.doesNotMatch(processBuildPlanHelp.stdout, /Planned command/u);
@@ -3414,6 +3417,33 @@ test('executeCli executes process build-plan validate and materialize with injec
   assert.equal(materialize.exitCode, 0);
   assert.match(materialize.stdout, /"status": "blocked"/u);
 
+  const verify = await executeCli(
+    [
+      'process',
+      'build-plan',
+      'verify',
+      '--input',
+      '/tmp/process-build-plan.json',
+      '--candidate',
+      '/tmp/materialized-process.json',
+    ],
+    {
+      ...makeDeps(),
+      runProcessBuildPlanVerifyImpl: async (options) => {
+        assert.equal(options.inputPath, '/tmp/process-build-plan.json');
+        assert.equal(options.candidatePath, '/tmp/materialized-process.json');
+        return {
+          ...baseReport,
+          action: 'verify',
+          status: 'passed',
+          next_action: 'use_verified_artifact',
+        };
+      },
+    },
+  );
+  assert.equal(verify.exitCode, 0);
+  assert.match(verify.stdout, /"next_action": "use_verified_artifact"/u);
+
   const blockedValidate = await executeCli(
     ['process', 'build-plan', 'validate', '--input', '/tmp/process-build-plan.json'],
     {
@@ -3449,6 +3479,32 @@ test('executeCli executes process build-plan validate and materialize with injec
   );
   assert.equal(invalidFlag.exitCode, 2);
   assert.match(invalidFlag.stderr, /Unknown option/u);
+});
+
+test('executeCli rejects candidate inputs outside process build-plan verify before dispatch', async () => {
+  let dispatched = 0;
+  const unexpectedDispatch = async (): Promise<never> => {
+    dispatched += 1;
+    throw new Error('Unexpected BuildPlan dispatch');
+  };
+  for (const kind of ['process', 'flow']) {
+    for (const action of ['validate', 'materialize']) {
+      const result = await executeCli(
+        [kind, 'build-plan', action, '--input', '/plan.json', '--candidate', '/candidate.json'],
+        {
+          ...makeDeps(),
+          runProcessBuildPlanValidateImpl: unexpectedDispatch,
+          runProcessBuildPlanMaterializeImpl: unexpectedDispatch,
+          runFlowBuildPlanValidateImpl: unexpectedDispatch,
+          runFlowBuildPlanMaterializeImpl: unexpectedDispatch,
+        },
+      );
+      assert.equal(result.exitCode, 2);
+      assert.match(result.stderr, /INVALID_ARGS/u);
+      assert.match(result.stderr, /candidate/u);
+    }
+  }
+  assert.equal(dispatched, 0);
 });
 
 test('executeCli executes flow build-plan and maps blockers to exit code 1', async () => {
@@ -3551,6 +3607,33 @@ test('executeCli executes flow build-plan and maps blockers to exit code 1', asy
   );
   assert.equal(materialize.exitCode, 0);
   assert.match(materialize.stdout, /"action": "materialize"/u);
+
+  for (const status of ['passed', 'blocked'] as const) {
+    const verified = await executeCli(
+      [
+        'flow',
+        'build-plan',
+        'verify',
+        '--input',
+        '/tmp/flow-build-plan.json',
+        '--candidate',
+        '/tmp/flow.json',
+      ],
+      {
+        ...makeDeps(),
+        runFlowBuildPlanVerifyImpl: async (options) => {
+          assert.equal(options.candidatePath, '/tmp/flow.json');
+          return {
+            ...JSON.parse(materialize.stdout),
+            action: 'verify',
+            status,
+            next_action: status === 'passed' ? 'use_verified_artifact' : 'fix_build_plan',
+          };
+        },
+      },
+    );
+    assert.equal(verified.exitCode, status === 'passed' ? 0 : 1);
+  }
 
   const invalid = await executeCli(['flow', 'build-plan', 'bad'], makeDeps());
   assert.equal(invalid.exitCode, 2);

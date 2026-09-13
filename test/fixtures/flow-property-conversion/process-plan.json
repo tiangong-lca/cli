@@ -1,0 +1,393 @@
+{
+  "schema_version": 1,
+  "target": {
+    "uuid": "40000000-0000-4000-8000-000000000001",
+    "version": "01.00.000",
+    "geography": "CN",
+    "technology_route": "Synthetic conversion fixture"
+  },
+  "identity_decision": {
+    "decision": "create_new"
+  },
+  "name_plan": {
+    "base_name": "Synthetic multi-property conversion fixture"
+  },
+  "unit_of_analysis": {
+    "target_kind": "bulk_material",
+    "decision": "declared_unit_dataset",
+    "declared_unit": {
+      "amount": 1,
+      "unit": "kg",
+      "basis": "synthetic fixture"
+    },
+    "reference_flow": {
+      "flow_identity": "Synthetic product",
+      "reference_unit": "kg",
+      "reference_amount": 1,
+      "flow_property": "Mass"
+    },
+    "scaling_evidence_status": "not_required"
+  },
+  "evidence_manifest": {
+    "sources": [
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "version": "01.00.000",
+        "title": "Synthetic test evidence"
+      }
+    ],
+    "evidence": [
+      {
+        "id": "test-density-source",
+        "source_id": "22222222-2222-4222-8222-222222222222",
+        "locator": "synthetic fixture"
+      }
+    ],
+    "field_bindings": [
+      {
+        "field_path": "target"
+      },
+      {
+        "field_path": "identity_decision.decision"
+      },
+      {
+        "field_path": "unit_of_analysis"
+      },
+      {
+        "field_path": "name_plan.base_name"
+      },
+      {
+        "field_path": "target.geography"
+      },
+      {
+        "field_path": "target.technology_route"
+      },
+      {
+        "field_path": "quantitative_reference_plan.reference_flow_id"
+      },
+      {
+        "field_path": "target.flow_type"
+      }
+    ]
+  },
+  "kind": "process",
+  "authoring_mode": "source-evidence/strict",
+  "classification_path": [
+    {
+      "@level": "0",
+      "@classId": "D",
+      "#text": "Electricity, gas, steam and air conditioning supply"
+    },
+    {
+      "@level": "1",
+      "@classId": "35",
+      "#text": "Electricity, gas, steam and air conditioning supply"
+    },
+    {
+      "@level": "2",
+      "@classId": "351",
+      "#text": "Electric power generation, transmission and distribution activities"
+    },
+    {
+      "@level": "3",
+      "@classId": "3511",
+      "#text": "Electric power generation activities from non-renewable sources"
+    }
+  ],
+  "modelling_and_validation": {
+    "annualSupplyOrProductionVolume": "100000 kg/year synthetic fixture"
+  },
+  "publication": {
+    "rights_decision": {
+      "status": "resolved",
+      "copyright": true,
+      "license_type": "Other",
+      "access_restrictions": "Synthetic fixture, not for publication."
+    }
+  },
+  "quantitative_reference_plan": {
+    "reference_flow_id": "50000000-0000-4000-8000-000000000001",
+    "reference_flow_version": "01.00.000",
+    "reference_flow_internal_id": "1",
+    "reference_unit": "kg",
+    "mean_amount": "1",
+    "resulting_amount": "1"
+  },
+  "exchange_plan": {
+    "exchanges": [
+      {
+        "internal_id": "2",
+        "flow_id": "10000000-0000-4000-8000-000000000001",
+        "version": "01.00.000",
+        "name": "Synthetic water input",
+        "direction": "Input",
+        "mean_amount": "2000",
+        "resulting_amount": "2000",
+        "data_source_type": "Primary",
+        "data_derivation_type_status": "Calculated",
+        "calculation_provenance": {
+          "source_values": [
+            {
+              "id": "source_volume",
+              "value": "2",
+              "unit": "m3",
+              "primary_source_id": "22222222-2222-4222-8222-222222222222",
+              "evidence_id": "test-density-source"
+            }
+          ],
+          "conversion_steps": [],
+          "conversion_not_applicable_reason": "Toolkit owns the only unit conversion.",
+          "normalization_not_applicable_reason": "Source amount is already per declared reference quantity.",
+          "formula": "source_volume",
+          "unrounded_result": "2",
+          "result_unit": "m3",
+          "rounding": {
+            "mode": "none"
+          },
+          "primary_source_ids": ["22222222-2222-4222-8222-222222222222"],
+          "evidence_ids": ["test-density-source"],
+          "assumptions": ["Synthetic density from the conversion fixture."],
+          "flow_property_conversion": {
+            "request": {
+              "schema_version": "tidas.flow-property-conversion-request.v1",
+              "flow": {
+                "flowDataSet": {
+                  "flowInformation": {
+                    "dataSetInformation": {
+                      "common:UUID": "10000000-0000-4000-8000-000000000001"
+                    },
+                    "quantitativeReference": {
+                      "referenceToReferenceFlowProperty": "7"
+                    }
+                  },
+                  "administrativeInformation": {
+                    "publicationAndOwnership": {
+                      "common:dataSetVersion": "01.00.000"
+                    }
+                  },
+                  "modellingAndValidation": {
+                    "LCIMethod": {
+                      "typeOfDataSet": "Product flow"
+                    }
+                  },
+                  "flowProperties": {
+                    "flowProperty": [
+                      {
+                        "@dataSetInternalID": "2",
+                        "referenceToFlowPropertyDataSet": {
+                          "@refObjectId": "20000000-0000-4000-8000-000000000002",
+                          "@version": "01.00.000"
+                        },
+                        "meanValue": "0.001",
+                        "generalComment": {
+                          "@xml:lang": "en",
+                          "#text": "Illustrative fixed water density only."
+                        }
+                      },
+                      {
+                        "@dataSetInternalID": "7",
+                        "referenceToFlowPropertyDataSet": {
+                          "@refObjectId": "20000000-0000-4000-8000-000000000001",
+                          "@version": "01.00.000"
+                        },
+                        "meanValue": "1"
+                      }
+                    ]
+                  }
+                }
+              },
+              "flow_properties": [
+                {
+                  "flowPropertyDataSet": {
+                    "flowPropertiesInformation": {
+                      "dataSetInformation": {
+                        "common:UUID": "20000000-0000-4000-8000-000000000001"
+                      },
+                      "quantitativeReference": {
+                        "referenceToReferenceUnitGroup": {
+                          "@refObjectId": "30000000-0000-4000-8000-000000000001",
+                          "@version": "01.00.000"
+                        }
+                      }
+                    },
+                    "administrativeInformation": {
+                      "publicationAndOwnership": {
+                        "common:dataSetVersion": "01.00.000"
+                      }
+                    }
+                  }
+                },
+                {
+                  "flowPropertyDataSet": {
+                    "flowPropertiesInformation": {
+                      "dataSetInformation": {
+                        "common:UUID": "20000000-0000-4000-8000-000000000002"
+                      },
+                      "quantitativeReference": {
+                        "referenceToReferenceUnitGroup": {
+                          "@refObjectId": "30000000-0000-4000-8000-000000000002",
+                          "@version": "01.00.000"
+                        }
+                      }
+                    },
+                    "administrativeInformation": {
+                      "publicationAndOwnership": {
+                        "common:dataSetVersion": "01.00.000"
+                      }
+                    }
+                  }
+                }
+              ],
+              "unit_groups": [
+                {
+                  "unitGroupDataSet": {
+                    "unitGroupInformation": {
+                      "dataSetInformation": {
+                        "common:UUID": "30000000-0000-4000-8000-000000000001"
+                      },
+                      "quantitativeReference": {
+                        "referenceToReferenceUnit": "9"
+                      }
+                    },
+                    "administrativeInformation": {
+                      "publicationAndOwnership": {
+                        "common:dataSetVersion": "01.00.000"
+                      }
+                    },
+                    "units": {
+                      "unit": [
+                        {
+                          "@dataSetInternalID": "9",
+                          "name": "kg",
+                          "meanValue": "1"
+                        },
+                        {
+                          "@dataSetInternalID": "3",
+                          "name": "g",
+                          "meanValue": "0.001"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "unitGroupDataSet": {
+                    "unitGroupInformation": {
+                      "dataSetInformation": {
+                        "common:UUID": "30000000-0000-4000-8000-000000000002"
+                      },
+                      "quantitativeReference": {
+                        "referenceToReferenceUnit": "9"
+                      }
+                    },
+                    "administrativeInformation": {
+                      "publicationAndOwnership": {
+                        "common:dataSetVersion": "01.00.000"
+                      }
+                    },
+                    "units": {
+                      "unit": [
+                        {
+                          "@dataSetInternalID": "9",
+                          "name": "m3",
+                          "meanValue": "1"
+                        },
+                        {
+                          "@dataSetInternalID": "3",
+                          "name": "L",
+                          "meanValue": "0.001"
+                        }
+                      ]
+                    }
+                  }
+                }
+              ],
+              "source": {
+                "flow_property_internal_id": "2",
+                "unit_internal_id": "9",
+                "amount": "2",
+                "minimum_amount": "1.9",
+                "maximum_amount": "2.1"
+              },
+              "conditions": "Synthetic test fixture; fixed density 1000 kg/m3, not a material recommendation.",
+              "evidence": ["test-fixture:fixed-density"]
+            },
+            "report": {
+              "schema_version": "tidas.flow-property-conversion.v1",
+              "request_sha256": "a916be7b7f35c93d1a62c0c17198e1bc844d28b6c3b45f4891b7c7cb5ad8f126",
+              "documents": [
+                {
+                  "category": "flowproperties",
+                  "id": "20000000-0000-4000-8000-000000000001",
+                  "version": "01.00.000",
+                  "sha256": "77180e2a0b2cdeb026050e9030f9456da10d82a2ecfe469c8761910d0c26d04a"
+                },
+                {
+                  "category": "flowproperties",
+                  "id": "20000000-0000-4000-8000-000000000002",
+                  "version": "01.00.000",
+                  "sha256": "6cdd738efa8c0b8e182b3c6bd84bf6172b3b77963d29e64e87618c6005fdd17c"
+                },
+                {
+                  "category": "flows",
+                  "id": "10000000-0000-4000-8000-000000000001",
+                  "version": "01.00.000",
+                  "sha256": "2a51150c205943c0cd1057ef59a7de29b70c43074937c6756874cb3be49283ea"
+                },
+                {
+                  "category": "unitgroups",
+                  "id": "30000000-0000-4000-8000-000000000001",
+                  "version": "01.00.000",
+                  "sha256": "95c1d5a38279391674511b9955bf7f129c6fb165ec7d5f8785b94b92b4f2821c"
+                },
+                {
+                  "category": "unitgroups",
+                  "id": "30000000-0000-4000-8000-000000000002",
+                  "version": "01.00.000",
+                  "sha256": "c22c35bffd3fe2219cbaecd396bd28c23bcb161330dcfc886afc3eb656aa0156"
+                }
+              ],
+              "source": {
+                "flow_property_internal_id": "2",
+                "unit_internal_id": "9",
+                "amount": "2",
+                "minimum_amount": "1.9",
+                "maximum_amount": "2.1",
+                "formula": null
+              },
+              "reference": {
+                "flow_property_internal_id": "7",
+                "flow_property_id": "20000000-0000-4000-8000-000000000001",
+                "flow_property_version": "01.00.000",
+                "unit_group_id": "30000000-0000-4000-8000-000000000001",
+                "unit_group_version": "01.00.000",
+                "unit_internal_id": "9",
+                "unit_name": "kg"
+              },
+              "factor": {
+                "numerator": "1",
+                "denominator": "0.001",
+                "decimal": "1000"
+              },
+              "result": {
+                "amount": "2000",
+                "minimum_amount": "1900",
+                "maximum_amount": "2100"
+              },
+              "round_trip": {
+                "amount": "2",
+                "residual": "0"
+              },
+              "precision": 100,
+              "rounding": "half-even",
+              "direction": "to-reference",
+              "conditions": "Synthetic test fixture; fixed density 1000 kg/m3, not a material recommendation.",
+              "evidence": ["test-fixture:fixed-density"],
+              "applicability": "not_assessed"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

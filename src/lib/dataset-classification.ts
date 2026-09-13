@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveRuntimeAssetDir } from '@tiangong-lca/tidas-sdk/tools';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
 import {
   cloneJson,
@@ -362,8 +363,21 @@ function schemasDir(candidatesOverride?: string[]): string {
   return found;
 }
 
-function schemaPath(config: CategoryConfig): string {
-  return path.join(schemasDir(), config.schemaFile);
+function schemaPath(
+  config: CategoryConfig,
+  resolveTidasAssets: () => string = () => resolveRuntimeAssetDir('tidas'),
+): string {
+  try {
+    const schema = path.join(resolveTidasAssets(), 'schemas', config.schemaFile);
+    if (existsSync(schema)) return schema;
+  } catch {
+    // A missing SDK catalog must not fall back to a different local snapshot.
+  }
+  throw new CliError(`TIDAS SDK classification schema ${config.schemaFile} is unavailable.`, {
+    code: 'TIDAS_CLASSIFICATION_SDK_SCHEMA_UNAVAILABLE',
+    exitCode: 2,
+    details: { category_type: config.type, schema_file: config.schemaFile },
+  });
 }
 
 const FALLBACK_LOCATION_TARGET_KEYS = new Set([
@@ -483,7 +497,20 @@ function loadEntries(type: DatasetClassificationType): {
   const document = JSON.parse(readFileSync(schema, 'utf8')) as unknown;
   const entries: ClassificationEntry[] = [];
   collectEntriesFromNode(document, config.defaultValueKey, entries);
-  return { config, schema, entries };
+  return { config, schema, entries: orderCatalogEntries(type, entries) };
+}
+
+function orderCatalogEntries(
+  type: DatasetClassificationType,
+  entries: ClassificationEntry[],
+): ClassificationEntry[] {
+  // SDK JSON-schema oneOf members need not be in tree order. Elementary IDs
+  // encode their ancestry, including categories appended to the SDK catalog.
+  return type === 'flow-elementary'
+    ? [...entries].sort((left, right) =>
+        left.code.localeCompare(right.code, 'en', { numeric: true }),
+      )
+    : entries;
 }
 
 function buildNavigator(entries: ClassificationEntry[]): ClassificationNavigator {
@@ -546,6 +573,169 @@ function toPathEntry(entry: ClassificationEntry): ClassificationPathEntry {
     [entry.value_key]: entry.code,
     '#text': entry.text,
   } as ClassificationPathEntry;
+}
+
+function normalizedClassificationLabel(value: unknown): string | null {
+  const token = firstNonEmpty(value);
+  return token
+    ? token.normalize('NFKC').replace(/\s+/gu, ' ').trim().toLocaleLowerCase('en-US')
+    : null;
+}
+
+function classificationPathError(
+  code: string,
+  message: string,
+  details: Record<string, unknown>,
+): never {
+  throw new CliError(message, {
+    code,
+    exitCode: 2,
+    details,
+  });
+}
+
+/**
+ * Resolve one complete classification path against the bundled TIDAS catalog.
+ *
+ * Plain labels are accepted only when the complete root-to-node path resolves
+ * uniquely. Explicit class/category objects are canonicalized only after every
+ * code, level, label, and parent edge matches the catalog. No identifier is
+ * synthesized here.
+ */
+export function resolveTidasClassificationPath(
+  typeValue: DatasetClassificationType,
+  rawPath: unknown,
+): ClassificationPathEntry[] {
+  const type = normalizeType(typeValue);
+  return resolveClassificationPathAgainstCatalog(type, rawPath, navigatorFor(type));
+}
+
+function resolveClassificationPathAgainstCatalog(
+  type: DatasetClassificationType,
+  rawPath: unknown,
+  catalog: { config: CategoryConfig; navigator: ClassificationNavigator },
+): ClassificationPathEntry[] {
+  const { config, navigator } = catalog;
+  if (!Array.isArray(rawPath) || rawPath.length === 0) {
+    classificationPathError(
+      'TIDAS_CLASSIFICATION_PATH_REQUIRED',
+      `A complete ${type} classification path from the bundled TIDAS catalog is required.`,
+      { category_type: type, schema_file: config.schemaFile },
+    );
+  }
+
+  const entries = rawPath as unknown[];
+  const allLabels = entries.every((entry) => typeof entry === 'string');
+  const allObjects = entries.every(isRecord);
+  if (!allLabels && !allObjects) {
+    classificationPathError(
+      'TIDAS_CLASSIFICATION_PATH_MIXED',
+      'Classification path entries must be either all catalog labels or all explicit catalog objects.',
+      { category_type: type, schema_file: config.schemaFile },
+    );
+  }
+
+  if (allLabels) {
+    const labels = entries.map(normalizedClassificationLabel);
+    if (labels.some((label) => !label)) {
+      classificationPathError(
+        'TIDAS_CLASSIFICATION_PATH_LABEL_INVALID',
+        'Classification path labels must be non-empty strings.',
+        { category_type: type, schema_file: config.schemaFile },
+      );
+    }
+    const matches = navigator.entries
+      .filter((entry) => entry.level === labels.length - 1)
+      .map((entry) => pathForCode(navigator, entry.code))
+      .filter(
+        (candidate) =>
+          candidate.length === labels.length &&
+          candidate.every(
+            (entry, index) => normalizedClassificationLabel(entry.text) === labels[index],
+          ),
+      );
+    if (matches.length === 0) {
+      classificationPathError(
+        'TIDAS_CLASSIFICATION_PATH_UNKNOWN',
+        `Classification labels do not resolve to a ${type} path in the bundled TIDAS catalog.`,
+        {
+          category_type: type,
+          schema_file: config.schemaFile,
+          labels: entries,
+        },
+      );
+    }
+    if (matches.length > 1) {
+      classificationPathError(
+        'TIDAS_CLASSIFICATION_PATH_AMBIGUOUS',
+        `Classification labels resolve to more than one ${type} path; provide explicit catalog IDs.`,
+        {
+          category_type: type,
+          schema_file: config.schemaFile,
+          labels: entries,
+          matching_leaf_codes: matches.map((match) => match.at(-1)!.code),
+        },
+      );
+    }
+    return (matches[0] as ClassificationEntry[]).map(toPathEntry);
+  }
+
+  const objects = entries as JsonObject[];
+  const codes = objects.map(classCode);
+  if (codes.some((code) => !code)) {
+    classificationPathError(
+      'TIDAS_CLASSIFICATION_ID_REQUIRED',
+      'Every explicit classification path entry must contain its TIDAS catalog ID.',
+      { category_type: type, schema_file: config.schemaFile },
+    );
+  }
+  const canonical = pathForCode(navigator, codes.at(-1) as string);
+  const canonicalCodes = canonical.map((entry) => entry.code);
+  if (
+    canonical.length !== objects.length ||
+    canonicalCodes.some((code, index) => code !== codes[index])
+  ) {
+    classificationPathError(
+      'TIDAS_CLASSIFICATION_PATH_INVALID',
+      'Explicit classification IDs are unknown or do not form one complete catalog path.',
+      {
+        category_type: type,
+        schema_file: config.schemaFile,
+        provided_codes: codes,
+        canonical_codes: canonicalCodes,
+      },
+    );
+  }
+  canonical.forEach((entry, index) => {
+    const supplied = objects[index] as JsonObject;
+    const suppliedLevel = firstNonEmpty(supplied['@level']);
+    const suppliedLabel = normalizedClassificationLabel(supplied['#text']);
+    if (suppliedLevel !== null && suppliedLevel !== String(entry.level)) {
+      classificationPathError(
+        'TIDAS_CLASSIFICATION_LEVEL_MISMATCH',
+        `Classification level for code ${entry.code} does not match the catalog.`,
+        {
+          category_type: type,
+          code: entry.code,
+          expected_level: String(entry.level),
+          supplied_level: suppliedLevel,
+        },
+      );
+    }
+    if (suppliedLabel !== null && suppliedLabel !== normalizedClassificationLabel(entry.text)) {
+      classificationPathError(
+        'TIDAS_CLASSIFICATION_LABEL_MISMATCH',
+        `Classification label for code ${entry.code} does not match the catalog.`,
+        {
+          category_type: type,
+          code: entry.code,
+          expected_label: entry.text,
+          supplied_label: supplied['#text'],
+        },
+      );
+    }
+  });
+  return canonical.map(toPathEntry);
 }
 
 function classCode(value: unknown): string | null {
@@ -1345,11 +1535,14 @@ export const __testInternals = {
   normalizeStructuredDecisions,
   normalizeTargetPath,
   normalizeType,
+  orderCatalogEntries,
   pathForCode,
   prepareRows,
   readDecisions,
   resolveLocationTarget,
+  resolveClassificationPathAgainstCatalog,
   schemasDir,
+  schemaPath,
   setClassification,
   targetPathSegments,
   toPathEntry,

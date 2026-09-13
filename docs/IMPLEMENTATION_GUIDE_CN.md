@@ -360,6 +360,36 @@ tiangong-lca
 - 已实现的 `flow identity-preflight` 是本地只读、artifact-first 的生成前 gate；输入为 target + embedded candidates，并可通过 repeatable `--candidate-input` 读取 JSON/JSONL 文件或递归扫描本地目录。需要查正式库时，输入可设置 `remote_candidate_search`，CLI 也可传 `--remote-candidates --remote-query ... --remote-limit ...`，通过 `flow_hybrid_search` 拉取远程候选；若 target 有 flow type，CLI 会作为 remote filter 写入请求。CLI 传给 Edge Function 的是 fielded `query`、`filter`、`data_source`、`match_count`/`page_size` 和 hybrid search 权重；`remote_candidate_search.profile_hints` 只在本地补强 target profile 与候选评分，不会送入 Edge Function。输出 `identity-decision.json` / `identity-candidates.jsonl` / `identity-candidate-sources.json`；对 type、reference property、unit、CAS/category 和 alias/name 等价的 flow 输出 `block_duplicate`，避免 process 引用新建同义 flow。
 - 已实现的 `flow build-plan` 是 flow 生成前的本地 BuildPlan gate；输入为 BuildPlan，输出 `build-plan-gate-report.json`，并在 `materialize` 时输出 canonical `materialized-flow.json`。如果 plan 内没有 payload，必须先提供 exact locked taxonomy `classification_path` objects：Product/Waste 使用 `@classId`，Elementary 使用 `@catId` 并生成 `common:elementaryFlowCategorization`；CLI 不再从任意文本生成 UUID 分类。随后 CLI 才从 name plan、flow type、reference property、source evidence、admin/compliance 字段确定性生成 `flowDataSet` 并立即跑 `FlowSchema` 校验。
 - 已实现的 `flow remediate` 保留旧 invalid-flow 输入与 round1 artifact 契约，但运行时已经收口到 CLI，不再需要 skill 私有 Python remediation 入口
+
+### Product / Waste Flow 多属性与来源量换算（本地实现）
+
+`flow build-plan` 接受 `flow_property_plan.reference_internal_id` 与 `properties` 数组；数组元素为完整 canonical `flowProperty`，包含精确 `referenceToFlowPropertyDataSet` 引用和 `meanValue`。旧单属性计划继续兼容。参考属性由声明的内部 ID 唯一选出，不能按数组第一项或 ID `0` 推断；其 `meanValue` 必须为 `1`。同一属性 UUID 不得重复，其他描述性属性可以为零；用作可逆换算的属性必须经 Toolkit 正有限值检查。
+
+既有 Flow 的 `update_same_row` 多属性计划必须提供完整 `before_flow`（`{flowDataSet: ...}`）。本路径只追加 secondary properties，保留 Flow UUID、版本、reference 指针以及所有既有属性的全部内容，包括 comments、uncertainty、derivation、数值和扩展字段。遗漏旧属性会从 before 原件完整保留；显式改变旧属性会阻断，不能借补充属性修改历史量基。此路径不适用于 Elementary Flow。
+
+`flow qa` 使用同一指针和唯一性检查。`flow remediate` 保留未修改属性叶子和元数据；未知属性留在人工队列，不因无法识别而删除。缺失或歧义参考指针不会自动改成第一条属性。它仍输出既有 remediation artifacts，未新增远端写入口。
+
+Process 的 calculated exchange 在 `authoring_mode: "source-evidence/strict"` 下扩展原有 `calculation_provenance`：
+
+```json
+{
+  "flow_property_conversion": {
+    "request": { "schema_version": "tidas.flow-property-conversion-request.v1" },
+    "report": { "schema_version": "tidas.flow-property-conversion.v1" }
+  }
+}
+```
+
+这里的 `request` / `report` 必须为完整 Toolkit 对象；上述仅表示嵌入位置。request 绑定完整 exact Flow、全部 FlowProperty / UnitGroup 原件、source property/unit 内部 ID、source amount、可选区间、明确条件和证据。CLI 安全公式仍验证来源数据、分母与 `unrounded_result`；该结果必须等于 request 的 source amount。每次 validate/materialize/verify 均通过 `TIDAS_BIN` 或 PATH 的 `tidas` 重跑 `convert - --to reference-unit --format json --progress never`，比较完整 native domain report。换算算法、倍率方向、十进制精度和区间归 Toolkit 所有，CLI 不复制公式。当前换算能力要求 Toolkit `0.3.x` 及精确报告 schema；旧 dataset import 的 `0.2.x` 兼容检查保持独立。
+
+Process exchange 的 mean/resulting amount 必须等于转换后的参考量；rounding `none` 时保留 native 结果十进制字符串，不经 JavaScript number 丢失精度。来源 `result_unit` 必须等于选中的 exact UnitGroup unit 名称，或明确的 `该单位/Process reference_unit`；仅当 Process 参考量严格为 1 时接受该比值；参考量为 1.8 kg 等其他值时，必须先用可复现公式将来源量归一到该完整参考量，再声明不含分母的来源单位。其他复合单位不会自动推导，需先纠正 authoring 表述。可选区间同步写入 `minimumAmount` / `maximumAmount`。候选 payload 中的数值、区间和 reference Flow 漂移会由 invariant gate 阻断。转换不改变 Worker 的参考量语义，也不推断跨 UUID 或跨版本供应者关系。
+
+两类 BuildPlan 都支持 `verify --candidate`。Flow verify 保护 UUID、版本、Flow 类型、reference 指针和完整 flowProperties；Process verify 保留原 strict source-evidence 的关键字段检查，并覆盖转换区间。合法其他元数据清理后需要重新 verify。
+
+`BuildPlanGateReport.property_validation` 的 schema 为 `tiangong-lca.flow-property-gate.v1`，包括 `status`、`plan_sha256`、`candidate_sha256`、`property_count`、`reference_internal_id`、`reference_preserved`、`preserved_property_count`、`required_conversion_count`、`conversion_count` 和每条 exchange 的 native report。消费方必须同时满足总 gate `passed`、必要 invariant `passed`、实际候选 hash 相符和转换计数相等。
+
+CLI 的 plan/candidate hash 使用递归键排序的 JavaScript JSON；native request/document digest 属于 Toolkit 的算法域。消费方不得用前者重算并替换 native digest，应通过同一输入重放 native 并比较完整报告。上述报告是本地可复核证据，不授予任何数据库修改、发布或 release 权限。
+
 - 已实现的 `flow publish-version` 先用 `FlowSchema` 执行本地 gate 并输出 `flow-publish-version-gate-report.json`，通过后再做 `/rest/v1/flows` 精确版本可见性预检，并通过 `app_dataset_create` / `app_dataset_save_draft` 提交远端写入；`TIANGONG_LCA_API_BASE_URL` 可传 project root、`/functions/v1` 或 `/rest/v1`，同时继续保留 `mcp_success_list`、`remote_validation_failed`、`mcp_sync_report` 这些历史文件名
 - 已实现的 `flow publish-reviewed-data` 负责 reviewed publish preparation 阶段：支持 `--original-flow-rows-file` unchanged skip、flow/process `skip | append_only_bump | upsert_current_version`、`prepared-flow-rows.json` / `prepared-process-rows.json` / `flow-version-map.json` / `skipped-unchanged-flow-rows.json` / `process-flow-ref-rewrite-evidence.jsonl` / `publish-report.json` 输出，并在 `--commit` 时通过同一条共享 dataset command writer layer 同时执行 prepared flow rows 与 prepared process rows 的远端写入；commit flow path 复用 `flow publish-version` 的 FlowSchema gate 与 gate report
 - 已实现的 `flow build-alias-map` 把治理链中的 deterministic alias-map 构建切片收口到 CLI，固定 old/new flow snapshots 与可选 `seed-alias-map` 输入契约，并直接写出 `alias-plan.json` / `flow-alias-map.json` / `manual-review-queue.jsonl` / `alias-summary.json`

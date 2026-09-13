@@ -47,6 +47,8 @@ The managed-host extension in issue #278 keeps launch selection in the generic C
 
 ## Repo Shape
 
+Local multi-property authoring keeps responsibility narrow: `flow-property-contract.ts` owns declared-reference/uniqueness checks shared by Flow QA, BuildPlan and remediation; `flow-property-conversion.ts` delegates arithmetic to the native Toolkit through existing operation-report/process helpers. `process-flow-build-plan.ts` binds source-evidence formulas, exact input documents, preserved Flow properties, actual candidates and fresh native conversion reports. It adds no writer, worker matching policy, credential path or dependency. Existing exact-reference intent and process mass-balance owners remain unchanged.
+
 This repo is organized around one stable launcher plus a library-style `src/lib/**` tree that implements command families and shared helpers.
 
 Review note, 2026-08-25: Issue #224 makes the toolchain architecture explicit: the root `pnpm-workspace.yaml` and sole `pnpm-lock.yaml` own dependency resolution; TypeScript 7.0.2 is the only compiler line; type-aware Oxlint replaces ESLint and Compiler API linting; and Node 24 is shared by local and CI gates. The feature stays on 0.0.33, with a separate 0.1.0 release-only PR recommended after merge to make the maintainer/release compatibility boundary explicit.

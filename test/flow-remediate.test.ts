@@ -34,7 +34,7 @@ function makeFlowEnvelope(options: {
       ? undefined
       : {
           '@dataSetInternalID': options.propertyInternalId ?? '7',
-          meanValue: options.meanValue ?? '2.5',
+          meanValue: options.meanValue ?? '1',
           referenceToFlowPropertyDataSet: options.flowPropertyRef ?? {
             '@refObjectId': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             '@uri': '../flowproperties/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa_01.00.000.xml',
@@ -66,7 +66,8 @@ function makeFlowEnvelope(options: {
             CASNumber: '',
           },
           quantitativeReference: {
-            referenceToReferenceFlowProperty: '999',
+            referenceToReferenceFlowProperty:
+              options.flowPropertyRef === null ? '0' : (options.propertyInternalId ?? '7'),
           },
           technology: {
             technologicalApplicability: 'general',
@@ -463,7 +464,7 @@ test('flow remediation helper utilities cover normalization and fallback branche
       },
     };
     const unresolvedProperties = __testInternals.normalize_flow_properties(unresolvedDataset, []);
-    assert.equal(unresolvedProperties.items.length, 0);
+    assert.equal(unresolvedProperties.items.length, 1);
     assert.equal(unresolvedProperties.unresolved[0]?.code, 'unknown_flow_property_uuid');
 
     const quantDataset: JsonRecord = {
@@ -484,9 +485,10 @@ test('flow remediation helper utilities cover normalization and fallback branche
     assert.equal(
       ((quantDataset.flowInformation as JsonRecord).quantitativeReference as JsonRecord)
         .referenceToReferenceFlowProperty as string,
-      '8',
+      'missing',
     );
-    assert.ok(quantFixes.includes('set_reference_to_reference_flow_property'));
+    assert.deepEqual(quantFixes, []);
+    assert.equal(quantUnresolved[0]?.code, 'flow_property_reference_unresolved');
 
     const quantDatasetWithoutProperties: JsonRecord = {
       flowInformation: {
@@ -710,9 +712,9 @@ test('flow remediation helpers cover repaired UUIDs, missing nested blocks, and 
   assert.equal(
     ((quantDatasetWithScalar.flowInformation as JsonRecord).quantitativeReference as JsonRecord)
       .referenceToReferenceFlowProperty as string,
-    '11',
+    undefined,
   );
-  assert.deepEqual(quantScalarUnresolved, []);
+  assert.equal(quantScalarUnresolved[0]?.code, 'flow_property_reference_unresolved');
 
   const quantDatasetWithoutFlowInformation: JsonRecord = {};
   __testInternals.normalize_quantitative_reference(
@@ -726,7 +728,7 @@ test('flow remediation helpers cover repaired UUIDs, missing nested blocks, and 
       (quantDatasetWithoutFlowInformation.flowInformation as JsonRecord)
         .quantitativeReference as JsonRecord
     ).referenceToReferenceFlowProperty as string,
-    '12',
+    undefined,
   );
 
   const minimalRow = __testInternals.remediate_row(
@@ -738,7 +740,7 @@ test('flow remediation helpers cover repaired UUIDs, missing nested blocks, and 
     },
     { loadSdkModule: makeSdkLoader() },
   );
-  assert.equal(minimalRow.valid, true);
+  assert.equal(minimalRow.valid, false);
   const minimalFlowDataSet = ((minimalRow.row.json_ordered as JsonRecord).flowDataSet ??
     {}) as JsonRecord;
   const minimalAdministrative = (minimalFlowDataSet.administrativeInformation ?? {}) as JsonRecord;
@@ -766,7 +768,7 @@ test('flow remediation helpers cover repaired UUIDs, missing nested blocks, and 
     },
     { loadSdkModule: makeSdkLoader() },
   );
-  assert.equal(anonymousMinimalRow.valid, true);
+  assert.equal(anonymousMinimalRow.valid, false);
 
   const actualValidation = __testInternals.validate_flow_payload({ flowDataSet: {} }, {});
   assert.equal(actualValidation.success, false);
@@ -827,13 +829,16 @@ test('flow remediation helpers cover repaired UUIDs, missing nested blocks, and 
       },
     );
 
-    assert.equal(report.counts.ready_for_mcp_rows, 1);
-    assert.equal(report.counts.residual_manual_rows, 0);
+    assert.equal(report.counts.ready_for_mcp_rows, 0);
+    assert.equal(report.counts.residual_manual_rows, 1);
     assert.equal(report.counts.state_code_0_rows, 1);
     assert.equal(report.counts.state_code_100_rows, 0);
     assert.match(report.generated_at_utc, /^\d{4}-\d{2}-\d{2}T/u);
-    assert.deepEqual(report.residual_manual_ids, []);
-    assert.match(readFileSync(report.files.prompt, 'utf8'), /residual manual queue 为 0/u);
+    assert.deepEqual(report.residual_manual_ids, ['77777777-7777-7777-7777-777777777777']);
+    assert.match(
+      readFileSync(report.files.prompt, 'utf8'),
+      /77777777-7777-7777-7777-777777777777/u,
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

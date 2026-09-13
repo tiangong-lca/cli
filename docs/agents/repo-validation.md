@@ -52,6 +52,8 @@ Issue #278 requires an actual managed Node plus compiled public-runtime host fix
 
 ## Default Baseline
 
+Multi-property authoring additionally exercises `test/flow-property-contract.test.ts`, `test/flow-property-conversion.test.ts` and the Flow/Process BuildPlan tests. Fixtures under `test/fixtures/flow-property-conversion` are synthetic, include a nonzero reference ID, and bind the native conversion report. A local cross-package check uses the explicitly selected Toolkit binary via `TIDAS_BIN`; rerun both `materialize` and `verify` with the production SDK schema. A Toolkit build made with `--ignore-rust-version` is auxiliary runtime evidence, not canonical Rust toolchain qualification. No fixture grants production write permission.
+
 Unless the change is doc-only, the minimum local baseline is:
 
 ```bash

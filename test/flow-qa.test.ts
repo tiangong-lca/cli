@@ -447,8 +447,8 @@ test('flow-qa internals handle invalid input modes, fallback run-root resolution
     const rareRuleIds = rareSummary.findings.map((finding) => finding.rule_id);
     assert.ok(rareRuleIds.includes('elementary_flow_in_flow_qa'));
     assert.ok(rareRuleIds.includes('name_contains_emergy'));
-    assert.ok(rareRuleIds.includes('invalid_flow_property_reference'));
-    assert.ok(rareRuleIds.includes('missing_quantitative_reference'));
+    assert.ok(rareRuleIds.includes('flow_property_exact_reference_invalid'));
+    assert.ok(rareRuleIds.includes('flow_property_reference_unresolved'));
     assert.ok(rareRuleIds.includes('methodology_missing_class_id'));
     assert.ok(rareRuleIds.includes('methodology_missing_cat_id'));
     assert.ok(rareRuleIds.includes('methodology_product_classification_level_gap'));
@@ -597,13 +597,10 @@ test('flow-qa helpers cover methodology fallbacks, similarity sorting, and trunc
   assert.ok(detailedRuleIds.includes('methodology_missing_cat_id'));
   assert.ok(detailedRuleIds.includes('methodology_product_classification_level_gap'));
   assert.ok(detailedRuleIds.includes('methodology_elementary_classification_level_gap'));
-  assert.ok(detailedRuleIds.includes('missing_quantitative_reference'));
+  assert.ok(detailedRuleIds.includes('flow_property_reference_unresolved'));
   assert.equal(detailed.summary.names.primary_en, 'Fallback English');
-  assert.equal(
-    detailed.summary.flow_property.referenced_uuid,
-    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-  );
-  assert.equal(detailed.summary.flow_property.selected_internal_id, '7');
+  assert.equal(detailed.summary.flow_property.referenced_uuid, undefined);
+  assert.equal(detailed.summary.flow_property.selected_internal_id, undefined);
   assert.equal(__testInternals.computeSimilarity('', 'alpha beta'), 0);
   assert.equal(__testInternals.computeSimilarity('   ', 'alpha beta'), 0);
   assert.equal(__testInternals.computeSimilarity('alpha beta', 'alpha beta'), 1);
@@ -901,11 +898,11 @@ test('flow-qa direct helpers cover rare fallback branches', () => {
     'built_in',
   );
   assert.equal(noUuidSummary.summary.flow_uuid, '(missing-uuid)');
-  assert.equal(noUuidSummary.summary.flow_property.selected_internal_id, '');
+  assert.equal(noUuidSummary.summary.flow_property.selected_internal_id, undefined);
   const noUuidRuleIds = noUuidSummary.findings.map((finding) => finding.rule_id);
   assert.ok(noUuidRuleIds.includes('missing_classification_leaf'));
-  assert.ok(noUuidRuleIds.includes('invalid_flow_property_reference'));
-  assert.ok(noUuidRuleIds.includes('missing_quantitative_reference'));
+  assert.ok(noUuidRuleIds.includes('flow_property_exact_reference_invalid'));
+  assert.ok(noUuidRuleIds.includes('flow_property_reference_unresolved'));
   assert.deepEqual(
     __testInternals.methodologyRuleCounts([
       {

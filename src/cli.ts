@@ -128,13 +128,16 @@ import {
 import {
   runFlowBuildPlanMaterialize,
   runFlowBuildPlanValidate,
+  runFlowBuildPlanVerify,
   runProcessBuildPlanMaterialize,
+  runProcessBuildPlanVerify,
   runProcessBuildPlanValidate,
   type FlowBuildPlanGateReport,
   type ProcessBuildPlanGateReport,
   type RunFlowBuildPlanMaterializeOptions,
   type RunFlowBuildPlanValidateOptions,
   type RunProcessBuildPlanMaterializeOptions,
+  type RunProcessBuildPlanVerifyOptions,
   type RunProcessBuildPlanValidateOptions,
 } from './lib/process-flow-build-plan.js';
 import {
@@ -331,6 +334,9 @@ import {
 } from './lib/dataset-source-upload-attachments.js';
 
 export type CliDeps = {
+  runFlowBuildPlanVerifyImpl?: (
+    options: RunFlowBuildPlanValidateOptions,
+  ) => Promise<FlowBuildPlanGateReport>;
   runDatasetSupportCacheExportImpl?: (
     options: RunDatasetSupportCacheExportOptions,
   ) => Promise<DatasetSupportCacheExportReport>;
@@ -410,6 +416,9 @@ export type CliDeps = {
   ) => Promise<ProcessBuildPlanGateReport>;
   runProcessBuildPlanMaterializeImpl?: (
     options: RunProcessBuildPlanMaterializeOptions,
+  ) => Promise<ProcessBuildPlanGateReport>;
+  runProcessBuildPlanVerifyImpl?: (
+    options: RunProcessBuildPlanVerifyOptions,
   ) => Promise<ProcessBuildPlanGateReport>;
   runProcessQaImpl?: (options: RunProcessQaOptions) => Promise<ProcessQaReport>;
   runFlowQaImpl?: (options: RunFlowQaOptions) => Promise<FlowQaReport>;
@@ -1840,10 +1849,11 @@ Examples:
 
 function renderFlowBuildPlanHelp(): string {
   return `Usage:
-  tiangong-lca flow build-plan <validate|materialize> --input <file> [options]
+  tiangong-lca flow build-plan <validate|materialize|verify> --input <file> [options]
 
 Options:
   --input <file>     JSON flow build plan; materialize writes a canonical flowDataSet
+  --candidate <file> Canonical Flow candidate required by verify
   --out-dir <dir>    Optional artifact directory for gate outputs
   --report-only      Print blocker reports with exit code 0
   --json             Print compact JSON
@@ -1852,6 +1862,7 @@ Options:
 Outputs written under --out-dir:
   - outputs/build-plan-gate-report.json
   - outputs/materialized-flow.json
+  - outputs/build-plan-invariant-report.json (verify)
 `.trim();
 }
 
@@ -2849,10 +2860,11 @@ Examples:
 
 function renderProcessBuildPlanHelp(): string {
   return `Usage:
-  tiangong-lca process build-plan <validate|materialize> --input <file> [options]
+  tiangong-lca process build-plan <validate|materialize|verify> --input <file> [options]
 
 Options:
   --input <file>     JSON process build plan; materialize writes a canonical processDataSet
+  --candidate <file> Canonical process candidate required by verify
   --out-dir <dir>    Optional artifact directory for gate outputs
   --report-only      Print blocker reports with exit code 0
   --json             Print compact JSON
@@ -2861,6 +2873,8 @@ Options:
 Outputs written under --out-dir:
   - outputs/build-plan-gate-report.json
   - outputs/materialized-process.json
+  - outputs/calculation-provenance.json
+  - outputs/build-plan-invariant-report.json (verify)
 `.trim();
 }
 
@@ -5135,12 +5149,16 @@ function parseIdentityPreflightFlags(args: string[]): {
   };
 }
 
-function parseBuildPlanFlags(args: string[]): {
+function parseBuildPlanFlags(
+  args: string[],
+  allowCandidate = false,
+): {
   help: boolean;
   json: boolean;
   inputPath: string;
   outDir: string | null;
   reportOnly: boolean;
+  candidatePath: string | null;
 } {
   let values: ReturnType<typeof parseArgs>['values'];
   try {
@@ -5154,6 +5172,7 @@ function parseBuildPlanFlags(args: string[]): {
         input: { type: 'string' },
         'out-dir': { type: 'string' },
         'report-only': { type: 'boolean' },
+        ...(allowCandidate ? { candidate: { type: 'string' as const } } : {}),
       },
     }));
   } catch (error) {
@@ -5169,6 +5188,7 @@ function parseBuildPlanFlags(args: string[]): {
     inputPath: typeof values.input === 'string' ? values.input : '',
     outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : null,
     reportOnly: Boolean(values['report-only']),
+    candidatePath: typeof values.candidate === 'string' ? values.candidate : null,
   };
 }
 
@@ -7297,6 +7317,8 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
       deps.runProcessBuildPlanValidateImpl ?? runProcessBuildPlanValidate;
     const processBuildPlanMaterializeImpl =
       deps.runProcessBuildPlanMaterializeImpl ?? runProcessBuildPlanMaterialize;
+    const processBuildPlanVerifyImpl =
+      deps.runProcessBuildPlanVerifyImpl ?? runProcessBuildPlanVerify;
     const processQaImpl = deps.runProcessQaImpl ?? runProcessQa;
     const flowQaImpl = deps.runFlowQaImpl ?? runFlowQa;
     const lifecyclemodelQaImpl = deps.runLifecyclemodelQaImpl ?? runLifecyclemodelQa;
@@ -7322,6 +7344,7 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
     const flowBuildPlanValidateImpl = deps.runFlowBuildPlanValidateImpl ?? runFlowBuildPlanValidate;
     const flowBuildPlanMaterializeImpl =
       deps.runFlowBuildPlanMaterializeImpl ?? runFlowBuildPlanMaterialize;
+    const flowBuildPlanVerifyImpl = deps.runFlowBuildPlanVerifyImpl ?? runFlowBuildPlanVerify;
     const datasetValidateImpl = deps.runDatasetValidateImpl ?? runDatasetValidate;
     const datasetCurationQueueBuildImpl =
       deps.runDatasetCurationQueueBuildImpl ?? runDatasetCurationQueueBuild;
@@ -9166,13 +9189,16 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
           stderr: '',
         };
       }
-      if (action !== 'validate' && action !== 'materialize') {
-        throw new CliError("process build-plan action must be 'validate' or 'materialize'.", {
-          code: 'INVALID_ARGS',
-          exitCode: 2,
-        });
+      if (action !== 'validate' && action !== 'materialize' && action !== 'verify') {
+        throw new CliError(
+          "process build-plan action must be 'validate', 'materialize', or 'verify'.",
+          {
+            code: 'INVALID_ARGS',
+            exitCode: 2,
+          },
+        );
       }
-      const processFlags = parseBuildPlanFlags(commandArgs.slice(1));
+      const processFlags = parseBuildPlanFlags(commandArgs.slice(1), action === 'verify');
       if (processFlags.help) {
         return {
           exitCode: 0,
@@ -9181,18 +9207,20 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
         };
       }
 
+      const commonOptions = {
+        inputPath: processFlags.inputPath,
+        outDir: processFlags.outDir,
+        reportOnly: processFlags.reportOnly,
+      };
       const report =
         action === 'validate'
-          ? await processBuildPlanValidateImpl({
-              inputPath: processFlags.inputPath,
-              outDir: processFlags.outDir,
-              reportOnly: processFlags.reportOnly,
-            })
-          : await processBuildPlanMaterializeImpl({
-              inputPath: processFlags.inputPath,
-              outDir: processFlags.outDir,
-              reportOnly: processFlags.reportOnly,
-            });
+          ? await processBuildPlanValidateImpl(commonOptions)
+          : action === 'materialize'
+            ? await processBuildPlanMaterializeImpl(commonOptions)
+            : await processBuildPlanVerifyImpl({
+                ...commonOptions,
+                candidatePath: processFlags.candidatePath,
+              });
 
       return {
         exitCode: report.status === 'blocked' && !processFlags.reportOnly ? 1 : 0,
@@ -9527,13 +9555,16 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
       if (!action || action === '--help' || action === '-h') {
         return { exitCode: 0, stdout: `${renderFlowBuildPlanHelp()}\n`, stderr: '' };
       }
-      if (action !== 'validate' && action !== 'materialize') {
-        throw new CliError("flow build-plan action must be 'validate' or 'materialize'.", {
-          code: 'INVALID_ARGS',
-          exitCode: 2,
-        });
+      if (action !== 'validate' && action !== 'materialize' && action !== 'verify') {
+        throw new CliError(
+          "flow build-plan action must be 'validate', 'materialize', or 'verify'.",
+          {
+            code: 'INVALID_ARGS',
+            exitCode: 2,
+          },
+        );
       }
-      const flowFlags = parseBuildPlanFlags(commandArgs.slice(1));
+      const flowFlags = parseBuildPlanFlags(commandArgs.slice(1), action === 'verify');
       if (flowFlags.help) {
         return { exitCode: 0, stdout: `${renderFlowBuildPlanHelp()}\n`, stderr: '' };
       }
@@ -9545,11 +9576,18 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
               outDir: flowFlags.outDir,
               reportOnly: flowFlags.reportOnly,
             })
-          : await flowBuildPlanMaterializeImpl({
-              inputPath: flowFlags.inputPath,
-              outDir: flowFlags.outDir,
-              reportOnly: flowFlags.reportOnly,
-            });
+          : action === 'materialize'
+            ? await flowBuildPlanMaterializeImpl({
+                inputPath: flowFlags.inputPath,
+                outDir: flowFlags.outDir,
+                reportOnly: flowFlags.reportOnly,
+              })
+            : await flowBuildPlanVerifyImpl({
+                inputPath: flowFlags.inputPath,
+                candidatePath: flowFlags.candidatePath,
+                outDir: flowFlags.outDir,
+                reportOnly: flowFlags.reportOnly,
+              });
 
       return {
         exitCode: report.status === 'blocked' && !flowFlags.reportOnly ? 1 : 0,

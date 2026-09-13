@@ -37,7 +37,7 @@ export type DatasetImportLcaSourceFormat = (typeof SOURCE_FORMATS)[number];
 
 type TidasOperationReport = {
   schema_version: typeof OPERATION_REPORT_SCHEMA;
-  command: 'version' | 'import';
+  command: 'version' | 'import' | 'convert';
   status: TidasOperationStatus;
   exit_class: TidasExitClass;
   completeness: TidasCompleteness;
@@ -263,18 +263,20 @@ function buildImportArgs(options: {
   return args;
 }
 
-function runTidas(
+export function runTidas(
   spawnImpl: typeof spawnSync,
   executable: string,
   args: string[],
   cwd: string,
   env: NodeJS.ProcessEnv,
+  input?: string,
 ): TidasProcessResult {
   const run = spawnImpl(executable, args, {
     cwd,
     env,
     encoding: 'utf8',
     windowsHide: true,
+    ...(input === undefined ? {} : { input, maxBuffer: 16 * 1024 * 1024, timeout: 30_000 }),
   }) as SpawnSyncReturns<string>;
   if (run.error) {
     throw new CliError(`Could not execute the Rust tidas binary: ${run.error.message}`, {
@@ -291,7 +293,7 @@ function runTidas(
   };
 }
 
-function readProcessReport(run: TidasProcessResult, reportPath: string | null): string {
+export function readProcessReport(run: TidasProcessResult, reportPath: string | null): string {
   const cancelled = run.status === 130 || run.signal === 'SIGINT';
   if (reportPath) {
     if (!existsSync(reportPath)) {
@@ -329,7 +331,10 @@ function readProcessReport(run: TidasProcessResult, reportPath: string | null): 
   return run.stdout;
 }
 
-function parseOperationReport(text: string, command: 'version' | 'import'): TidasOperationReport {
+export function parseOperationReport(
+  text: string,
+  command: 'version' | 'import' | 'convert',
+): TidasOperationReport {
   let value: unknown;
   try {
     value = JSON.parse(text);
@@ -368,7 +373,7 @@ function parseOperationReport(text: string, command: 'version' | 'import'): Tida
   return value as TidasOperationReport;
 }
 
-function assertExitContract(run: TidasProcessResult, report: TidasOperationReport): void {
+export function assertExitContract(run: TidasProcessResult, report: TidasOperationReport): void {
   const expected = EXIT_CODES[report.exit_class];
   if (run.status !== expected) {
     throw new CliError(
@@ -381,23 +386,24 @@ function assertExitContract(run: TidasProcessResult, report: TidasOperationRepor
   }
 }
 
-function readCompatibleVersion(report: TidasOperationReport): string {
+export function readCompatibleVersion(
+  report: TidasOperationReport,
+  supportedVersion = SUPPORTED_TIDAS_VERSION,
+  requirement = 'dataset import requires a stable contract-compatible 0.2.x release',
+): string {
   if (
     report.status !== 'succeeded' ||
     report.exit_class !== 'success' ||
     report.completeness !== 'complete' ||
     report.summary.operation_report_schema !== OPERATION_REPORT_SCHEMA ||
     typeof report.summary.binary_version !== 'string' ||
-    !SUPPORTED_TIDAS_VERSION.test(report.summary.binary_version)
+    !supportedVersion.test(report.summary.binary_version)
   ) {
-    throw new CliError(
-      'Incompatible tidas binary: dataset import requires a stable contract-compatible 0.2.x release.',
-      {
-        code: 'DATASET_IMPORT_LCA_TIDAS_VERSION_INCOMPATIBLE',
-        exitCode: 69,
-        details: { binary_version: report.summary.binary_version ?? null },
-      },
-    );
+    throw new CliError(`Incompatible tidas binary: ${requirement}.`, {
+      code: 'DATASET_IMPORT_LCA_TIDAS_VERSION_INCOMPATIBLE',
+      exitCode: 69,
+      details: { binary_version: report.summary.binary_version ?? null },
+    });
   }
   return report.summary.binary_version;
 }
@@ -463,7 +469,10 @@ function normalizeTarget(value: string | undefined): DatasetImportLcaTarget {
   });
 }
 
-function resolveTidasBinary(explicitValue: string | undefined, env: NodeJS.ProcessEnv): string {
+export function resolveTidasBinary(
+  explicitValue: string | undefined,
+  env: NodeJS.ProcessEnv,
+): string {
   const candidate = explicitValue?.trim() || env.TIDAS_BIN?.trim() || 'tidas';
   if (path.isAbsolute(candidate) || candidate.includes('/') || candidate.includes('\\')) {
     const resolved = path.resolve(candidate);
@@ -478,7 +487,7 @@ function resolveTidasBinary(explicitValue: string | undefined, env: NodeJS.Proce
   return candidate;
 }
 
-function assertSupportedPlatform(platform: NodeJS.Platform, arch: string): void {
+export function assertSupportedPlatform(platform: NodeJS.Platform, arch: string): void {
   const supported =
     (platform === 'linux' && (arch === 'x64' || arch === 'arm64')) ||
     (platform === 'darwin' && arch === 'arm64') ||

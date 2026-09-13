@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { FlowElementaryCategorySchema } from '@tiangong-lca/tidas-sdk/schemas';
+import { resolveRuntimeAssetDir } from '@tiangong-lca/tidas-sdk/tools';
 import { executeCli } from '../src/cli.js';
 import {
   __testInternals,
+  resolveTidasClassificationPath,
   runDatasetClassificationApply,
   runDatasetClassificationAudit,
   runDatasetClassificationChildren,
@@ -212,6 +216,246 @@ test('dataset classification children and path navigate bundled TIDAS category s
   assert.deepEqual(
     sourceCategories.children.map((entry) => entry.text),
     ['Images', 'Data set formats', 'Databases'],
+  );
+});
+
+test('Flow and Process classification use the complete locked SDK 0.2.0 catalogs', () => {
+  const expected = [
+    {
+      type: 'flow-product' as const,
+      count: 4_586,
+      sha256: 'd043a6028e1f27b0c74da332ed6db9971fd06662d1b1746ee2f2d5ecb31ff585',
+    },
+    {
+      type: 'process' as const,
+      count: 830,
+      sha256: '975f22599cbe050ee271fb48b4615d32c1b2ce78772a9c550d5f4771635c1842',
+    },
+    {
+      type: 'flow-elementary' as const,
+      count: 65,
+      sha256: 'ef864c18fa7cead938e5c99184c3f7356f14dee1e42810750ef6e62f2bed47e7',
+    },
+  ];
+
+  for (const snapshot of expected) {
+    const { config, schema, entries } = __testInternals.loadEntries(snapshot.type);
+    const sdkSchema = path.join(resolveRuntimeAssetDir('tidas'), 'schemas', config.schemaFile);
+    assert.equal(schema, sdkSchema);
+    const sdkEntries: typeof entries = [];
+    __testInternals.collectEntriesFromNode(
+      JSON.parse(readFileSync(sdkSchema, 'utf8')),
+      config.defaultValueKey,
+      sdkEntries,
+    );
+    const membership = (items: typeof entries) =>
+      items.map((entry) => JSON.stringify(entry)).sort();
+    assert.deepEqual(membership(entries), membership(sdkEntries));
+    const navigator = __testInternals.buildNavigator(entries);
+    const canonicalRows = entries
+      .map((entry) => {
+        const parent = navigator.parentMap.get(entry.code);
+        return [String(entry.level), entry.code, entry.text, parent?.code ?? ''].join('\t');
+      })
+      .sort();
+    const fingerprint = createHash('sha256').update(canonicalRows.join('\n')).digest('hex');
+    assert.equal(entries.length, snapshot.count, `${snapshot.type} entry count drifted`);
+    assert.equal(fingerprint, snapshot.sha256, `${snapshot.type} catalog fingerprint drifted`);
+  }
+});
+
+test('classification catalog resolution fails closed when SDK assets are unavailable', () => {
+  const { config } = __testInternals.loadEntries('flow-elementary');
+  const assertUnavailable = (resolveAssets: () => string) =>
+    assert.throws(() => __testInternals.schemaPath(config, resolveAssets), {
+      code: 'TIDAS_CLASSIFICATION_SDK_SCHEMA_UNAVAILABLE',
+      exitCode: 2,
+      details: {
+        category_type: 'flow-elementary',
+        schema_file: 'tidas_flows_elementary_category.json',
+      },
+    });
+  assertUnavailable(() => {
+    throw new Error('SDK runtime assets unavailable');
+  });
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-missing-sdk-catalog-'));
+  try {
+    assertUnavailable(() => dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('elementary navigation is independent of SDK oneOf order', () => {
+  const { entries } = __testInternals.loadEntries('flow-elementary');
+  const reordered = __testInternals.orderCatalogEntries('flow-elementary', [...entries].reverse());
+  assert.deepEqual(reordered, entries);
+  const navigator = __testInternals.buildNavigator(reordered);
+  assert.deepEqual(
+    __testInternals.pathForCode(navigator, '1.3.10').map((entry) => entry.code),
+    ['1', '1.3', '1.3.10'],
+  );
+  assert.ok(
+    reordered.findIndex((entry) => entry.code === '1.3.2') <
+      reordered.findIndex((entry) => entry.code === '1.3.10'),
+  );
+});
+
+test('elementary catalog preserves SDK membership and dotted parent paths for every category', () => {
+  const { entries } = __testInternals.loadEntries('flow-elementary');
+  const navigator = __testInternals.buildNavigator(entries);
+  for (const entry of entries) {
+    const expectedParent = entry.code.includes('.')
+      ? entry.code.slice(0, entry.code.lastIndexOf('.'))
+      : null;
+    assert.equal(navigator.parentMap.get(entry.code)?.code ?? null, expectedParent, entry.code);
+    assert.equal(
+      FlowElementaryCategorySchema.safeParse(__testInternals.toPathEntry(entry)).success,
+      true,
+      entry.code,
+    );
+    const canonicalPath = __testInternals
+      .pathForCode(navigator, entry.code)
+      .map(__testInternals.toPathEntry);
+    assert.deepEqual(
+      resolveTidasClassificationPath('flow-elementary', canonicalPath),
+      canonicalPath,
+    );
+  }
+});
+
+test('classification authoring resolves complete legacy labels without inventing catalog IDs', () => {
+  const labels = [
+    'Manufacturing',
+    'Manufacture of food products',
+    'Manufacture of prepared animal feeds',
+    'Manufacture of prepared animal feeds',
+  ];
+  const expected = [
+    { '@level': '0', '@classId': 'C', '#text': labels[0] },
+    { '@level': '1', '@classId': '10', '#text': labels[1] },
+    { '@level': '2', '@classId': '108', '#text': labels[2] },
+    { '@level': '3', '@classId': '1080', '#text': labels[3] },
+  ];
+  assert.deepEqual(resolveTidasClassificationPath('process', labels), expected);
+  assert.deepEqual(
+    resolveTidasClassificationPath('process', [
+      '  ＭＡＮＵＦＡＣＴＵＲＩＮＧ ',
+      'manufacture  of\tfood products',
+      ...labels.slice(2),
+    ]),
+    expected,
+  );
+  assert.deepEqual(
+    resolveTidasClassificationPath(
+      'process',
+      expected.map((entry) => ({ '@classId': entry['@classId'] })),
+    ),
+    expected,
+  );
+});
+
+test('classification authoring rejects incomplete, mixed and unknown legacy label paths', () => {
+  const cases: Array<{ input: unknown; code: string }> = [
+    { input: null, code: 'TIDAS_CLASSIFICATION_PATH_REQUIRED' },
+    { input: [], code: 'TIDAS_CLASSIFICATION_PATH_REQUIRED' },
+    {
+      input: ['Manufacturing', { '@classId': '10' }],
+      code: 'TIDAS_CLASSIFICATION_PATH_MIXED',
+    },
+    { input: [' \t '], code: 'TIDAS_CLASSIFICATION_PATH_LABEL_INVALID' },
+    {
+      input: ['Manufacture of food products'],
+      code: 'TIDAS_CLASSIFICATION_PATH_UNKNOWN',
+    },
+    {
+      input: ['Manufacturing', 'An invented process category'],
+      code: 'TIDAS_CLASSIFICATION_PATH_UNKNOWN',
+    },
+    { input: [{ '#text': 'Manufacturing' }], code: 'TIDAS_CLASSIFICATION_ID_REQUIRED' },
+  ];
+  for (const { input, code } of cases) {
+    assert.throws(() => resolveTidasClassificationPath('process', input), {
+      code,
+      exitCode: 2,
+    });
+  }
+});
+
+test('explicit classification IDs cannot bypass parent edges, levels or catalog labels', () => {
+  const canonical = [
+    { '@level': '0', '@classId': 'C', '#text': 'Manufacturing' },
+    { '@level': '1', '@classId': '10', '#text': 'Manufacture of food products' },
+    { '@level': '2', '@classId': '108', '#text': 'Manufacture of prepared animal feeds' },
+    { '@level': '3', '@classId': '1080', '#text': 'Manufacture of prepared animal feeds' },
+  ];
+  for (const invalid of [
+    canonical.slice(1),
+    [canonical[0], canonical[2], canonical[3]],
+    [{ '@classId': 'A' }, ...canonical.slice(1)],
+    [...canonical.slice(0, 3), { '@classId': 'unknown-id' }],
+  ]) {
+    assert.throws(() => resolveTidasClassificationPath('process', invalid), {
+      code: 'TIDAS_CLASSIFICATION_PATH_INVALID',
+      exitCode: 2,
+    });
+  }
+  assert.throws(
+    () =>
+      resolveTidasClassificationPath('process', [
+        { ...canonical[0], '@level': '1' },
+        ...canonical.slice(1),
+      ]),
+    { code: 'TIDAS_CLASSIFICATION_LEVEL_MISMATCH', exitCode: 2 },
+  );
+  assert.throws(
+    () =>
+      resolveTidasClassificationPath('process', [
+        canonical[0],
+        { ...canonical[1], '#text': 'Manufacture of fabricated metal products' },
+        ...canonical.slice(2),
+      ]),
+    { code: 'TIDAS_CLASSIFICATION_LABEL_MISMATCH', exitCode: 2 },
+  );
+});
+
+test('colliding complete catalog labels require exact IDs instead of choosing the first match', () => {
+  const { config } = __testInternals.loadEntries('process');
+  const entries = [
+    { level: 0, code: 'A', text: 'Transport', value_key: '@classId' as const },
+    { level: 1, code: 'A1', text: 'Freight', value_key: '@classId' as const },
+    { level: 0, code: 'B', text: 'Transport', value_key: '@classId' as const },
+    { level: 1, code: 'B1', text: 'Freight', value_key: '@classId' as const },
+  ];
+  const catalog = { config, navigator: __testInternals.buildNavigator(entries) };
+  assert.throws(
+    () =>
+      __testInternals.resolveClassificationPathAgainstCatalog(
+        'process',
+        ['Transport', 'Freight'],
+        catalog,
+      ),
+    {
+      code: 'TIDAS_CLASSIFICATION_PATH_AMBIGUOUS',
+      exitCode: 2,
+      details: {
+        category_type: 'process',
+        schema_file: config.schemaFile,
+        labels: ['Transport', 'Freight'],
+        matching_leaf_codes: ['A1', 'B1'],
+      },
+    },
+  );
+  assert.deepEqual(
+    __testInternals.resolveClassificationPathAgainstCatalog(
+      'process',
+      [{ '@classId': 'B' }, { '@classId': 'B1' }],
+      catalog,
+    ),
+    [
+      { '@level': '0', '@classId': 'B', '#text': 'Transport' },
+      { '@level': '1', '@classId': 'B1', '#text': 'Freight' },
+    ],
   );
 });
 

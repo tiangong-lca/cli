@@ -42,7 +42,7 @@ const GENERIC_MASS_HINTS = new Set([
 ]);
 
 type FlowValidationIssue = {
-  validator: 'tidas_sdk';
+  validator: 'tidas_sdk' | 'flow_property_contract';
   path: string;
   message: string;
   code: string;
@@ -480,6 +480,7 @@ function normalize_flow_properties(
   const rawItems = flowPropertiesBlock.flowProperty;
   const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
   const normalizedItems: JsonRecord[] = [];
+  const preservedRows: unknown[] = [];
   const unresolved: FlowValidationIssue[] = [];
   let repairedUnknownUuid = false;
   let filledMissingUuid = false;
@@ -488,6 +489,7 @@ function normalize_flow_properties(
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index];
     if (!isRecord(item)) {
+      preservedRows.push(item);
       unresolved.push({
         validator: 'tidas_sdk',
         path: 'flowDataSet.flowProperties.flowProperty',
@@ -502,7 +504,7 @@ function normalize_flow_properties(
       : null;
     const hint = reference?.['common:shortDescription'] ?? reference;
     const internalId = coerceText(item['@dataSetInternalID']) || String(index);
-    const meanValue = coerceText(item.meanValue) || '1.0';
+    const meanValue = coerceText(item.meanValue);
     const refUuid = coerceText(reference?.['@refObjectId']).toLowerCase();
     const refVersion =
       coerceText(reference?.['@version']) || version_from_uri(coerceText(reference?.['@uri']));
@@ -538,10 +540,24 @@ function normalize_flow_properties(
           : 'Unable to infer flow property UUID from the reference block',
         code: 'unknown_flow_property_uuid',
       });
+      normalizedItems.push({ ...item });
+      preservedRows.push(normalizedItems.at(-1));
       continue;
     }
 
-    normalizedItems.push(build_flow_property_item(descriptor, internalId, meanValue));
+    const canonical = build_flow_property_item(descriptor, internalId, meanValue);
+    // Repair only the reference leaves that this operation owns. Do not rebuild
+    // the property or erase comments, uncertainty, derivation or custom fields.
+    normalizedItems.push({
+      ...item,
+      referenceToFlowPropertyDataSet: {
+        ...(canonical.referenceToFlowPropertyDataSet as JsonRecord),
+        ...reference,
+        '@refObjectId': descriptor.uuid,
+        '@version': descriptor.version,
+      },
+    });
+    preservedRows.push(normalizedItems.at(-1));
   }
 
   if (!normalizedItems.length) {
@@ -558,14 +574,14 @@ function normalize_flow_properties(
         ),
       );
       usedDefaultMassFallback = true;
+      preservedRows.push(normalizedItems[0]);
     } else {
-      delete flowPropertiesBlock.flowProperty;
+      flowPropertiesBlock.flowProperty = rawItems;
       return { items: [], unresolved };
     }
   }
 
-  flowPropertiesBlock.flowProperty =
-    normalizedItems.length === 1 ? normalizedItems[0] : normalizedItems;
+  flowPropertiesBlock.flowProperty = preservedRows.length === 1 ? preservedRows[0] : preservedRows;
   fixes.push('normalize_flow_properties');
   if (repairedUnknownUuid) {
     fixes.push('repair_unknown_flow_property_uuid_from_short_description');
@@ -609,11 +625,17 @@ function normalize_quantitative_reference(
       .filter((value) => value.length > 0),
   );
   const current = coerceText(quantitativeReference.referenceToReferenceFlowProperty);
-  if (!allowedIds.has(current)) {
-    quantitativeReference.referenceToReferenceFlowProperty = coerceText(
-      normalizedFlowProperties[0]?.['@dataSetInternalID'],
-    );
-    fixes.push('set_reference_to_reference_flow_property');
+  const matches = normalizedFlowProperties.filter(
+    (item) => coerceText(item['@dataSetInternalID']) === current,
+  );
+  if (!allowedIds.has(current) || matches.length !== 1) {
+    unresolved.push({
+      validator: 'tidas_sdk',
+      path: 'flowDataSet.flowInformation.quantitativeReference.referenceToReferenceFlowProperty',
+      message:
+        'The declared reference must resolve uniquely; selecting the first property would change the quantity basis.',
+      code: 'flow_property_reference_unresolved',
+    });
   }
 }
 
@@ -834,6 +856,14 @@ function remediate_row(row: JsonRecord, deps: FlowRemediationDeps): FlowRemediat
   const flowProperties = normalize_flow_properties(flowDataSet, fixes);
   residualUnresolved.push(...flowProperties.unresolved);
   normalize_quantitative_reference(flowDataSet, flowProperties.items, fixes, residualUnresolved);
+  residualUnresolved.push(
+    ...inspectFlowProperties(flowDataSet).issues.map((issue) => ({
+      validator: 'flow_property_contract' as const,
+      path: `flowDataSet.${issue.path}`,
+      message: issue.message,
+      code: issue.code,
+    })),
+  );
   normalize_technology_multilang_fields(flowDataSet, fixes);
   normalize_technical_specification(flowDataSet, fixes);
 
@@ -1081,3 +1111,4 @@ export const __testInternals = {
   validate_flow_payload,
   version_from_uri,
 };
+import { inspectFlowProperties } from './flow-property-contract.js';

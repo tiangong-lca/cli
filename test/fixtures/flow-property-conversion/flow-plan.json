@@ -1,0 +1,271 @@
+{
+  "schema_version": 1,
+  "target": {
+    "uuid": "40000000-0000-4000-8000-000000000001",
+    "version": "01.00.000",
+    "geography": "CN",
+    "technology_route": "Synthetic conversion fixture",
+    "flow_type": "Product flow"
+  },
+  "identity_decision": {
+    "decision": "update_same_row"
+  },
+  "name_plan": {
+    "base_name": "Synthetic multi-property conversion fixture"
+  },
+  "unit_of_analysis": {
+    "target_kind": "bulk_material",
+    "decision": "declared_unit_dataset",
+    "declared_unit": {
+      "amount": 1,
+      "unit": "kg",
+      "basis": "synthetic fixture"
+    },
+    "reference_flow": {
+      "flow_identity": "Synthetic product",
+      "reference_unit": "kg",
+      "reference_amount": 1,
+      "flow_property": "Mass"
+    },
+    "scaling_evidence_status": "not_required"
+  },
+  "evidence_manifest": {
+    "sources": [
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "version": "01.00.000",
+        "title": "Synthetic test evidence"
+      }
+    ],
+    "evidence": [
+      {
+        "id": "test-density-source",
+        "source_id": "22222222-2222-4222-8222-222222222222",
+        "locator": "synthetic fixture"
+      }
+    ],
+    "field_bindings": [
+      {
+        "field_path": "target"
+      },
+      {
+        "field_path": "identity_decision.decision"
+      },
+      {
+        "field_path": "unit_of_analysis"
+      },
+      {
+        "field_path": "name_plan.base_name"
+      },
+      {
+        "field_path": "target.geography"
+      },
+      {
+        "field_path": "target.technology_route"
+      },
+      {
+        "field_path": "quantitative_reference_plan.reference_flow_id"
+      },
+      {
+        "field_path": "target.flow_type"
+      }
+    ]
+  },
+  "kind": "flow",
+  "classification_path": [
+    {
+      "@level": "0",
+      "@classId": "3",
+      "#text": "Other transportable goods, except metal products, machinery and equipment"
+    },
+    {
+      "@level": "1",
+      "@classId": "34",
+      "#text": "Basic chemicals"
+    },
+    {
+      "@level": "2",
+      "@classId": "341",
+      "#text": "Basic organic chemicals"
+    },
+    {
+      "@level": "3",
+      "@classId": "3411",
+      "#text": "Hydrocarbons and their halogenated, sulphonated, nitrated or nitrosated derivatives"
+    }
+  ],
+  "flow_property_plan": {
+    "reference_internal_id": "7",
+    "properties": [
+      {
+        "@dataSetInternalID": "2",
+        "referenceToFlowPropertyDataSet": {
+          "@refObjectId": "20000000-0000-4000-8000-000000000002",
+          "@version": "01.00.000",
+          "@type": "flow property data set",
+          "@uri": "../flowproperties/20000000-0000-4000-8000-000000000002.xml",
+          "common:shortDescription": {
+            "@xml:lang": "en",
+            "#text": "Synthetic property"
+          }
+        },
+        "meanValue": "0.001",
+        "generalComment": {
+          "@xml:lang": "en",
+          "#text": "Illustrative fixed water density only."
+        }
+      }
+    ],
+    "before_flow": {
+      "flowDataSet": {
+        "@xmlns": "http://lca.jrc.it/ILCD/Flow",
+        "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+        "@xmlns:ecn": "http://eplca.jrc.ec.europa.eu/ILCD/Extensions/2018/ECNumber",
+        "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+        "@version": "1.1",
+        "@locations": "../ILCDLocations.xml",
+        "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Flow ../../schemas/ILCD_FlowDataSet.xsd",
+        "flowInformation": {
+          "dataSetInformation": {
+            "common:UUID": "40000000-0000-4000-8000-000000000001",
+            "name": {
+              "baseName": [
+                {
+                  "#text": "Synthetic multi-property conversion fixture",
+                  "@xml:lang": "en"
+                }
+              ],
+              "treatmentStandardsRoutes": [
+                {
+                  "#text": "Reference flow",
+                  "@xml:lang": "en"
+                }
+              ],
+              "mixAndLocationTypes": [
+                {
+                  "#text": "CN",
+                  "@xml:lang": "en"
+                }
+              ]
+            },
+            "classificationInformation": {
+              "common:classification": {
+                "common:class": [
+                  {
+                    "@level": "0",
+                    "@classId": "3",
+                    "#text": "Other transportable goods, except metal products, machinery and equipment"
+                  },
+                  {
+                    "@level": "1",
+                    "@classId": "34",
+                    "#text": "Basic chemicals"
+                  },
+                  {
+                    "@level": "2",
+                    "@classId": "341",
+                    "#text": "Basic organic chemicals"
+                  },
+                  {
+                    "@level": "3",
+                    "@classId": "3411",
+                    "#text": "Hydrocarbons and their halogenated, sulphonated, nitrated or nitrosated derivatives"
+                  }
+                ]
+              }
+            },
+            "common:generalComment": [
+              {
+                "#text": "Flow materialized from build plan test/fixtures/flow-property-conversion/flow-plan.json.",
+                "@xml:lang": "en"
+              }
+            ]
+          },
+          "quantitativeReference": {
+            "referenceToReferenceFlowProperty": "7"
+          },
+          "geography": {
+            "locationOfSupply": "CN"
+          }
+        },
+        "modellingAndValidation": {
+          "LCIMethod": {
+            "typeOfDataSet": "Product flow"
+          },
+          "complianceDeclarations": {
+            "compliance": {
+              "common:referenceToComplianceSystem": {
+                "@type": "source data set",
+                "@refObjectId": "65e06cf7-7287-5ffa-8bf2-7c3aabfcd42e",
+                "@version": "00.00.000",
+                "@uri": "../source-data-set/65e06cf7-7287-5ffa-8bf2-7c3aabfcd42e.xml",
+                "common:shortDescription": {
+                  "#text": "Build plan compliance system",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:approvalOfOverallCompliance": "Not defined"
+            }
+          }
+        },
+        "administrativeInformation": {
+          "dataEntryBy": {
+            "common:timeStamp": "1970-01-01T00:00:00.000Z",
+            "common:referenceToDataSetFormat": {
+              "@type": "source data set",
+              "@refObjectId": "56e8b7bd-4eaf-5c2c-9113-f8d42b8f14b3",
+              "@version": "00.00.000",
+              "@uri": "../source-data-set/56e8b7bd-4eaf-5c2c-9113-f8d42b8f14b3.xml",
+              "common:shortDescription": {
+                "#text": "TIDAS / ILCD data set format",
+                "@xml:lang": "en"
+              }
+            }
+          },
+          "publicationAndOwnership": {
+            "common:dataSetVersion": "01.00.000",
+            "common:permanentDataSetURI": "https://data.tiangong.earth/flows/40000000-0000-4000-8000-000000000001.xml",
+            "common:referenceToOwnershipOfDataSet": {
+              "@type": "contact data set",
+              "@refObjectId": "b0480099-fbf0-5926-86f3-34ea59e1738e",
+              "@version": "00.00.000",
+              "@uri": "../contact-data-set/b0480099-fbf0-5926-86f3-34ea59e1738e.xml",
+              "common:shortDescription": {
+                "#text": "Build plan owner",
+                "@xml:lang": "en"
+              }
+            }
+          }
+        },
+        "flowProperties": {
+          "flowProperty": [
+            {
+              "@dataSetInternalID": "7",
+              "referenceToFlowPropertyDataSet": {
+                "@refObjectId": "20000000-0000-4000-8000-000000000001",
+                "@version": "01.00.000",
+                "@type": "flow property data set",
+                "@uri": "../flowproperties/20000000-0000-4000-8000-000000000001.xml",
+                "common:shortDescription": {
+                  "@xml:lang": "en",
+                  "#text": "Synthetic property"
+                }
+              },
+              "meanValue": "1",
+              "generalComment": [
+                {
+                  "@xml:lang": "en",
+                  "#text": "Synthetic reference measurement retained unchanged."
+                }
+              ],
+              "minimumValue": "0.99",
+              "maximumValue": "1.01",
+              "uncertaintyDistributionType": "normal",
+              "dataDerivationTypeStatus": "Measured"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
