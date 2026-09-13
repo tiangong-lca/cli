@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-13
-lastReviewedCommit: bcc5dbee5b909dbb912e09d99ca07e858d3d7cec
-lastReviewedNote: 'Reviewed for CLI #312: version-bound historical/current repository and owner identity, certificate OIDs, exact event/workflow/tag SHA guards, publication floor and protected-toolchain label compatibility preserve immutable releases, OAuth and all execution/integration gates.'
+lastReviewedAt: 2026-09-14
+lastReviewedCommit: a6c5815b06903b2b424c5ab892e4e9f3c99b3001
+lastReviewedNote: 'Reviewed for CLI #314: version-only0.1.15 preparation uses the existing canonical merge-tag and publish.yml paths; live version fixtures advance, while historical signing boundaries, runtime behavior, dependencies, lockfile, OAuth and all quality gates remain unchanged. Public release/install proof is pending.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
