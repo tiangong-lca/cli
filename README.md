@@ -31,9 +31,9 @@ checkPaths:
   - test/auth-identity*.test.ts
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
-lastReviewedAt: 2026-09-11
-lastReviewedCommit: 79a61f933c5c3e241eca03116fbb7088a273e8ce
-lastReviewedNote: 'Reviewed for CLI #312 bounded subset: workflow guards bind the migrated canonical identity tiangong-lca/cli with repository id 1194220834 and owner id 327771381, and manual recovery requires the exact release tag ref; package metadata and release docs update in the same review. Version 0.1.14, frozen dependencies, the legacy <=0.1.14 provenance profile (tiangong-lca/tiangong-cli / owner id 199785309) and historical evidence stay immutable.'
+lastReviewedAt: 2026-09-14
+lastReviewedCommit: a6c5815b06903b2b424c5ab892e4e9f3c99b3001
+lastReviewedNote: 'Reviewed for CLI #314: version-only0.1.15 preparation uses the existing canonical merge-tag and publish.yml paths; live version fixtures advance, while historical signing boundaries, runtime behavior, dependencies, lockfile, OAuth and all quality gates remain unchanged. Public release/install proof is pending.'
 ---
 
 CLI 0.1.10 is the designated C1 release for `tiangong-lca runtime describe --json` and the explicit `@tiangong-lca/cli/runtime` API for package, asset and Node content inspection. Runtime inspection loads no project `.env`, performs no authentication and downloads nothing. See [the runtime distribution contract](docs/agents/runtime-distribution-contract.md) for exact fields and trust boundaries; verify public availability and provenance before treating the candidate version as released.
