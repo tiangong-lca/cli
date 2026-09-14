@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-09-13
-lastReviewedCommit: bcc5dbee5b909dbb912e09d99ca07e858d3d7cec
-lastReviewedNote: 'Reviewed for CLI #312: version-bound historical/current repository and owner identity, certificate OIDs, exact event/workflow/tag SHA guards, publication floor and protected-toolchain label compatibility preserve immutable releases, OAuth and all execution/integration gates.'
+lastReviewedAt: 2026-09-14
+lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
+lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

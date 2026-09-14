@@ -319,23 +319,44 @@ function loadFallbackContractPack(options: {
   };
 }
 
+/**
+ * Sibling SDK checkout layouts, canonical workspace directory first.
+ *
+ * The leading entry is the current workspace child name; the trailing entry
+ * keeps developer checkouts that predate the rename working.
+ */
+const SDK_RUNTIME_ASSETS_SIBLING_PATHS = [
+  '../tidas-sdks/sdks/typescript/src/runtime-assets',
+  '../tidas-sdk/sdks/typescript/src/runtime-assets',
+] as const;
+
+/**
+ * Ordered runtime-assets candidates: development siblings first, then the copy
+ * shipped inside the installed SDK package.
+ *
+ * Sibling discovery is a development-only convenience. A packaged or installed
+ * CLI has no adjacent repositories, so it must not probe them and instead
+ * resolves the assets that ship with the package.
+ */
+function sdkRuntimeAssetsCandidates(
+  sdkEntry: string,
+  cliRepoRoot: string = resolveCliRepoRoot(),
+): string[] {
+  const packagedRoot = path.join(path.dirname(sdkEntry), 'runtime-assets');
+  const siblingRoots = isCliSourceRoot(cliRepoRoot)
+    ? SDK_RUNTIME_ASSETS_SIBLING_PATHS.map((relativePath) =>
+        path.resolve(cliRepoRoot, relativePath),
+      )
+    : [];
+  return [...siblingRoots, packagedRoot];
+}
+
 function resolveSdkRuntimeAssetsRoot(
   candidatesOverride?: string[],
   sdkEntryOverride?: string,
 ): string {
   const sdkEntry = sdkEntryOverride ?? requireFromHere.resolve('@tiangong-lca/tidas-sdk');
-  const candidates =
-    candidatesOverride ??
-    (() => {
-      const distRoot = path.dirname(sdkEntry);
-      const packagedRoot = path.join(distRoot, 'runtime-assets');
-      const cliRepoRoot = resolveCliRepoRoot();
-      const siblingSdkRoot = path.resolve(
-        cliRepoRoot,
-        '../tidas-sdk/sdks/typescript/src/runtime-assets',
-      );
-      return [siblingSdkRoot, packagedRoot];
-    })();
+  const candidates = candidatesOverride ?? sdkRuntimeAssetsCandidates(sdkEntry);
 
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
@@ -350,19 +371,21 @@ function resolveSdkRuntimeAssetsRoot(
   });
 }
 
-function resolveCliRepoRoot(candidatesOverride?: string[]): string {
+function cliRepoRootCandidates(): string[] {
   const moduleDir = path.dirname(fileURLToPath(import.meta.url));
-  const candidates = candidatesOverride ?? [
-    path.resolve(moduleDir, '../..'),
-    path.resolve(moduleDir, '../../..'),
-  ];
+  return [path.resolve(moduleDir, '../..'), path.resolve(moduleDir, '../../..')];
+}
+
+function isCliSourceRoot(candidate: string): boolean {
   return (
-    candidates.find(
-      (candidate) =>
-        existsSync(path.join(candidate, 'package.json')) &&
-        existsSync(path.join(candidate, 'src/cli.ts')),
-    ) ?? candidates[0]
+    existsSync(path.join(candidate, 'package.json')) &&
+    existsSync(path.join(candidate, 'src/cli.ts'))
   );
+}
+
+function resolveCliRepoRoot(candidatesOverride?: string[]): string {
+  const candidates = candidatesOverride ?? cliRepoRootCandidates();
+  return candidates.find(isCliSourceRoot) ?? candidates[0];
 }
 
 function readOptionalText(filePath: string): string | undefined {
@@ -490,10 +513,12 @@ export const __testInternals = {
   artifactManifest,
   buildAiContext,
   filterRuntimeRuleset,
+  isCliSourceRoot,
   loadFallbackContractPack,
   renderAiContextMarkdown,
   resolveCliRepoRoot,
   resolveSdkRuntimeAssetsRoot,
+  sdkRuntimeAssetsCandidates,
   normalizeIncludes,
   normalizeProfile,
   normalizeType,

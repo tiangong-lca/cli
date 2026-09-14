@@ -48,14 +48,40 @@ after(() => {
   rmSync(fixtureRoot, { recursive: true, force: true });
 });
 
+// Git hooks export repository-local routing variables. Fixture commands run in
+// other repositories and must not inherit those pointers into the real checkout.
+// Scoped config/credential settings remain inherited; all fixture remotes are local.
+function fixtureEnvironment() {
+  const env = { ...process.env };
+  for (const key of [
+    'GIT_DIR',
+    'GIT_COMMON_DIR',
+    'GIT_WORK_TREE',
+    'GIT_INDEX_FILE',
+    'GIT_OBJECT_DIRECTORY',
+    'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+    'GIT_PREFIX',
+    'GIT_SUPER_PREFIX',
+    'GIT_IMPLICIT_WORK_TREE',
+    'GIT_GRAFT_FILE',
+    'GIT_SHALLOW_FILE',
+  ])
+    delete env[key];
+  return env;
+}
+
 function git(cwd, ...args) {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', env: fixtureEnvironment() });
   assert.equal(result.status, 0, `git ${args.join(' ')} failed:\n${result.stderr}`);
   return result.stdout.trim();
 }
 
 function revExists(cwd, ref) {
-  const result = spawnSync('git', ['rev-parse', '--verify', ref], { cwd, encoding: 'utf8' });
+  const result = spawnSync('git', ['rev-parse', '--verify', ref], {
+    cwd,
+    encoding: 'utf8',
+    env: fixtureEnvironment(),
+  });
   return result.status === 0;
 }
 
@@ -134,7 +160,7 @@ function runReleaseContext(
     cwd: fixture.work,
     encoding: 'utf8',
     env: {
-      ...process.env,
+      ...fixtureEnvironment(),
       GITHUB_EVENT_NAME: event,
       GITHUB_REF: ref,
       GITHUB_REF_NAME: refName,
@@ -167,7 +193,11 @@ function runReleaseContext(
 }
 
 function runFloorScript(version) {
-  return spawnSync('node', [floorScriptPath, version], { cwd: fixtureRoot, encoding: 'utf8' });
+  return spawnSync('node', [floorScriptPath, version], {
+    cwd: fixtureRoot,
+    encoding: 'utf8',
+    env: fixtureEnvironment(),
+  });
 }
 
 function combinedOutput(result) {
@@ -186,6 +216,37 @@ describe(
   'publish.yml release-context guard (executed against real git fixtures)',
   { skip: !bashAvailable && 'bash is unavailable on this platform' },
   () => {
+    it('isolates fixture repositories from foreign Git hook routing', () => {
+      const foreign = createFixture();
+      const protectedPaths = ['.git/config', '.git/HEAD', '.git/index', 'package.json'];
+      const beforeBytes = protectedPaths.map((name) => readFileSync(join(foreign.work, name)));
+      const routing = {
+        GIT_DIR: join(foreign.work, '.git'),
+        GIT_COMMON_DIR: join(foreign.work, '.git'),
+        GIT_WORK_TREE: foreign.work,
+        GIT_INDEX_FILE: join(foreign.work, '.git/index'),
+        GIT_PREFIX: 'borrowed-worktree/',
+      };
+      const previous = Object.fromEntries(
+        Object.keys(routing).map((key) => [key, process.env[key]]),
+      );
+      try {
+        Object.assign(process.env, routing);
+        const fixture = createFixture();
+        const { result, outputs } = runReleaseContext(fixture, { ...CANONICAL });
+        assert.equal(result.status, 0, combinedOutput(result));
+        assert.equal(outputs.should_release, 'true');
+        for (const [index, name] of protectedPaths.entries()) {
+          assert.deepEqual(readFileSync(join(foreign.work, name)), beforeBytes[index]);
+        }
+      } finally {
+        for (const [key, value] of Object.entries(previous)) {
+          if (value === undefined) delete process.env[key];
+          else process.env[key] = value;
+        }
+      }
+    });
+
     it('releases a canonical cli-v* tag push above the legacy ceiling with the bound ids', () => {
       const fixture = createFixture();
       const { result, outputs } = runReleaseContext(fixture, { ...CANONICAL });
