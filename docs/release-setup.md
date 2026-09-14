@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-14
-lastReviewedCommit: 43d30b03aecf56bb7a9f4db5055e13499a506482
-lastReviewedNote: 'Reviewed for CLI #314: version-only0.1.15 preparation uses the existing canonical merge-tag and publish.yml paths; live version fixtures advance, while historical signing boundaries, runtime behavior, dependencies, lockfile, OAuth and all quality gates remain unchanged. Public release/install proof is pending.'
+lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
+lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

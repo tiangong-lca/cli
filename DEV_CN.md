@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-09-14
-lastReviewedCommit: 43d30b03aecf56bb7a9f4db5055e13499a506482
-lastReviewedNote: 'Reviewed for CLI #312: active source/publisher identity is canonical, historical evidence stays version-bound, and exact OID/ref/SHA and publication-floor checks preserve the existing runtime and execution gates.'
+lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
+lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

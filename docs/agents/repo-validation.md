@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-14
-lastReviewedCommit: 43d30b03aecf56bb7a9f4db5055e13499a506482
-lastReviewedNote: 'Reviewed for CLI #314: version-only0.1.15 preparation uses the existing canonical merge-tag and publish.yml paths; live version fixtures advance, while historical signing boundaries, runtime behavior, dependencies, lockfile, OAuth and all quality gates remain unchanged. Public release/install proof is pending.'
+lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
+lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -268,3 +268,5 @@ The repository id is the continuity anchor across the migration (identical on bo
 Publication floor: new-identity publication (tag creation and release) requires a version above the frozen legacy ceiling `CLI_LEGACY_LAST_VERSION` (0.1.14), as classified by the shared `src/lib/cli-repository-identity.ts` helper via `scripts/ci/check-publication-floor.cjs`. The publish release-context guard rejects legacy-ceiling versions for both tag pushes and exact-tag dispatch, and the tag-creation automation enforces the same floor before creating `cli-v*` refs, so an unused lower/backport version can never be published under the current identity and become unverifiable. This rule does not select the next release version; unchanged-version main source PRs remain no-release. Historical tags and registry packages stay immutable.
 
 The event SHA and workflow-definition SHA are separate facts (`github.sha` and `github.workflow_sha`). Both tag pushes and exact-tag dispatch must match the resolved release commit; a moved tag or divergent workflow fails before publication. The workflow regression reads the actual YAML-to-shell bindings so one SHA cannot be substituted for the other. The shared source policy is loaded as ESM by the private CommonJS helpers without requiring a build or application runtime imports.
+
+Git-backed test fixtures must clear inherited repository routing (`GIT_DIR`, `GIT_COMMON_DIR`, `GIT_WORK_TREE`, index/object paths and prefix) before running Git or release-shell commands in temporary repositories. Preserve scoped configuration/credential inputs. The release-context suite exercises a foreign Git hook environment and verifies its config, HEAD, index and files remain byte-identical. This isolation is required when the suite runs from the pre-push hook in a linked worktree.

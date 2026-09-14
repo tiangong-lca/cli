@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-09-14
-lastReviewedCommit: 43d30b03aecf56bb7a9f4db5055e13499a506482
-lastReviewedNote: 'Reviewed for CLI #312: version-bound historical/current repository and owner identity, certificate OIDs, exact event/workflow/tag SHA guards, publication floor and protected-toolchain label compatibility preserve immutable releases, OAuth and all execution/integration gates.'
+lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
+lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
