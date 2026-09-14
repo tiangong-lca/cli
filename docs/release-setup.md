@@ -25,7 +25,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-14
-lastReviewedCommit: a6c5815b06903b2b424c5ab892e4e9f3c99b3001
+lastReviewedCommit: 43d30b03aecf56bb7a9f4db5055e13499a506482
 lastReviewedNote: 'Reviewed for CLI #314: version-only0.1.15 preparation uses the existing canonical merge-tag and publish.yml paths; live version fixtures advance, while historical signing boundaries, runtime behavior, dependencies, lockfile, OAuth and all quality gates remain unchanged. Public release/install proof is pending.'
 related:
   - ../AGENTS.md

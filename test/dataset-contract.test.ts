@@ -423,3 +423,72 @@ test('runDatasetContract handles fallback and sparse SDK contract packs', async 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('dataset contract prefers the canonical SDK sibling and keeps the legacy sibling', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-sdk-siblings-'));
+  const cliRoot = path.join(dir, 'cli');
+  const canonicalSibling = path.join(dir, 'tidas-sdks/sdks/typescript/src/runtime-assets');
+  const legacySibling = path.join(dir, 'tidas-sdk/sdks/typescript/src/runtime-assets');
+  const sdkEntry = path.join(dir, 'installed/dist/index.js');
+  const packagedRoot = path.join(dir, 'installed/dist/runtime-assets');
+  mkdirSync(path.join(cliRoot, 'src'), { recursive: true });
+  writeFileSync(path.join(cliRoot, 'package.json'), '{}', 'utf8');
+  writeFileSync(path.join(cliRoot, 'src/cli.ts'), '', 'utf8');
+  try {
+    assert.equal(__testInternals.isCliSourceRoot(cliRoot), true);
+    assert.equal(
+      __testInternals.resolveCliRepoRoot([cliRoot]),
+      cliRoot,
+      'a verified source checkout is the development mode signal',
+    );
+
+    mkdirSync(canonicalSibling, { recursive: true });
+    mkdirSync(legacySibling, { recursive: true });
+    assert.deepEqual(__testInternals.sdkRuntimeAssetsCandidates(sdkEntry, cliRoot), [
+      canonicalSibling,
+      legacySibling,
+      packagedRoot,
+    ]);
+    assert.equal(
+      __testInternals.resolveSdkRuntimeAssetsRoot(
+        __testInternals.sdkRuntimeAssetsCandidates(sdkEntry, cliRoot),
+        sdkEntry,
+      ),
+      canonicalSibling,
+    );
+
+    rmSync(canonicalSibling, { recursive: true, force: true });
+    assert.equal(
+      __testInternals.resolveSdkRuntimeAssetsRoot(
+        __testInternals.sdkRuntimeAssetsCandidates(sdkEntry, cliRoot),
+        sdkEntry,
+      ),
+      legacySibling,
+      'checkouts that predate the rename still resolve their sibling checkout',
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('dataset contract keeps packaged SDK assets standalone outside a source checkout', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-sdk-packaged-'));
+  const installedRoot = path.join(dir, 'installed');
+  const sdkEntry = path.join(installedRoot, 'dist/index.js');
+  const packagedRoot = path.join(installedRoot, 'dist/runtime-assets');
+  const absentSourceSibling = path.join(dir, 'tidas-sdks/sdks/typescript/src/runtime-assets');
+  mkdirSync(path.dirname(sdkEntry), { recursive: true });
+  mkdirSync(packagedRoot, { recursive: true });
+  writeFileSync(sdkEntry, '', 'utf8');
+  try {
+    // Present on disk, but an installed CLI must never adopt it: the sibling only
+    // counts when the CLI itself is a verified source checkout.
+    mkdirSync(absentSourceSibling, { recursive: true });
+    assert.equal(__testInternals.isCliSourceRoot(installedRoot), false);
+    const candidates = __testInternals.sdkRuntimeAssetsCandidates(sdkEntry, installedRoot);
+    assert.deepEqual(candidates, [packagedRoot]);
+    assert.equal(__testInternals.resolveSdkRuntimeAssetsRoot(candidates, sdkEntry), packagedRoot);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
