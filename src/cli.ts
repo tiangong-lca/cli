@@ -6,6 +6,7 @@ import { CliError, toErrorPayload } from './lib/errors.js';
 import type { FetchLike } from './lib/http.js';
 import { stringifyJson } from './lib/io.js';
 import { loadCliPackageVersion } from './lib/package-version.js';
+import { runDatasetGet } from './lib/dataset-get.js';
 import {
   runDatasetSupportCacheExport,
   type RunDatasetSupportCacheExportOptions,
@@ -331,6 +332,7 @@ import {
 } from './lib/dataset-source-upload-attachments.js';
 
 export type CliDeps = {
+  runDatasetGetImpl?: typeof runDatasetGet;
   runDatasetSupportCacheExportImpl?: (
     options: RunDatasetSupportCacheExportOptions,
   ) => Promise<DatasetSupportCacheExportReport>;
@@ -935,6 +937,7 @@ function renderDatasetHelp(): string {
   tiangong-lca dataset <subcommand> [options]
 
 Implemented Subcommands:
+  get                  Read one exact Contact row within an explicit public or owner-draft scope
   support-cache export Export complete observed canonical support rows through OAuth
   contract get        Write TIDAS schema / methodology / ruleset contract artifacts
   context-pack        Write an AI-ready TIDAS contract context pack
@@ -7952,6 +7955,49 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
         stdout: stringifyJson(report, datasetFlags.json),
         stderr: '',
       };
+    }
+
+    if (command === 'dataset' && subcommand === 'get') {
+      const help = `Usage: tiangong-lca dataset get --type contact --id <uuid> --version <NN.NN.NNN> --scope <public|owner-draft|public-or-owner-draft> --out-dir <fresh-dir> --expected-project-ref <ref> --expected-user-id <uuid> [--include-latest] [--timeout-ms <1..120000>] [--json]
+
+Public scope reads states 100–199; owner-draft reads the authenticated owner's state 0.
+The selected exact version never falls back. --include-latest observes RLS-visible latest metadata
+and reads its full payload only within the explicit scope. Observation does not change exact-reference eligibility.`;
+      const { values } = parseArgs({
+        args: commandArgs,
+        strict: true,
+        allowPositionals: false,
+        options: {
+          type: { type: 'string' },
+          id: { type: 'string' },
+          version: { type: 'string' },
+          scope: { type: 'string' },
+          'out-dir': { type: 'string' },
+          'expected-project-ref': { type: 'string' },
+          'expected-user-id': { type: 'string' },
+          'include-latest': { type: 'boolean' },
+          'timeout-ms': { type: 'string' },
+          json: { type: 'boolean' },
+          help: { type: 'boolean', short: 'h' },
+        },
+      });
+      if (values.help || commandArgs.length === 0)
+        return { exitCode: 0, stdout: help + '\n', stderr: '' };
+      const report = await (deps.runDatasetGetImpl ?? runDatasetGet)({
+        type: values.type ?? '',
+        id: values.id ?? '',
+        version: values.version ?? '',
+        scope: values.scope ?? '',
+        outDir: values['out-dir'] ?? '',
+        expectedProjectRef: values['expected-project-ref'] ?? '',
+        expectedUserId: values['expected-user-id'] ?? '',
+        includeLatest: values['include-latest'] ?? false,
+        timeoutMs: values['timeout-ms'] === undefined ? undefined : Number(values['timeout-ms']),
+        env: deps.env,
+        fetchImpl: deps.fetchImpl,
+        cliVersion: loadCliPackageVersion(import.meta.url),
+      });
+      return { exitCode: 0, stdout: stringifyJson(report, values.json ?? false), stderr: '' };
     }
 
     if (command === 'dataset' && subcommand === 'support-cache') {

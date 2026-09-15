@@ -37,9 +37,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
-lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
+lastReviewedNote: 'Reviewed for CLI #322: bounded Contact exact reads require explicit public/current-owner scope and fresh actor/project assertions before complete payload retrieval. Latest metadata precedes scoped body reads; existing exact-reference eligibility, auth owners, dependency locks, package version and release gates remain unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -50,6 +50,8 @@ related:
   - docs/release-runbook.md
   - docs/release-setup.md
 ---
+
+`dataset get --type contact` is the bounded complete-row reader for independently reviewed reference evidence (Issue #322). Require an exact UUID/version, explicit content scope and fresh actor/project assertions. Public reads cover 100–199 and owner-draft reads cover only current-actor state 0; optional RLS-visible latest metadata must pass that scope before complete payload retrieval. The reader does not change exact-reference v1 eligibility or create review decisions, writes or publication authority.
 
 Runtime distribution work is owned by [the runtime distribution contract](docs/agents/runtime-distribution-contract.md). Issue #274 adds the public `./runtime` inspection/manager API and `runtime describe|ensure|status|prune|lease-release|exec`. Component installation is manifest/SHA/inventory/lease bound and grants no task or data authority; the no-Node POSIX/PowerShell bootstrap is checked in under `scripts/bootstrap/`; adjacent product locks are generated only after a product manifest exists. CLI #275 designates 0.1.10 as the C1 package release; public product component qualification remains a separate downstream gate. New CLI launches and TIDAS artifact selection support only macOS arm64, Linux x64/arm64 and Windows x64. The macOS Intel Oxlint release-age exception is removed; transitive lockfile records remain untouched.
 

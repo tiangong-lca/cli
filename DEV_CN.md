@@ -22,9 +22,9 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
-lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
+lastReviewedNote: 'Reviewed for CLI #322: bounded Contact exact reads require explicit public/current-owner scope and fresh actor/project assertions before complete payload retrieval. Latest metadata precedes scoped body reads; existing exact-reference eligibility, auth owners, dependency locks, package version and release gates remain unchanged.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -33,6 +33,8 @@ related:
   - docs/agents/repo-architecture.md
   - docs/IMPLEMENTATION_GUIDE_CN.md
 ---
+
+CLI #322 增加 `dataset get --type contact`，精确 UUID/version、显式 scope、预期项目和当前用户均为必填。`public` 读取 state 100–199；`owner-draft` 只读当前用户 state 0；`public-or-owner-draft` 明确合并两类。可选 latest 先观察 RLS-visible 元信息，仅在 scope 允许时读取完整正文。完整正文保存在本地私有产物中，报告分开记录 payload 与文件字节哈希。#289 的 state 100/本人 0 资格不扩展，读取不等于评审、保存或发布授权。
 
 当前 #274 平台合同仅支持 macOS arm64、Linux x64/arm64、Windows x64；不通过旧版安装器回退 macOS Intel。`runtime ensure/status/prune/lease-release/exec` 已由 CLI 的 manifest、完整文件清单、锁、缓存及 lease 控制；无 Node 的 POSIX/PowerShell bootstrap 已进入 `scripts/bootstrap/`，只读取相邻的产品 lock；公开 C1 和组件资格仍待完成。运行时描述/组件分发的 owner 与验证边界见 [Runtime Distribution Contract](docs/agents/runtime-distribution-contract.md)。
 

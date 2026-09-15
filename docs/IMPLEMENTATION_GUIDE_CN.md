@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
-lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
+lastReviewedNote: 'Reviewed for CLI #322: bounded Contact exact reads require explicit public/current-owner scope and fresh actor/project assertions before complete payload retrieval. Latest metadata precedes scoped body reads; existing exact-reference eligibility, auth owners, dependency locks, package version and release gates remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -31,6 +31,8 @@ related:
   - ./agents/repo-architecture.md
   - ./agents/repo-validation.md
 ---
+
+CLI #322 的 `dataset get --type contact` 为单个精确 Contact 提供有界完整读取。必须先绑定 UUID、canonical version、public/owner-draft/public-or-owner-draft 范围及预期项目/账户，完整 GET 同时携带 scope 过滤并核验返回事实；缺少 selected 版本不回退。`--include-latest` 对同 UUID 先读 RLS-visible 元信息，再读取允许的最新精确正文；外国草稿不因 RLS 可见而获准暴露。完整多语言正文、schema 校验、版本/owner/state/timestamp、完整 payload 哈希与本地文件字节哈希分别保留。公开读取范围 100–199 与 #289 的 100/本人 0 资格是独立契约，后者保持不变。
 
 #274 新增 `runtime describe --json` 与公开 `@tiangong-lca/cli/runtime` 模块，检查 CLI 包、资产和 Node 文件内容。runtime 命令不加载项目 `.env`，不登录、不下载；启动入口拒绝 macOS Intel，同时保留 Linux/Windows x64。组件 manifest、安装缓存、离线复用、lease/prune 和受控执行已由 #274 实现；无 Node 的 POSIX/PowerShell bootstrap 已实现并由相邻 lock 固定；公开组件和四平台 C1 仍需发行资格验证，见 [Runtime Distribution Contract](./agents/runtime-distribution-contract.md)。该 API 尚未随现有公开 0.1.9 发布。
 

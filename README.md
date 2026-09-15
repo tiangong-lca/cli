@@ -31,9 +31,9 @@ checkPaths:
   - test/auth-identity*.test.ts
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: a6c5815b06903b2b424c5ab892e4e9f3c99b3001
-lastReviewedNote: 'Reviewed for CLI #314: version-only0.1.15 preparation uses the existing canonical merge-tag and publish.yml paths; live version fixtures advance, while historical signing boundaries, runtime behavior, dependencies, lockfile, OAuth and all quality gates remain unchanged. Public release/install proof is pending.'
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
+lastReviewedNote: 'Reviewed for CLI #322: bounded Contact exact reads require explicit public/current-owner scope and fresh actor/project assertions before complete payload retrieval. Latest metadata precedes scoped body reads; existing exact-reference eligibility, auth owners, dependency locks, package version and release gates remain unchanged.'
 ---
 
 CLI 0.1.10 is the designated C1 release for `tiangong-lca runtime describe --json` and the explicit `@tiangong-lca/cli/runtime` API for package, asset and Node content inspection. Runtime inspection loads no project `.env`, performs no authentication and downloads nothing. See [the runtime distribution contract](docs/agents/runtime-distribution-contract.md) for exact fields and trust boundaries; verify public availability and provenance before treating the candidate version as released.
@@ -203,6 +203,16 @@ tiangong-lca dataset support-cache export --out-dir ./new-support-export --expec
 Export visible flow properties and unit groups through the CLI OAuth session. The default state filter is `100`; repeat `--state-code` to request other RLS-scoped states. The directory must be new. Two complete ordered reads must agree before private row files and an atomic `export-report.json` completion marker are published. The report includes identity, counts and file hashes; its observed stability is not a database transaction snapshot.
 
 Limits are 100,000 rows per table, 1,000 pages per table scan, 8 MiB per response, 64 MiB total response bytes and a 120-second operation deadline. An incomplete or changed read fails without publishing a completion marker. Use a fresh directory for a new attempt; no business data is written.
+
+## Exact Contact row reading
+
+```bash
+tiangong-lca dataset get --type contact --id <uuid> --version <NN.NN.NNN> --scope public-or-owner-draft --include-latest --out-dir ./new-contact-read --expected-project-ref <project-ref> --expected-user-id <user-id> --json
+```
+
+`dataset get` requires explicit content scope: `public` reads states 100–199, `owner-draft` reads only the authenticated owner's state 0, and `public-or-owner-draft` permits either. It uses the existing OAuth or verified headless-token owner and a fresh identity receipt. The selected version never falls back. Optional latest resolution observes RLS-visible metadata for the same UUID first and fails before any latest body read when that row is outside the chosen scope.
+
+A fresh private output directory contains complete `selected-row.json` and optional `latest-row.json` responses, `identity-receipt.json` and `get-report.json`. The report records exact owner/state/version/timestamp, pinned ContactSchema success, canonical `payload_sha256`, and each artifact's distinct byte hash and size. Reads are bounded to two rows per GET, 4 MiB per full response, 64 KiB per metadata response, 8 MiB total, and a whole-operation `--timeout-ms` of 1–120000 (default 10000). These are observations without transactional snapshot or write authority. No review decision is generated. Exact-reference v1 still permits only state 100 or current-owner state 0; observed 101/199 rows do not change that eligibility rule.
 
 ## Auth Identity Receipt
 

@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
-lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
+lastReviewedNote: 'Reviewed for CLI #322: bounded Contact exact reads require explicit public/current-owner scope and fresh actor/project assertions before complete payload retrieval. Latest metadata precedes scoped body reads; existing exact-reference eligibility, auth owners, dependency locks, package version and release gates remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -43,6 +43,8 @@ related:
   - ../release-runbook.md
   - ../release-setup.md
 ---
+
+Issue #322 requires real pinned ContactSchema fixtures and public-command proof for complete multilingual payloads, exact identity/version/owner/state/hash binding, public 100–199/current-owner-state-0 filters before body retrieval, and zero fallback on missing exact rows. Prove RLS-visible foreign latest metadata never triggers a full-body read; include malformed/duplicate/out-of-order rows, payload identity/schema errors, 4 MiB response and 8 MiB total caps, metadata caps, whole-operation deadlines, output collision/cleanup and a single identity-rechecked read-only refresh. Existing selected/latest hash pins must accept eligible exported facts and reject drift, while states 101/199 remain ineligible under unchanged exact-intent v1. Strict Docpact, package consumers and exact 100% source coverage remain mandatory; live installed-runtime qualification is separate.
 
 Issue #274 adds runtime descriptor and expectation schemas, file/manifest/asset/Node drift and race tests, immutable observations, explicit four-tuple admission, dotenv-free runtime commands, and clean ESM/CJS/TypeScript packed consumers. Private real-case RED proves public CLI 0.1.9 lacks this surface after actual fresh OAuth identity; candidate GREEN must use an installed package and preserve the frozen input. Package-only hashes do not qualify a full production dependency component. Manager proof additionally requires manifest/parser/path/download/archive/cache/concurrency/lease/exec coverage, a real managed C0 identity case, and byte-bound bootstrap-lock, no-Node POSIX/PowerShell, concurrency/warm/offline and native platform proof. Public-component/C1 qualification remains final release evidence. Existing exact-100% coverage and all four release hosts remain mandatory.
 

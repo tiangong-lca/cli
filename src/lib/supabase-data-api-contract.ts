@@ -25,6 +25,7 @@ export type CorePublicRelation = (typeof CORE_PUBLIC_RELATIONS)[number];
 
 export const DATA_API_RELATION_CONSUMERS = {
   contacts: [
+    'src/lib/dataset-get.ts',
     'src/lib/dataset-save-draft-run.ts',
     'src/lib/dataset-remote-verify.ts',
     'src/lib/dataset-maintenance-remote.ts',

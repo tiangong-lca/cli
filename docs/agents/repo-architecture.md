@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
-lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
+lastReviewedNote: 'Reviewed for CLI #322: bounded Contact exact reads require explicit public/current-owner scope and fresh actor/project assertions before complete payload retrieval. Latest metadata precedes scoped body reads; existing exact-reference eligibility, auth owners, dependency locks, package version and release gates remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -40,6 +40,8 @@ related:
   - ../../README.md
   - ../../DEV_CN.md
 ---
+
+`dataset-get.ts` owns bounded complete Contact row observation under the public `dataset get` command. It reuses the current-user identity receipt, the existing OAuth/verified headless-token session owner, Data API profile routing, read-only auth-refresh replay and canonical payload hashing. Selected reads have exact UUID/version and explicit public/current-owner filters; latest first reads metadata for the same UUID and only then retrieves an exact allowed body. Full payloads stay in private artifacts, while the report records exact metadata, schema result and separate payload/artifact hashes. No support-cache, default verifier or exact-intent eligibility change belongs to this reader.
 
 The `src/runtime.ts` public facade and bounded `src/lib/runtime/**` owners expose package/Node/asset identity through one read-only API and `runtime describe`. [The runtime distribution contract](runtime-distribution-contract.md) separates this package observation from complete component/dependency provenance, host ABI readiness and task authorization. `src/main.ts` admits supported architecture tuples before loading user configuration and bypasses dotenv for runtime commands. The manifest/manager/cache/lease/exec owners are now implemented under #274; the no-Node POSIX/PowerShell bootstrap is implemented under `scripts/bootstrap/`; #275 designates 0.1.10 as C1, while public product component assembly remains downstream.
 
