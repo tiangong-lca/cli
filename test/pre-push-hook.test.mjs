@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, delimiter } from 'node:path';
+import { dirname, join, delimiter, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
@@ -23,7 +23,7 @@ const update = `refs/heads/main ${oid} refs/heads/main ${'2'.repeat(40)}\n`;
 
 // Only the test fixture drops inherited Git bindings. The real hook keeps the
 // caller's Git context. No external remote, package build or actual gate runs here.
-function fixture(t) {
+function fixture(t, inheritedEnvironment = process.env) {
   const dir = mkdtempSync(join(tmpdir(), 'cli-push-hook-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const repo = join(dir, 'repo with spaces');
@@ -32,15 +32,26 @@ function fixture(t) {
   mkdirSync(join(repo, 'scripts'));
   mkdirSync(bin);
   const env = Object.fromEntries(
-    Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')),
+    Object.entries(inheritedEnvironment).filter(([key]) => !/^GIT_|^PATH$/iu.test(key)),
   );
   env.GIT_CONFIG_NOSYSTEM = '1';
   env.GIT_CONFIG_GLOBAL = join(dir, 'empty-git-config');
   writeFileSync(env.GIT_CONFIG_GLOBAL, '');
-  env.PATH = `${bin}${delimiter}${env.PATH}`;
+  const inheritedPath =
+    Object.entries(inheritedEnvironment).find(([key]) => key.toLowerCase() === 'path')?.[1] ?? '';
+  env.PATH = `${bin}${delimiter}${inheritedPath}`;
   env.TMPDIR = dir.replaceAll('\\', '/');
   const init = spawnSync('git', ['init', '-q', repo], { env, encoding: 'utf8' });
+  assert.ifError(init.error);
   assert.equal(init.status, 0, init.stderr);
+  let shell = 'sh';
+  if (process.platform === 'win32') {
+    const execPath = spawnSync('git', ['--exec-path'], { env, encoding: 'utf8' });
+    assert.ifError(execPath.error);
+    assert.equal(execPath.status, 0, execPath.stderr);
+    shell = resolve(execPath.stdout.trim(), '../../../bin/sh.exe');
+    assert.ok(existsSync(shell), 'use the shell from the actual Git for Windows installation');
+  }
   const hook = join(repo, '.githooks/pre-push');
   const helper = join(repo, 'scripts/pre-push-deletion-only.sh');
   copyFileSync(join(root, '.githooks/pre-push'), hook);
@@ -73,7 +84,7 @@ function fixture(t) {
     },
     run(input, overrides = {}, remoteArgs = args) {
       writeFileSync(join(repo, '.fixture-trace'), '');
-      const result = spawnSync('sh', ['.githooks/pre-push', ...remoteArgs], {
+      const result = spawnSync(shell, ['.githooks/pre-push', ...remoteArgs], {
         cwd: repo,
         env: { ...env, ...overrides },
         input,
@@ -114,8 +125,8 @@ test('all non-deletion or uncertain wire inputs preserve the full ordered gate',
     missingField: `(delete) ${zero} refs/heads/merged\n`,
     extraField: deletion.trimEnd() + ' extra\n',
     missingNewline: deletion.trimEnd(),
-    crlf: deletion.replace('\n', '\r\n'),
-    nul: deletion.replace('\n', '\0\n'),
+    crlf: deletion.replaceAll('\n', '\r\n'),
+    nul: deletion.replaceAll('\n', '\0\n'),
     shortOid: deletion.replace(zero, '0000'),
     unsupportedWidth: deletion.replace(zero, '0'.repeat(50)),
     nonzeroLocal: deletion.replace(zero, oid),
@@ -172,8 +183,12 @@ test('missing, failing or unavailable classifier falls back without dropping gat
   assert.equal(unavailable.trace, f.expected);
 });
 
-test('real local Git source push qualifies and branch deletion invokes no gates', (t) => {
-  const f = fixture(t);
+test('real Git round trip also preserves Windows-style Path spelling', (t) => {
+  const inherited = Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => key.toLowerCase() !== 'path'),
+  );
+  inherited.Path = process.env.PATH ?? process.env.Path;
+  const f = fixture(t, inherited);
   const bare = join(dirname(f.repo), 'remote bare.git');
   f.git(['init', '--bare', '-q', bare]);
   f.git(['config', 'core.hooksPath', '.githooks']);
@@ -199,4 +214,17 @@ test('real local Git source push qualifies and branch deletion invokes no gates'
   f.git(['push', 'origin', '--delete', 'fixture']);
   assert.equal(readFileSync(join(f.repo, '.fixture-trace'), 'utf8'), '');
   assert.equal(f.git(['ls-remote', '--heads', 'origin', 'fixture']).stdout, '');
+});
+
+// Ranges in POSIX bracket patterns collate differently on hosted macOS.
+test('object IDs use an ASCII whitelist independently of locale', (t) => {
+  const f = fixture(t);
+  for (const LC_ALL of ['C', 'en_US.UTF-8']) {
+    const invalid = f.run(deletion.replace(oid, 'A'.repeat(40)), { LC_ALL });
+    assert.equal(invalid.status, 0, invalid.stderr);
+    assert.equal(invalid.trace, f.expected);
+    const valid = f.run(deletion, { LC_ALL });
+    assert.equal(valid.status, 0, valid.stderr);
+    assert.equal(valid.trace, '');
+  }
 });
