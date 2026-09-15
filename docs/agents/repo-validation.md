@@ -50,6 +50,12 @@ Issue #275 designates 0.1.10 as the release-only C1 publication of merged #274. 
 
 Issue #278 requires an actual managed Node plus compiled public-runtime host fixture, original-byte and mutation isolation, opt-in/legacy separation, exact message/PID/nonce validation, cache/cwd/executable drift rejection and explicit receiver confirmation. The negative matrix includes zero-exit missing handoff, malformed/repeated/late messages, send/disconnect failure, timeout, output overflow and cancellation before and after handoff. A real delayed-request RED proves that cancellation must stop later context admission; a caller-mutation RED proves host/argv snapshot ownership across asynchronous installation. Package export/declaration consumers, the unchanged bootstrap cases, exact 100% source coverage and all four native hosts remain required before the separate patch release.
 
+## Branch-deletion-only hook exception
+
+The local pre-push hook skips Docpact and `pnpm prepush:gate` only when `scripts/pre-push-deletion-only.sh` verifies the complete nonempty Git stdin stream as deletions of existing `refs/heads/` references. It accepts matching 40- or 64-character lowercase object IDs, requires a local zero and nonzero remote ID, and rejects incomplete or malformed records. Tags, source updates, mixed pushes, empty input and TTY input retain the original Docpact then full canonical gate, including argument forwarding and failure propagation. Missing or failed classification also falls back to those gates. No environment flag, remote argument or cached green result selects the exception.
+
+`node --test test/pre-push-hook.test.mjs` checks the real hook in disposable Git fixtures with gate transports stubbed; the existing full test/coverage entrypoints run it too. It does not build packages or contact a remote. Source-push quality, 100% coverage, the independent package case and four-platform release gates remain mandatory. This exception changes neither the direct `pnpm prepush:gate` command nor tag/release qualification.
+
 ## Default Baseline
 
 Unless the change is doc-only, the minimum local baseline is:
@@ -254,7 +260,7 @@ Install the versioned local hook once per checkout:
 ./scripts/install-git-hooks.sh
 ```
 
-The `pre-push` hook runs `scripts/docpact-gate.sh`, which delegates CLI lookup to `scripts/docpact` and performs strict config validation plus enforced lint before the push leaves the machine. It then runs `pnpm prepush:gate` as the local test gate, including `pnpm test:package` and exact 100% source coverage. The wrapper checks `DOCPACT_BIN`, Cargo install locations, Homebrew install locations, and then `PATH`, so local agent shells should not fail only because bare `docpact` is unavailable. The default comparison base is `origin/main`. Override it for unusual stacks with `DOCPACT_BASE_REF=<ref>` or `scripts/docpact-gate.sh --base <ref>`. The gate writes its detailed report to a temporary file so normal pushes do not create `.docpact/runs/` artifacts.
+The `pre-push` hook runs `scripts/docpact-gate.sh`, which delegates CLI lookup to `scripts/docpact` and performs strict config validation plus enforced lint before the push leaves the machine. It then runs `pnpm prepush:gate` as the local test gate, including `pnpm test:package` and exact 100% source coverage. Only the verified branch-deletion-only exception above returns before both gates; source and tag pushes retain full validation. The wrapper checks `DOCPACT_BIN`, Cargo install locations, Homebrew install locations, and then `PATH`, so local agent shells should not fail only because bare `docpact` is unavailable. The default comparison base is `origin/main`. Override it for unusual stacks with `DOCPACT_BASE_REF=<ref>` or `scripts/docpact-gate.sh --base <ref>`. The gate writes its detailed report to a temporary file so normal pushes do not create `.docpact/runs/` artifacts.
 
 ## Version-bound source profile (CLI #312)
 

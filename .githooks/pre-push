@@ -4,6 +4,11 @@ set -eu
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
+# Only a complete, verified branch-deletion stream publishes no source.
+if "$repo_root/scripts/pre-push-deletion-only.sh"; then
+  exit 0
+fi
+
 "$repo_root/scripts/docpact-gate.sh" "$@"
 
 echo "Running local test gate: pnpm run prepush:gate"

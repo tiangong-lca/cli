@@ -211,7 +211,7 @@ Leave the environment name unset unless the workflow is explicitly updated to us
 
 ## Local Docpact Push Gate
 
-The repository now includes a local pre-push gate that runs `scripts/docpact-gate.sh` and then `pnpm prepush:gate`. It is the ordinary local validation path. Release automation additionally requires the reusable four-platform pnpm matrix before tag creation and retains an independent tag-bound gate before npm publishing.
+The repository now includes a local pre-push gate that runs `scripts/docpact-gate.sh` and then `pnpm prepush:gate`. It is the ordinary local validation path for source pushes. Only verified pure branch deletions skip both local gates, as defined in the validation guide; tag and release qualification are unchanged. Release automation additionally requires the reusable four-platform pnpm matrix before tag creation and retains an independent tag-bound gate before npm publishing.
 
 ## Runner allocation
 
