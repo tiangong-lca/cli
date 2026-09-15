@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-16
-lastReviewedCommit: a5a235e48afca5ba8e14e56c052fd2fd58f80027
-lastReviewedNote: 'Reviewed for CLI #326: remove only the clean-tarball fixture build immediately duplicated by the pinned pnpm prepack lifecycle. Production build, prebuild clean, package gate, all consumer assertions, coverage and release requirements remain. Real compiler/clean trace falls from two to one; 12 package tests, failure/stale-artifact evidence and independent source/seven-document review pass. Single local 8.775 to 8.364 seconds is observational only; full gate, CI and integration remain pending.'
+lastReviewedCommit: 0a9b328187df104d3cec445de51168d472aa88b3
+lastReviewedNote: 'Reviewed for CLI #328: only complete existing-branch deletion bypasses source qualification; all source, tag, mixed, malformed and classifier-failure inputs preserve original Docpact and full canonical gates. Independent source/config/architecture review and real Git, foreign-environment and open-PTY negative controls pass. Runtime, package, coverage and four-platform obligations are unchanged; final checked push and hosted validation remain required.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
