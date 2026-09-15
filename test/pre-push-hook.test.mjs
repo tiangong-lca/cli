@@ -44,6 +44,7 @@ function fixture(t) {
   const hook = join(repo, '.githooks/pre-push');
   const helper = join(repo, 'scripts/pre-push-deletion-only.sh');
   copyFileSync(join(root, '.githooks/pre-push'), hook);
+  chmodSync(hook, 0o755);
   if (existsSync(join(root, 'scripts/pre-push-deletion-only.sh'))) {
     copyFileSync(join(root, 'scripts/pre-push-deletion-only.sh'), helper);
     chmodSync(helper, 0o755);
@@ -64,6 +65,12 @@ function fixture(t) {
     repo,
     helper,
     expected,
+    git(args) {
+      const result = spawnSync('git', args, { cwd: repo, env, encoding: 'utf8', timeout: 5000 });
+      assert.ifError(result.error);
+      assert.equal(result.status, 0, result.stderr);
+      return result;
+    },
     run(input, overrides = {}, remoteArgs = args) {
       writeFileSync(join(repo, '.fixture-trace'), '');
       const result = spawnSync('sh', ['.githooks/pre-push', ...remoteArgs], {
@@ -170,4 +177,33 @@ test('TTY rejection precedes any stdin read in the portable classifier', () => {
   const guard = helper.indexOf('[ -t 0 ] && exit 1');
   const read = helper.indexOf('cat > "$tmp"');
   assert.ok(guard >= 0 && read > guard);
+});
+
+test('real local Git source push qualifies and branch deletion invokes no gates', (t) => {
+  const f = fixture(t);
+  const bare = join(dirname(f.repo), 'remote bare.git');
+  f.git(['init', '--bare', '-q', bare]);
+  f.git(['config', 'core.hooksPath', '.githooks']);
+  f.git(['remote', 'add', 'origin', bare]);
+  writeFileSync(join(f.repo, 'fixture.txt'), 'source fixture\n');
+  f.git(['add', 'fixture.txt']);
+  f.git([
+    '-c',
+    'user.name=Fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    '-c',
+    'commit.gpgsign=false',
+    'commit',
+    '-qm',
+    'fixture',
+  ]);
+  writeFileSync(join(f.repo, '.fixture-trace'), '');
+  f.git(['push', 'origin', 'HEAD:refs/heads/fixture']);
+  const sourceTrace = readFileSync(join(f.repo, '.fixture-trace'), 'utf8');
+  assert.match(sourceTrace, /^docpact\|2\|origin\|[^\n]+\npnpm\|2\|run\|prepush:gate\n$/u);
+  writeFileSync(join(f.repo, '.fixture-trace'), '');
+  f.git(['push', 'origin', '--delete', 'fixture']);
+  assert.equal(readFileSync(join(f.repo, '.fixture-trace'), 'utf8'), '');
+  assert.equal(f.git(['ls-remote', '--heads', 'origin', 'fixture']).stdout, '');
 });
