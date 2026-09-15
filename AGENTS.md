@@ -37,9 +37,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
-lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
+lastReviewedAt: 2026-09-16
+lastReviewedCommit: a5a235e48afca5ba8e14e56c052fd2fd58f80027
+lastReviewedNote: "Reviewed for CLI #326: remove only the clean-tarball fixture build immediately duplicated by the pinned pnpm prepack lifecycle. Production build, prebuild clean, package gate, all consumer assertions, coverage and release requirements remain. Real compiler/clean trace falls from two to one; 12 package tests, failure/stale-artifact evidence and independent source/seven-document review pass. Single local 8.775 to 8.364 seconds is observational only; full gate, CI and integration remain pending."
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
