@@ -2342,53 +2342,6 @@ test('prepush coverage covers lifecyclemodel and process required field helpers'
     deferred.some((issue) => issue.code === 'annual_supply_or_production_volume_missing'),
     false,
   );
-  assert.equal(
-    processRequiredInternals.hasDeferredAnnualSupplyTrace({
-      processInformation: {
-        dataSetInformation: {
-          'common:other': {
-            'tiangongfoundry:unresolvedTrace': {
-              blocked_path:
-                'processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume',
-              status: 'needs_followup',
-            },
-          },
-        },
-      },
-    }),
-    true,
-  );
-  assert.equal(
-    processRequiredInternals.hasDeferredAnnualSupplyTrace({
-      processInformation: {
-        dataSetInformation: {
-          'common:other': {
-            'tiangongfoundry:unresolvedTrace': {
-              fieldPath:
-                'modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume',
-              decisionStatus: 'deferred_to_common_other',
-            },
-          },
-        },
-      },
-    }),
-    true,
-  );
-  assert.equal(
-    processRequiredInternals.hasDeferredAnnualSupplyTrace({
-      processInformation: {
-        dataSetInformation: {
-          'common:other': {
-            'tiangongfoundry:unresolvedTrace': {
-              path: 'nested.annualSupplyOrProductionVolume',
-              status: 'unresolved_deferred',
-            },
-          },
-        },
-      },
-    }),
-    true,
-  );
   const deferredWithDataSources = processRequiredInternals.collectProcessRequiredFieldIssues({
     processDataSet: {
       processInformation: {
@@ -2412,7 +2365,7 @@ test('prepush coverage covers lifecyclemodel and process required field helpers'
     deferredWithDataSources.some(
       (issue) => issue.code === 'annual_supply_or_production_volume_missing',
     ),
-    false,
+    true,
   );
 
   const missingDataSources = processRequiredInternals.collectProcessRequiredFieldIssues({

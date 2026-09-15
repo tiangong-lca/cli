@@ -1,4 +1,5 @@
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
+import { sha256Json } from './dataset-maintenance-contract.js';
 import {
   normalizeIssuePath,
   type SafeParseSchema,
@@ -21,7 +22,14 @@ export type ProcessPayloadValidationIssue = {
   code: string;
 };
 
-export type ProcessPayloadValidationResult =
+export type ProcessValidationLayers = {
+  payload_sha256: string;
+  schema: { ok: boolean; issues: ProcessPayloadValidationIssue[] };
+  authoring: { ok: boolean; issues: ProcessPayloadValidationIssue[] };
+  content: { ok: boolean; issues: ProcessPayloadValidationIssue[] };
+};
+
+export type ProcessPayloadValidationResult = { validation_layers?: ProcessValidationLayers } & (
   | {
       ok: true;
       validator: string;
@@ -33,7 +41,8 @@ export type ProcessPayloadValidationResult =
       validator: string;
       issue_count: number;
       issues: ProcessPayloadValidationIssue[];
-    };
+    }
+);
 
 function getProcessSchema(): SafeParseSchema {
   const schema = (tidasSdk as { ProcessSchema?: SafeParseSchema }).ProcessSchema;
@@ -52,24 +61,36 @@ function getProcessFactory(
 
 export function summarizeProcessPayloadValidation(result: ProcessPayloadValidationResult): string {
   if (result.ok) {
-    return 'local ProcessSchema validation passed';
+    return 'local process validation passed';
   }
 
   const preview = result.issues
     .slice(0, 3)
     .map((issue) => `${issue.path}: ${issue.message}`)
     .join('; ');
-  return `local ProcessSchema validation failed with ${result.issue_count} issue(s)${preview ? ` (${preview})` : ''}`;
+  return `local process validation failed with ${result.issue_count} issue(s)${preview ? ` (${preview})` : ''}`;
 }
 
 export function validateProcessPayload(
   payload: JsonObject,
   schema: SafeParseSchema = getProcessSchema(),
   createEntity: SdkValidationFactory | null = getProcessFactory(),
-): ProcessPayloadValidationResult {
-  const outcome = validateSchemaWithDeepFallback(schema, payload, createEntity);
+): ProcessPayloadValidationResult & { validation_layers: ProcessValidationLayers } {
+  const payloadSha256 = sha256Json(payload);
+  const outcome = validateSchemaWithDeepFallback(schema, structuredClone(payload), createEntity);
   const requiredFieldIssues = collectProcessRequiredFieldIssues(payload);
   const placeholderIssues = collectProcessPlaceholderIssues(payload);
+  const schemaIssues = outcome.issues.map((issue) => ({
+    path: normalizeIssuePath(issue.path),
+    message: issue.message ?? 'Validation failed',
+    code: issue.code ?? 'custom',
+  }));
+  const validationLayers: ProcessValidationLayers = {
+    payload_sha256: payloadSha256,
+    schema: { ok: outcome.success, issues: schemaIssues },
+    authoring: { ok: requiredFieldIssues.length === 0, issues: requiredFieldIssues },
+    content: { ok: placeholderIssues.length === 0, issues: placeholderIssues },
+  };
 
   if (outcome.success && requiredFieldIssues.length === 0 && placeholderIssues.length === 0) {
     return {
@@ -77,24 +98,18 @@ export function validateProcessPayload(
       validator: PROCESS_SCHEMA_VALIDATOR,
       issue_count: 0,
       issues: [],
+      validation_layers: validationLayers,
     };
   }
 
-  const issues = [
-    ...outcome.issues.map((issue) => ({
-      path: normalizeIssuePath(issue.path),
-      message: issue.message ?? 'Validation failed',
-      code: issue.code ?? 'custom',
-    })),
-    ...requiredFieldIssues,
-    ...placeholderIssues,
-  ];
+  const issues = [...schemaIssues, ...requiredFieldIssues, ...placeholderIssues];
 
   return {
     ok: false,
     validator: PROCESS_SCHEMA_VALIDATOR,
     issue_count: issues.length,
     issues,
+    validation_layers: validationLayers,
   };
 }
 

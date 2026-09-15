@@ -3,6 +3,10 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import * as tidasSdk from '@tiangong-lca/tidas-sdk';
+import { validateProcessPayload } from '../src/lib/process-payload-validation.js';
+import { runDatasetValidate } from '../src/lib/dataset-validate.js';
+import { runDatasetSaveDraft } from '../src/lib/dataset-save-draft-run.js';
 import {
   runFlowBuildPlanMaterialize,
   runFlowBuildPlanValidate,
@@ -14,6 +18,180 @@ import type { SafeParseSchema } from '../src/lib/tidas-sdk-validation.js';
 
 const now = new Date('2026-05-22T00:00:00.000Z');
 const evidenceSourceId = '66666666-6666-6666-6666-666666666666';
+
+test('BuildPlan materialization preserves absent annual evidence without claiming authoring readiness', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-build-annual-unknown-'));
+  try {
+    const report = await runProcessBuildPlanMaterialize({
+      inputPath: 'unknown-annual-plan.json',
+      rawInput: processPlan({ required_fields: {} }),
+      outDir: dir,
+    });
+    const payload = JSON.parse(readFileSync(report.files.materialized_artifact!, 'utf8'));
+    assert.deepEqual(
+      payload.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
+        .annualSupplyOrProductionVolume,
+      [],
+    );
+    assert.equal(report.schema_validation.status, 'passed');
+    assert.equal(report.status, 'blocked');
+    assert.ok(
+      report.blockers.some(
+        (finding) => finding.code === 'annual_supply_or_production_volume_missing',
+      ),
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('real SDK accepts unknown annual structure while process authoring remains blocked', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-real-annual-schema-'));
+  try {
+    const report = await runProcessBuildPlanMaterialize({
+      inputPath: 'annual-source-plan.json',
+      rawInput: processPlan({
+        required_fields: {
+          annualSupplyOrProductionVolume: [{ '@xml:lang': 'en', '#text': '9999 kg/year' }],
+        },
+      }),
+      outDir: dir,
+    });
+    assert.equal(report.status, 'passed');
+    const payload = JSON.parse(
+      readFileSync(path.join(dir, 'outputs', 'materialized-process.json'), 'utf8'),
+    );
+    const annualCases = [
+      {
+        texts: ['not quantified'],
+        code: 'annual_supply_or_production_volume_invalid',
+        schemaOk: false,
+      },
+      { texts: ['12 kg'], code: 'annual_supply_or_production_volume_not_annualized' },
+      {
+        texts: ['12 kg/year', '13 kg/year'],
+        code: 'annual_supply_or_production_volume_duplicate_language',
+      },
+      {
+        texts: ['9999 missing-data-sentinel/year'],
+        code: 'annual_supply_or_production_volume_missing',
+      },
+      {
+        texts: ['120 kg/year; disclosed estimate fixed as 10 kg/month multiplied by 12 months.'],
+        code: null,
+      },
+      {
+        texts: [
+          '9999 kg/year; the historical marker 9999 missing-data-sentinel/year was replaced using source evidence.',
+        ],
+        code: null,
+      },
+    ];
+    for (const annualCase of annualCases) {
+      const candidate = structuredClone(payload);
+      candidate.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume =
+        annualCase.texts.map((text) => ({ '@xml:lang': 'en', '#text': text }));
+      const original = JSON.stringify(candidate);
+      const validation = validateProcessPayload(candidate);
+      assert.equal(
+        validation.validation_layers.schema.ok,
+        annualCase.schemaOk ?? true,
+        JSON.stringify({ annualCase, schema: validation.validation_layers.schema }),
+      );
+      assert.deepEqual(
+        validation.validation_layers.authoring.issues.map((issue) => issue.code),
+        annualCase.code ? [annualCase.code] : [],
+      );
+      assert.equal(JSON.stringify(candidate), original);
+    }
+    const missingNode = structuredClone(payload);
+    delete missingNode.processDataSet.modellingAndValidation
+      .dataSourcesTreatmentAndRepresentativeness;
+    const missingValidation = validateProcessPayload(missingNode);
+    assert.equal(missingValidation.validation_layers.schema.ok, true);
+    assert.deepEqual(
+      missingValidation.validation_layers.authoring.issues.map((issue) => issue.code),
+      ['process_data_sources_treatment_missing'],
+    );
+    const missingRequiredNode = structuredClone(payload);
+    delete missingRequiredNode.processDataSet.processInformation.dataSetInformation['common:UUID'];
+    const missingRequiredValidation = validateProcessPayload(missingRequiredNode);
+    assert.equal(missingRequiredValidation.validation_layers.schema.ok, false);
+    assert.equal(missingRequiredValidation.validation_layers.authoring.ok, true);
+    assert.ok(
+      missingRequiredValidation.validation_layers.schema.issues.some((issue) =>
+        issue.path.endsWith('common:UUID'),
+      ),
+    );
+    payload.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume =
+      [];
+    const before = JSON.stringify(payload);
+    assert.equal(tidasSdk.ProcessSchema.safeParse(structuredClone(payload)).success, true);
+    const result = validateProcessPayload(payload);
+    assert.equal(result.ok, false);
+    assert.equal(result.validation_layers?.schema.ok, true);
+    assert.equal(result.validation_layers?.authoring.ok, false);
+    assert.equal(result.validation_layers?.content.ok, true);
+    assert.match(result.validation_layers?.payload_sha256 ?? '', /^[a-f0-9]{64}$/u);
+    const dataset = await runDatasetValidate({
+      inputPath: 'unknown-annual.json',
+      rawInput: [{ json_ordered: payload }],
+      type: 'process',
+    });
+    assert.deepEqual(dataset.rows[0]?.validation_layers, result.validation_layers);
+    let remoteRequests = 0;
+    const saved = await runDatasetSaveDraft({
+      inputPath: 'unknown-annual.json',
+      rawInput: [{ json_ordered: payload }],
+      type: 'process',
+      outDir: path.join(dir, 'save-draft'),
+      commit: false,
+      env: {},
+      fetchImpl: async () => {
+        remoteRequests += 1;
+        throw new Error('No remote request is allowed for an unknown annual-volume dry-run.');
+      },
+    });
+    assert.equal(remoteRequests, 0);
+    assert.deepEqual(saved.rows[0]?.validation?.validation_layers, result.validation_layers);
+    assert.equal(saved.rows[0]?.validation?.ok, false);
+    const metadataRepair = structuredClone(payload);
+    metadataRepair.processDataSet.processInformation.dataSetInformation['common:generalComment'] = [
+      {
+        '@xml:lang': 'en',
+        '#text': 'Revised bibliographic wording; actual annual production remains unknown.',
+      },
+    ];
+    const metadataSaved = await runDatasetSaveDraft({
+      inputPath: 'metadata-repair.json',
+      rawInput: [{ json_ordered: metadataRepair }],
+      type: 'process',
+      outDir: path.join(dir, 'metadata-save'),
+      commit: false,
+      env: {},
+      fetchImpl: async () => {
+        remoteRequests += 1;
+        throw new Error('No remote request is allowed.');
+      },
+    });
+    assert.equal(metadataSaved.rows[0]?.validation?.ok, false);
+    assert.equal(metadataSaved.rows[0]?.validation?.validation_layers?.schema.ok, true);
+    assert.equal(metadataSaved.rows[0]?.validation?.validation_layers?.authoring.ok, false);
+    assert.notEqual(
+      metadataSaved.rows[0]?.validation?.validation_layers?.payload_sha256,
+      result.validation_layers.payload_sha256,
+    );
+    assert.deepEqual(
+      metadataRepair.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
+        .annualSupplyOrProductionVolume,
+      [],
+    );
+    assert.equal(remoteRequests, 0);
+    assert.equal(JSON.stringify(payload), before);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 const chemicalProductClassification = [
   {
@@ -97,6 +275,9 @@ function processPlan(overrides: Record<string, unknown> = {}) {
         { field_path: 'target.technology_route' },
         { field_path: 'quantitative_reference_plan.reference_flow_id' },
       ],
+    },
+    required_fields: {
+      annualSupplyOrProductionVolume: [{ '@xml:lang': 'en', '#text': '3.6 MJ/year' }],
     },
     name_plan: {
       base_name: '3kWp facade installation, multi-Si, laminated, integrated, at building {CN}',
@@ -1307,11 +1488,12 @@ test('build-plan internals cover evidence path normalization and SDK schema fall
       (defaultedProcessDataSet.modellingAndValidation as Record<string, unknown>)
         .dataSourcesTreatmentAndRepresentativeness as Record<string, unknown>
     ).annualSupplyOrProductionVolume,
-    [{ '#text': '1 unit/year', '@xml:lang': 'en' }],
+    [],
   );
 
   const resultingAmountProcess = __testInternals.buildCanonicalProcessPayload(
     processPlan({
+      required_fields: {},
       quantitative_reference_plan: {
         reference_flow_id: 'resulting-flow',
         resulting_amount: '4.2',
@@ -1327,14 +1509,9 @@ test('build-plan internals cover evidence path normalization and SDK schema fall
           .modellingAndValidation as Record<string, unknown>
       ).dataSourcesTreatmentAndRepresentativeness as Record<string, unknown>
     ).annualSupplyOrProductionVolume,
-    [{ '#text': '4.2 kg/year', '@xml:lang': 'en' }],
+    [],
   );
-  assert.deepEqual(__testInternals.buildAnnualSupply({}, { resultingAmount: '5.5' }), [
-    { '#text': '5.5 unit/year', '@xml:lang': 'en' },
-  ]);
-  assert.deepEqual(__testInternals.buildAnnualSupply({}, {}), [
-    { '#text': '1.0 unit/year', '@xml:lang': 'en' },
-  ]);
+  assert.deepEqual(__testInternals.buildAnnualSupply({}), []);
 
   __testInternals.buildCanonicalProcessPayload(
     processPlan({

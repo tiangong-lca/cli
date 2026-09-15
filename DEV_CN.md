@@ -22,9 +22,9 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
-lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
+lastReviewedNote: 'Reviewed for CLI #283: missing annual evidence stays unknown and authoring-blocked; Process validation reports schema, authoring and content layers bound to the unchanged candidate hash. Completion never substitutes a reference amount or sentinel. Save admission, package identity, dependencies, exact coverage and release ownership remain unchanged.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -33,6 +33,8 @@ related:
   - docs/agents/repo-architecture.md
   - docs/IMPLEMENTATION_GUIDE_CN.md
 ---
+
+年度量处理遵循 CLI #283：真实未知保留为空数组，不用功能单位、设计产量或哨兵补齐。Process 校验报告分别给出 SDK schema、authoring、content 结果及完整候选哈希。schema 成功不解除 authoring、save、年度权重或发布阻塞；元数据修复仍遵循原有 save 准入。
 
 当前 #274 平台合同仅支持 macOS arm64、Linux x64/arm64、Windows x64；不通过旧版安装器回退 macOS Intel。`runtime ensure/status/prune/lease-release/exec` 已由 CLI 的 manifest、完整文件清单、锁、缓存及 lease 控制；无 Node 的 POSIX/PowerShell bootstrap 已进入 `scripts/bootstrap/`，只读取相邻的产品 lock；公开 C1 和组件资格仍待完成。运行时描述/组件分发的 owner 与验证边界见 [Runtime Distribution Contract](docs/agents/runtime-distribution-contract.md)。
 

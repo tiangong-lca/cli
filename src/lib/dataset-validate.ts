@@ -15,9 +15,9 @@ import {
   validateSchemaWithDeepFallback,
 } from './tidas-sdk-validation.js';
 import {
-  collectProcessPlaceholderIssues,
-  collectProcessRequiredFieldIssues,
-} from './process-required-fields.js';
+  validateProcessPayload,
+  type ProcessValidationLayers,
+} from './process-payload-validation.js';
 
 type DatasetValidateType = 'auto' | DatasetKind;
 
@@ -36,6 +36,7 @@ export type DatasetValidateRowReport = {
   validator: string | null;
   issue_count: number;
   issues: DatasetValidateIssue[];
+  validation_layers?: ProcessValidationLayers;
 };
 
 export type DatasetValidateReport = {
@@ -271,14 +272,23 @@ function validateRow(
   }
 
   const { validator, schema, createEntity } = schemaForKind(kind, schemas);
+  if (kind === 'process') {
+    const validation = validateProcessPayload(row.payload, schema, createEntity);
+    return {
+      index: row.index,
+      id: row.id,
+      version: row.version,
+      type: kind,
+      status: validation.ok ? 'valid' : 'invalid',
+      validator,
+      issue_count: validation.issue_count,
+      issues: validation.issues,
+      validation_layers: validation.validation_layers,
+    };
+  }
   const outcome = validateSchemaWithDeepFallback(schema, row.payload, createEntity);
-  const requiredFieldIssues =
-    kind === 'process' ? collectProcessRequiredFieldIssues(row.payload) : [];
-  const placeholderIssues =
-    kind === 'process'
-      ? collectProcessPlaceholderIssues(row.payload)
-      : collectImportContentIssues(row.payload);
-  if (outcome.success && requiredFieldIssues.length === 0 && placeholderIssues.length === 0) {
+  const placeholderIssues = collectImportContentIssues(row.payload);
+  if (outcome.success && placeholderIssues.length === 0) {
     return {
       index: row.index,
       id: row.id,
@@ -297,7 +307,6 @@ function validateRow(
       message: issue.message ?? 'Validation failed',
       code: issue.code ?? 'custom',
     })),
-    ...requiredFieldIssues,
     ...placeholderIssues,
   ];
 

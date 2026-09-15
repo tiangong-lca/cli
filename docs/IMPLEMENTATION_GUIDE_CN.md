@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
-lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
+lastReviewedNote: 'Reviewed for CLI #283: missing annual evidence stays unknown and authoring-blocked; Process validation reports schema, authoring and content layers bound to the unchanged candidate hash. Completion never substitutes a reference amount or sentinel. Save admission, package identity, dependencies, exact coverage and release ownership remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -320,7 +320,7 @@ tiangong-lca
 
 - `process get` 当前固定为 CLI 内部共享的 deterministic direct-read 面，内部执行已收口到原生 `@supabase/supabase-js`，供 lifecyclemodel resulting-process 和后续 review/governance 迁移复用
 - 已实现的 `process identity-preflight` 是本地只读、artifact-first 的生成前 gate；输入为 target + embedded candidates，并可通过 repeatable `--candidate-input` 读取 JSON/JSONL 文件或递归扫描本地目录。需要查正式库时，输入可设置 `remote_candidate_search`，CLI 也可传 `--remote-candidates --remote-query ... --remote-limit ...`，通过 `process_hybrid_search` 拉取远程候选并合并进入同一套 identity / exchange fingerprint 判定。CLI 传给 Edge Function 的是 fielded `query`、`filter`、`data_source`、`match_count`/`page_size` 和 hybrid search 权重；`remote_candidate_search.profile_hints` 只在本地补强 target profile 与候选评分，不会送入 Edge Function。输出 `identity-decision.json` / `identity-candidates.jsonl` / `identity-candidate-sources.json`；当 exact exchange fingerprint 与 reference/geography 等身份上下文同时命中时输出 `block_duplicate`，只有 inventory-only 弱命中时才进入 `manual_review`。
-- 已实现的 `process build-plan` 是 identity preflight 后、payload 生成前的本地 gate；输入为 BuildPlan，输出 `build-plan-gate-report.json`，并在 `materialize` 时输出 canonical `materialized-process.json`。如果 plan 内已提供 canonical payload，则直接校验该 payload；如果没有 payload，则必须提供 level `0..n` 连续、包含 locked taxonomy 精确 `@classId` / `#text` 的 canonical `classification_path` objects，再从 name plan、quantitative reference、exchange plan、source evidence、modelling/admin 字段确定性生成 `processDataSet`。缺失、字符串标签、乱序或伪造 taxonomy 会在产物发布前阻断。`annualSupplyOrProductionVolume` 使用 build plan/evidence 的显式源语言值；缺失时不按 reference flow 自动伪造业务真值，而使用 Foundry 约定的 `9999 missing-data-sentinel/year` 哨兵占位。该值明显无物理意义、便于批量查询定位，后续由数据库侧 curation 替换，不属于 Foundry 导入任务。
+- 已实现的 `process build-plan` 是 identity preflight 后、payload 生成前的本地 gate；输入为 BuildPlan，输出 `build-plan-gate-report.json`，并在 `materialize` 时输出 canonical `materialized-process.json`。如果 plan 内已提供 canonical payload，则直接校验该 payload；如果没有 payload，则必须提供 level `0..n` 连续、包含 locked taxonomy 精确 `@classId` / `#text` 的 canonical `classification_path` objects，再从 name plan、quantitative reference、exchange plan、source evidence、modelling/admin 字段确定性生成 `processDataSet`。缺失、字符串标签、乱序或伪造 taxonomy 会在产物发布前阻断。`annualSupplyOrProductionVolume` 使用 build plan/evidence 的显式源语言值；缺失时保留 `[]` 并报告 authoring blocker，不从 reference flow、功能单位、设计产量或默认单位推导实际年度量，也不生成哨兵。精确的旧 `9999 missing-data-sentinel/year` 转为未知；合法的 `9999 kg/year`、明确披露的估算和多语言完整文本保留。Process 校验将 `schema`、`authoring`、`content` 分层报告，并绑定完整候选的 `payload_sha256`；真实 SDK 接受未知结构不代表允许 save、年度加权或发布。
 - 已实现的 `process auto-build` 在调用方显式提供的 run root 内保留旧 `cache/process_from_flow_state.json`、`cache/agent_handoff_summary.json` 等运行布局，不再推断 repo 本地 `./artifacts/...` 默认路径
 - `process auto-build` 当前只负责本地 request intake、flow 归一化、run scaffold、初始 `manifests/process-build-plan.json` 和 manifest/report 预写，不继续执行后续阶段。该 build plan 是 scaffold_only，后续必须由 identity preflight、evidence replacement、build-plan validate/materialize、schema/QA gate 决定是否可写入。
 - 已实现的 `process resume-build` 保留同一套 run 布局，并把本地 state-lock、run-manifest 校验、resume metadata/history、invocation index 更新统一收口到 CLI

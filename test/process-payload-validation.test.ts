@@ -59,11 +59,14 @@ test('process payload validation summarizes ok and failure results with normaliz
       validator: '@tiangong-lca/tidas-sdk/ProcessSchema+tiangong/process-authoring-required-fields',
       issue_count: 0,
       issues: [],
+      validation_layers: {
+        payload_sha256: '69255fd3bf887e22a1622189a7a5ff92633b2dc7cd6121dd78ba6825f2bf3163',
+        schema: { ok: true, issues: [] },
+        authoring: { ok: true, issues: [] },
+        content: { ok: true, issues: [] },
+      },
     });
-    assert.equal(
-      summarizeProcessPayloadValidation(okResult),
-      'local ProcessSchema validation passed',
-    );
+    assert.equal(summarizeProcessPayloadValidation(okResult), 'local process validation passed');
 
     tidasSdk.ProcessSchema.safeParse = (() =>
       ({
@@ -99,7 +102,7 @@ test('process payload validation summarizes ok and failure results with normaliz
     ]);
     assert.match(
       summarizeProcessPayloadValidation(invalidResult),
-      /local ProcessSchema validation failed with 2 issue\(s\) \(<root>: Top-level failure; processDataSet\.exchanges\.0: Validation failed\)/u,
+      /local process validation failed with 2 issue\(s\) \(<root>: Top-level failure; processDataSet\.exchanges\.0: Validation failed\)/u,
     );
 
     tidasSdk.ProcessSchema.safeParse = (() =>
@@ -112,7 +115,7 @@ test('process payload validation summarizes ok and failure results with normaliz
     assert.equal(emptyIssueResult.issue_count, 0);
     assert.equal(
       summarizeProcessPayloadValidation(emptyIssueResult),
-      'local ProcessSchema validation failed with 0 issue(s)',
+      'local process validation failed with 0 issue(s)',
     );
 
     tidasSdk.ProcessSchema.safeParse = undefined as unknown as typeof originalSafeParse;

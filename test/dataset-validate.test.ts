@@ -87,6 +87,20 @@ const schemas = {
   },
 } satisfies RunDatasetValidateOptions['schemas'];
 
+test('non-process validation retains a useful finding when an SDK issue omits details', async () => {
+  const report = await runDatasetValidate({
+    inputPath: 'memory',
+    rawInput: [{ flowDataSet: {} }],
+    type: 'flow',
+    schemas: { flow: { safeParse: () => ({ success: false, error: { issues: [{}] } }) } },
+  });
+  assert.equal(report.status, 'completed_with_failures');
+  assert.deepEqual(report.rows[0]?.issues, [
+    { path: '<root>', message: 'Validation failed', code: 'custom' },
+  ]);
+  assert.equal(report.rows[0]?.validation_layers, undefined);
+});
+
 test('runDatasetValidate validates local rows and writes split artifacts', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dataset-validate-'));
   const inputPath = path.join(dir, 'rows.jsonl');

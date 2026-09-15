@@ -401,7 +401,7 @@ test('runProcessSaveDraft blocks schema-invalid canonical payloads before write 
       failed: 1,
     });
     assert.equal(report.processes[0]?.status, 'failed');
-    assert.match(report.processes[0]?.error?.message ?? '', /ProcessSchema validation failed/u);
+    assert.match(report.processes[0]?.error?.message ?? '', /process validation failed/u);
     assert.equal(report.processes[0]?.validation?.ok, false);
     assert.equal(readJsonl(report.files.failures_jsonl).length, 1);
   } finally {

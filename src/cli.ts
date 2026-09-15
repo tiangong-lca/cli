@@ -2724,15 +2724,17 @@ Options:
   --input <file>        Process rows JSON/JSONL file
   --out <file>          Output JSONL with required fields completed
   --out-dir <dir>       Optional artifact directory for report and evidence
-  --flows <file>        Optional flow rows JSON/JSONL used to infer reference-flow units
-  --default-unit <unit> Unit suffix to use when it cannot be inferred (default: unit)
+  --flows <file>        Optional flow rows JSON/JSONL (retained for compatibility)
+  --default-unit <unit> Retained compatibility option; never supplies an annual evidence unit
   --json                Print compact JSON
   -h, --help
 
 Annual supply / production volume policy:
   1. keep an existing valid annualized annualSupplyOrProductionVolume, for example "3.6 MJ/year";
   2. use an explicit value from row-level authoring evidence or evidenceManifest field bindings;
-  3. otherwise write "9999 missing-data-sentinel/year", an intentionally non-physical searchable sentinel for later database-side curation.
+  3. otherwise preserve unknown annual evidence as [] and report an authoring blocker.
+Existing exact legacy sentinel values become []; functional-unit amounts and inferred units are never annual evidence.
+Schema validity, authoring evidence and content checks are reported separately; schema success does not authorize save or weighting.
 
 Outputs:
   - completed rows at --out

@@ -24,9 +24,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
-lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
+lastReviewedNote: 'Reviewed for CLI #283: missing annual evidence stays unknown and authoring-blocked; Process validation reports schema, authoring and content layers bound to the unchanged candidate hash. Completion never substitutes a reference amount or sentinel. Save admission, package identity, dependencies, exact coverage and release ownership remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

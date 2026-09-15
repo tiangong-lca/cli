@@ -573,7 +573,7 @@ test('runPublish blocks canonical process payloads that fail ProcessSchema befor
     assert.equal(executorCalls, 0);
     assert.equal(report.processes[0].status, 'failed');
     assert.equal(report.processes[0].validation?.ok, false);
-    assert.match(report.processes[0].error?.message ?? '', /ProcessSchema validation failed/u);
+    assert.match(report.processes[0].error?.message ?? '', /process validation failed/u);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

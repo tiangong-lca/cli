@@ -12,6 +12,10 @@ import {
 } from './dataset-local.js';
 import { readJsonInput } from './io.js';
 import {
+  validateProcessPayload,
+  type ProcessValidationLayers,
+} from './process-payload-validation.js';
+import {
   normalizeIssuePath,
   validateSchemaWithDeepFallback,
   type SafeParseSchema,
@@ -88,6 +92,7 @@ export type BuildPlanGateReport = {
   };
   required_fields: BuildPlanRequiredFields;
   schema_validation: SchemaValidationSummary;
+  validation_layers?: ProcessValidationLayers;
   findings: GateFinding[];
   blockers: GateFinding[];
   next_action: 'materialize_payload' | 'use_materialized_artifact' | 'fix_build_plan';
@@ -670,7 +675,7 @@ function referenceFlowRef(plan: JsonObject): JsonObject {
   });
 }
 
-function buildAnnualSupply(plan: JsonObject, referenceExchange: JsonObject): JsonObject[] {
+function buildAnnualSupply(plan: JsonObject): JsonObject[] {
   const explicit = firstValue(plan, [
     'required_fields.annualSupplyOrProductionVolume',
     'requiredFields.annualSupplyOrProductionVolume',
@@ -683,18 +688,7 @@ function buildAnnualSupply(plan: JsonObject, referenceExchange: JsonObject): Jso
     return multiLangFromValue(explicit, String(explicit));
   }
 
-  const amount =
-    textToken(referenceExchange.meanAmount) ??
-    textToken(referenceExchange.resultingAmount) ??
-    '1.0';
-  const unit =
-    firstToken(plan, [
-      'quantitative_reference_plan.reference_unit',
-      'quantitativeReferencePlan.referenceUnit',
-      'flow_property_plan.reference_unit',
-      'flowPropertyPlan.referenceUnit',
-    ]) ?? 'unit';
-  return [localizedText(`${amount} ${unit}/year`, 'en')];
+  return [];
 }
 
 function normalizeExchangeDirection(value: string | null): 'Input' | 'Output' {
@@ -895,7 +889,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
   const reference = referenceExchange(plan);
   const exchangeEntries = exchangePlanEntries(plan);
   const exchanges = [reference, ...exchangeEntries.filter((entry) => !entry.quantitativeReference)];
-  const annualSupply = buildAnnualSupply(plan, reference);
+  const annualSupply = buildAnnualSupply(plan);
   const sourceRef = evidenceSourceReference(plan);
 
   return {
@@ -1603,6 +1597,21 @@ async function runBuildPlan(
   const schemaValidation = materialized
     ? validateMaterializedSchema(materialized, kind, options.schemas)
     : emptySchemaValidation();
+  let validationLayers: ProcessValidationLayers | undefined;
+  if (kind === 'process' && materialized && detectDatasetKind(materialized) === 'process') {
+    const { schema, createEntity } = schemaForKind(kind, options.schemas);
+    validationLayers = validateProcessPayload(
+      unwrapDatasetPayload(materialized),
+      schema,
+      createEntity,
+    ).validation_layers;
+    for (const issue of [
+      ...validationLayers.authoring.issues,
+      ...validationLayers.content.issues,
+    ]) {
+      evaluation.blockers.push(makeFinding(issue.code, 'blocker', issue.message, issue.path));
+    }
+  }
   const report = makeReport({
     kind,
     action,
@@ -1614,6 +1623,7 @@ async function runBuildPlan(
     generatedAt: nowIso(options.now),
     files,
   });
+  if (validationLayers) report.validation_layers = validationLayers;
 
   if (files.gate_report) {
     writeJsonArtifact(files.gate_report, report);

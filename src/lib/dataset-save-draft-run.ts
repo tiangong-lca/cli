@@ -21,9 +21,9 @@ import {
   validateSchemaWithDeepFallback,
 } from './tidas-sdk-validation.js';
 import {
-  collectProcessPlaceholderIssues,
-  collectProcessRequiredFieldIssues,
-} from './process-required-fields.js';
+  validateProcessPayload,
+  type ProcessPayloadValidationResult,
+} from './process-payload-validation.js';
 import { buildDatasetCommandTransport } from './dataset-command.js';
 import {
   createSupabaseDataClient,
@@ -70,19 +70,7 @@ type DatasetSaveDraftValidationIssue = {
   code: string;
 };
 
-type DatasetSaveDraftValidationResult =
-  | {
-      ok: true;
-      validator: string;
-      issue_count: 0;
-      issues: [];
-    }
-  | {
-      ok: false;
-      validator: string;
-      issue_count: number;
-      issues: DatasetSaveDraftValidationIssue[];
-    };
+type DatasetSaveDraftValidationResult = ProcessPayloadValidationResult;
 
 function normalizeValidationIssue(issue: {
   path?: Array<string | number>;
@@ -795,21 +783,14 @@ function validatePayload(
   config: DatasetTypeConfig,
 ): DatasetSaveDraftValidationResult {
   const { schema, createEntity } = schemaForConfig(config);
+  if (type === 'process') return validateProcessPayload(payload, schema, createEntity);
   // SDK schema/entity validation may apply defaults by mutating its input. Keep validation
   // isolated so execution-contract hashing, dispatch, and readback all use the exact input.
   const validationPayload = structuredClone(payload);
   const outcome = validateSchemaWithDeepFallback(schema, validationPayload, createEntity);
-  const processIssues =
-    type === 'process'
-      ? [
-          ...collectProcessRequiredFieldIssues(validationPayload),
-          ...collectProcessPlaceholderIssues(validationPayload),
-        ]
-      : [];
-  const importIssues = type === 'process' ? [] : collectImportContentIssues(validationPayload);
+  const importIssues = collectImportContentIssues(validationPayload);
   const issues: DatasetSaveDraftValidationIssue[] = [
     ...outcome.issues.map(normalizeValidationIssue),
-    ...processIssues,
     ...importIssues,
   ];
 

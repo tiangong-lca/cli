@@ -63,12 +63,7 @@ export type ProcessRequiredFieldIssue = {
 
 export type ProcessRequiredFieldCompletion = {
   field_path: string;
-  source:
-    | 'existing'
-    | 'evidence'
-    | 'missing_data_sentinel'
-    | 'placeholder_repair'
-    | 'required_structure_repair';
+  source: 'existing' | 'evidence' | 'placeholder_repair' | 'required_structure_repair';
   value: Array<{ '#text': string; '@xml:lang': string }>;
   amount: string | null;
   unit: string | null;
@@ -182,54 +177,17 @@ function isValidAnnualSupplyVolume(value: unknown): boolean {
   const items = annualSupplyItems(value);
   return (
     items.length > 0 &&
+    new Set(items.map((item) => item['@xml:lang'].toLowerCase())).size === items.length &&
     items.every((item) => {
       const text = item['#text'].trim();
       return (
+        text !== ANNUAL_SUPPLY_MISSING_DATA_SENTINEL_TEXT &&
         !ANNUAL_UNAVAILABLE_PATTERN.test(text) &&
         NUMERIC_TEXT_WITH_SUFFIX_PATTERN.test(text) &&
         ANNUAL_PERIOD_PATTERN.test(text)
       );
     })
   );
-}
-
-function unresolvedTraceEntries(root: JsonObject): JsonObject[] {
-  const dataSetInformation = isRecord(root.processInformation)
-    ? isRecord(root.processInformation.dataSetInformation)
-      ? root.processInformation.dataSetInformation
-      : {}
-    : {};
-  const commonOther = isRecord(dataSetInformation['common:other'])
-    ? dataSetInformation['common:other']
-    : {};
-  return asList(commonOther['tiangongfoundry:unresolvedTrace']).filter((item): item is JsonObject =>
-    isRecord(item),
-  );
-}
-
-function hasDeferredAnnualSupplyTrace(root: JsonObject): boolean {
-  return unresolvedTraceEntries(root).some((entry) => {
-    const actionItemCode = firstNonEmpty(entry.action_item_code, entry.actionItemCode, entry.code);
-    const blockedPath = firstNonEmpty(
-      entry.blocked_path,
-      entry.blockedPath,
-      entry.field_path,
-      entry.fieldPath,
-      entry.path,
-    );
-    const status = firstNonEmpty(entry.status, entry.decision_status, entry.decisionStatus);
-    return (
-      (actionItemCode === 'annual_supply_or_production_volume_invalid' ||
-        actionItemCode === 'annual_supply_or_production_volume_missing' ||
-        actionItemCode === 'invalid_format' ||
-        blockedPath === ANNUAL_SUPPLY_FIELD ||
-        blockedPath === ANNUAL_SUPPLY_ROOT_FIELD ||
-        blockedPath?.endsWith('.annualSupplyOrProductionVolume') === true) &&
-      (status === 'unresolved_deferred' ||
-        status === 'deferred_to_common_other' ||
-        status === 'needs_followup')
-    );
-  });
 }
 
 function isValidReview(value: unknown): boolean {
@@ -259,9 +217,7 @@ export function collectProcessRequiredFieldIssues(
   const dataSources = isRecord(modelling.dataSourcesTreatmentAndRepresentativeness)
     ? modelling.dataSourcesTreatmentAndRepresentativeness
     : null;
-  const annualSupplyDeferredToTrace = hasDeferredAnnualSupplyTrace(root);
-  const dataSourcesDeferredToTrace = !dataSources && annualSupplyDeferredToTrace;
-  if (!dataSources && !dataSourcesDeferredToTrace) {
+  if (!dataSources) {
     return [
       {
         code: 'process_data_sources_treatment_missing',
@@ -293,17 +249,20 @@ export function collectProcessRequiredFieldIssues(
     });
   }
 
-  if (dataSourcesDeferredToTrace) {
-    return issues;
-  }
-
-  const annualSupply = dataSources!.annualSupplyOrProductionVolume;
-  if (isValidAnnualSupplyVolume(annualSupply)) {
-    return issues;
-  }
-
+  const annualSupply = dataSources.annualSupplyOrProductionVolume;
   const items = annualSupplyItems(annualSupply);
-  if (items.length === 0 && annualSupplyDeferredToTrace) {
+  if (new Set(items.map((item) => item['@xml:lang'].toLowerCase())).size !== items.length) {
+    return [
+      ...issues,
+      {
+        code: 'annual_supply_or_production_volume_duplicate_language',
+        message:
+          'Annual supply or production volume must contain one complete text value per language.',
+        path: ANNUAL_SUPPLY_FIELD,
+      },
+    ];
+  }
+  if (isValidAnnualSupplyVolume(annualSupply)) {
     return issues;
   }
 
@@ -319,7 +278,13 @@ export function collectProcessRequiredFieldIssues(
     ];
   }
 
-  if (items.some((item) => ANNUAL_UNAVAILABLE_PATTERN.test(item['#text'].trim()))) {
+  if (
+    items.some(
+      (item) =>
+        ANNUAL_UNAVAILABLE_PATTERN.test(item['#text'].trim()) ||
+        item['#text'].trim() === ANNUAL_SUPPLY_MISSING_DATA_SENTINEL_TEXT,
+    )
+  ) {
     return [
       ...issues,
       {
@@ -693,7 +658,12 @@ function buildAnnualSupplyValue(
   '#text': string;
   '@xml:lang': string;
 }> {
-  return [{ '@xml:lang': 'en', '#text': `${amount} ${unit}/year` }];
+  return [
+    {
+      '@xml:lang': 'en',
+      '#text': `${amount} ${unit}${ANNUAL_PERIOD_PATTERN.test(unit) ? '' : '/year'}`,
+    },
+  ];
 }
 
 function annualSupplyTextParts(value: string): { amount: string; unit: string } | null {
@@ -703,7 +673,7 @@ function annualSupplyTextParts(value: string): { amount: string; unit: string } 
 
 function annualSupplyValueFromText(value: string): AnnualSupplyEvidenceValue | null {
   const text = value.trim();
-  if (!NUMERIC_TEXT_WITH_SUFFIX_PATTERN.test(text) || !ANNUAL_PERIOD_PATTERN.test(text)) {
+  if (!isValidAnnualSupplyVolume([{ '@xml:lang': sourceLanguageForText(text), '#text': text }])) {
     return null;
   }
   const parts = annualSupplyTextParts(text) as { amount: string; unit: string };
@@ -723,24 +693,11 @@ function normalizeAnnualSupplyEvidenceValue(
     return annualSupplyValueFromText(candidate);
   }
 
-  if (typeof candidate === 'number' && Number.isFinite(candidate)) {
-    const amount = String(candidate);
-    return {
-      value: buildAnnualSupplyValue(amount, context.defaultUnit),
-      amount,
-      unit: context.defaultUnit,
-      basis:
-        'Evidence provided a numeric annual supply / production volume; the configured default unit was applied.',
-    };
-  }
-
   if (isValidAnnualSupplyVolume(candidate)) {
-    const value = [
-      annualSupplyItems(candidate).map((item) => ({
-        '@xml:lang': item['@xml:lang'],
-        '#text': item['#text'].trim(),
-      }))[0]!,
-    ];
+    const value = annualSupplyItems(candidate).map((item) => ({
+      '@xml:lang': item['@xml:lang'],
+      '#text': item['#text'].trim(),
+    }));
     const parts = annualSupplyTextParts(value[0]!['#text']) as { amount: string; unit: string };
     return {
       value,
@@ -769,12 +726,6 @@ function normalizeAnnualSupplyEvidenceValue(
     }
   }
 
-  const preferredLanguage = textValue(
-    candidate.source_language ??
-      candidate.sourceLanguage ??
-      candidate.lang ??
-      candidate['@xml:lang'],
-  )?.toLowerCase();
   const english = textValue(candidate.en ?? candidate.english);
   const chinese = textValue(candidate.zh ?? candidate.chinese ?? candidate['zh-CN']);
   const localized = [
@@ -782,11 +733,8 @@ function normalizeAnnualSupplyEvidenceValue(
     chinese ? { '@xml:lang': 'zh', '#text': chinese } : null,
   ].filter((item): item is { '#text': string; '@xml:lang': string } => Boolean(item));
   if (localized.length > 0 && isValidAnnualSupplyVolume(localized)) {
-    const selected =
-      localized.find((item) => item['@xml:lang'].toLowerCase() === preferredLanguage) ??
-      localized[0]!;
-    const value = [selected];
-    const parts = annualSupplyTextParts(selected['#text']) as {
+    const value = localized;
+    const parts = annualSupplyTextParts(value[0]!['#text']) as {
       amount: string;
       unit: string;
     };
@@ -799,14 +747,14 @@ function normalizeAnnualSupplyEvidenceValue(
   }
 
   const amount = textValue(candidate.amount ?? candidate.value_amount ?? candidate.valueAmount);
-  const unit = normalizeUnit(
-    textValue(
-      candidate.unit ?? candidate.uom ?? candidate.reference_unit ?? candidate.referenceUnit,
-    ) ?? context.defaultUnit,
+  const unit = textValue(
+    candidate.unit ?? candidate.uom ?? candidate.reference_unit ?? candidate.referenceUnit,
   );
-  if (amount) {
+  if (amount && /^[+-]?(\d+(\.\d*)?|\.\d+)([Ee][+-]?\d+)?$/u.test(amount) && unit) {
+    const value = buildAnnualSupplyValue(amount, unit);
+    if (!isValidAnnualSupplyVolume(value)) return null;
     return {
-      value: buildAnnualSupplyValue(amount, unit),
+      value,
       amount,
       unit,
       basis:
@@ -933,23 +881,6 @@ function ensureDataSources(root: JsonObject): JsonObject {
   return modelling.dataSourcesTreatmentAndRepresentativeness as JsonObject;
 }
 
-function annualSupplyMissingDataSentinelValue(): Array<{ '#text': string; '@xml:lang': string }> {
-  return [{ '@xml:lang': 'en', '#text': ANNUAL_SUPPLY_MISSING_DATA_SENTINEL_TEXT }];
-}
-
-function annualSupplyMissingDataSentinelCompletion(): ProcessRequiredFieldCompletion {
-  return {
-    field_path: ANNUAL_SUPPLY_FIELD,
-    source: 'missing_data_sentinel',
-    value: annualSupplyMissingDataSentinelValue(),
-    amount: '9999',
-    unit: 'missing-data-sentinel/year',
-    reference_exchange_internal_id: null,
-    basis:
-      'No source annual supply or production volume evidence was available; Foundry policy uses an intentionally non-physical 9999 sentinel so database-side follow-up can bulk-locate and replace it later.',
-  };
-}
-
 function cloneRowWithPayload(row: DatasetRowInput): { row: JsonObject; payload: JsonObject } {
   const clonedRow = cloneJson(row.row);
   if (isRecord(clonedRow.json_ordered)) {
@@ -1055,8 +986,14 @@ function completeProcessRow(
   }
 
   const dataSources = ensureDataSources(root);
-  const completion = annualSupplyMissingDataSentinelCompletion();
-  dataSources.annualSupplyOrProductionVolume = completion.value;
+  dataSources.annualSupplyOrProductionVolume ??= [];
+  const unknownItems = annualSupplyItems(dataSources.annualSupplyOrProductionVolume);
+  if (
+    unknownItems.length > 0 &&
+    unknownItems.every((item) => item['#text'].trim() === ANNUAL_SUPPLY_MISSING_DATA_SENTINEL_TEXT)
+  ) {
+    dataSources.annualSupplyOrProductionVolume = [];
+  }
   return {
     row: clonedRow,
     report: {
@@ -1064,9 +1001,9 @@ function completeProcessRow(
       id: row.id,
       version: row.version,
       type: row.kind,
-      status: 'completed',
-      issues: [],
-      completions: [...repairCompletions, completion],
+      status: 'blocked',
+      issues: existingIssues,
+      completions: repairCompletions,
     },
   };
 }
@@ -1160,7 +1097,6 @@ export async function runProcessRequiredFieldsComplete(
 export const __testInternals = {
   ANNUAL_SUPPLY_MISSING_DATA_SENTINEL_TEXT,
   ANNUAL_SUPPLY_ROOT_FIELD,
-  annualSupplyMissingDataSentinelValue,
   annualSupplyTextParts,
   annualSupplyValueFromText,
   cloneRowWithPayload,
@@ -1168,7 +1104,6 @@ export const __testInternals = {
   completeProcessRow,
   ensureDataSources,
   fieldPathFromEvidenceEntry,
-  hasDeferredAnnualSupplyTrace,
   findAnnualSupplyEvidenceValue,
   findAnnualSupplyEvidenceEntry,
   buildFlowUnitIndex,
