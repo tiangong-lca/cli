@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-15
-lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
-lastReviewedNote: 'Reviewed for CLI #322: bounded Contact exact reads require explicit public/current-owner scope and fresh actor/project assertions before complete payload retrieval. Latest metadata precedes scoped body reads; existing exact-reference eligibility, auth owners, dependency locks, package version and release gates remain unchanged.'
+lastReviewedCommit: 317cc0fb0a3186f6de686f4737c4340d2fa07aa6
+lastReviewedNote: 'Reviewed for CLI #324: Source exact reads extend the shared Contact reader with SourceSchema and explicit typed exclusions. Source discovery uses the existing api.search_sources metadata projection for public100 page1 only. Shared identity, byte/request/deadline and atomic artifact guards remain CLI-owned; exact-reference eligibility, package locks/version and release boundaries are unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -43,6 +43,8 @@ related:
   - ../release-runbook.md
   - ../release-setup.md
 ---
+
+`dataset get --type source` extends the shared exact reader with `SourceSchema` and caller-provided typed-version exclusions checked before complete-body requests. `dataset source discover` calls the existing `api.search_sources` with metadata-only projection, explicit public100 scope and one bounded first page. Discovery reports latest-per-UUID candidates without DOI/title equality, matched-version or catalogue-absence claims. Attachment references remain metadata. The shared `dataset-read.ts` owner applies identity, response-byte, request-count, deadline and private atomic artifact guards to both readers; existing exact-reference eligibility and release authority are unchanged.
 
 Issue #322 requires real pinned ContactSchema fixtures and public-command proof for complete multilingual payloads, exact identity/version/owner/state/hash binding, public 100–199/current-owner-state-0 filters before body retrieval, and zero fallback on missing exact rows. Prove RLS-visible foreign latest metadata never triggers a full-body read; include malformed/duplicate/out-of-order rows, payload identity/schema errors, 4 MiB response and 8 MiB total caps, metadata caps, whole-operation deadlines, output collision/cleanup and a single identity-rechecked read-only refresh. Existing selected/latest hash pins must accept eligible exported facts and reject drift, while states 101/199 remain ineligible under unchanged exact-intent v1. Strict Docpact, package consumers and exact 100% source coverage remain mandatory; live installed-runtime qualification is separate.
 

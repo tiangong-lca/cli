@@ -38,8 +38,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-15
-lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
-lastReviewedNote: 'Reviewed for CLI #322: bounded Contact exact reads require explicit public/current-owner scope and fresh actor/project assertions before complete payload retrieval. Latest metadata precedes scoped body reads; existing exact-reference eligibility, auth owners, dependency locks, package version and release gates remain unchanged.'
+lastReviewedCommit: 317cc0fb0a3186f6de686f4737c4340d2fa07aa6
+lastReviewedNote: 'Reviewed for CLI #324: Source exact reads extend the shared Contact reader with SourceSchema and explicit typed exclusions. Source discovery uses the existing api.search_sources metadata projection for public100 page1 only. Shared identity, byte/request/deadline and atomic artifact guards remain CLI-owned; exact-reference eligibility, package locks/version and release boundaries are unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -50,6 +50,8 @@ related:
   - docs/release-runbook.md
   - docs/release-setup.md
 ---
+
+`dataset get --type source` extends the shared exact reader with `SourceSchema` and caller-provided typed-version exclusions checked before complete-body requests. `dataset source discover` calls the existing `api.search_sources` with metadata-only projection, explicit public100 scope and one bounded first page. Discovery reports latest-per-UUID candidates without DOI/title equality, matched-version or catalogue-absence claims. Attachment references remain metadata. The shared `dataset-read.ts` owner applies identity, response-byte, request-count, deadline and private atomic artifact guards to both readers; existing exact-reference eligibility and release authority are unchanged.
 
 `dataset get --type contact` is the bounded complete-row reader for independently reviewed reference evidence (Issue #322). Require an exact UUID/version, explicit content scope and fresh actor/project assertions. Public reads cover 100–199 and owner-draft reads cover only current-actor state 0; optional RLS-visible latest metadata must pass that scope before complete payload retrieval. The reader does not change exact-reference v1 eligibility or create review decisions, writes or publication authority.
 

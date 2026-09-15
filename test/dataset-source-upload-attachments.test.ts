@@ -595,7 +595,7 @@ test('executeCli renders source upload-attachments help', async () => {
 test('executeCli rejects an unknown source action', async () => {
   const result = await executeCli(['dataset', 'source', 'frobnicate'], makeDeps());
   assert.equal(result.exitCode, 2);
-  assert.match(result.stderr, /dataset source action must be 'upload-attachments'/u);
+  assert.match(result.stderr, /dataset source action must be 'discover' or 'upload-attachments'/u);
 });
 
 test('executeCli requires --input and --external-docs-dir', async () => {

@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-15
-lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
-lastReviewedNote: 'Reviewed for CLI #322: bounded Contact exact reads require explicit public/current-owner scope and fresh actor/project assertions before complete payload retrieval. Latest metadata precedes scoped body reads; existing exact-reference eligibility, auth owners, dependency locks, package version and release gates remain unchanged.'
+lastReviewedCommit: 317cc0fb0a3186f6de686f4737c4340d2fa07aa6
+lastReviewedNote: 'Reviewed for CLI #324: Source exact reads extend the shared Contact reader with SourceSchema and explicit typed exclusions. Source discovery uses the existing api.search_sources metadata projection for public100 page1 only. Shared identity, byte/request/deadline and atomic artifact guards remain CLI-owned; exact-reference eligibility, package locks/version and release boundaries are unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -40,6 +40,8 @@ related:
   - ../../README.md
   - ../../DEV_CN.md
 ---
+
+`dataset get --type source` extends the shared exact reader with `SourceSchema` and caller-provided typed-version exclusions checked before complete-body requests. `dataset source discover` calls the existing `api.search_sources` with metadata-only projection, explicit public100 scope and one bounded first page. Discovery reports latest-per-UUID candidates without DOI/title equality, matched-version or catalogue-absence claims. Attachment references remain metadata. The shared `dataset-read.ts` owner applies identity, response-byte, request-count, deadline and private atomic artifact guards to both readers; existing exact-reference eligibility and release authority are unchanged.
 
 `dataset-get.ts` owns bounded complete Contact row observation under the public `dataset get` command. It reuses the current-user identity receipt, the existing OAuth/verified headless-token session owner, Data API profile routing, read-only auth-refresh replay and canonical payload hashing. Selected reads have exact UUID/version and explicit public/current-owner filters; latest first reads metadata for the same UUID and only then retrieves an exact allowed body. Full payloads stay in private artifacts, while the report records exact metadata, schema result and separate payload/artifact hashes. No support-cache, default verifier or exact-intent eligibility change belongs to this reader.
 

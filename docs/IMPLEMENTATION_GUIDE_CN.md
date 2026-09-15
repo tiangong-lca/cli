@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-09-15
-lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
-lastReviewedNote: 'Reviewed for CLI #322: bounded Contact exact reads require explicit public/current-owner scope and fresh actor/project assertions before complete payload retrieval. Latest metadata precedes scoped body reads; existing exact-reference eligibility, auth owners, dependency locks, package version and release gates remain unchanged.'
+lastReviewedCommit: 317cc0fb0a3186f6de686f4737c4340d2fa07aa6
+lastReviewedNote: 'Reviewed for CLI #324: Source exact reads extend the shared Contact reader with SourceSchema and explicit typed exclusions. Source discovery uses the existing api.search_sources metadata projection for public100 page1 only. Shared identity, byte/request/deadline and atomic artifact guards remain CLI-owned; exact-reference eligibility, package locks/version and release boundaries are unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -31,6 +31,8 @@ related:
   - ./agents/repo-architecture.md
   - ./agents/repo-validation.md
 ---
+
+`dataset get --type source` extends the shared exact reader with `SourceSchema` and caller-provided typed-version exclusions checked before complete-body requests. `dataset source discover` calls the existing `api.search_sources` with metadata-only projection, explicit public100 scope and one bounded first page. Discovery reports latest-per-UUID candidates without DOI/title equality, matched-version or catalogue-absence claims. Attachment references remain metadata. The shared `dataset-read.ts` owner applies identity, response-byte, request-count, deadline and private atomic artifact guards to both readers; existing exact-reference eligibility and release authority are unchanged.
 
 CLI #322 的 `dataset get --type contact` 为单个精确 Contact 提供有界完整读取。必须先绑定 UUID、canonical version、public/owner-draft/public-or-owner-draft 范围及预期项目/账户，完整 GET 同时携带 scope 过滤并核验返回事实；缺少 selected 版本不回退。`--include-latest` 对同 UUID 先读 RLS-visible 元信息，再读取允许的最新精确正文；外国草稿不因 RLS 可见而获准暴露。完整多语言正文、schema 校验、版本/owner/state/timestamp、完整 payload 哈希与本地文件字节哈希分别保留。公开读取范围 100–199 与 #289 的 100/本人 0 资格是独立契约，后者保持不变。
 

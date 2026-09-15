@@ -7,6 +7,7 @@ import type { FetchLike } from './lib/http.js';
 import { stringifyJson } from './lib/io.js';
 import { loadCliPackageVersion } from './lib/package-version.js';
 import { runDatasetGet } from './lib/dataset-get.js';
+import { runDatasetSourceDiscover } from './lib/dataset-source-discover.js';
 import {
   runDatasetSupportCacheExport,
   type RunDatasetSupportCacheExportOptions,
@@ -333,6 +334,7 @@ import {
 
 export type CliDeps = {
   runDatasetGetImpl?: typeof runDatasetGet;
+  runDatasetSourceDiscoverImpl?: typeof runDatasetSourceDiscover;
   runDatasetSupportCacheExportImpl?: (
     options: RunDatasetSupportCacheExportOptions,
   ) => Promise<DatasetSupportCacheExportReport>;
@@ -566,7 +568,7 @@ Implemented Commands:
   auth       login | status | whoami | doctor-auth | logout | identity-receipt
   search     flow | process | lifecyclemodel
   process    get | list | identity-preflight | build-plan | scope-statistics | dedup-review | auto-build | resume-build | publish-build | complete-required-fields | save-draft | batch-build | refresh-references | verify-rows
-  dataset    support-cache export | contract get | context-pack | classification children/path/audit/apply | curation-queue build/next/verify | import-lca convert | author | patch apply | save-draft | source upload-attachments | validate | verify-remote | bilingual extract/apply/validate | evidence-search plan/run | references rewrite/refresh-remote | maintenance clear-account/plan/apply/verify/flow-identity
+  dataset    support-cache export | contract get | context-pack | classification children/path/audit/apply | curation-queue build/next/verify | import-lca convert | author | patch apply | save-draft | source discover/upload-attachments | validate | verify-remote | bilingual extract/apply/validate | evidence-search plan/run | references rewrite/refresh-remote | maintenance clear-account/plan/apply/verify/flow-identity
   flow       get | list | identity-preflight | build-plan | fetch-rows | materialize-decisions | remediate | publish-version | publish-reviewed-data | build-alias-map | scan-process-flow-refs | plan-process-flow-repairs | apply-process-flow-repairs | regen-product | validate-processes
   lifecyclemodel auto-build | validate-build | publish-build | save-draft | graph | build-resulting-process | publish-resulting-process | orchestrate
   qa         process | flow | lifecyclemodel
@@ -949,6 +951,7 @@ Implemented Subcommands:
   author              Extract source evidence and prepare TIDAS context packs for AI authoring
   patch apply          Apply AI-authored structured dataset patches deterministically
   save-draft           Save contact/source/support or other canonical dataset rows through the platform dataset command path
+  source discover     Discover a bounded metadata-only first page of public100 Source candidates
   source upload-attachments Upload source referenceToDigitalFile binaries to storage and rewrite their @uri
   validate             Validate local flow / process / lifecyclemodel rows with the TIDAS SDK
   verify-remote        Verify dataset roots and TIDAS references against remote published versions
@@ -7860,15 +7863,56 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
 
     if (command === 'dataset' && subcommand === 'source') {
       const action = commandArgs[0] ?? '';
+      const discoverHelp = `Usage: tiangong-lca dataset source discover --query <text> --scope public100 --out-dir <fresh-dir> --expected-project-ref <ref> --expected-user-id <uuid> [--limit <1..100>] [--exclude-typed-versions <file>] [--timeout-ms <1..120000>] [--json]
+
+Reads metadata only from api.search_sources, data_source=tg, state100, page1 (default limit20).
+Returns latest-public100-version candidates for matching UUIDs; no DOI/title equality or matched-version proof.
+Empty/partial results cannot establish catalogue absence. No full payload or attachment is fetched.`;
+      if (action === 'discover') {
+        const args = commandArgs.slice(1);
+        const { values } = parseArgs({
+          args,
+          strict: true,
+          allowPositionals: false,
+          options: {
+            query: { type: 'string' },
+            scope: { type: 'string' },
+            limit: { type: 'string' },
+            'out-dir': { type: 'string' },
+            'expected-project-ref': { type: 'string' },
+            'expected-user-id': { type: 'string' },
+            'exclude-typed-versions': { type: 'string' },
+            'timeout-ms': { type: 'string' },
+            json: { type: 'boolean' },
+            help: { type: 'boolean', short: 'h' },
+          },
+        });
+        if (values.help || args.length === 0)
+          return { exitCode: 0, stdout: discoverHelp + '\n', stderr: '' };
+        const report = await (deps.runDatasetSourceDiscoverImpl ?? runDatasetSourceDiscover)({
+          query: values.query ?? '',
+          scope: values.scope ?? '',
+          limit: values.limit === undefined ? undefined : Number(values.limit),
+          outDir: values['out-dir'] ?? '',
+          expectedProjectRef: values['expected-project-ref'] ?? '',
+          expectedUserId: values['expected-user-id'] ?? '',
+          exclusionsFile: values['exclude-typed-versions'],
+          timeoutMs: values['timeout-ms'] === undefined ? undefined : Number(values['timeout-ms']),
+          env: deps.env,
+          fetchImpl: deps.fetchImpl,
+          cliVersion: loadCliPackageVersion(import.meta.url),
+        });
+        return { exitCode: 0, stdout: stringifyJson(report, values.json ?? false), stderr: '' };
+      }
       if (!action || action === '--help' || action === '-h') {
         return {
           exitCode: 0,
-          stdout: `${renderDatasetSourceUploadAttachmentsHelp()}\n`,
+          stdout: `${discoverHelp}\n\n${renderDatasetSourceUploadAttachmentsHelp()}\n`,
           stderr: '',
         };
       }
       if (action !== 'upload-attachments') {
-        throw new CliError("dataset source action must be 'upload-attachments'.", {
+        throw new CliError("dataset source action must be 'discover' or 'upload-attachments'.", {
           code: 'DATASET_SOURCE_ACTION_INVALID',
           exitCode: 2,
         });
@@ -7958,11 +8002,11 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
     }
 
     if (command === 'dataset' && subcommand === 'get') {
-      const help = `Usage: tiangong-lca dataset get --type contact --id <uuid> --version <NN.NN.NNN> --scope <public|owner-draft|public-or-owner-draft> --out-dir <fresh-dir> --expected-project-ref <ref> --expected-user-id <uuid> [--include-latest] [--timeout-ms <1..120000>] [--json]
+      const help = `Usage: tiangong-lca dataset get --type <contact|source> --id <uuid> --version <NN.NN.NNN> --scope <public|owner-draft|public-or-owner-draft> --out-dir <fresh-dir> --expected-project-ref <ref> --expected-user-id <uuid> [--include-latest] [--exclude-typed-versions <file>] [--timeout-ms <1..120000>] [--json]
 
 Public scope reads states 100–199; owner-draft reads the authenticated owner's state 0.
 The selected exact version never falls back. --include-latest observes RLS-visible latest metadata
-and reads its full payload only within the explicit scope. Observation does not change exact-reference eligibility.`;
+and reads its full payload only within the explicit scope. Typed exclusions are a JSON array of exact type/id/version objects checked before payload reads. Attachment references remain metadata. Observation does not change exact-reference eligibility.`;
       const { values } = parseArgs({
         args: commandArgs,
         strict: true,
@@ -7976,6 +8020,7 @@ and reads its full payload only within the explicit scope. Observation does not 
           'expected-project-ref': { type: 'string' },
           'expected-user-id': { type: 'string' },
           'include-latest': { type: 'boolean' },
+          'exclude-typed-versions': { type: 'string' },
           'timeout-ms': { type: 'string' },
           json: { type: 'boolean' },
           help: { type: 'boolean', short: 'h' },
@@ -7992,6 +8037,7 @@ and reads its full payload only within the explicit scope. Observation does not 
         expectedProjectRef: values['expected-project-ref'] ?? '',
         expectedUserId: values['expected-user-id'] ?? '',
         includeLatest: values['include-latest'] ?? false,
+        exclusionsFile: values['exclude-typed-versions'],
         timeoutMs: values['timeout-ms'] === undefined ? undefined : Number(values['timeout-ms']),
         env: deps.env,
         fetchImpl: deps.fetchImpl,

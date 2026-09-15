@@ -80,6 +80,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/dataset-maintenance-clear-account.ts',
   ],
   sources: [
+    'src/lib/dataset-get.ts',
     'src/lib/dataset-save-draft-run.ts',
     'src/lib/dataset-remote-verify.ts',
     'src/lib/dataset-maintenance-remote.ts',
@@ -103,6 +104,13 @@ type RpcTarget = {
 };
 
 export const DATA_API_RPC_TARGETS = {
+  // Native Source caller: database 1a21182b56bfb5f7d27ea9dc6684950daab568c6,
+  // supabase/workspace/schemas/api/functions/search_sources/definition.sql (CLI #324).
+  search_sources: {
+    targetSchema: 'api',
+    signature:
+      'api.search_sources(query_text text, filter_condition jsonb, page_size integer, page_current integer, data_source text, this_user_id text, team_id_filter uuid, state_code_filter integer)',
+  },
   cmd_dataset_alias_execution_admit_guarded: {
     targetSchema: 'api',
     signature: 'api.cmd_dataset_alias_execution_admit_guarded(p_request jsonb)',

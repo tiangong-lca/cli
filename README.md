@@ -32,8 +32,8 @@ checkPaths:
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
 lastReviewedAt: 2026-09-15
-lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
-lastReviewedNote: 'Reviewed for CLI #322: bounded Contact exact reads require explicit public/current-owner scope and fresh actor/project assertions before complete payload retrieval. Latest metadata precedes scoped body reads; existing exact-reference eligibility, auth owners, dependency locks, package version and release gates remain unchanged.'
+lastReviewedCommit: 317cc0fb0a3186f6de686f4737c4340d2fa07aa6
+lastReviewedNote: 'Reviewed for CLI #324: Source exact reads extend the shared Contact reader with SourceSchema and explicit typed exclusions. Source discovery uses the existing api.search_sources metadata projection for public100 page1 only. Shared identity, byte/request/deadline and atomic artifact guards remain CLI-owned; exact-reference eligibility, package locks/version and release boundaries are unchanged.'
 ---
 
 CLI 0.1.10 is the designated C1 release for `tiangong-lca runtime describe --json` and the explicit `@tiangong-lca/cli/runtime` API for package, asset and Node content inspection. Runtime inspection loads no project `.env`, performs no authentication and downloads nothing. See [the runtime distribution contract](docs/agents/runtime-distribution-contract.md) for exact fields and trust boundaries; verify public availability and provenance before treating the candidate version as released.
@@ -213,6 +213,23 @@ tiangong-lca dataset get --type contact --id <uuid> --version <NN.NN.NNN> --scop
 `dataset get` requires explicit content scope: `public` reads states 100–199, `owner-draft` reads only the authenticated owner's state 0, and `public-or-owner-draft` permits either. It uses the existing OAuth or verified headless-token owner and a fresh identity receipt. The selected version never falls back. Optional latest resolution observes RLS-visible metadata for the same UUID first and fails before any latest body read when that row is outside the chosen scope.
 
 A fresh private output directory contains complete `selected-row.json` and optional `latest-row.json` responses, `identity-receipt.json` and `get-report.json`. The report records exact owner/state/version/timestamp, pinned ContactSchema success, canonical `payload_sha256`, and each artifact's distinct byte hash and size. Reads are bounded to two rows per GET, 4 MiB per full response, 64 KiB per metadata response, 8 MiB total, and a whole-operation `--timeout-ms` of 1–120000 (default 10000). These are observations without transactional snapshot or write authority. No review decision is generated. Exact-reference v1 still permits only state 100 or current-owner state 0; observed 101/199 rows do not change that eligibility rule.
+
+## Source exact reading and candidate discovery
+
+`dataset get --type source` reads one exact Source version using `SourceSchema`, public states 100–199 or current-owner state 0, and the same identity and output guards as Contact reads. Attachment references stay in the complete payload as metadata; the command does not fetch their files.
+
+```bash
+tiangong-lca dataset get --type source --id <uuid> --version <NN.NN.NNN> --scope public-or-owner-draft --exclude-typed-versions ./excluded.json --expected-project-ref <project-ref> --expected-user-id <actor-uuid> --out-dir ./source-row
+tiangong-lca dataset source discover --query 'citation or DOI text' --scope public100 --limit 20 --exclude-typed-versions ./excluded.json --expected-project-ref <project-ref> --expected-user-id <actor-uuid> --out-dir ./source-candidates
+```
+
+`--exclude-typed-versions` explicitly selects a UTF-8 JSON array such as `[{"type":"source","id":"22222222-2222-4222-8222-222222222222","version":"00.00.001"}]`. The reader rejects an excluded selected/latest tuple before its full-body request. Discovery omits excluded tuples from its candidate list while retaining only metadata observations. The input is capped at 1 MiB / 10,000 unique typed tuples and its original bytes are hashed; no business ledger is loaded implicitly. The option is also supported for Contact exact reads.
+
+Discovery uses the existing `api.search_sources` RPC with `select=rank,id,version,modified_at,team_id,total_count`, `data_source=tg`, state 100 and page 1. The default limit is 20 and the maximum is 100, with no automatic pagination or body fetch. A candidate is the latest public100 version of a matched UUID: an older version may have matched the text while the returned version does not. This is not normalized DOI/title equality or matched-version proof. Empty or partial results cannot establish absence across other pages, public states 101–199, unindexed text or historical versions.
+
+Both commands require fresh expected project/actor assertions and a fresh private output directory. Shared limits cover 16 total HTTP requests (including identity and refresh), 4 MiB per full response, 64 KiB per metadata response, 256 KiB per auth response, 8 MiB total response bytes, and a 10-second default / 120-second maximum whole-operation deadline. Discovery query text is capped at 4096 UTF-8 bytes. One read-only auth replay rechecks the actor before sending the request. These client bounds do not bound SQL intermediates or prove server cancellation.
+
+Successful output binds identity, exact metadata, input/request hashes, raw artifact hashes and the complete payload hash where applicable. Failures publish no completion marker. Discovery and exact reads are separate observations, and neither changes #289 reference eligibility or grants scientific, write or publication qualification. Source caller delivery requires separate release and authorized installed-runtime qualification.
 
 ## Auth Identity Receipt
 

@@ -444,7 +444,7 @@ test('read failures never disclose remote bodies or arbitrary thrown secrets', a
         }),
         (error: unknown) => {
           assert.equal(JSON.stringify(error).includes('PRIVATE_CANARY'), false);
-          assert.match((error as Error).message, /Contact/u);
+          assert.match((error as Error).message, /Dataset/u);
           return true;
         },
       );

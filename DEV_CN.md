@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-09-15
-lastReviewedCommit: df582fc8a5429d39151992cd31088e5fa86d00a7
-lastReviewedNote: 'Reviewed for CLI #322: bounded Contact exact reads require explicit public/current-owner scope and fresh actor/project assertions before complete payload retrieval. Latest metadata precedes scoped body reads; existing exact-reference eligibility, auth owners, dependency locks, package version and release gates remain unchanged.'
+lastReviewedCommit: 317cc0fb0a3186f6de686f4737c4340d2fa07aa6
+lastReviewedNote: 'Reviewed for CLI #324: Source exact reads extend the shared Contact reader with SourceSchema and explicit typed exclusions. Source discovery uses the existing api.search_sources metadata projection for public100 page1 only. Shared identity, byte/request/deadline and atomic artifact guards remain CLI-owned; exact-reference eligibility, package locks/version and release boundaries are unchanged.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -33,6 +33,8 @@ related:
   - docs/agents/repo-architecture.md
   - docs/IMPLEMENTATION_GUIDE_CN.md
 ---
+
+`dataset get --type source` extends the shared exact reader with `SourceSchema` and caller-provided typed-version exclusions checked before complete-body requests. `dataset source discover` calls the existing `api.search_sources` with metadata-only projection, explicit public100 scope and one bounded first page. Discovery reports latest-per-UUID candidates without DOI/title equality, matched-version or catalogue-absence claims. Attachment references remain metadata. The shared `dataset-read.ts` owner applies identity, response-byte, request-count, deadline and private atomic artifact guards to both readers; existing exact-reference eligibility and release authority are unchanged.
 
 CLI #322 增加 `dataset get --type contact`，精确 UUID/version、显式 scope、预期项目和当前用户均为必填。`public` 读取 state 100–199；`owner-draft` 只读当前用户 state 0；`public-or-owner-draft` 明确合并两类。可选 latest 先观察 RLS-visible 元信息，仅在 scope 允许时读取完整正文。完整正文保存在本地私有产物中，报告分开记录 payload 与文件字节哈希。#289 的 state 100/本人 0 资格不扩展，读取不等于评审、保存或发布授权。
 
