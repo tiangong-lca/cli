@@ -669,7 +669,6 @@ maybePackTest(
         ['install', '--frozen-lockfile', '--ignore-scripts'],
         commandOptions(cleanRepository),
       );
-      execFileSync('pnpm', ['run', 'build'], commandOptions(cleanRepository));
       const packOutput = execFileSync(
         'pnpm',
         ['pack', '--json', '--pack-destination', packRoot],
