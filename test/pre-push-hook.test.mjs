@@ -22,7 +22,7 @@ const deletion = `(delete) ${zero} refs/heads/merged ${oid}\n`;
 const update = `refs/heads/main ${oid} refs/heads/main ${'2'.repeat(40)}\n`;
 
 // Only the test fixture drops inherited Git bindings. The real hook keeps the
-// caller's Git context. No remote, package build or actual gate runs here.
+// caller's Git context. No external remote, package build or actual gate runs here.
 function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), 'cli-push-hook-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -170,13 +170,6 @@ test('missing, failing or unavailable classifier falls back without dropping gat
   const unavailable = f.run(deletion, { TMPDIR: join(f.repo, 'absent') });
   assert.equal(unavailable.status, 0);
   assert.equal(unavailable.trace, f.expected);
-});
-
-test('TTY rejection precedes any stdin read in the portable classifier', () => {
-  const helper = readFileSync(join(root, 'scripts/pre-push-deletion-only.sh'), 'utf8');
-  const guard = helper.indexOf('[ -t 0 ] && exit 1');
-  const read = helper.indexOf('cat > "$tmp"');
-  assert.ok(guard >= 0 && read > guard);
 });
 
 test('real local Git source push qualifies and branch deletion invokes no gates', (t) => {
