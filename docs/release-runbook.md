@@ -314,4 +314,4 @@ Use only that task's successful preflight continuation to complete delivery. Do 
 
 ## Local Docpact Push Gate
 
-The repository now includes a local pre-push gate that runs `scripts/docpact-gate.sh` and then `pnpm prepush:gate`. It is the ordinary local validation path. For a detected CLI version change, the merge-triggered tag workflow additionally calls the reusable four-platform pnpm matrix and makes tag creation depend on its success; the publish workflow retains its independent tag-bound release gate.
+The repository now includes a local pre-push gate that runs `scripts/docpact-gate.sh` and then `pnpm prepush:gate`. It is the ordinary local validation path for source pushes. Only verified pure branch deletions skip both local gates, as defined in the validation guide; tag and release qualification are unchanged. For a detected CLI version change, the merge-triggered tag workflow additionally calls the reusable four-platform pnpm matrix and makes tag creation depend on its success; the publish workflow retains its independent tag-bound release gate.
