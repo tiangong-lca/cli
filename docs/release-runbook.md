@@ -35,6 +35,8 @@ related:
   - ./agents/repo-validation.md
 ---
 
+Review note, 2026-09-16: W6a/A09 only records the exact CLI/spec comparison and does not authorize a release, package publication, or static-asset switch. Any later W6b adoption must use the existing release gates and a separately reviewed version/content decision.
+
 Issue #278 is a feature delivery for the opt-in managed-host IPC protocol and public runtime receiver. It leaves package version, dependencies, lockfile, authentication, Trusted Publisher setup and release workflows unchanged. Publish this API only through a separately tracked version-bump PR after exact coverage, package consumers, all four native hosts and review pass; complete public provenance verification and exact workspace integration before Foundry/Skills consume it.
 
 Issue #274 delivered the C1 `./runtime` API, machine schemas, component manager, generic no-Node bootstrap sources and `runtime describe` to main merge `20cf32fd45ae1072bb67db27c74d3d81629206f4`. Issue #275 designates 0.1.10 as the separate release-only publication. Its public verifier must bind registry integrity and provenance independently of the package self-description; a CLI descriptor still does not substitute for a frozen product component manifest.

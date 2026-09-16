@@ -1,4 +1,5 @@
 # Review note, 2026-09-13: CLI #312 moves the canonical repository identity to tiangong-lca/cli with immutable numeric repository id 1194220834 and owner id 327771381; workflow guards and active metadata update while version 0.1.14, frozen dependencies and the legacy <=0.1.14 provenance profile (tiangong-lca/tiangong-cli / owner id 199785309) remain immutable.
+# Review note, 2026-09-16: CLI #330 records the W6a/A09 semantic-difference ledger against exact `tidas-spec` candidate `6fb497bad562125ccc0c00a803351207b9ed438f`; the comparison is unresolved and changes no package, fallback, release, or ownership boundary.
 # Review note, 2026-09-11: CLI #289 registers the exact-reference intent contract for its local parser, remote verifier and scoped tests; existing CLI/RLS ownership and release boundaries remain unchanged.
 # Review note, 2026-09-11: CLI #286 exact unit evidence and dimensional Process QA remain within current command, library, validation and release ownership rules; no route or dependency boundary changes.
 # Review note, 2026-09-09: CLI #300 preserves verified POSIX bootstrap archive modes; existing runtime distribution and release routes retain full coverage.
@@ -424,6 +425,28 @@ rules:
       - path: docs/agents/repo-architecture.md
         mode: review_or_update
     reason: Repo entry guidance, machine-readable routing, and retained CLI source docs must stay aligned.
+  - id: cli-tidas-spec-difference-ledger
+    scope: repo
+    repo: cli
+    triggers:
+      - path: docs/agents/tidas-spec-difference-ledger.md
+        kind: deep-doc
+      - path: docs/agents/tidas-spec-difference-ledger.json
+        kind: evidence-ledger
+      - path: scripts/ci/compare-tidas-spec.py
+        kind: validation-script
+      - path: scripts/ci/test-compare-tidas-spec.py
+        kind: repo-test
+    requiredDocs:
+      - path: AGENTS.md
+        mode: review_or_update
+      - path: .docpact/config.yaml
+        mode: review_or_update
+      - path: docs/agents/repo-validation.md
+        mode: review_or_update
+      - path: docs/agents/repo-architecture.md
+        mode: review_or_update
+    reason: The W6a/A09 semantic-difference ledger must remain reproducible and must not be mistaken for a public asset or release decision.
   - id: cli-readme-contract
     scope: repo
     repo: cli
