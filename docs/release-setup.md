@@ -34,6 +34,8 @@ related:
   - ./agents/repo-validation.md
 ---
 
+Review note, 2026-09-16: The W6a/A09 schema-difference ledger is a review artifact only. It introduces no Trusted Publisher, npm, token, tag, workflow, or package-version change; a future W6b adoption remains subject to the existing release contract.
+
 Issue #278 is a feature delivery for the opt-in managed-host IPC protocol and public runtime receiver. It leaves package version, dependencies, lockfile, authentication, Trusted Publisher setup and release workflows unchanged. Publish this API only through a separately tracked version-bump PR after exact coverage, package consumers, all four native hosts and review pass; complete public provenance verification and exact workspace integration before Foundry/Skills consume it.
 
 Issue #274 introduces runtime inspection, component manager, bootstrap and distribution contracts without changing Trusted Publisher settings, workflow names, registry credentials or the release-only main-merge path. Native component/bootstrap publication and product manifests require their complete owner workflows and qualification; adding the descriptor export alone does not publish or qualify them.

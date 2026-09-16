@@ -41,6 +41,8 @@ related:
   - ../../DEV_CN.md
 ---
 
+Review note, 2026-09-16: W6a/A09 adds only a dependency-free evidence ledger comparing the retained CLI `assets/tidas-schemas` to exact `tidas-spec` candidate `6fb497bad562125ccc0c00a803351207b9ed438f`. The ledger does not change the CLI SDK/fallback architecture or authorize W6b adoption.
+
 The `src/runtime.ts` public facade and bounded `src/lib/runtime/**` owners expose package/Node/asset identity through one read-only API and `runtime describe`. [The runtime distribution contract](runtime-distribution-contract.md) separates this package observation from complete component/dependency provenance, host ABI readiness and task authorization. `src/main.ts` admits supported architecture tuples before loading user configuration and bypasses dotenv for runtime commands. The manifest/manager/cache/lease/exec owners are now implemented under #274; the no-Node POSIX/PowerShell bootstrap is implemented under `scripts/bootstrap/`; #275 designates 0.1.10 as C1, while public product component assembly remains downstream.
 
 The managed-host extension in issue #278 keeps launch selection in the generic CLI manager. Dedicated protocol/server/receiver modules hand the exact verified manifest to a declared Node host through a one-use IPC handshake. Original manifest bytes, selected host fields and application argv are owned snapshots; the receiver uses the existing cache/compatibility owners and shared work-directory guards. Product hosts retain their own task, account and business authorization. Cancellation ends handshake admission before child termination, and execution leases remain until output/process closure. No Foundry dependency, new credential store or alternative trust anchor is added.
