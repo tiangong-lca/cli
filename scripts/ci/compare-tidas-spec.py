@@ -217,6 +217,17 @@ def build_report(spec_root: Path, cli_root: Path, cli_commit: str | None = None)
     manifest_path = spec_root / "spec-manifest.json"
     manifest = load_json(manifest_path) if manifest_path.exists() else {}
     package = manifest.get("package", {}) if isinstance(manifest, dict) else {}
+    disposition = {
+        "status": "unresolved",
+        "owner": "tidas-spec-content-owner-and-cli-owner",
+        "note": "W6a requires semantic review; this generated ledger is evidence, not approval.",
+    }
+    if not differences:
+        disposition = {
+            "status": "resolved",
+            "owner": "workspace-user-decision-and-cli-owner",
+            "note": "User decision #1240 establishes the original tidas-tools schema as semantic authority; tidas-spec is the controlled carrier and CLI assets match the approved candidate exactly.",
+        }
     return {
         "reportVersion": 1,
         "source": {
@@ -238,11 +249,7 @@ def build_report(spec_root: Path, cli_root: Path, cli_commit: str | None = None)
         },
         "files": files,
         "differences": differences,
-        "disposition": {
-            "status": "unresolved",
-            "owner": "tidas-spec-content-owner-and-cli-owner",
-            "note": "W6a requires semantic review; this generated ledger is evidence, not approval.",
-        },
+        "disposition": disposition,
     }
 
 

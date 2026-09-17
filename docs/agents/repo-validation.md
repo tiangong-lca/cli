@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-16
-lastReviewedCommit: a5a235e48afca5ba8e14e56c052fd2fd58f80027
-lastReviewedNote: 'Reviewed for CLI #326: remove only the clean-tarball fixture build immediately duplicated by the pinned pnpm prepack lifecycle. Production build, prebuild clean, package gate, all consumer assertions, coverage and release requirements remain. Real compiler/clean trace falls from two to one; 12 package tests, failure/stale-artifact evidence and independent source/seven-document review pass. Single local 8.775 to 8.364 seconds is observational only; full gate, CI and integration remain pending.'
+lastReviewedAt: 2026-09-17
+lastReviewedCommit: 29585e6c2c7a3ddcf5e8f061d37dd95c008489e7
+lastReviewedNote: 'Reviewed for CLI #332: W6b synchronization tests cover valid source binding, manifest/hash drift, unexpected files and invalid manifests; existing CLI validation and release gates remain required.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -44,7 +44,7 @@ related:
   - ../release-setup.md
 ---
 
-Review note, 2026-09-16: W6a/A09 comparison proof is dependency-free and does not alter the CLI package or runtime. Run `python3 scripts/ci/test-compare-tidas-spec.py` plus the explicit `compare-tidas-spec.py --check` command; full CLI validation remains required for later W6b asset adoption.
+Review note, 2026-09-17: W6b adds `test-sync-tidas-spec.py` and the explicit `sync-tidas-spec.py --check` gate. The converged assets pass dataset classification, contract, runtime-descriptor and package tests; full release qualification remains required.
 
 Issue #274 adds runtime descriptor and expectation schemas, file/manifest/asset/Node drift and race tests, immutable observations, explicit four-tuple admission, dotenv-free runtime commands, and clean ESM/CJS/TypeScript packed consumers. Private real-case RED proves public CLI 0.1.9 lacks this surface after actual fresh OAuth identity; candidate GREEN must use an installed package and preserve the frozen input. Package-only hashes do not qualify a full production dependency component. Manager proof additionally requires manifest/parser/path/download/archive/cache/concurrency/lease/exec coverage, a real managed C0 identity case, and byte-bound bootstrap-lock, no-Node POSIX/PowerShell, concurrency/warm/offline and native platform proof. Public-component/C1 qualification remains final release evidence. Existing exact-100% coverage and all four release hosts remain mandatory.
 

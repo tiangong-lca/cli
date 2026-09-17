@@ -37,9 +37,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-16
-lastReviewedCommit: a5a235e48afca5ba8e14e56c052fd2fd58f80027
-lastReviewedNote: 'Reviewed for CLI #326: remove only the clean-tarball fixture build immediately duplicated by the pinned pnpm prepack lifecycle. Production build, prebuild clean, package gate, all consumer assertions, coverage and release requirements remain. Real compiler/clean trace falls from two to one; 12 package tests, failure/stale-artifact evidence and independent source/seven-document review pass. Single local 8.775 to 8.364 seconds is observational only; full gate, CI and integration remain pending.'
+lastReviewedAt: 2026-09-17
+lastReviewedCommit: 29585e6c2c7a3ddcf5e8f061d37dd95c008489e7
+lastReviewedNote: 'Reviewed for CLI #332: W6b converges the bundled TIDAS schema assets to the user-approved tidas-spec candidate through a manifest/hash-checked sync gate. Existing CLI command, SDK/fallback, package and release contracts remain unchanged; publication and root integration remain separately gated.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -51,7 +51,7 @@ related:
   - docs/release-setup.md
 ---
 
-Review note, 2026-09-16: CLI W6a/A09 records a dependency-free comparison against the exact `tidas-spec` candidate. The ledger is intentionally unresolved: no static asset, API/fallback path, package release, or root pointer changes until each semantic difference has an owner, positive/negative fixture, and independent review.
+Review note, 2026-09-17: CLI W6b applies the workspace decision that the original tidas-tools schema, carried by `tidas-spec`, is authoritative. The bundled schemas now match the exact candidate; the sync gate binds commit, source commit, version and manifest hash without changing CLI command or release behavior.
 
 Runtime distribution work is owned by [the runtime distribution contract](docs/agents/runtime-distribution-contract.md). Issue #274 adds the public `./runtime` inspection/manager API and `runtime describe|ensure|status|prune|lease-release|exec`. Component installation is manifest/SHA/inventory/lease bound and grants no task or data authority; the no-Node POSIX/PowerShell bootstrap is checked in under `scripts/bootstrap/`; adjacent product locks are generated only after a product manifest exists. CLI #275 designates 0.1.10 as the C1 package release; public product component qualification remains a separate downstream gate. New CLI launches and TIDAS artifact selection support only macOS arm64, Linux x64/arm64 and Windows x64. The macOS Intel Oxlint release-age exception is removed; transitive lockfile records remain untouched.
 

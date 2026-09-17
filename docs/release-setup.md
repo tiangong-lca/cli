@@ -24,9 +24,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-16
-lastReviewedCommit: a5a235e48afca5ba8e14e56c052fd2fd58f80027
-lastReviewedNote: 'Reviewed for CLI #326: remove only the clean-tarball fixture build immediately duplicated by the pinned pnpm prepack lifecycle. Production build, prebuild clean, package gate, all consumer assertions, coverage and release requirements remain. Real compiler/clean trace falls from two to one; 12 package tests, failure/stale-artifact evidence and independent source/seven-document review pass. Single local 8.775 to 8.364 seconds is observational only; full gate, CI and integration remain pending.'
+lastReviewedAt: 2026-09-17
+lastReviewedCommit: 29585e6c2c7a3ddcf5e8f061d37dd95c008489e7
+lastReviewedNote: 'Reviewed for CLI #332: canonical tidas-spec schema assets are now bound by source identity metadata; Trusted Publisher, npm, tag and package-version setup remains unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -34,7 +34,7 @@ related:
   - ./agents/repo-validation.md
 ---
 
-Review note, 2026-09-16: The W6a/A09 schema-difference ledger is a review artifact only. It introduces no Trusted Publisher, npm, token, tag, workflow, or package-version change; a future W6b adoption remains subject to the existing release contract.
+Review note, 2026-09-17: W6b adds no Trusted Publisher, npm, token, tag, workflow or package-version change. The canonical asset sync is a source/content change and future publication remains subject to the existing release contract.
 
 Issue #278 is a feature delivery for the opt-in managed-host IPC protocol and public runtime receiver. It leaves package version, dependencies, lockfile, authentication, Trusted Publisher setup and release workflows unchanged. Publish this API only through a separately tracked version-bump PR after exact coverage, package consumers, all four native hosts and review pass; complete public provenance verification and exact workspace integration before Foundry/Skills consume it.
 
