@@ -49,6 +49,20 @@ class ComparatorTest(unittest.TestCase):
             self.assertEqual(report["summary"]["differentFiles"], 1)
             self.assertEqual(report["summary"]["differenceCount"], 2)
 
+    def test_zero_difference_report_is_resolved_by_canonical_decision(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cli = root / "cli"
+            spec = root / "spec"
+            (cli / "assets" / "tidas-schemas").mkdir(parents=True)
+            (spec / "assets" / "tidas" / "schemas").mkdir(parents=True)
+            payload = '{"type":"string"}\n'
+            (cli / "assets" / "tidas-schemas" / "shared.json").write_text(payload, encoding="utf-8")
+            (spec / "assets" / "tidas" / "schemas" / "shared.json").write_text(payload, encoding="utf-8")
+            report = MODULE.build_report(spec, cli)
+            self.assertEqual(report["summary"]["differenceCount"], 0)
+            self.assertEqual(report["disposition"]["status"], "resolved")
+
 
 if __name__ == "__main__":
     unittest.main()

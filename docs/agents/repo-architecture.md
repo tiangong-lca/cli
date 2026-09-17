@@ -32,7 +32,7 @@ checkPaths:
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-16
 lastReviewedCommit: 0a9b328187df104d3cec445de51168d472aa88b3
-lastReviewedNote: 'Reviewed for CLI #328: only complete existing-branch deletion bypasses source qualification; all source, tag, mixed, malformed and classifier-failure inputs preserve original Docpact and full canonical gates. Independent source/config/architecture review and real Git, foreign-environment and open-PTY negative controls pass. Runtime, package, coverage and four-platform obligations are unchanged; final checked push and hosted validation remain required.'
+lastReviewedNote: 'Reviewed for CLI #332: W6b replaces only the bundled schema bytes through an explicit tidas-spec source gate and records source identity metadata; CLI command, SDK/fallback and runtime architecture remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -41,7 +41,7 @@ related:
   - ../../DEV_CN.md
 ---
 
-Review note, 2026-09-16: W6a/A09 adds only a dependency-free evidence ledger comparing the retained CLI `assets/tidas-schemas` to exact `tidas-spec` candidate `6fb497bad562125ccc0c00a803351207b9ed438f`. The ledger does not change the CLI SDK/fallback architecture or authorize W6b adoption.
+Review note, 2026-09-17: W6b keeps the retained CLI `assets/tidas-schemas` path but synchronizes its bytes to exact `tidas-spec` candidate `6fb497bad562125ccc0c00a803351207b9ed438f`; the source identity file is package evidence only and adds no command or runtime architecture.
 
 The `src/runtime.ts` public facade and bounded `src/lib/runtime/**` owners expose package/Node/asset identity through one read-only API and `runtime describe`. [The runtime distribution contract](runtime-distribution-contract.md) separates this package observation from complete component/dependency provenance, host ABI readiness and task authorization. `src/main.ts` admits supported architecture tuples before loading user configuration and bypasses dotenv for runtime commands. The manifest/manager/cache/lease/exec owners are now implemented under #274; the no-Node POSIX/PowerShell bootstrap is implemented under `scripts/bootstrap/`; #275 designates 0.1.10 as C1, while public product component assembly remains downstream.
 
