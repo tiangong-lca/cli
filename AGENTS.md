@@ -38,8 +38,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-17
-lastReviewedCommit: 29585e6c2c7a3ddcf5e8f061d37dd95c008489e7
-lastReviewedNote: 'Reviewed for CLI #332: W6b converges the bundled TIDAS schema assets to the user-approved tidas-spec candidate through a manifest/hash-checked sync gate. Existing CLI command, SDK/fallback, package and release contracts remain unchanged; publication and root integration remain separately gated.'
+lastReviewedCommit: f9a9861b1856d1403f0badda2134a474d2c5f7f4
+lastReviewedNote: 'Reviewed for CLI #334: version-only 0.1.16 preparation keeps the W6b source-bound assets and existing release identity while advancing live version fixtures; command, dependency, lock, authentication, quality and integration contracts remain unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md

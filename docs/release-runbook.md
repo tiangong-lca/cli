@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-17
-lastReviewedCommit: 29585e6c2c7a3ddcf5e8f061d37dd95c008489e7
-lastReviewedNote: 'Reviewed for CLI #332: W6b canonical schema synchronization is validated locally; package publication, versioning and existing release gates remain unchanged and separately required.'
+lastReviewedCommit: f9a9861b1856d1403f0badda2134a474d2c5f7f4
+lastReviewedNote: 'Reviewed for CLI #334: 0.1.16 is the separate release-only publication for the merged W6b source-bound assets; the existing four-platform tag, Trusted Publishing, provenance, clean-consumer and workspace handoff sequence remains mandatory.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
