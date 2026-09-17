@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-16
-lastReviewedCommit: 0a9b328187df104d3cec445de51168d472aa88b3
-lastReviewedNote: 'Reviewed for CLI #332: W6b replaces only the bundled schema bytes through an explicit tidas-spec source gate and records source identity metadata; CLI command, SDK/fallback and runtime architecture remain unchanged.'
+lastReviewedAt: 2026-09-17
+lastReviewedCommit: f9a9861b1856d1403f0badda2134a474d2c5f7f4
+lastReviewedNote: 'Reviewed for CLI #334: version-only 0.1.16 preparation changes release identity over the W6b source-bound assets; command, SDK/fallback, runtime and package architecture remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml

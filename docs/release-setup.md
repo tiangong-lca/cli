@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-17
-lastReviewedCommit: 29585e6c2c7a3ddcf5e8f061d37dd95c008489e7
-lastReviewedNote: 'Reviewed for CLI #332: canonical tidas-spec schema assets are now bound by source identity metadata; Trusted Publisher, npm, tag and package-version setup remains unchanged.'
+lastReviewedCommit: f9a9861b1856d1403f0badda2134a474d2c5f7f4
+lastReviewedNote: 'Reviewed for CLI #334: 0.1.16 uses the existing merge-triggered tag and npm Trusted Publishing setup to publish W6b assets; no secret, workflow, publisher, dependency or alternate publication path changes.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

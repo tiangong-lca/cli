@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-17
-lastReviewedCommit: 29585e6c2c7a3ddcf5e8f061d37dd95c008489e7
-lastReviewedNote: 'Reviewed for CLI #332: W6b synchronization tests cover valid source binding, manifest/hash drift, unexpected files and invalid manifests; existing CLI validation and release gates remain required.'
+lastReviewedCommit: f9a9861b1856d1403f0badda2134a474d2c5f7f4
+lastReviewedNote: 'Reviewed for CLI #334: 0.1.16 release preparation retains the existing package, four-platform quality, provenance, clean-consumer and workspace integration gates; only release identity and live version fixtures advance.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
