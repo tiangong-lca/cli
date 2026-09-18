@@ -1530,6 +1530,10 @@ test('identity preflight internals cover schema lookup and decision confidence e
   assert.match(schema.validator, /ProcessSchema/u);
   assert.equal(typeof schema.schema.safeParse, 'function');
 
+  const flowSchema = __testInternals.schemaForKind('flow', undefined);
+  assert.match(flowSchema.validator, /FlowSchema/u);
+  assert.equal(typeof flowSchema.schema.safeParse, 'function');
+
   const originalProcessFactory = __testInternals.entityFactoryExports.process;
   try {
     __testInternals.entityFactoryExports.process = 'missingProcessFactory' as never;

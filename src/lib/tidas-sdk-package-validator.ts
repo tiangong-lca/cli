@@ -6,6 +6,7 @@ import {
   type SdkValidationFactory,
   validateSchemaWithDeepFallback,
 } from './tidas-sdk-validation.js';
+import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 import { TIDAS_LANGUAGE_CODE_SET } from './tidas-languages.js';
 
 type JsonObject = Record<string, unknown>;
@@ -787,7 +788,12 @@ function resolveCategorySchemas(
     const factoryName = CATEGORY_FACTORY_EXPORTS[category];
     const createEntity = moduleExports[factoryName];
     schemas.set(category, {
-      schema,
+      schema:
+        category === 'processes'
+          ? withOptionalReviewReportReference(schema, 'processes')
+          : category === 'lciamethods'
+            ? withOptionalReviewReportReference(schema, 'lciamethods')
+            : schema,
       createEntity: typeof createEntity === 'function' ? createEntity : null,
     });
   }

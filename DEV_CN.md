@@ -36,6 +36,8 @@ related:
 
 当前 #274 平台合同仅支持 macOS arm64、Linux x64/arm64、Windows x64；不通过旧版安装器回退 macOS Intel。`runtime ensure/status/prune/lease-release/exec` 已由 CLI 的 manifest、完整文件清单、锁、缓存及 lease 控制；无 Node 的 POSIX/PowerShell bootstrap 已进入 `scripts/bootstrap/`，只读取相邻的产品 lock；公开 C1 和组件资格仍待完成。运行时描述/组件分发的 owner 与验证边界见 [Runtime Distribution Contract](docs/agents/runtime-distribution-contract.md)。
 
+Review note, 2026-09-18: CLI #338 将 Process/LCIA Method 的完整评审报告引用改为可选，并在已发布 SDK 尚未携带候选 schema 的短窗口内对缺失引用做一次内存兼容重试；提供的引用仍严格校验，Lifecycle Model 不变。该变更只影响 schema/validation 与测试，不改变命令、依赖、版本、认证或发布路径。
+
 # 项目配置
 
 本项目是 TianGong 的统一 CLI 仓库，本地与 CI 运行时基线固定为 Node 24.19.0，开发工具链固定为 pnpm 11.24.0、TypeScript 7.0.2 与 type-aware Oxlint，但发布运行时只执行 `dist/` 下的构建产物。

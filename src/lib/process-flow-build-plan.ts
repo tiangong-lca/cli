@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
+import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 import { writeJsonArtifact } from './artifacts.js';
 import { CliError } from './errors.js';
 import {
@@ -1420,7 +1421,7 @@ function schemaForKind(
   ];
   return {
     validator: `@tiangong-lca/tidas-sdk/${String(SCHEMA_EXPORTS[kind])}`,
-    schema,
+    schema: kind === 'process' ? withOptionalReviewReportReference(schema, 'processes') : schema,
     createEntity,
   };
 }

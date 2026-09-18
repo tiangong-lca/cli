@@ -36,6 +36,8 @@ related:
 
 Review note, 2026-09-17: W6b adds no Trusted Publisher, npm, token, tag, workflow or package-version change. The canonical asset sync is a source/content change and future publication remains subject to the existing release contract.
 
+Review note, 2026-09-18: CLI #338 adds no release setup surface. The Process/LCIA Method optional review-report schema sync and temporary SDK validation bridge change neither Trusted Publisher settings, credentials, tags, workflows, package version nor publication mechanics.
+
 Issue #278 is a feature delivery for the opt-in managed-host IPC protocol and public runtime receiver. It leaves package version, dependencies, lockfile, authentication, Trusted Publisher setup and release workflows unchanged. Publish this API only through a separately tracked version-bump PR after exact coverage, package consumers, all four native hosts and review pass; complete public provenance verification and exact workspace integration before Foundry/Skills consume it.
 
 Issue #274 introduces runtime inspection, component manager, bootstrap and distribution contracts without changing Trusted Publisher settings, workflow names, registry credentials or the release-only main-merge path. Native component/bootstrap publication and product manifests require their complete owner workflows and qualification; adding the descriptor export alone does not publish or qualify them.

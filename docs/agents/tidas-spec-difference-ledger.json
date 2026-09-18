@@ -2,11 +2,11 @@
   "reportVersion": 1,
   "source": {
     "cliRepository": "tiangong-lca/cli",
-    "cliCommit": "29585e6c2c7a3ddcf5e8f061d37dd95c008489e7",
+    "cliCommit": "7a7e2c94ae57beecae4e8f6f90ffcadd277f08a4",
     "specRepository": "tiangong-lca/tidas-spec",
-    "specCommit": "6fb497bad562125ccc0c00a803351207b9ed438f",
-    "specVersion": "0.1.0",
-    "manifestSha256": "fe82b77411e2a134469b206367556a52bf6be80419fcbc0749a2439dc785631b"
+    "specCommit": "58dc72f5cb2d203a00388fec71d31091911f7dde",
+    "specVersion": "0.2.0",
+    "manifestSha256": "4677b9cf864326be9d430bf9760c754c4c0c1905d90e62c161655a159fd758c7"
   },
   "paths": {
     "cli": "assets/tidas-schemas",
@@ -80,8 +80,8 @@
     {
       "name": "tidas_lciamethods.json",
       "status": "identical",
-      "cliSha256": "6a96fa34bda4d848eeaa1edb124a544f4511c824436514e62b58626919e57836",
-      "specSha256": "6a96fa34bda4d848eeaa1edb124a544f4511c824436514e62b58626919e57836",
+      "cliSha256": "ccaee6c3f1ee48712b6280df07e973c9b8225d95b78dd441566ffcc4a2f9561e",
+      "specSha256": "ccaee6c3f1ee48712b6280df07e973c9b8225d95b78dd441566ffcc4a2f9561e",
       "differenceCount": 0
     },
     {
@@ -108,8 +108,8 @@
     {
       "name": "tidas_processes.json",
       "status": "identical",
-      "cliSha256": "8476530740d2af11fe3c607afbeab68a318c6b08d7558417ebcad8ac33f0efdd",
-      "specSha256": "8476530740d2af11fe3c607afbeab68a318c6b08d7558417ebcad8ac33f0efdd",
+      "cliSha256": "385448c7f2f5f41aa31efad649a61758ef39fcfdc8e55984438fed1b56ccf6a7",
+      "specSha256": "385448c7f2f5f41aa31efad649a61758ef39fcfdc8e55984438fed1b56ccf6a7",
       "differenceCount": 0
     },
     {

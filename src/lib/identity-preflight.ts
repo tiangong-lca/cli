@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
+import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
 import { readRuntimeEnv } from './env.js';
 import { CliError } from './errors.js';
@@ -783,7 +784,10 @@ function schemaForKind(
   const createEntity = (tidasSdk as Record<string, unknown>)[factoryName];
   return {
     validator: `@tiangong-lca/tidas-sdk/${String(exportName)}`,
-    schema: candidate as SafeParseSchema,
+    schema:
+      kind === 'process'
+        ? withOptionalReviewReportReference(candidate as SafeParseSchema, 'processes')
+        : (candidate as SafeParseSchema),
     createEntity:
       typeof createEntity === 'function' ? (createEntity as SdkValidationFactory) : null,
   };
