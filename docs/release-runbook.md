@@ -37,6 +37,8 @@ related:
 
 Review note, 2026-09-17: W6b converges the static schema assets but does not authorize a release or package publication. Any new CLI version must still use the existing release gates, provenance and version/content review.
 
+Review note, 2026-09-18: CLI #338 is a schema/validation feature delivery only. It advances bundled Process and LCIA Method assets to the reviewed `tidas-spec` 0.2.0 candidate and adds no package-version, tag, publication, or provenance claim; the existing four-platform, Docpact, coverage, release and workspace gates remain required for any later release.
+
 Issue #278 is a feature delivery for the opt-in managed-host IPC protocol and public runtime receiver. It leaves package version, dependencies, lockfile, authentication, Trusted Publisher setup and release workflows unchanged. Publish this API only through a separately tracked version-bump PR after exact coverage, package consumers, all four native hosts and review pass; complete public provenance verification and exact workspace integration before Foundry/Skills consume it.
 
 Issue #274 delivered the C1 `./runtime` API, machine schemas, component manager, generic no-Node bootstrap sources and `runtime describe` to main merge `20cf32fd45ae1072bb67db27c74d3d81629206f4`. Issue #275 designates 0.1.10 as the separate release-only publication. Its public verifier must bind registry integrity and provenance independently of the package self-description; a CLI descriptor still does not substitute for a frozen product component manifest.

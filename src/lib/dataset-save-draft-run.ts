@@ -3,6 +3,7 @@
 import { closeSync, chmodSync, fsyncSync, mkdirSync, openSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
+import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 import { createBatchContract, runBoundedBatch, type BatchJsonValue } from '../batch.js';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
 import { collectImportContentIssues } from './dataset-validate.js';
@@ -783,7 +784,10 @@ function schemaForConfig(config: DatasetTypeConfig): {
   }
   const createEntity = (tidasSdk as Record<string, unknown>)[config.factoryName];
   return {
-    schema: schema as SafeParseSchema,
+    schema:
+      config.table === 'processes'
+        ? withOptionalReviewReportReference(schema as SafeParseSchema, 'processes')
+        : (schema as SafeParseSchema),
     createEntity:
       typeof createEntity === 'function' ? (createEntity as SdkValidationFactory) : null,
   };

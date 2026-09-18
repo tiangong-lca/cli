@@ -1,3 +1,4 @@
+# Review note, 2026-09-18: CLI #338 keeps W10S Process/LCIA Method review-report optionality inside existing command, SDK-validation, asset, test and release ownership; the candidate bridge adds no route, dependency, command, authorization or publication boundary.
 # Review note, 2026-09-18: CLI #336 keeps W9 public-rule API/fallback composition inside existing runtime, asset, test and validation ownership; no route, dependency, command, authorization or release boundary changes.
 # Review note, 2026-09-13: CLI #312 moves the canonical repository identity to tiangong-lca/cli with immutable numeric repository id 1194220834 and owner id 327771381; workflow guards and active metadata update while version 0.1.14, frozen dependencies and the legacy <=0.1.14 provenance profile (tiangong-lca/tiangong-cli / owner id 199785309) remain immutable.
 # Review note, 2026-09-17: CLI #332 implements W6b convergence to the exact `tidas-spec` candidate `6fb497bad562125ccc0c00a803351207b9ed438f` using a manifest/hash-checked synchronizer; package, fallback, release and ownership boundaries remain unchanged.
@@ -547,6 +548,8 @@ rules:
       - path: src/lib/tidas-languages.ts
         kind: validation-runtime
       - path: src/lib/tidas-sdk-validation.ts
+        kind: validation-runtime
+      - path: src/lib/tidas-review-report-optionality.ts
         kind: validation-runtime
       - path: src/lib/tidas-sdk-package-validator.ts
         kind: validation-runtime

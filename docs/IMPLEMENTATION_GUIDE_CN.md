@@ -36,6 +36,8 @@ related:
 
 # TianGong LCA CLI 实施指南
 
+Review note, 2026-09-18: CLI #338 将 Process 与 LCIA Method 的 `common:referenceToCompleteReviewReport` 收敛为可选字段；若提供，仍由 TIDAS schema 严格校验，Lifecycle Model 不变。CLI 在已发布 SDK 尚未同步候选 schema 的过渡窗口内，仅对“缺失该引用”的 Process/LCIA Method 校验做内存兼容重试；原始输入不修改，非法或已提供引用不放宽。该桥接不改变命令、公共包导出、版本或发布路径。
+
 Review note, 2026-08-31: Issue #256 keeps package 0.1.5 and the existing implementation architecture while refreshing Supabase JS/tooling to the latest Node 24-compatible releases. TIDAS SDK is pinned exactly to npm-latest 0.2.0, peer checks join the pre-push gate, and Prettier 3.9's mechanical rewrite is isolated. Issue #257 owns the later version-only 0.1.6 publication.
 
 Review note, 2026-08-25: Issue #224 把实现与验证工具链固定为 Node 24.19.0、pnpm 11.23.0、TypeScript 7.0.2 与 type-aware Oxlint。依赖只由根 `pnpm-workspace.yaml` / `pnpm-lock.yaml` 决定；不保留 TypeScript 5/6、ESLint 或 Compiler API 兼容路径。`test:package` 同时验证单轨工具链、干净 tarball 和 package-manager-neutral consumer。feature 版本保持 0.0.33；合并和完整门禁通过后，建议用单独的 release-only PR 准备 0.1.0。

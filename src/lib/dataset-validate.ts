@@ -18,6 +18,7 @@ import {
   collectProcessPlaceholderIssues,
   collectProcessRequiredFieldIssues,
 } from './process-required-fields.js';
+import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 
 type DatasetValidateType = 'auto' | DatasetKind;
 
@@ -235,7 +236,10 @@ function schemaForKind(
 
   return {
     validator: `@tiangong-lca/tidas-sdk/${String(exportName)}`,
-    schema: candidate as SafeParseSchema,
+    schema:
+      kind === 'process'
+        ? withOptionalReviewReportReference(candidate as SafeParseSchema, 'processes')
+        : (candidate as SafeParseSchema),
     createEntity:
       typeof createEntity === 'function' ? (createEntity as SdkValidationFactory) : null,
   };

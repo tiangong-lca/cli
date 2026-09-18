@@ -5,6 +5,7 @@ import {
   type SdkValidationFactory,
   validateSchemaWithDeepFallback,
 } from './tidas-sdk-validation.js';
+import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 import {
   collectProcessPlaceholderIssues,
   collectProcessRequiredFieldIssues,
@@ -40,7 +41,7 @@ function getProcessSchema(): SafeParseSchema {
   if (!schema?.safeParse) {
     throw new Error(`${PROCESS_SCHEMA_VALIDATOR} is unavailable in the published CLI runtime.`);
   }
-  return schema;
+  return withOptionalReviewReportReference(schema, 'processes');
 }
 
 function getProcessFactory(

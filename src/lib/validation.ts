@@ -238,6 +238,14 @@ export function resolveSdkModuleFromCandidates(
       const loaded = requireFn(candidate) as Record<string, unknown> & {
         validatePackageDir?: unknown;
       };
+      const packageValidator = createTidasSdkPackageValidator(
+        loaded as Parameters<typeof createTidasSdkPackageValidator>[0],
+        candidate,
+      );
+      if (packageValidator) {
+        return packageValidator;
+      }
+
       if (typeof loaded.validatePackageDir === 'function') {
         return {
           location: candidate,
@@ -246,14 +254,6 @@ export function resolveSdkModuleFromCandidates(
             emitLogs?: boolean,
           ) => unknown,
         };
-      }
-
-      const packageValidator = createTidasSdkPackageValidator(
-        loaded as Parameters<typeof createTidasSdkPackageValidator>[0],
-        candidate,
-      );
-      if (packageValidator) {
-        return packageValidator;
       }
 
       details.push(`Candidate missing direct package validation exports: ${candidate}`);

@@ -14,6 +14,7 @@ import {
   type JsonObject,
 } from './dataset-maintenance-contract.js';
 import type { SafeParseSchema } from './tidas-sdk-validation.js';
+import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 
 export type DatasetMaintenanceAliasSchemas = {
   flowproperties: SafeParseSchema;
@@ -24,7 +25,10 @@ export type DatasetMaintenanceAliasSchemas = {
 const DEFAULT_ALIAS_SCHEMAS: DatasetMaintenanceAliasSchemas = {
   flowproperties: FlowPropertySchema as unknown as SafeParseSchema,
   flows: FlowSchema as unknown as SafeParseSchema,
-  processes: ProcessSchema as unknown as SafeParseSchema,
+  processes: withOptionalReviewReportReference(
+    ProcessSchema as unknown as SafeParseSchema,
+    'processes',
+  ),
 };
 
 const ALIAS_PROFILES = {
