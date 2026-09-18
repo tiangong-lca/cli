@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-17
-lastReviewedCommit: f9a9861b1856d1403f0badda2134a474d2c5f7f4
-lastReviewedNote: 'Reviewed for CLI #334: 0.1.16 uses the existing merge-triggered tag and npm Trusted Publishing setup to publish W6b assets; no secret, workflow, publisher, dependency or alternate publication path changes.'
+lastReviewedCommit: 4316c205453071c8cbb45e06480344f8eae5e041
+lastReviewedNote: 'Reviewed for CLI #336: W9 changes no secret, workflow, publisher, dependency, package version, tag trigger, or alternate publication path; the bundled candidate asset remains subject to the existing package gate.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

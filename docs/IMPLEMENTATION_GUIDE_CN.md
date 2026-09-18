@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 069c266cd6d6fad35bd7c733aef9d30cfa3371a7
-lastReviewedNote: 'Reviewed for CLI #316: canonical tidas-sdks development lookup retains legacy and packaged behavior. Release-context fixtures clear borrowed Git repository routing and preserve foreign config, HEAD, index and files. No version, lock, public release identity or production behavior changes.'
+lastReviewedAt: 2026-09-18
+lastReviewedCommit: 4316c205453071c8cbb45e06480344f8eae5e041
+lastReviewedNote: 'Reviewed for CLI #336: W9 changes internal runtime-rule composition and its verification gate only; command implementation guidance, SDK development lookup, release identity, and production behavior remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

@@ -38,8 +38,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-17
-lastReviewedCommit: f9a9861b1856d1403f0badda2134a474d2c5f7f4
-lastReviewedNote: 'Reviewed for CLI #334: version-only 0.1.16 preparation keeps the W6b source-bound assets and existing release identity while advancing live version fixtures; command, dependency, lock, authentication, quality and integration contracts remain unchanged.'
+lastReviewedCommit: 4316c205453071c8cbb45e06480344f8eae5e041
+lastReviewedNote: 'Reviewed for CLI #336: W9 composes exact reviewed public definitions with CLI-owned runtime policy, preferring the candidate SDK API and retaining a hash-bound fallback for published SDK 0.2.0. Commands, dependencies, lock, authorization and exit behavior remain unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -52,6 +52,8 @@ related:
 ---
 
 Review note, 2026-09-17: CLI W6b applies the workspace decision that the original tidas-tools schema, carried by `tidas-spec`, is authoritative. The bundled schemas now match the exact candidate; the sync gate binds commit, source commit, version and manifest hash without changing CLI command or release behavior.
+
+Review note, 2026-09-18: CLI W9 keeps severity, phases, blocker defaults, profile membership, local mappings, dispositions, and exits under CLI ownership. `src/lib/runtime-rulesets.ts` accepts the SDK public-rule API only when it is exactly equivalent to the bundled W8 candidate; absence falls back, while malformed, stale, not-covered, or incompatible data fails closed.
 
 Runtime distribution work is owned by [the runtime distribution contract](docs/agents/runtime-distribution-contract.md). Issue #274 adds the public `./runtime` inspection/manager API and `runtime describe|ensure|status|prune|lease-release|exec`. Component installation is manifest/SHA/inventory/lease bound and grants no task or data authority; the no-Node POSIX/PowerShell bootstrap is checked in under `scripts/bootstrap/`; adjacent product locks are generated only after a product manifest exists. CLI #275 designates 0.1.10 as the C1 package release; public product component qualification remains a separate downstream gate. New CLI launches and TIDAS artifact selection support only macOS arm64, Linux x64/arm64 and Windows x64. The macOS Intel Oxlint release-age exception is removed; transitive lockfile records remain untouched.
 
@@ -240,7 +242,7 @@ Route those tasks to:
 - `flow publish-version` validates canonical flow payloads with `FlowSchema` before remote visibility planning or writes, and emits `flow-publish-version-gate-report.json` as the blocking ruleset artifact.
 - `process publish-build` validates canonical process payloads with `ProcessSchema` before publish handoff artifacts are written, and emits `reports/process-publish-schema-gate.json`.
 - `publish run` emits `verification-report.json` next to `publish-report.json`; this is the deterministic publish ruleset summary for failed/deferred/executed outcomes.
-- `src/lib/runtime-rulesets.ts` is the CLI-local runtime activation layer for stable ruleset ids, methodology rule ids, severity, and blocker semantics used by review, dedup, and publish gate artifacts.
+- `src/lib/runtime-rulesets.ts` composes exact source-bound public definitions with the CLI-local activation policy for stable ruleset ids, methodology rule ids, severity, phases, and blocker semantics used by review, dedup, and publish gate artifacts. The candidate SDK API is preferred only after byte-equivalence checks; published SDK 0.2.0 uses the bundled fallback.
 - The canonical minimum validation command is `pnpm lint`. Type-aware Oxlint is the only linter; the retired ESLint and TypeScript Compiler API lint paths must not return.
 - The authoritative full gate is `pnpm prepush:gate`; it includes `pnpm test:package`, the exact 100% coverage proof, and the coverage assertion. The local pre-push hook runs it after docpact for source pushes; only a complete, verified branch-deletion-only stdin stream skips both gates as documented in the validation guide.
 - Release tagging is guarded in `.github/workflows/tag-release-from-merge.yml` so only the upstream repository can execute the merge-tag flow. Its detector runs under exact Node 24.19.0; it calls the reusable four-platform `.github/workflows/quality-gate.yml` only for a CLI release, every job asserts exact runtime platform/architecture, and `cli-v<version>` tag creation depends on all four. `.github/workflows/publish.yml` publishes from that tag and also supports `workflow_dispatch` for existing-tag recovery/backfill.

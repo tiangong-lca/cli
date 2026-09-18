@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-17
-lastReviewedCommit: f9a9861b1856d1403f0badda2134a474d2c5f7f4
-lastReviewedNote: 'Reviewed for CLI #334: 0.1.16 is the separate release-only publication for the merged W6b source-bound assets; the existing four-platform tag, Trusted Publishing, provenance, clean-consumer and workspace handoff sequence remains mandatory.'
+lastReviewedCommit: 4316c205453071c8cbb45e06480344f8eae5e041
+lastReviewedNote: 'Reviewed for CLI #336: W9 adds an exact public-rule verification step to pre-push without publishing a version. Four-platform tag, Trusted Publishing, provenance, clean-consumer and workspace handoff sequencing remain mandatory.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
