@@ -22,9 +22,9 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-09-18
-lastReviewedCommit: 4316c205453071c8cbb45e06480344f8eae5e041
-lastReviewedNote: 'Reviewed for CLI #336: maintainers must keep the exact W8 public-rule verification in pre-push; runtime/env commands, SDK development lookup, package identity, lock, and production behavior remain unchanged.'
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: fb2958157960a65c40d816042b3f1c5a0fcdee7e
+lastReviewedNote: 'Reviewed for CLI #340: SDK 0.2.2 and released spec 0.2.1 public definitions replace the W8 candidate; dataset context-pack rulesets now project CLI policy and no longer read the SDK mixed asset.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -37,6 +37,8 @@ related:
 当前 #274 平台合同仅支持 macOS arm64、Linux x64/arm64、Windows x64；不通过旧版安装器回退 macOS Intel。`runtime ensure/status/prune/lease-release/exec` 已由 CLI 的 manifest、完整文件清单、锁、缓存及 lease 控制；无 Node 的 POSIX/PowerShell bootstrap 已进入 `scripts/bootstrap/`，只读取相邻的产品 lock；公开 C1 和组件资格仍待完成。运行时描述/组件分发的 owner 与验证边界见 [Runtime Distribution Contract](docs/agents/runtime-distribution-contract.md)。
 
 Review note, 2026-09-18: CLI #338 将 Process/LCIA Method 的完整评审报告引用改为可选，并在已发布 SDK 尚未携带候选 schema 的短窗口内对缺失引用做一次内存兼容重试；提供的引用仍严格校验，Lifecycle Model 不变。该变更只影响 schema/validation 与测试，不改变命令、依赖、版本、认证或发布路径。
+
+Review note, 2026-09-20: CLI #340 精确锁定 SDK 0.2.2 与已发布 spec 0.2.1 公共规则。`dataset contract` 的 ruleset、manifest 与 AI context 路径保持，内容由 CLI profile 和经校验的公共定义组合；不再读取 SDK 旧混合规则文件。CLI 包版本不变，公开发行仍需独立版本 PR 和完整门禁。
 
 # 项目配置
 

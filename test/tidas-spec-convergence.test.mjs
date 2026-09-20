@@ -14,13 +14,13 @@ test('bundled TIDAS assets bind the approved canonical source identity', () => {
   );
   assert.equal(identity.schema, 'tiangong-lca.cli-tidas-spec-source.v1');
   assert.equal(identity.spec_repository, 'tiangong-lca/tidas-spec');
-  assert.equal(identity.spec_commit, '58dc72f5cb2d203a00388fec71d31091911f7dde');
+  assert.equal(identity.spec_commit, 'd4cb089c753ffd20b173db2e56fb553a364f48f4');
   assert.equal(identity.source_repository, 'https://github.com/tiangong-lca/tidas-toolkit');
   assert.equal(identity.source_commit, '9c0d8b1c8ceb1841074f5bc6de5fbb7fcc9318f5');
-  assert.equal(identity.spec_version, '0.2.0');
+  assert.equal(identity.spec_version, '0.2.1');
   assert.equal(
     identity.manifest_sha256,
-    '4677b9cf864326be9d430bf9760c754c4c0c1905d90e62c161655a159fd758c7',
+    '16d4d5950496544b50cd6b1570789930da104af313a325bb9eaa466507ec6bb5',
   );
   assert.equal(identity.schemas.length, 18);
 });

@@ -24,9 +24,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-17
-lastReviewedCommit: 4316c205453071c8cbb45e06480344f8eae5e041
-lastReviewedNote: 'Reviewed for CLI #336: W9 changes no secret, workflow, publisher, dependency, package version, tag trigger, or alternate publication path; the bundled candidate asset remains subject to the existing package gate.'
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: fb2958157960a65c40d816042b3f1c5a0fcdee7e
+lastReviewedNote: 'Reviewed for CLI #340: SDK dependency pin and contract-content change require no new secret, Trusted Publisher setup, workflow, tag rule, or alternate publication path.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -37,6 +37,8 @@ related:
 Review note, 2026-09-17: W6b adds no Trusted Publisher, npm, token, tag, workflow or package-version change. The canonical asset sync is a source/content change and future publication remains subject to the existing release contract.
 
 Review note, 2026-09-18: CLI #338 adds no release setup surface. The Process/LCIA Method optional review-report schema sync and temporary SDK validation bridge change neither Trusted Publisher settings, credentials, tags, workflows, package version nor publication mechanics.
+
+Review note, 2026-09-20: CLI #340 upgrades the exact SDK dependency to 0.2.2 and changes contract content only; Trusted Publisher settings, credentials, tags, workflow names, package version, and publication mechanics remain unchanged. A later CLI release follows the existing separate version-bump route.
 
 Issue #278 is a feature delivery for the opt-in managed-host IPC protocol and public runtime receiver. It leaves package version, dependencies, lockfile, authentication, Trusted Publisher setup and release workflows unchanged. Publish this API only through a separately tracked version-bump PR after exact coverage, package consumers, all four native hosts and review pass; complete public provenance verification and exact workspace integration before Foundry/Skills consume it.
 

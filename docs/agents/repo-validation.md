@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-17
-lastReviewedCommit: 4316c205453071c8cbb45e06480344f8eae5e041
-lastReviewedNote: 'Reviewed for CLI #336: pre-push now verifies exact W8 public-rule bytes before lint/package/full-coverage proof; API/fallback equivalence and fail-closed composition branches are covered without changing four-platform or release gates.'
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: fb2958157960a65c40d816042b3f1c5a0fcdee7e
+lastReviewedNote: 'Reviewed for CLI #340: verify released spec 0.2.1/SDK 0.2.2 identity, no-old-file contract projection, installed package and exact 100% coverage before W11 consumer handoff.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -46,7 +46,7 @@ related:
 
 Review note, 2026-09-17: W6b adds `test-sync-tidas-spec.py` and the explicit `sync-tidas-spec.py --check` gate. The converged assets pass dataset classification, contract, runtime-descriptor and package tests; full release qualification remains required.
 
-Review note, 2026-09-18: W10S refreshes the sync gate to the reviewed 0.2.0 candidate and adds focused Process/LCIA Method optionality tests. The SDK compatibility path retries only an omitted report reference, malformed/supplied references remain failures, and Lifecycle Model is asserted unchanged. Candidate qualification is not a formal CLI or SDK publication.
+Review note, 2026-09-18: W10S refreshes the sync gate to the reviewed 0.2.0 candidate and adds focused Process/LCIA Method optionality tests. The SDK compatibility path retries only an omitted report reference, malformed/supplied references remain failures, and Lifecycle Model is asserted unchanged. Candidate qualification is not a formal CLI or SDK publication. Review note, 2026-09-20: CLI #340 checks the released SDK 0.2.2/spec 0.2.1 identity, contract output with the old SDK mixed file absent or invalid, context-pack manifest and AI-context parity, explicit local/fallback source rejection, and unchanged review/publish gate outcomes. A merged source PR and a separate qualified package release/root integration remain distinct.
 
 Issue #274 adds runtime descriptor and expectation schemas, file/manifest/asset/Node drift and race tests, immutable observations, explicit four-tuple admission, dotenv-free runtime commands, and clean ESM/CJS/TypeScript packed consumers. Private real-case RED proves public CLI 0.1.9 lacks this surface after actual fresh OAuth identity; candidate GREEN must use an installed package and preserve the frozen input. Package-only hashes do not qualify a full production dependency component. Manager proof additionally requires manifest/parser/path/download/archive/cache/concurrency/lease/exec coverage, a real managed C0 identity case, and byte-bound bootstrap-lock, no-Node POSIX/PowerShell, concurrency/warm/offline and native platform proof. Public-component/C1 qualification remains final release evidence. Existing exact-100% coverage and all four release hosts remain mandatory.
 

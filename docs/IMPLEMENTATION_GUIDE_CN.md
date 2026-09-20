@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-09-18
-lastReviewedCommit: 4316c205453071c8cbb45e06480344f8eae5e041
-lastReviewedNote: 'Reviewed for CLI #336: W9 changes internal runtime-rule composition and its verification gate only; command implementation guidance, SDK development lookup, release identity, and production behavior remain unchanged.'
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: fb2958157960a65c40d816042b3f1c5a0fcdee7e
+lastReviewedNote: 'Reviewed for CLI #340: dataset contract ruleset artifact remains an explicit CLI-owned projection over released public definitions and local profiles, independent of the SDK mixed compatibility input.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -35,6 +35,8 @@ related:
 #274 新增 `runtime describe --json` 与公开 `@tiangong-lca/cli/runtime` 模块，检查 CLI 包、资产和 Node 文件内容。runtime 命令不加载项目 `.env`，不登录、不下载；启动入口拒绝 macOS Intel，同时保留 Linux/Windows x64。组件 manifest、安装缓存、离线复用、lease/prune 和受控执行已由 #274 实现；无 Node 的 POSIX/PowerShell bootstrap 已实现并由相邻 lock 固定；公开组件和四平台 C1 仍需发行资格验证，见 [Runtime Distribution Contract](./agents/runtime-distribution-contract.md)。该 API 尚未随现有公开 0.1.9 发布。
 
 # TianGong LCA CLI 实施指南
+
+Review note, 2026-09-20: CLI #340 将 SDK 精确锁升级至已发布 0.2.2，公共规则绑定至 spec 0.2.1。`dataset contract/context-pack` 保留显式请求的 ruleset 文件、manifest 摘要和 AI 上下文路径，但内容由 CLI profile 与已验证公共定义组合；不再读取 SDK 的旧混合规则文件。Process Version 说明采用正式规范修正后的 NN.NN 与可选 NN.NN.NNN 语义。
 
 Review note, 2026-09-18: CLI #338 将 Process 与 LCIA Method 的 `common:referenceToCompleteReviewReport` 收敛为可选字段；若提供，仍由 TIDAS schema 严格校验，Lifecycle Model 不变。CLI 在已发布 SDK 尚未同步候选 schema 的过渡窗口内，仅对“缺失该引用”的 Process/LCIA Method 校验做内存兼容重试；原始输入不修改，非法或已提供引用不放宽。该桥接不改变命令、公共包导出、版本或发布路径。
 

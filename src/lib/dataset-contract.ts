@@ -4,6 +4,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { writeJsonArtifact, writeTextArtifact } from './artifacts.js';
+import { getCliContractRuleset } from './dataset-contract-ruleset.js';
 import { CliError } from './errors.js';
 
 export type DatasetContractInclude = 'schema' | 'methodology' | 'ruleset';
@@ -248,13 +249,27 @@ async function loadContractPack(options: {
   }
   const getTidasContractPack = sdkModule.getTidasContractPack;
   if (typeof getTidasContractPack === 'function') {
+    const pack = getTidasContractPack(options.type, {
+      include: options.includes.filter((include) => include !== 'ruleset'),
+      profile: options.profile,
+      includeAiContext: options.includeAiContext,
+    }) as ContractPack;
+    const runtimeRuleset = options.includes.includes('ruleset')
+      ? getCliContractRuleset(options.type)
+      : undefined;
+    pack.runtimeRuleset = runtimeRuleset;
+    if (typeof pack.manifest === 'object' && pack.manifest !== null) {
+      (pack.manifest as Record<string, unknown>).includes = [...options.includes];
+      (pack.manifest as Record<string, unknown>).ruleset = runtimeRuleset
+        ? artifactManifest('runtime_rulesets.json', JSON.stringify(runtimeRuleset, null, 2))
+        : null;
+    }
+    if (options.includeAiContext && typeof pack.aiContext === 'object' && pack.aiContext !== null) {
+      (pack.aiContext as Record<string, unknown>).runtime_ruleset = runtimeRuleset;
+    }
     return {
       source: 'sdk-contract-api',
-      pack: getTidasContractPack(options.type, {
-        include: options.includes,
-        profile: options.profile,
-        includeAiContext: options.includeAiContext,
-      }) as ContractPack,
+      pack,
     };
   }
 
@@ -280,11 +295,8 @@ function loadFallbackContractPack(options: {
     options.includes.includes('methodology') && methodologyFile
       ? readOptionalText(path.join(runtimeRoot, 'tidas', 'methodologies', methodologyFile))
       : undefined;
-  const rulesetText = options.includes.includes('ruleset')
-    ? readOptionalText(path.join(runtimeRoot, 'tidas', 'methodologies', 'runtime_rulesets.json'))
-    : undefined;
-  const runtimeRuleset = rulesetText
-    ? filterRuntimeRuleset(JSON.parse(rulesetText) as Record<string, unknown>, options.type)
+  const runtimeRuleset = options.includes.includes('ruleset')
+    ? getCliContractRuleset(options.type)
     : undefined;
   const aiContext = options.includeAiContext
     ? buildAiContext({
@@ -395,38 +407,6 @@ function readOptionalText(filePath: string): string | undefined {
   return readFileSync(filePath, 'utf8');
 }
 
-function filterRuntimeRuleset(
-  source: Record<string, unknown>,
-  type: CanonicalKind,
-): unknown | undefined {
-  const rulesets = Array.isArray(source.rulesets)
-    ? source.rulesets.filter((entry) => isRulesetForType(entry, type))
-    : [];
-  const rules = Array.isArray(source.rules)
-    ? source.rules.filter((entry) => isRulesetForType(entry, type))
-    : [];
-  if (!rulesets.length && !rules.length) {
-    return undefined;
-  }
-  return {
-    $schema: source.$schema,
-    schema_version: source.schema_version,
-    ruleset_version: source.ruleset_version,
-    purpose: source.purpose,
-    rulesets,
-    rules,
-  };
-}
-
-function isRulesetForType(entry: unknown, type: CanonicalKind): boolean {
-  return (
-    typeof entry === 'object' &&
-    entry !== null &&
-    'dataset_type' in entry &&
-    (entry as { dataset_type?: unknown }).dataset_type === type
-  );
-}
-
 function artifactManifest(
   name: string,
   content: string,
@@ -512,7 +492,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export const __testInternals = {
   artifactManifest,
   buildAiContext,
-  filterRuntimeRuleset,
   isCliSourceRoot,
   loadFallbackContractPack,
   renderAiContextMarkdown,

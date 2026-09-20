@@ -47,6 +47,7 @@ test('runDatasetContract writes process contract artifacts', async () => {
     assert.equal(existsSync(report.files.manifest), true);
     assert.equal(existsSync(report.files.schema ?? ''), true);
     assert.equal(existsSync(report.files.methodology ?? ''), true);
+    assert.equal(existsSync(report.files.ruleset ?? ''), true);
     assert.equal(existsSync(report.files.ai_context_json ?? ''), true);
     assert.equal(existsSync(report.files.ai_context_markdown ?? ''), true);
     assert.match(readFileSync(report.files.schema ?? '', 'utf8'), /processDataSet/u);
@@ -62,6 +63,13 @@ test('runDatasetContract writes process contract artifacts', async () => {
     };
     assert.match(manifest.schema?.sha256 ?? '', /^[a-f0-9]{64}$/u);
     assert.match(manifest.methodology?.sha256 ?? '', /^[a-f0-9]{64}$/u);
+    assert.deepEqual((manifest as { includes?: string[] }).includes, [
+      'schema',
+      'methodology',
+      'ruleset',
+    ]);
+    const context = readJson(report.files.ai_context_json ?? '') as { runtime_ruleset?: unknown };
+    assert.deepEqual(context.runtime_ruleset, readJson(report.files.ruleset ?? ''));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -210,18 +218,6 @@ test('dataset contract internals cover fallback-only branches', () => {
   assert.throws(() => __testInternals.normalizeIncludes(['']), /At least one --include/u);
   assert.equal(__testInternals.normalizeProfile('ai-import'), 'ai-import');
   assert.throws(() => __testInternals.normalizeProfile('draft'), /--profile/u);
-  assert.equal(
-    __testInternals.filterRuntimeRuleset(
-      {
-        schema_version: 1,
-        rulesets: [{ dataset_type: 'flow', id: 'flow-rules' }],
-        rules: [{ dataset_type: 'flow', id: 'flow-rule' }],
-      },
-      'process',
-    ),
-    undefined,
-  );
-  assert.equal(__testInternals.filterRuntimeRuleset({}, 'process'), undefined);
   assert.throws(
     () =>
       __testInternals.resolveSdkRuntimeAssetsRoot(
@@ -306,16 +302,10 @@ test('dataset contract internals build full fallback packs and AI context', () =
     'title: Flow Methodology\n',
     'utf8',
   );
+  // The retired SDK mixed file must not be read, even if a stale checkout has one.
   writeFileSync(
     path.join(runtimeRoot, 'tidas/methodologies/runtime_rulesets.json'),
-    JSON.stringify({
-      $schema: 'rules-schema',
-      schema_version: 1,
-      ruleset_version: '2026-06-04',
-      purpose: 'test',
-      rulesets: [{ dataset_type: 'flow', id: 'flow-ruleset' }],
-      rules: [{ dataset_type: 'flow', id: 'flow-rule' }],
-    }),
+    '{bad json',
     'utf8',
   );
 
@@ -337,10 +327,10 @@ test('dataset contract internals build full fallback packs and AI context', () =
     });
     assert.equal(pack.schemaText, '{"title":"Flow"}');
     assert.match(pack.methodologyText ?? '', /Flow Methodology/u);
-    assert.deepEqual((pack.runtimeRuleset as { rules?: Array<{ id: string }> }).rules?.[0], {
-      dataset_type: 'flow',
-      id: 'flow-rule',
-    });
+    assert.equal(
+      (pack.runtimeRuleset as { rules?: Array<{ id: string }> }).rules?.[0]?.id,
+      'tidas.flow.name.base-name.technical',
+    );
     assert.equal((pack.aiContext as { kind?: string }).kind, 'flow');
     assert.match(
       JSON.stringify((pack.manifest as { ruleset?: unknown }).ruleset),
@@ -369,20 +359,23 @@ test('dataset contract internals build full fallback packs and AI context', () =
 test('runDatasetContract can consume a future SDK contract API', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-sdk-contract-api-'));
   try {
+    let sdkIncludes: unknown;
     const report = await runDatasetContract({
       type: 'process',
-      include: ['schema'],
+      include: ['schema', 'ruleset'],
       outDir: dir,
       mode: 'contract',
       sdkModule: {
-        getTidasContractPack: (type: string, options: unknown) => ({
-          manifest: { type, options },
-          schemaText: '{"type":"object"}',
-        }),
+        getTidasContractPack: (type: string, options: unknown) => {
+          sdkIncludes = (options as { include: unknown }).include;
+          return { manifest: { type }, schemaText: '{"type":"object"}' };
+        },
       },
     });
 
     assert.equal(report.source, 'sdk-contract-api');
+    assert.deepEqual(sdkIncludes, ['schema']);
+    assert.equal(existsSync(report.files.ruleset ?? ''), true);
     assert.match(readFileSync(report.files.schema ?? '', 'utf8'), /object/u);
   } finally {
     rmSync(dir, { recursive: true, force: true });
