@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-20
-lastReviewedCommit: e83f2010c27b2e1d2e54d00e9a13488c780a02f4
-lastReviewedNote: 'Reviewed for CLI #342: version-only 0.1.17 needs no new secret, Trusted Publisher setup, workflow, tag rule, or alternate publication path.'
+lastReviewedCommit: 381769dad8be142c9f2395a790053ea37b2fe860
+lastReviewedNote: 'Reviewed for CLI #344: SDK 0.3.0 source adoption needs no new secret, Trusted Publisher setup, workflow, tag rule, or alternate publication path; a separate CLI release remains required.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -37,6 +37,8 @@ related:
 Review note, 2026-09-17: W6b adds no Trusted Publisher, npm, token, tag, workflow or package-version change. The canonical asset sync is a source/content change and future publication remains subject to the existing release contract.
 
 Review note, 2026-09-18: CLI #338 adds no release setup surface. The Process/LCIA Method optional review-report schema sync and temporary SDK validation bridge change neither Trusted Publisher settings, credentials, tags, workflows, package version nor publication mechanics.
+
+Review note, 2026-09-20: CLI #344 upgrades the exact SDK dependency to released 0.3.0 without changing Trusted Publisher settings, credentials, tags, workflow names, package version, or publication mechanics. A later CLI release follows the existing separate version-bump route.
 
 Review note, 2026-09-20: CLI #340 upgrades the exact SDK dependency to 0.2.2 and changes contract content only; Trusted Publisher settings, credentials, tags, workflow names, package version, and publication mechanics remain unchanged. A later CLI release follows the existing separate version-bump route.
 

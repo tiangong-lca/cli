@@ -41,7 +41,9 @@ test('installed SDK 0.3.0 omits the retired mixed ruleset input and getter', () 
     false,
   );
   assert.equal(
-    existsSync(path.join(sdkRoot, 'runtime-assets/tidas/methodologies/runtime_rulesets.schema.json')),
+    existsSync(
+      path.join(sdkRoot, 'runtime-assets/tidas/methodologies/runtime_rulesets.schema.json'),
+    ),
     false,
   );
   assert.equal('getTidasRuntimeRuleset' in contracts, false);
