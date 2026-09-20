@@ -39,6 +39,8 @@ Review note, 2026-09-17: W6b converges the static schema assets but does not aut
 
 Review note, 2026-09-18: CLI #338 is a schema/validation feature delivery only. It advances bundled Process and LCIA Method assets to the reviewed `tidas-spec` 0.2.0 candidate and adds no package-version, tag, publication, or provenance claim; the existing four-platform, Docpact, coverage, release and workspace gates remain required for any later release.
 
+Review note, 2026-09-20: CLI #344 advances the exact dependency to published SDK 0.3.0, which omits the old mixed-ruleset files and getter. This remains a source PR with CLI package version 0.1.17 unchanged; a separate version-only CLI release PR, four-platform tag, Trusted Publishing/provenance check, clean installed consumer, and root integration are required before W11/A14 closure.
+
 Review note, 2026-09-20: CLI #340 pins published SDK 0.2.2 and released spec 0.2.1 public definitions and removes the SDK mixed ruleset input from `dataset contract`. It remains a feature PR with no CLI version change. A separate version-bump PR, four-platform tag, Trusted Publishing/provenance check, clean installed consumer, and root integration are required before treating the replacement as publicly released.
 
 Issue #278 is a feature delivery for the opt-in managed-host IPC protocol and public runtime receiver. It leaves package version, dependencies, lockfile, authentication, Trusted Publisher setup and release workflows unchanged. Publish this API only through a separately tracked version-bump PR after exact coverage, package consumers, all four native hosts and review pass; complete public provenance verification and exact workspace integration before Foundry/Skills consume it.

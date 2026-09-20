@@ -38,8 +38,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-20
-lastReviewedCommit: e83f2010c27b2e1d2e54d00e9a13488c780a02f4
-lastReviewedNote: 'Reviewed for CLI #342: version-only 0.1.17 release of merged #340 changes package identity, not command, SDK policy, authorization, or branch/release semantics.'
+lastReviewedCommit: 381769dad8be142c9f2395a790053ea37b2fe860
+lastReviewedNote: 'Reviewed for CLI #344: exact SDK 0.3.0 adoption removes the legacy SDK file/getter dependency without changing CLI-owned policy, commands, authorization, or release semantics.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md

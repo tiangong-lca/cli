@@ -32,8 +32,8 @@ checkPaths:
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
 lastReviewedAt: 2026-09-20
-lastReviewedCommit: e83f2010c27b2e1d2e54d00e9a13488c780a02f4
-lastReviewedNote: 'Reviewed for CLI #342: version-only 0.1.17 publication keeps the public command and dataset context-pack behavior from merged #340 unchanged.'
+lastReviewedCommit: 381769dad8be142c9f2395a790053ea37b2fe860
+lastReviewedNote: 'Reviewed for CLI #344: source adopts released SDK 0.3.0 with no old mixed-ruleset files; public dataset context-pack behavior and current CLI 0.1.17 package identity are unchanged pending a separate release.'
 ---
 
 CLI 0.1.10 is the designated C1 release for `tiangong-lca runtime describe --json` and the explicit `@tiangong-lca/cli/runtime` API for package, asset and Node content inspection. Runtime inspection loads no project `.env`, performs no authentication and downloads nothing. See [the runtime distribution contract](docs/agents/runtime-distribution-contract.md) for exact fields and trust boundaries; verify public availability and provenance before treating the candidate version as released.
