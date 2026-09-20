@@ -39,7 +39,7 @@ checkPaths:
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-20
 lastReviewedCommit: 381769dad8be142c9f2395a790053ea37b2fe860
-lastReviewedNote: 'Reviewed for CLI #344: exact SDK 0.3.0 adoption removes the legacy SDK file/getter dependency without changing CLI-owned policy, commands, authorization, or release semantics.'
+lastReviewedNote: 'Reviewed for CLI #346: release-only 0.1.18 publishes merged SDK 0.3.0 adoption without changing CLI-owned policy, commands, authorization, or release semantics.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md

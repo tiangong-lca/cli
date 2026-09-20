@@ -33,7 +33,7 @@ checkPaths:
   - test/lca-release*.test.ts
 lastReviewedAt: 2026-09-20
 lastReviewedCommit: 381769dad8be142c9f2395a790053ea37b2fe860
-lastReviewedNote: 'Reviewed for CLI #344: source adopts released SDK 0.3.0 with no old mixed-ruleset files; public dataset context-pack behavior and current CLI 0.1.17 package identity are unchanged pending a separate release.'
+lastReviewedNote: 'Reviewed for CLI #346: package 0.1.18 publishes merged SDK 0.3.0 adoption; public dataset context-pack behavior and write authority are unchanged.'
 ---
 
 CLI 0.1.10 is the designated C1 release for `tiangong-lca runtime describe --json` and the explicit `@tiangong-lca/cli/runtime` API for package, asset and Node content inspection. Runtime inspection loads no project `.env`, performs no authentication and downloads nothing. See [the runtime distribution contract](docs/agents/runtime-distribution-contract.md) for exact fields and trust boundaries; verify public availability and provenance before treating the candidate version as released.
