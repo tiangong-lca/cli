@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-20
-lastReviewedCommit: fb2958157960a65c40d816042b3f1c5a0fcdee7e
-lastReviewedNote: 'Reviewed for CLI #340: verify released spec 0.2.1/SDK 0.2.2 identity, no-old-file contract projection, installed package and exact 100% coverage before W11 consumer handoff.'
+lastReviewedCommit: e83f2010c27b2e1d2e54d00e9a13488c780a02f4
+lastReviewedNote: 'Reviewed for CLI #342: release-only 0.1.17 requires unchanged full gate, four-platform tag qualification, npm provenance and clean installed no-old-file consumer proof.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
