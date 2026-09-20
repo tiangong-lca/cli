@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -28,6 +29,23 @@ const deps = {
 function readJson(filePath: string): unknown {
   return JSON.parse(readFileSync(filePath, 'utf8'));
 }
+
+test('installed SDK 0.3.0 omits the retired mixed ruleset input and getter', () => {
+  const requireFromHere = createRequire(import.meta.url);
+  const contractsPath = requireFromHere.resolve('@tiangong-lca/tidas-sdk/contracts');
+  const sdkRoot = path.resolve(path.dirname(contractsPath), '..');
+  const contracts = requireFromHere('@tiangong-lca/tidas-sdk/contracts') as Record<string, unknown>;
+
+  assert.equal(
+    existsSync(path.join(sdkRoot, 'runtime-assets/tidas/methodologies/runtime_rulesets.json')),
+    false,
+  );
+  assert.equal(
+    existsSync(path.join(sdkRoot, 'runtime-assets/tidas/methodologies/runtime_rulesets.schema.json')),
+    false,
+  );
+  assert.equal('getTidasRuntimeRuleset' in contracts, false);
+});
 
 test('runDatasetContract writes process contract artifacts', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dataset-contract-'));
