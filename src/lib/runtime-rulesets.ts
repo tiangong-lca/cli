@@ -70,10 +70,10 @@ export const RUNTIME_RULESET_VERSION = '1';
 const EXPECTED_PUBLIC_SOURCE = {
   schema_version: 'tidas.public-rules-source.v1',
   repository: 'https://github.com/tiangong-lca/tidas-spec.git',
-  commit: 'ea4a58984c22734f2d54cda6d45b2733d9920ac0',
-  rules_version: '2026.09.18',
-  status: 'reviewed-candidate',
-  index_sha256: 'a2b94cc563358f5e561afd376540aff652f78e949bb18a27c2704ef226268ec7',
+  commit: 'd4cb089c753ffd20b173db2e56fb553a364f48f4',
+  rules_version: '2026.09.20',
+  status: 'released',
+  index_sha256: 'd8f1e90777fe0c675d1e24cbd7f1141ee776d3ebda9d8b24c91f714779540dec',
   schema_sha256: '552a8c5fb87300dbe4ff5021d3d09a2b2d369999e887c223bc5c9738a99549f5',
 } as const satisfies PublicRuleSource;
 
@@ -327,6 +327,13 @@ function resolvePublicRuleProvider(contracts?: {
   return typeof resolvedContracts.getTidasPublicRules === 'function'
     ? resolvedContracts.getTidasPublicRules
     : fallbackSelection;
+}
+
+/** Verified public definitions for CLI-owned contract projections. */
+export function getVerifiedPublicRules(kind: PublicRuleDatasetType): PublicRule[] {
+  return assertSelection(resolvePublicRuleProvider()(kind), kind).rules.map((rule) =>
+    structuredClone(rule),
+  );
 }
 
 const RUNTIME_RULES = composeRuntimeRules(resolvePublicRuleProvider());

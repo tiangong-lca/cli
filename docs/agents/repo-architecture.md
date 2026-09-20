@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-17
-lastReviewedCommit: 4316c205453071c8cbb45e06480344f8eae5e041
-lastReviewedNote: 'Reviewed for CLI #336: runtime rules now compose exact W8 public definitions with CLI-owned policy through an SDK-first, integrity-bound fallback architecture; command, package and exit surfaces remain unchanged.'
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: fb2958157960a65c40d816042b3f1c5a0fcdee7e
+lastReviewedNote: 'Reviewed for CLI #340: published spec/SDK public definitions and CLI-owned contract profile replace the SDK mixed ruleset input without moving public definitions or product gate ownership.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -274,7 +274,7 @@ These modules share one contract:
 - `flow publish-version` and `process publish-build` validate canonical payloads with `FlowSchema` / `ProcessSchema` before publish planning or handoff artifacts proceed
 - Process dataset writers forward nullable `modelVersion` with `modelId`. `publish run` derives an exact source LifecycleModel identity from canonical Process metadata when present, rejects a version without an id, and persists that pair for resulting Processes; it does not discover or substitute the latest Model revision. Missing `modelVersion` deliberately preserves the database's legacy same-version fallback
 - `publish run` writes a deterministic `verification-report.json` next to the final publish report so downstream automation can read blockers without parsing execution details
-- `runtime-rulesets` verifies exact W8 public-rule identity/content, prefers an equivalent SDK public-rule API, falls back only when that API is unavailable, and composes CLI-owned severity/phase/blocker/profile/local-mapping policy into the unchanged runtime contract
+- `runtime-rulesets` verifies the released spec 0.2.1 public-rule identity/content, prefers the equivalent SDK 0.2.2 public API, falls back only when that API is unavailable, and composes CLI-owned severity/phase/blocker/profile/local-mapping policy. `dataset-contract-ruleset` separately derives the CLI context-pack projection; neither reads the SDK mixed ruleset asset
 - maintenance and QA commands still emit artifact-first local outputs and remain covered by the strict `src/**/*.ts` coverage gate
 
 Process dimensional QA is split between `process-mass-balance.ts` (explicit exact reference evidence, unit-chain resolution, applicability and kg arithmetic) and `process-qa.ts` (existing classification, findings and artifact reports). `cli.ts` owns repeatable reference-file parsing and help. No remote lookup, dependency, credential path or Foundry-owned physical-unit implementation is added. Selected file and payload digests bind observations, while canonical area-time is a reviewed nonmass unit and arbitrary composites remain unresolved.

@@ -4,8 +4,8 @@ import path from 'node:path';
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../..');
 const OUTPUT_ROOT = path.join(REPOSITORY_ROOT, 'assets/tidas-public-rules');
-const EXPECTED_COMMIT = 'ea4a58984c22734f2d54cda6d45b2733d9920ac0';
-const EXPECTED_INDEX_SHA = 'a2b94cc563358f5e561afd376540aff652f78e949bb18a27c2704ef226268ec7';
+const EXPECTED_COMMIT = 'd4cb089c753ffd20b173db2e56fb553a364f48f4';
+const EXPECTED_INDEX_SHA = 'd8f1e90777fe0c675d1e24cbd7f1141ee776d3ebda9d8b24c91f714779540dec';
 const EXPECTED_SCHEMA_SHA = '552a8c5fb87300dbe4ff5021d3d09a2b2d369999e887c223bc5c9738a99549f5';
 const FILES = ['public-rules.v1.json', 'public-rules.v1.schema.json'] as const;
 
@@ -25,8 +25,8 @@ const source = {
   schema_version: 'tidas.public-rules-source.v1',
   repository: 'https://github.com/tiangong-lca/tidas-spec.git',
   commit: EXPECTED_COMMIT,
-  rules_version: '2026.09.18',
-  status: 'reviewed-candidate',
+  rules_version: '2026.09.20',
+  status: 'released',
   index_sha256: EXPECTED_INDEX_SHA,
   schema_sha256: EXPECTED_SCHEMA_SHA,
 };

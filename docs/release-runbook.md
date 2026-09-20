@@ -25,9 +25,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-17
-lastReviewedCommit: 4316c205453071c8cbb45e06480344f8eae5e041
-lastReviewedNote: 'Reviewed for CLI #336: W9 adds an exact public-rule verification step to pre-push without publishing a version. Four-platform tag, Trusted Publishing, provenance, clean-consumer and workspace handoff sequencing remain mandatory.'
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: fb2958157960a65c40d816042b3f1c5a0fcdee7e
+lastReviewedNote: 'Reviewed for CLI #340: SDK 0.2.2 and spec 0.2.1 source-bound assets change feature content but not package version or publication mechanics; a separate qualified release remains required.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -38,6 +38,8 @@ related:
 Review note, 2026-09-17: W6b converges the static schema assets but does not authorize a release or package publication. Any new CLI version must still use the existing release gates, provenance and version/content review.
 
 Review note, 2026-09-18: CLI #338 is a schema/validation feature delivery only. It advances bundled Process and LCIA Method assets to the reviewed `tidas-spec` 0.2.0 candidate and adds no package-version, tag, publication, or provenance claim; the existing four-platform, Docpact, coverage, release and workspace gates remain required for any later release.
+
+Review note, 2026-09-20: CLI #340 pins published SDK 0.2.2 and released spec 0.2.1 public definitions and removes the SDK mixed ruleset input from `dataset contract`. It remains a feature PR with no CLI version change. A separate version-bump PR, four-platform tag, Trusted Publishing/provenance check, clean installed consumer, and root integration are required before treating the replacement as publicly released.
 
 Issue #278 is a feature delivery for the opt-in managed-host IPC protocol and public runtime receiver. It leaves package version, dependencies, lockfile, authentication, Trusted Publisher setup and release workflows unchanged. Publish this API only through a separately tracked version-bump PR after exact coverage, package consumers, all four native hosts and review pass; complete public provenance verification and exact workspace integration before Foundry/Skills consume it.
 

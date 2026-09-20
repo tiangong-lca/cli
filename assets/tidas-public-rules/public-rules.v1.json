@@ -1,7 +1,7 @@
 {
   "$schema": "public-rules.v1.schema.json",
   "schema_version": 1,
-  "rules_version": "2026.09.18",
+  "rules_version": "2026.09.20",
   "rules": [
     {
       "id": "tidas.flow.classification.elementary.valid",
@@ -87,11 +87,11 @@
       "id": "tidas.process.version.format",
       "dataset_type": "process",
       "normative_level": "requirement",
-      "statement": "The process dataset version uses fixed-width ILCD three-tier numeric notation and increases when content changes.",
+      "statement": "The process dataset version uses fixed-width NN.NN notation with an optional three-digit development component (NN.NN.NNN) and increases when content changes.",
       "locations": ["processDataSet.administrativeInformation.publicationAndOwnership.common:dataSetVersion"],
       "applicability": { "scope": "Every versioned process dataset; monotonic comparison applies when a previous published version exists." },
       "source_refs": [{ "asset": "tidas_processes.yaml", "path": "processDataSet.administrativeInformation.publicationAndOwnership.common:dataSetVersion.<rules>" }],
-      "cases": { "positive": ["01.01.000 follows 01.00.000 after a content change."], "negative": ["1.1, 01.00, or a version not greater than the previous published version."] }
+      "cases": { "positive": ["01.02 and 01.02.003 both satisfy the Version schema; 01.02.003 follows 01.02 after a content change."], "negative": ["1.1, 01.02.03, or a version not greater than the previous published version."] }
     }
   ]
 }

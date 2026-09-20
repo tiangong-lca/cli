@@ -31,9 +31,9 @@ checkPaths:
   - test/auth-identity*.test.ts
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
-lastReviewedAt: 2026-09-17
-lastReviewedCommit: 4316c205453071c8cbb45e06480344f8eae5e041
-lastReviewedNote: 'Reviewed for CLI #336: W9 public-rule composition preserves the public command, report, exit, package and release contracts while separating exact public definitions from CLI-owned profile policy.'
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: fb2958157960a65c40d816042b3f1c5a0fcdee7e
+lastReviewedNote: 'Reviewed for CLI #340: released spec 0.2.1 definitions and CLI-owned dataset context-pack rulesets preserve public artifacts while retiring the SDK mixed ruleset input.'
 ---
 
 CLI 0.1.10 is the designated C1 release for `tiangong-lca runtime describe --json` and the explicit `@tiangong-lca/cli/runtime` API for package, asset and Node content inspection. Runtime inspection loads no project `.env`, performs no authentication and downloads nothing. See [the runtime distribution contract](docs/agents/runtime-distribution-contract.md) for exact fields and trust boundaries; verify public availability and provenance before treating the candidate version as released.
@@ -548,7 +548,7 @@ For `process publish-build`, canonical process payloads are validated locally wi
 
 For `publish run`, `verification-report.json` is written next to `publish-report.json` and summarizes the publish ruleset status, blockers, failed entries, deferred entries, and executed entries.
 
-Runtime rulesets use the reviewed W8 public definitions at exact source identity. The CLI prefers a byte-equivalent `getTidasPublicRules` SDK contract when available and otherwise uses its hash-bound bundled fallback; severity, phases, blockers, profile membership, local finding mappings, and gate disposition remain CLI-owned. A present but malformed, stale, not-covered, or incompatible SDK response fails closed rather than falling back.
+Runtime rulesets use the released spec 0.2.1 public definitions at exact source identity. The CLI prefers a byte-equivalent `getTidasPublicRules` SDK contract when available and otherwise uses its hash-bound bundled fallback; severity, phases, blockers, profile membership, local finding mappings, and gate disposition remain CLI-owned. A present but malformed, stale, not-covered, or incompatible SDK response fails closed rather than falling back. `dataset contract` derives its requested ruleset/context-pack artifact from these verified definitions and CLI-owned profiles; it does not read the SDK's legacy mixed ruleset file.
 
 For `lifecyclemodel save-draft`, canonical lifecyclemodel payloads are validated locally with `LifeCycleModelSchema` before any `--commit` write. Schema-invalid rows remain in `outputs/save-draft-bundle/failures.jsonl` instead of being persisted.
 
