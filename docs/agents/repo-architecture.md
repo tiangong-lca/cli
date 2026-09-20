@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-20
-lastReviewedCommit: fb2958157960a65c40d816042b3f1c5a0fcdee7e
-lastReviewedNote: 'Reviewed for CLI #340: published spec/SDK public definitions and CLI-owned contract profile replace the SDK mixed ruleset input without moving public definitions or product gate ownership.'
+lastReviewedCommit: e83f2010c27b2e1d2e54d00e9a13488c780a02f4
+lastReviewedNote: 'Reviewed for CLI #342: package 0.1.17 releases the merged #340 composition without changing architecture, public exports, or ownership.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
