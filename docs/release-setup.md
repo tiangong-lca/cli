@@ -26,7 +26,7 @@ checkPaths:
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-20
 lastReviewedCommit: 381769dad8be142c9f2395a790053ea37b2fe860
-lastReviewedNote: 'Reviewed for CLI #344: SDK 0.3.0 source adoption needs no new secret, Trusted Publisher setup, workflow, tag rule, or alternate publication path; a separate CLI release remains required.'
+lastReviewedNote: 'Reviewed for CLI #346: the SDK 0.3.0-backed CLI 0.1.18 release needs no new secret, Trusted Publisher setup, workflow, tag rule, or alternate publication path.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

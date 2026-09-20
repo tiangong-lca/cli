@@ -27,7 +27,7 @@ checkPaths:
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-20
 lastReviewedCommit: e83f2010c27b2e1d2e54d00e9a13488c780a02f4
-lastReviewedNote: 'Reviewed for CLI #342: 0.1.17 is the separate version-only release of merged #340 and follows existing four-platform tag, Trusted Publishing, provenance and root handoff steps.'
+lastReviewedNote: 'Reviewed for CLI #346: 0.1.18 is the separate version-only release of merged SDK 0.3.0 adoption and follows existing four-platform tag, Trusted Publishing, provenance and root handoff steps.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

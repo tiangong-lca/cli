@@ -32,7 +32,7 @@ checkPaths:
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-20
 lastReviewedCommit: e83f2010c27b2e1d2e54d00e9a13488c780a02f4
-lastReviewedNote: 'Reviewed for CLI #342: package 0.1.17 releases the merged #340 composition without changing architecture, public exports, or ownership.'
+lastReviewedNote: 'Reviewed for CLI #346: package 0.1.18 releases the merged SDK 0.3.0 source adoption without changing architecture, public exports, or ownership.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
