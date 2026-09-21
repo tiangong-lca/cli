@@ -6,6 +6,7 @@ import {
   ALIAS_V2_EXCHANGE_KEYS,
   ALIAS_V2_FACTOR,
   ALIAS_V2_PLAN_SCHEMA,
+  ALIAS_V2_REFERENCE_SHAPE_INVALID,
   buildAliasV2Plan,
   type AliasV2PlanInput,
 } from '../src/lib/dataset-alias-v2-plan.js';
@@ -447,15 +448,57 @@ test('the v2 plan refuses anything outside the reviewed shape', () => {
   rejects({ flows: [] }, invalid);
   rejects({ processes: [] }, invalid);
   rejects({ source_evidence_sha256: 'nope' }, invalid);
+  // The reviewed target template must be the canonical five-key reference: the id, version,
+  // @type, canonical @uri and the language-tagged description object the real rows carry.
+  const shapeInvalid = ALIAS_V2_REFERENCE_SHAPE_INVALID;
   rejects(
     { target_flow_property_reference: { ...TARGET_REFERENCE, '@refObjectId': 'other' } },
-    invalid,
+    shapeInvalid,
+  );
+  rejects(
+    { target_flow_property_reference: { ...TARGET_REFERENCE, '@version': '2.0.0' } },
+    shapeInvalid,
   );
   rejects(
     { target_flow_property_reference: { ...TARGET_REFERENCE, '@version': '02.00.000' } },
     invalid,
   );
-  rejects({ target_flow_property_reference: null as unknown as JsonObject }, invalid);
+  // A well-formed reference that simply points at another data set is a different failure: it
+  // passes the canonical-shape check and is refused for not binding this target.
+  rejects(
+    {
+      target_flow_property_reference: {
+        ...TARGET_REFERENCE,
+        '@refObjectId': 'beefbeef-0000-4000-8000-000000000001',
+        '@uri': '../flowproperties/beefbeef-0000-4000-8000-000000000001.json',
+      },
+    },
+    invalid,
+  );
+  rejects({ target_flow_property_reference: null as unknown as JsonObject }, shapeInvalid);
+  rejects({ target_flow_property_reference: 'nope' as unknown as JsonObject }, shapeInvalid);
+  const shapeCases: Array<[string, unknown]> = [
+    ['@type', undefined],
+    ['@type', 'unit group data set'],
+    ['@uri', '../flowproperties/somewhere-else.json'],
+    ['common:shortDescription', [{ '#text': 'Time' }]],
+    ['common:shortDescription', { '#text': 'Time' }],
+    ['common:shortDescription', { '@xml:lang': 'en' }],
+    ['extra', 'x'],
+  ];
+  for (const [key, value] of shapeCases) {
+    const reference: JsonObject = { ...TARGET_REFERENCE };
+    if (value === undefined) {
+      delete reference[key];
+    } else {
+      reference[key] = value;
+    }
+    rejects({ target_flow_property_reference: reference }, shapeInvalid);
+  }
+  rejects(
+    { target_flow_property_reference: { ...TARGET_REFERENCE, '@refObjectId': '' } },
+    shapeInvalid,
+  );
   // Duplicate rows, wrong property-entry counts and unreviewed entry values.
   rejects({ flows: [input().flows[0]!, input().flows[0]!] }, invalid);
   rejects(singleFlow(flow('flow-a', [propertyEntry(), propertyEntry()])), invalid);
@@ -504,6 +547,44 @@ test('the v2 plan refuses anything outside the reviewed shape', () => {
     );
   }
   rejects(singleProcess(process('process-a', [exchange('1', { meanAmount: 1 })])), invalid);
+  // An occurrence without any flow reference at all still yields explicit nulls, never a guess.
+  const withoutReference = buildAliasV2Plan(
+    input({
+      processes: [
+        {
+          id: 'process-a',
+          version: '00.00.001',
+          exchange_indexes: [0],
+          json: process('process-a', [
+            exchange('1', { referenceToFlowDataSet: undefined as unknown as JsonObject }),
+          ]),
+        },
+        input().processes[1]!,
+      ],
+    }),
+  );
+  assert.deepEqual(
+    (
+      (
+        (withoutReference.batch.actions as JsonObject[]).find(
+          (action) => action['table'] === 'processes',
+        ) as JsonObject
+      ).mutation as JsonObject
+    ).exchanges,
+    [
+      {
+        index: 0,
+        internal_id: '1',
+        flow_id: null,
+        flow_version: null,
+        direction: 'Input',
+        before_amount: '1',
+        after_amount: ALIAS_V2_FACTOR,
+        before_resulting_amount: '1',
+        after_resulting_amount: ALIAS_V2_FACTOR,
+      },
+    ],
+  );
   rejects(singleProcess(process('process-a', [exchange('1', { meanAmount: '1E-31' })])), invalid);
   rejects(
     singleProcess(process('process-a', [exchange('1', { meanAmount: '0', resultingAmount: '0' })])),

@@ -32,6 +32,7 @@ export const ALIAS_V2_BATCH_SCHEMA = 'dataset-alias-batch.v2';
 export const ALIAS_V2_FACTOR = '0.00011415525114155251';
 
 export const ALIAS_V2_PLAN_INVALID = 'ALIAS_V2_PLAN_INVALID';
+export const ALIAS_V2_REFERENCE_SHAPE_INVALID = 'ALIAS_V2_REFERENCE_SHAPE_INVALID';
 export const ALIAS_V2_UNCERTAINTY_UNSUPPORTED = 'ALIAS_V2_UNCERTAINTY_UNSUPPORTED';
 export const ALIAS_V2_TEXT_RULE_VIOLATION = 'ALIAS_V2_TEXT_RULE_VIOLATION';
 export const ALIAS_V2_COUNT_MISMATCH = 'ALIAS_V2_COUNT_MISMATCH';
@@ -81,8 +82,8 @@ function invalid(message: string, details?: JsonObject): never {
     ...(details ? { details } : {}),
   });
 }
-function fail(code: string, message: string, details: JsonObject): never {
-  throw new CliError(message, { code, exitCode: 2, details });
+function fail(code: string, message: string, details?: JsonObject): never {
+  throw new CliError(message, { code, exitCode: 2, ...(details ? { details } : {}) });
 }
 function isJsonObject(value: unknown): value is JsonObject {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -104,6 +105,67 @@ function exchangeEntries(payload: JsonObject): JsonObject[] | null {
   if (Array.isArray(value)) return value.every(isJsonObject) ? (value as JsonObject[]) : null;
   return isJsonObject(value) ? [value] : null;
 }
+/**
+ * The canonical flow-property reference every affected flow actually carries and every derived
+ * action must keep: exactly five keys, `@type` naming the flow property data set, the `@uri`
+ * derived from the referenced data set id, and a language-tagged description object. A template
+ * that is missing `@type`, points somewhere else or spells the description as an array is
+ * refused here rather than copied into a desired payload and mirrored back by a matching test.
+ */
+export function assertCanonicalFlowPropertyReference(value: unknown): JsonObject {
+  if (!isJsonObject(value)) {
+    fail(ALIAS_V2_REFERENCE_SHAPE_INVALID, 'Alias v2 reference must be an object.');
+  }
+  const keys = Object.keys(value);
+  const canonicalKeys = ['@refObjectId', '@type', '@uri', '@version', 'common:shortDescription'];
+  if (
+    keys.length !== canonicalKeys.length ||
+    !canonicalKeys.every((key) => Object.hasOwn(value, key))
+  ) {
+    fail(
+      ALIAS_V2_REFERENCE_SHAPE_INVALID,
+      'Alias v2 reference must carry exactly the five canonical keys.',
+      { keys: keys.sort() },
+    );
+  }
+  const id = value['@refObjectId'];
+  if (typeof id !== 'string' || id === '') {
+    fail(ALIAS_V2_REFERENCE_SHAPE_INVALID, 'Alias v2 reference must carry its @refObjectId.');
+  }
+  if (value['@type'] !== 'flow property data set') {
+    fail(
+      ALIAS_V2_REFERENCE_SHAPE_INVALID,
+      'Alias v2 reference @type must be "flow property data set".',
+      { type: value['@type'] },
+    );
+  }
+  if (value['@uri'] !== `../flowproperties/${id}.json`) {
+    fail(ALIAS_V2_REFERENCE_SHAPE_INVALID, 'Alias v2 reference @uri must be its canonical path.', {
+      uri: value['@uri'],
+    });
+  }
+  if (
+    typeof value['@version'] !== 'string' ||
+    !/^[0-9]{2}\.[0-9]{2}\.[0-9]{3}$/u.test(value['@version'])
+  ) {
+    fail(ALIAS_V2_REFERENCE_SHAPE_INVALID, 'Alias v2 reference must carry a version.');
+  }
+  const description = value['common:shortDescription'];
+  if (
+    !isJsonObject(description) ||
+    typeof description['@xml:lang'] !== 'string' ||
+    (description['@xml:lang'] as string) === '' ||
+    typeof description['#text'] !== 'string' ||
+    (description['#text'] as string) === ''
+  ) {
+    fail(
+      ALIAS_V2_REFERENCE_SHAPE_INVALID,
+      'Alias v2 reference description must be a language-tagged object.',
+    );
+  }
+  return value;
+}
+
 function referenceIdentity(value: unknown): { id: string | null; version: string | null } {
   return isJsonObject(value)
     ? {
@@ -151,7 +213,11 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
     invalid('Alias v2 plan requires the source evidence sha256.');
   }
   const target = input.target_flow_property;
-  const targetReference = referenceIdentity(input.target_flow_property_reference);
+  // The reviewed target template is the canonical five-key reference or the plan is refused.
+  const canonicalTargetReference = assertCanonicalFlowPropertyReference(
+    input.target_flow_property_reference,
+  );
+  const targetReference = referenceIdentity(canonicalTargetReference);
   if (targetReference.id !== target.id) {
     invalid('Alias v2 target flow property reference must bind the target snapshot id.');
   }
@@ -193,7 +259,7 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
     // never written by this branch.
     const desired = clone(flow.json);
     const desiredEntry = (flowPropertyEntries(desired) as JsonObject[])[0] as JsonObject;
-    desiredEntry['referenceToFlowPropertyDataSet'] = clone(input.target_flow_property_reference);
+    desiredEntry['referenceToFlowPropertyDataSet'] = clone(canonicalTargetReference);
     actions.push({
       action_id: `flow:${flow.id}@${flow.version}`,
       table: 'flows',
@@ -205,7 +271,7 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
       before_sha256: sha256Json(flow.json),
       desired_sha256: sha256Json(desired),
       source_flowproperty: source,
-      mutation: { reference: clone(input.target_flow_property_reference) },
+      mutation: { reference: clone(canonicalTargetReference) },
     });
   }
 

@@ -48,8 +48,11 @@ function planInput(): AliasV2PlanInput {
                   '@dataSetInternalID': '1',
                   meanValue: '1',
                   referenceToFlowPropertyDataSet: {
+                    '@type': 'flow property data set',
                     '@refObjectId': SOURCE_FP,
+                    '@uri': `../flowproperties/${SOURCE_FP}.json`,
                     '@version': '00.00.001',
+                    'common:shortDescription': { '#text': 'Amount in hr', '@xml:lang': 'en' },
                   },
                 },
               ],
@@ -161,7 +164,9 @@ function planInput(): AliasV2PlanInput {
     target_flow_property_reference: {
       '@type': 'flow property data set',
       '@refObjectId': TARGET_FP,
+      '@uri': `../flowproperties/${TARGET_FP}.json`,
       '@version': '01.00.000',
+      'common:shortDescription': { '#text': 'Time', '@xml:lang': 'en' },
     },
     source_evidence_sha256: 'e'.repeat(64),
   };

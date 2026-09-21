@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { sha256Json } from '../src/lib/dataset-maintenance-contract.js';
 import {
-  buildAliasV2Plan,
   ALIAS_V2_FACTOR,
+  ALIAS_V2_REFERENCE_SHAPE_INVALID,
+  buildAliasV2Plan,
   type AliasV2PlanInput,
 } from '../src/lib/dataset-alias-v2-plan.js';
+import { isJsonObject } from '../src/lib/dataset-maintenance-contract.js';
 import { buildAliasV2PreflightRequest } from '../src/lib/dataset-alias-v2-execution-request.js';
 import {
   ALIAS_V2_GATE_NAMES,
@@ -326,4 +328,69 @@ test('the cohort fixture is anonymized and deterministic', () => {
     identifiers.add(row.id);
   }
   assert.equal(identifiers.size, 113 + 274);
+});
+
+test('every reference in the cohort carries the real five-key shape, and a deficient one is refused', () => {
+  const input = buildAliasV2CohortInput();
+  const canonicalKeys = ['@refObjectId', '@type', '@uri', '@version', 'common:shortDescription'];
+  const assertCanonical = (reference: JsonObject, label: string): void => {
+    assert.deepEqual(Object.keys(reference).sort(), [...canonicalKeys].sort(), label);
+    assert.equal(reference['@type'], 'flow property data set', label);
+    assert.equal(
+      reference['@uri'],
+      `../flowproperties/${String(reference['@refObjectId'])}.json`,
+      label,
+    );
+    assert.match(String(reference['@version']), /^[0-9]{2}\.[0-9]{2}\.[0-9]{3}$/u, label);
+    const description = reference['common:shortDescription'] as JsonObject;
+    assert.equal(Array.isArray(description), false, label);
+    assert.deepEqual(Object.keys(description).sort(), ['#text', '@xml:lang'], label);
+  };
+  // The source rows the cohort starts from.
+  for (const flow of input.flows) {
+    const properties = ((flow.json['flowDataSet'] as JsonObject)['flowProperties'] as JsonObject)[
+      'flowProperty'
+    ] as JsonObject[];
+    for (const entry of properties) {
+      assertCanonical(entry['referenceToFlowPropertyDataSet'] as JsonObject, flow.id);
+    }
+  }
+  // The template the plan derives from, and every derived reference it produces.
+  assertCanonical(input.target_flow_property_reference, 'target template');
+  for (const action of ACTIONS.filter((entry) => entry['table'] === 'flows')) {
+    const desired = ((action['desired_json_ordered'] as JsonObject)['flowDataSet'] as JsonObject)[
+      'flowProperties'
+    ] as JsonObject;
+    assertCanonical(
+      ((desired['flowProperty'] as JsonObject[])[0] as JsonObject)[
+        'referenceToFlowPropertyDataSet'
+      ] as JsonObject,
+      String(action['id']),
+    );
+    assertCanonical(
+      (action['mutation'] as JsonObject)['reference'] as JsonObject,
+      String(action['id']),
+    );
+  }
+  // Every functional unit is an object, never an array or a bare string.
+  for (const action of ACTIONS.filter((entry) => entry['table'] === 'processes')) {
+    const quantitative = (
+      ((action['expected_json_ordered'] as JsonObject)['processDataSet'] as JsonObject)[
+        'processInformation'
+      ] as JsonObject
+    )['quantitativeReference'] as JsonObject;
+    assert.equal(isJsonObject(quantitative['functionalUnitOrOther']), true, String(action['id']));
+  }
+  // A template in the deficient shape another implementation might derive — four keys, no
+  // `@type`, a non-canonical uri, an array description — is refused rather than copied.
+  const deficient = {
+    '@refObjectId': input.target_flow_property_reference['@refObjectId'],
+    '@version': input.target_flow_property_reference['@version'],
+    '@uri': `${input.target_flow_property_reference['@refObjectId']}.json`,
+    'common:shortDescription': [{ '#text': 'Time', '@xml:lang': 'en' }],
+  } as JsonObject;
+  assert.throws(
+    () => buildAliasV2Plan({ ...input, target_flow_property_reference: deficient }),
+    (error: unknown) => (error as { code?: string }).code === ALIAS_V2_REFERENCE_SHAPE_INVALID,
+  );
 });
