@@ -291,7 +291,18 @@ function assertAliasV2UnitGroupTable(row: AliasV2Row, role: 'target' | 'source')
   if (root === null || table === null || table.length === 0) {
     fail(code, `${label} must carry its unit table.`, { id: row.id });
   }
-  const quantitativeReference = root['quantitativeReference'];
+  // The canonical TIDAS tree nests the base-unit selector under `unitGroupInformation`:
+  // `unitGroupDataSet.unitGroupInformation.quantitativeReference.referenceToReferenceUnit`. An
+  // earlier reviewed excerpt showed that node without its parent, and reading the flattened
+  // projection as if it were the tree refused the real row; only the canonical parent is accepted.
+  const unitGroupInformation = root['unitGroupInformation'];
+  if (!isJsonObject(unitGroupInformation)) {
+    fail(code, `${label} must carry its canonical unitGroupInformation parent.`, { id: row.id });
+  }
+  if (Object.hasOwn(root, 'quantitativeReference')) {
+    fail(code, `${label} must not carry a root-level quantitativeReference.`, { id: row.id });
+  }
+  const quantitativeReference = unitGroupInformation['quantitativeReference'];
   const baseReference = isJsonObject(quantitativeReference)
     ? quantitativeReference['referenceToReferenceUnit']
     : null;

@@ -220,7 +220,7 @@ function planInput(): AliasV2PlanInput {
       json: {
         unitGroupDataSet: {
           // The real canonical shape: the base unit is selected by the reference's internal id,
-          quantitativeReference: { referenceToReferenceUnit: '1' },
+          unitGroupInformation: { quantitativeReference: { referenceToReferenceUnit: '1' } },
           units: {
             unit: [
               { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
@@ -237,7 +237,7 @@ function planInput(): AliasV2PlanInput {
       json: {
         unitGroupDataSet: {
           // The real canonical shape: the base unit is selected by the reference's internal id,
-          quantitativeReference: { referenceToReferenceUnit: '1' },
+          unitGroupInformation: { quantitativeReference: { referenceToReferenceUnit: '1' } },
           units: {
             unit: [
               { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },

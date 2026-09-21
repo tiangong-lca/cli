@@ -282,7 +282,7 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
       json: {
         unitGroupDataSet: {
           // The real canonical shape: the base unit is selected by the reference's internal id,
-          quantitativeReference: { referenceToReferenceUnit: '1' },
+          unitGroupInformation: { quantitativeReference: { referenceToReferenceUnit: '1' } },
           units: {
             // The real "Units of time" table: the year base unit at factor 1 and the fixed hour
             // factor. A fixture with hr = 1 is not a target and is refused by the plan builder.
@@ -303,7 +303,7 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
       json: {
         unitGroupDataSet: {
           // The real canonical shape: the base unit is selected by the reference's internal id,
-          quantitativeReference: { referenceToReferenceUnit: '1' },
+          unitGroupInformation: { quantitativeReference: { referenceToReferenceUnit: '1' } },
           units: {
             unit: [
               { '@dataSetInternalID': '1', name: 'a', meanValue: '1.0' },

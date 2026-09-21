@@ -7,6 +7,7 @@ import test from 'node:test';
 import { isJsonObject, sha256Json } from '../src/lib/dataset-maintenance-contract.js';
 import {
   ALIAS_V2_BATCH_SCHEMA,
+  assertAliasV2TargetUnitGroup,
   type AliasV2Row,
   ALIAS_V2_EXCHANGE_KEYS,
   ALIAS_V2_FACTOR,
@@ -200,7 +201,7 @@ function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
       json: {
         unitGroupDataSet: {
           // The real canonical shape: the base unit is selected by the reference's internal id,
-          quantitativeReference: { referenceToReferenceUnit: '1' },
+          unitGroupInformation: { quantitativeReference: { referenceToReferenceUnit: '1' } },
           units: {
             unit: [
               { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
@@ -219,7 +220,7 @@ function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
       json: {
         unitGroupDataSet: {
           // The real canonical shape: the base unit is selected by the reference's internal id,
-          quantitativeReference: { referenceToReferenceUnit: '1' },
+          unitGroupInformation: { quantitativeReference: { referenceToReferenceUnit: '1' } },
           units: {
             unit: [
               { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
@@ -1308,7 +1309,7 @@ test('malformed amounts, incomplete occurrence sets and stale evidence fail clos
   ): Partial<AliasV2PlanInput> =>
     unitGroup({
       unitGroupDataSet: {
-        quantitativeReference: { referenceToReferenceUnit },
+        unitGroupInformation: { quantitativeReference: { referenceToReferenceUnit } },
         units: { unit },
       },
     });
@@ -1328,6 +1329,21 @@ test('malformed amounts, incomplete occurrence sets and stale evidence fail clos
   );
   rejects(
     table([{ '@dataSetInternalID': '1', name: 'a', meanValue: '1' }], '9'),
+    targetShapeInvalid,
+  );
+  // A canonical parent whose quantitativeReference is not an object carries no selector either.
+  rejects(
+    unitGroup({
+      unitGroupDataSet: {
+        unitGroupInformation: { quantitativeReference: 'nope' },
+        units: {
+          unit: [
+            { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
+            { '@dataSetInternalID': '2', name: 'hr', meanValue: ALIAS_V2_FACTOR },
+          ],
+        },
+      },
+    }),
     targetShapeInvalid,
   );
   // The referenced base row must be the reviewed year factor: the real snapshot spells it `1.0`.
@@ -1360,7 +1376,7 @@ test('malformed amounts, incomplete occurrence sets and stale evidence fail clos
           version: '01.00.000',
           json: {
             unitGroupDataSet: {
-              quantitativeReference: { referenceToReferenceUnit: '2' },
+              unitGroupInformation: { quantitativeReference: { referenceToReferenceUnit: '2' } },
               units: {
                 unit: [
                   { '@dataSetInternalID': '1', name: 'a', meanValue: baseFactor },
@@ -1384,7 +1400,7 @@ test('malformed amounts, incomplete occurrence sets and stale evidence fail clos
         version: '01.00.000',
         json: {
           unitGroupDataSet: {
-            quantitativeReference: { referenceToReferenceUnit: '7' },
+            unitGroupInformation: { quantitativeReference: { referenceToReferenceUnit: '7' } },
             units: { unit: [{ '@dataSetInternalID': '1', name: 'a', meanValue: '1' }] },
           },
         },
@@ -1726,5 +1742,78 @@ test('a name-only change to the source flow property is a new binding, never a s
   assert.deepEqual(
     setsBefore['alias_plan_request_sha256'],
     sha256Json({ ...before, plan_sha256: undefined }),
+  );
+});
+
+test('the real nested unit-group structure is read at its canonical parent path', () => {
+  // Root's exact real RED: the current Time unit group as the authenticated CLI exports it. The
+  // base-unit selector lives at unitGroupDataSet.unitGroupInformation.quantitativeReference
+  // .referenceToReferenceUnit — an earlier flattened excerpt showed the same node without its
+  // parent, and reading the projection as if it were the tree refused the real row.
+  const raw = readFileSync(
+    path.join(cwd(), 'test/fixtures/alias-v2-real-unitgroup-structure.json'),
+  );
+  assert.equal(
+    createHash('sha256').update(raw).digest('hex'),
+    '5068ae2836652b6351db4f676351480bc358bd2ec5269ce9a13ebe5f71d6a0d3',
+    'the real-shape fixture must stay byte-identical',
+  );
+  const targetShape = 'ALIAS_V2_TARGET_SHAPE_INVALID';
+  const structure = JSON.parse(raw.toString('utf8')) as JsonObject;
+  const realRow: AliasV2Row = { id: TARGET_UG, version: '01.00.000', json: structure };
+  // The complete real row is accepted, for the target and for the declared source alike.
+  assert.equal(assertAliasV2TargetUnitGroup(realRow)['units'] !== undefined, true);
+  assert.equal(
+    buildAliasV2Plan(
+      input({
+        target_unit_group: realRow,
+        declared_source_unit_group: realRow,
+      }),
+    ).plan['plan_sha256'] !== undefined,
+    true,
+  );
+  // The root-level same-name fake path is not the canonical tree: it must be refused, both when it
+  // stands alone and when it accompanies a real canonical node.
+  const rootLevelFake = {
+    unitGroupDataSet: {
+      quantitativeReference: { referenceToReferenceUnit: '1' },
+      units: structure['unitGroupDataSet']
+        ? (structure['unitGroupDataSet'] as JsonObject)['units']
+        : undefined,
+    },
+  } as JsonObject;
+  rejects(
+    { target_unit_group: { id: TARGET_UG, version: '01.00.000', json: rootLevelFake } },
+    targetShape,
+  );
+  rejects(
+    {
+      target_unit_group: {
+        id: TARGET_UG,
+        version: '01.00.000',
+        json: {
+          unitGroupDataSet: {
+            ...(structure['unitGroupDataSet'] as JsonObject),
+            quantitativeReference: { referenceToReferenceUnit: '1' },
+          },
+        },
+      },
+    },
+    targetShape,
+  );
+  // A missing canonical parent is refused as well, even with a valid unit table.
+  rejects(
+    {
+      target_unit_group: {
+        id: TARGET_UG,
+        version: '01.00.000',
+        json: {
+          unitGroupDataSet: {
+            units: (structure['unitGroupDataSet'] as JsonObject)['units'],
+          },
+        },
+      },
+    },
+    targetShape,
   );
 });
