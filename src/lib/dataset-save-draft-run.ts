@@ -21,10 +21,7 @@ import {
   type SdkValidationFactory,
   validateSchemaWithDeepFallback,
 } from './tidas-sdk-validation.js';
-import {
-  collectProcessPlaceholderIssues,
-  collectProcessRequiredFieldIssues,
-} from './process-required-fields.js';
+import { validateProcessPayload } from './process-payload-validation.js';
 import { buildDatasetCommandTransport } from './dataset-command.js';
 import {
   createSupabaseDataClient,
@@ -47,6 +44,10 @@ import {
   stableJsonText,
 } from './dataset-maintenance-contract.js';
 import { resolveFlowIdentityApprovalClaimRoot } from './dataset-maintenance-flow-identity-approval-claim.js';
+import {
+  buildDatasetValidationLayers,
+  type DatasetValidationLayers,
+} from './dataset-validation-layers.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -71,7 +72,10 @@ type DatasetSaveDraftValidationIssue = {
   code: string;
 };
 
-type DatasetSaveDraftValidationResult =
+type DatasetSaveDraftValidationResult = {
+  payload_sha256?: string;
+  validation_layers?: DatasetValidationLayers;
+} & (
   | {
       ok: true;
       validator: string;
@@ -83,7 +87,8 @@ type DatasetSaveDraftValidationResult =
       validator: string;
       issue_count: number;
       issues: DatasetSaveDraftValidationIssue[];
-    };
+    }
+);
 
 function normalizeValidationIssue(issue: {
   path?: Array<string | number>;
@@ -799,22 +804,22 @@ function validatePayload(
   config: DatasetTypeConfig,
 ): DatasetSaveDraftValidationResult {
   const { schema, createEntity } = schemaForConfig(config);
+  if (type === 'process') return validateProcessPayload(payload, schema, createEntity);
   // SDK schema/entity validation may apply defaults by mutating its input. Keep validation
   // isolated so execution-contract hashing, dispatch, and readback all use the exact input.
   const validationPayload = structuredClone(payload);
   const outcome = validateSchemaWithDeepFallback(schema, validationPayload, createEntity);
-  const processIssues =
-    type === 'process'
-      ? [
-          ...collectProcessRequiredFieldIssues(validationPayload),
-          ...collectProcessPlaceholderIssues(validationPayload),
-        ]
-      : [];
-  const importIssues = type === 'process' ? [] : collectImportContentIssues(validationPayload);
+  const contentIssues = collectImportContentIssues(payload);
+  const { additional_multilingual_issues, ...evidence } = buildDatasetValidationLayers(
+    payload,
+    outcome,
+    [],
+    contentIssues,
+  );
   const issues: DatasetSaveDraftValidationIssue[] = [
     ...outcome.issues.map(normalizeValidationIssue),
-    ...processIssues,
-    ...importIssues,
+    ...contentIssues,
+    ...additional_multilingual_issues,
   ];
 
   if (outcome.success && issues.length === 0) {
@@ -823,6 +828,7 @@ function validatePayload(
       validator: `@tiangong-lca/tidas-sdk/${String(config.schemaName)}+tiangong/import-content`,
       issue_count: 0,
       issues: [],
+      ...evidence,
     };
   }
 
@@ -831,6 +837,7 @@ function validatePayload(
     validator: `@tiangong-lca/tidas-sdk/${String(config.schemaName)}+tiangong/import-content`,
     issue_count: issues.length,
     issues,
+    ...evidence,
   };
 }
 

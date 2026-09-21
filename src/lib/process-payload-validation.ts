@@ -7,6 +7,10 @@ import {
 } from './tidas-sdk-validation.js';
 import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 import {
+  buildDatasetValidationLayers,
+  type DatasetValidationLayers,
+} from './dataset-validation-layers.js';
+import {
   collectProcessPlaceholderIssues,
   collectProcessRequiredFieldIssues,
 } from './process-required-fields.js';
@@ -22,7 +26,10 @@ export type ProcessPayloadValidationIssue = {
   code: string;
 };
 
-export type ProcessPayloadValidationResult =
+export type ProcessPayloadValidationResult = {
+  payload_sha256?: string;
+  validation_layers?: DatasetValidationLayers;
+} & (
   | {
       ok: true;
       validator: string;
@@ -34,7 +41,8 @@ export type ProcessPayloadValidationResult =
       validator: string;
       issue_count: number;
       issues: ProcessPayloadValidationIssue[];
-    };
+    }
+);
 
 function getProcessSchema(): SafeParseSchema {
   const schema = (tidasSdk as { ProcessSchema?: SafeParseSchema }).ProcessSchema;
@@ -53,14 +61,19 @@ function getProcessFactory(
 
 export function summarizeProcessPayloadValidation(result: ProcessPayloadValidationResult): string {
   if (result.ok) {
-    return 'local ProcessSchema validation passed';
+    return 'local process validation passed';
   }
 
   const preview = result.issues
     .slice(0, 3)
     .map((issue) => `${issue.path}: ${issue.message}`)
     .join('; ');
-  return `local ProcessSchema validation failed with ${result.issue_count} issue(s)${preview ? ` (${preview})` : ''}`;
+  const layers = result.validation_layers
+    ? ` [${Object.entries(result.validation_layers)
+        .map(([name, layer]) => `${name}: ${layer.status}`)
+        .join('; ')}]`
+    : '';
+  return `local process validation failed with ${result.issue_count} issue(s)${preview ? ` (${preview})` : ''}${layers}`;
 }
 
 export function validateProcessPayload(
@@ -68,16 +81,28 @@ export function validateProcessPayload(
   schema: SafeParseSchema = getProcessSchema(),
   createEntity: SdkValidationFactory | null = getProcessFactory(),
 ): ProcessPayloadValidationResult {
-  const outcome = validateSchemaWithDeepFallback(schema, payload, createEntity);
+  const outcome = validateSchemaWithDeepFallback(schema, structuredClone(payload), createEntity);
   const requiredFieldIssues = collectProcessRequiredFieldIssues(payload);
   const placeholderIssues = collectProcessPlaceholderIssues(payload);
+  const { additional_multilingual_issues, ...evidence } = buildDatasetValidationLayers(
+    payload,
+    outcome,
+    requiredFieldIssues,
+    placeholderIssues,
+  );
 
-  if (outcome.success && requiredFieldIssues.length === 0 && placeholderIssues.length === 0) {
+  if (
+    outcome.success &&
+    requiredFieldIssues.length === 0 &&
+    placeholderIssues.length === 0 &&
+    additional_multilingual_issues.length === 0
+  ) {
     return {
       ok: true,
       validator: PROCESS_SCHEMA_VALIDATOR,
       issue_count: 0,
       issues: [],
+      ...evidence,
     };
   }
 
@@ -89,6 +114,7 @@ export function validateProcessPayload(
     })),
     ...requiredFieldIssues,
     ...placeholderIssues,
+    ...additional_multilingual_issues,
   ];
 
   return {
@@ -96,6 +122,7 @@ export function validateProcessPayload(
     validator: PROCESS_SCHEMA_VALIDATOR,
     issue_count: issues.length,
     issues,
+    ...evidence,
   };
 }
 

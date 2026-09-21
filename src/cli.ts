@@ -1642,6 +1642,10 @@ Outputs written under --out-dir:
   - outputs/validation-report.json
   - outputs/valid-rows.jsonl
   - outputs/invalid-rows.jsonl
+
+Recognized rows retain payload_sha256 and separate schema, authoring_evidence,
+content and multilingual validation_layers. A schema-valid unknown annual volume
+remains an evidence gap and does not establish write or publication readiness.
 `.trim();
 }
 
@@ -2724,15 +2728,17 @@ Options:
   --input <file>        Process rows JSON/JSONL file
   --out <file>          Output JSONL with required fields completed
   --out-dir <dir>       Optional artifact directory for report and evidence
-  --flows <file>        Optional flow rows JSON/JSONL used to infer reference-flow units
-  --default-unit <unit> Unit suffix to use when it cannot be inferred (default: unit)
+  --flows <file>        Optional legacy flow context; never annual-volume evidence
+  --default-unit <unit> Recorded legacy context only; never supplies missing annual units
   --json                Print compact JSON
   -h, --help
 
 Annual supply / production volume policy:
-  1. keep an existing valid annualized annualSupplyOrProductionVolume, for example "3.6 MJ/year";
+  1. keep an existing valid annualized annualSupplyOrProductionVolume, for example "3.6 MJ/year", with its exact content and language order;
   2. use an explicit value from row-level authoring evidence or evidenceManifest field bindings;
-  3. otherwise write "9999 missing-data-sentinel/year", an intentionally non-physical searchable sentinel for later database-side curation.
+  3. otherwise keep the field unknown as the supported empty array "[]" and report a row-level evidence gap.
+     A quantitative reference amount, a reference/default unit, or a legacy tiangongfoundry:unresolvedTrace is never annual-volume evidence, so no quantity is ever fabricated. The historical "9999 missing-data-sentinel/year" value is recognized only to normalize rows written by earlier rounds and is never written again.
+     The report then reads "completed_with_blockers" and downstream schema, authoring, curation and write gates remain the blocking owners.
 
 Outputs:
   - completed rows at --out
