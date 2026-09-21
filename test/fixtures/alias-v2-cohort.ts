@@ -111,7 +111,10 @@ function flowPayload(id: string): JsonObject {
       modellingAndValidation: {
         LCIMethod: { typeOfDataSet: 'Product flow' },
       },
-      administrativeInformation: { 'common:other': 'fixture' },
+      administrativeInformation: {
+        'common:other': 'fixture',
+        publicationAndOwnership: { 'common:dataSetVersion': '00.00.001' },
+      },
     },
   };
 }
@@ -134,13 +137,17 @@ function processPayload(
   exchangeCount: number,
   unitText: string,
 ): { json: JsonObject; exchange_indexes: number[] } {
-  // The reviewed campaign relationship: the functional unit's reference exchange IS one of the
-  // selected alias occurrences, so the selection starts at the reference (internal id "1" at
-  // position 0) and covers the alias inputs that follow it.
-  const exchange_indexes = Array.from({ length: aliases }, (_, offset) => offset);
+  // The 87 corrected and 41 already-correct Time functional units reference an alias exchange.
+  // The other 146 processes keep an unrelated output (for example, a mass reference) and use
+  // Time only on their other exchanges. Preserve that real distinction in the shared fixture.
+  const timeReference = index < COHORT_TEXT_ACTION_COUNT + COHORT_CORRECT_UNIT_TEXT_COUNT;
+  const exchange_indexes = Array.from(
+    { length: aliases },
+    (_, offset) => offset + (timeReference ? 0 : 1),
+  );
   const exchanges: JsonObject[] = [];
   for (let position = 0; position < exchangeCount; position += 1) {
-    const isAlias = position < aliases;
+    const isAlias = exchange_indexes.includes(position);
     const spelling = AMOUNT_SPELLINGS[
       (index * 7 + position * 3) % AMOUNT_SPELLINGS.length
     ] as string;
@@ -150,8 +157,8 @@ function processPayload(
       '@dataSetInternalID': String(position + 1),
       meanAmount: isReference ? '1.0' : isAlias ? spelling : '1',
       resultingAmount: isReference ? '1.0' : isAlias ? spelling : '1',
-      // The reference exchange is the produced one-hour output at quantity 1.0; the alias
-      // occurrences are separate, exponent-valued inputs.
+      // Time references are the produced one-hour output; non-Time references remain untouched.
+      // Exponent-valued quantities belong to the other selected alias occurrences.
       exchangeDirection: isReference ? 'Output' : position % 2 === 0 ? 'Input' : 'Output',
       dataDerivationTypeStatus: 'Unknown derivation',
       uncertaintyDistributionType: UNCERTAINTY_TYPES[(index + position) % 2] as string,
@@ -189,7 +196,10 @@ function processPayload(
           },
         },
         exchanges: { exchange: exchanges },
-        administrativeInformation: { 'common:other': 'fixture' },
+        administrativeInformation: {
+          'common:other': 'fixture',
+          publicationAndOwnership: { 'common:dataSetVersion': '00.00.001' },
+        },
       },
     },
     exchange_indexes,
@@ -236,6 +246,9 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
       version: '00.00.001',
       json: {
         flowPropertyDataSet: {
+          administrativeInformation: {
+            publicationAndOwnership: { 'common:dataSetVersion': '00.00.001' },
+          },
           flowPropertiesInformation: {
             dataSetInformation: {
               'common:name': { '#text': 'Amount in hr', '@xml:lang': 'en' },
@@ -261,6 +274,9 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
       // quantitativeReference.referenceToReferenceUnitGroup.
       json: {
         flowPropertyDataSet: {
+          administrativeInformation: {
+            publicationAndOwnership: { 'common:dataSetVersion': '01.00.000' },
+          },
           flowPropertiesInformation: {
             dataSetInformation: {
               'common:name': { '#text': 'Time', '@xml:lang': 'en' },
@@ -281,6 +297,9 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
       version: '01.00.000',
       json: {
         unitGroupDataSet: {
+          administrativeInformation: {
+            publicationAndOwnership: { 'common:dataSetVersion': '01.00.000' },
+          },
           // The real canonical shape: the base unit is selected by the reference's internal id,
           unitGroupInformation: { quantitativeReference: { referenceToReferenceUnit: '1' } },
           units: {
@@ -302,6 +321,9 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
       version: '01.00.000',
       json: {
         unitGroupDataSet: {
+          administrativeInformation: {
+            publicationAndOwnership: { 'common:dataSetVersion': '01.00.000' },
+          },
           // The real canonical shape: the base unit is selected by the reference's internal id,
           unitGroupInformation: { quantitativeReference: { referenceToReferenceUnit: '1' } },
           units: {

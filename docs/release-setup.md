@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 83189e2
-lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: 无新增 secret、环境、workflow、tag 规则或发布通道；v2 wire 未实现。'
+lastReviewedCommit: 6b8460e19c2bdbe39a5c927bd4e4c880aa42c455
+lastReviewedNote: 'Reviewed for CLI #358: the shared synthetic cohort now carries matching embedded dataset versions for ordinary Database triggers and the source-proven 128 Time versus 146 non-Time reference-output mix. Two focused RED/GREEN regressions and the full local coverage gate pass; the runtime, v1 policy, package identity and release controls are unchanged by this fixture correction.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

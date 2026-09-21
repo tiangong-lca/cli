@@ -33,6 +33,43 @@ const PLAN = built.plan;
 const BATCH = built.batch;
 const ACTIONS = PLAN['actions'] as JsonObject[];
 
+test('the full cohort carries payload versions for normal database version-sync triggers', () => {
+  const input = buildAliasV2CohortInput();
+  const rows = [
+    ...input.flows.map((row) => ({ row, root: 'flowDataSet' })),
+    ...input.processes.map((row) => ({ row, root: 'processDataSet' })),
+    { row: input.source_flow_property, root: 'flowPropertyDataSet' },
+    { row: input.target_flow_property, root: 'flowPropertyDataSet' },
+    { row: input.target_unit_group, root: 'unitGroupDataSet' },
+    { row: input.declared_source_unit_group, root: 'unitGroupDataSet' },
+  ];
+  for (const { row, root } of rows) {
+    const dataSet = row.json[root] as JsonObject;
+    const admin = dataSet['administrativeInformation'] as JsonObject | undefined;
+    const publication = admin?.['publicationAndOwnership'] as JsonObject | undefined;
+    assert.equal(publication?.['common:dataSetVersion'], row.version, `${row.id}@${row.version}`);
+  }
+});
+
+test('the cohort retains the real 128 Time references and 146 unrelated reference outputs', () => {
+  const input = buildAliasV2CohortInput();
+  let aliasReferences = 0;
+  for (const process of input.processes) {
+    const dataSet = process.json['processDataSet'] as JsonObject;
+    const information = dataSet['processInformation'] as JsonObject;
+    const reference = information['quantitativeReference'] as JsonObject;
+    const exchanges = (dataSet['exchanges'] as JsonObject)['exchange'] as JsonObject[];
+    const index = exchanges.findIndex(
+      (exchange) => exchange['@dataSetInternalID'] === reference['referenceToReferenceFlow'],
+    );
+    const selected = process.exchange_indexes.includes(index);
+    if (selected) aliasReferences += 1;
+    if (process.functional_unit !== undefined) assert.equal(selected, true);
+  }
+  assert.equal(aliasReferences, COHORT_TEXT_ACTION_COUNT + COHORT_CORRECT_UNIT_TEXT_COUNT);
+  assert.equal(input.processes.length - aliasReferences, 146);
+});
+
 /** Every leaf path at which two JSON payloads differ. */
 function changedPaths(before: unknown, after: unknown, prefix = ''): string[] {
   if (JSON.stringify(before) === JSON.stringify(after)) return [];
