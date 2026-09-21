@@ -41,22 +41,39 @@ export type AliasV2InteropReady = {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const TOKEN = /^[A-Za-z0-9._:-]{1,4096}$/u;
 
-/** Reads and validates the interop-ready marker the database owner publishes. */
+/**
+ * Reads the interop-ready marker the database owner publishes. Anything that is not a complete,
+ * ready document — absent, mid-update, malformed, or explicitly not ready — simply means the shared
+ * stack is not ours to exercise, so the driver stays skipped rather than failing.
+ */
 export function readAliasV2InteropReady(path: string): AliasV2InteropReady | null {
   if (!existsSync(path)) {
     return null;
   }
-  const value = JSON.parse(readFileSync(path, 'utf8')) as AliasV2InteropReady;
-  if (
-    value.ready !== true ||
-    typeof value.container !== 'string' ||
-    typeof value.artifacts_dir !== 'string' ||
-    typeof value.request_id !== 'string' ||
-    !Array.isArray(value.scenarios)
-  ) {
-    throw new Error(`The interop marker at ${path} is not a ready document.`);
+  let value: unknown;
+  try {
+    value = JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return null;
   }
-  return value;
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const candidate = value as Partial<AliasV2InteropReady>;
+  if (
+    candidate.ready !== true ||
+    typeof candidate.container !== 'string' ||
+    typeof candidate.artifacts_dir !== 'string' ||
+    typeof candidate.request_id !== 'string' ||
+    typeof candidate.project_ref !== 'string' ||
+    candidate.actor === undefined ||
+    typeof candidate.actor.user_id !== 'string' ||
+    typeof candidate.actor.email !== 'string' ||
+    !Array.isArray(candidate.scenarios)
+  ) {
+    return null;
+  }
+  return candidate as AliasV2InteropReady;
 }
 
 export type AliasV2LocalRpcOptions = {

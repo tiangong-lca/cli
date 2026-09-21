@@ -229,6 +229,7 @@ test('the stored gate receipts must be the three passed gates this run captured'
     ['gates', 'not-an-array'],
     ['gates', []],
     ['gates.0', 'not-an-object'],
+    ['gates.0.gate', 5],
     ['gates.0.gate', 'another_gate'],
     ['gates.0.status', 'failed'],
     ['gates.0.expected_sha256', 'not-a-sha'],
@@ -416,6 +417,84 @@ test('the functional-unit text of a process must be the approved or the unchange
   );
 });
 
+test('a functional-unit leaf that is not a string reads as no text, like a missing one', () => {
+  const textActionIds = new Set(
+    (SEALED.plan['text_actions'] as JsonObject[]).map((action) => String(action['id'])),
+  );
+  const index = ACTIONS.findIndex(
+    (action) => action['table'] === 'processes' && !textActionIds.has(String(action['id'])),
+  );
+  assert.notEqual(index, -1);
+  const action = ACTIONS[index] as JsonObject;
+  // The path resolves, but its leaf is not a string: exactly the same "no text" reading.
+  const oddBefore = structuredClone(action);
+  oddBefore['expected_json_ordered'] = {
+    processDataSet: {
+      processInformation: {
+        quantitativeReference: { functionalUnitOrOther: { '#text': 123 } },
+      },
+    },
+  };
+  const oddPlan = {
+    ...SEALED.plan,
+    actions: ACTIONS.map((entry, at) => (at === index ? oddBefore : entry)),
+  };
+  const proof = aliasV2TerminalProof(SEALED);
+  const rows = (proof['readback'] as JsonObject)['rows'] as JsonObject[];
+  const rowIndex = rows.findIndex((row) => row['id'] === action['id']);
+  assert.notEqual(rowIndex, -1);
+  const nullObservation = patched(aliasV2StatusEnvelope(SEALED, { terminal_proof: proof }), [
+    ['terminal_proof.readback.rows.' + String(rowIndex) + '.functional_unit_text', null],
+  ]);
+  assert.equal(
+    (classify(nullObservation, SEALED, { plan: oddPlan }) as { kind: string }).kind,
+    'applied',
+  );
+});
+
+test('a plan that carries no text actions expects every process to keep its before text', () => {
+  // Every process row's observation is its own before-image text, and the plan carries no text
+  // actions at all: the readback must still line up.
+  const proof = aliasV2TerminalProof(SEALED);
+  const rows = (proof['readback'] as JsonObject)['rows'] as JsonObject[];
+  for (const row of rows) {
+    if (row['table'] !== 'processes') {
+      continue;
+    }
+    const action = ACTIONS.find((entry) => entry['id'] === row['id']) as JsonObject;
+    const before = action['expected_json_ordered'] as JsonObject;
+    const text = (
+      ((before['processDataSet'] as JsonObject)['processInformation'] as JsonObject)[
+        'quantitativeReference'
+      ] as JsonObject
+    )['functionalUnitOrOther'] as JsonObject;
+    row['functional_unit_text'] = text['#text'];
+  }
+  const planWithoutTextActions = structuredClone(SEALED.plan);
+  delete planWithoutTextActions['text_actions'];
+  assert.equal(
+    (
+      classify(aliasV2StatusEnvelope(SEALED, { terminal_proof: proof }), SEALED, {
+        plan: planWithoutTextActions,
+      }) as { kind: string }
+    ).kind,
+    'applied',
+  );
+  // A malformed text action is not a text action: a non-object entry and a non-string after text are
+  // both ignored, so the plan expects the unchanged before text and the genuine proof (which carries
+  // the corrected text) no longer lines up.
+  const corrected = (SEALED.plan['text_actions'] as JsonObject[])[0] as JsonObject;
+  for (const malformed of ['not-an-object', { ...corrected, after_text: 5 }]) {
+    const plan = structuredClone(SEALED.plan);
+    plan['text_actions'] = [malformed];
+    assert.equal(
+      (classify(aliasV2StatusEnvelope(SEALED), SEALED, { plan }) as { kind: string }).kind,
+      'invalid',
+      JSON.stringify(malformed).slice(0, 60),
+    );
+  }
+});
+
 test('a plan without actions, with malformed actions or with duplicate identities refuses', () => {
   const noActions = { ...SEALED.plan, actions: [] };
   assert.equal(
@@ -537,20 +616,23 @@ test('the derivative closure must be exactly the deterministic sub-batches of th
 test('a plan whose target count is not a usable count can never authorize anything', () => {
   // The closure comparison reads the plan's own derivative target count first; a plan that does not
   // carry a usable one is refused before any stored `completed` is even considered.
-  const corruptedPlan = {
-    ...SEALED.plan,
-    expected: { ...(SEALED.plan['expected'] as JsonObject), derivative_target_count: 'many' },
-  };
-  const envelope = aliasV2StatusEnvelope(SEALED, {
-    terminal_proof: {
-      ...aliasV2TerminalProof(SEALED),
-      counts: corruptedPlan['expected'],
-    },
-  });
-  assert.equal(
-    (classify(envelope, SEALED, { plan: corruptedPlan }) as { kind: string }).kind,
-    'invalid',
-  );
+  for (const unusable of ['many', -1]) {
+    const corruptedPlan = {
+      ...SEALED.plan,
+      expected: { ...(SEALED.plan['expected'] as JsonObject), derivative_target_count: unusable },
+    };
+    const envelope = aliasV2StatusEnvelope(SEALED, {
+      terminal_proof: {
+        ...aliasV2TerminalProof(SEALED),
+        counts: corruptedPlan['expected'],
+      },
+    });
+    assert.equal(
+      (classify(envelope, SEALED, { plan: corruptedPlan }) as { kind: string }).kind,
+      'invalid',
+      String(unusable),
+    );
+  }
 });
 
 test('the in-flight, failed, indeterminate and not-admitted states classify as themselves', () => {
@@ -571,14 +653,12 @@ test('the in-flight, failed, indeterminate and not-admitted states classify as t
   }
   const failed = aliasV2StatusEnvelope(SEALED, { status: 'failed' });
   assert.deepEqual(classify(failed), { kind: 'failed', code: 'ALIAS_V2_FIXTURE_FAILED' });
-  assert.deepEqual(classify(patched(failed, [['error', null]])), {
-    kind: 'failed',
-    code: ALIAS_V2_EXECUTION_FAILED,
-  });
-  assert.deepEqual(classify(patched(failed, [['error', { phase: 'x' }]])), {
-    kind: 'failed',
-    code: ALIAS_V2_EXECUTION_FAILED,
-  });
+  for (const error of [null, { phase: 'x' }, { code: '' }]) {
+    assert.deepEqual(classify(patched(failed, [['error', error]])), {
+      kind: 'failed',
+      code: ALIAS_V2_EXECUTION_FAILED,
+    });
+  }
   assert.deepEqual(classify(patched(failed, [['execution_status', 'completed']])).kind, 'failed');
   assert.equal(refusalCode([['execution_status', 'running']], failed), ALIAS_V2_RESPONSE_INVALID);
   const indeterminate = aliasV2StatusEnvelope(SEALED, { status: 'indeterminate' });
@@ -586,15 +666,24 @@ test('the in-flight, failed, indeterminate and not-admitted states classify as t
     kind: 'indeterminate',
     code: 'ALIAS_V2_FIXTURE_INDETERMINATE',
   });
-  assert.deepEqual(classify(patched(indeterminate, [['error', null]])), {
-    kind: 'indeterminate',
-    code: ALIAS_V2_EXECUTION_INDETERMINATE,
-  });
+  for (const error of [null, { code: '' }]) {
+    assert.deepEqual(classify(patched(indeterminate, [['error', error]])), {
+      kind: 'indeterminate',
+      code: ALIAS_V2_EXECUTION_INDETERMINATE,
+    });
+  }
   assert.equal(
     refusalCode([['execution_status', 'failed']], indeterminate),
     ALIAS_V2_RESPONSE_INVALID,
   );
-  assert.equal(refusalCode([['status', 'weird']]), ALIAS_V2_RESPONSE_INVALID);
+  // An unknown status category is refused by the fall-through itself, so the base carries no proof.
+  assert.equal(
+    refusalCode([
+      ['status', 'weird'],
+      ['terminal_proof', null],
+    ]),
+    ALIAS_V2_RESPONSE_INVALID,
+  );
 });
 
 test('a fabricated terminal proof on any non-passed state is refused', () => {
@@ -611,6 +700,18 @@ test('a fabricated terminal proof on any non-passed state is refused', () => {
 test('the not-admitted answer maps to no-admission, and a missing ledger never does', () => {
   const notAdmitted = aliasV2NotAdmittedEnvelope(SEALED);
   assert.deepEqual(classify(notAdmitted), { kind: 'not_applied' });
+  // The shape never carries a proof key at all, and an explicit null is equivalent.
+  assert.deepEqual(classify(patched(notAdmitted, [['terminal_proof', undefined]])), {
+    kind: 'not_applied',
+  });
+  assert.deepEqual(classify(patched(notAdmitted, [['terminal_proof', null]])), {
+    kind: 'not_applied',
+  });
+  // A fabricated proof on a not-admitted answer is refused like on every other non-passed state.
+  assert.equal(
+    refusalCode([['terminal_proof', aliasV2TerminalProof(SEALED)]], notAdmitted),
+    ALIAS_V2_RESPONSE_INVALID,
+  );
   assert.deepEqual(
     classify(patched(notAdmitted, [['code', 'ALIAS_EXECUTION_ADMISSION_LEDGER_MISSING']])),
     { kind: 'indeterminate', code: 'ALIAS_EXECUTION_ADMISSION_LEDGER_MISSING' },
