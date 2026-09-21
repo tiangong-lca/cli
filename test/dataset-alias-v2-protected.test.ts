@@ -142,6 +142,41 @@ function admissionProof(preflight: JsonObject, sealed: SealedAliasV2Execution): 
   };
 }
 
+test('the admission proof accepts the real dispatched callback identity', () => {
+  const sealed = sealedAliasV2Execution();
+  try {
+    const preflight = parseAliasV2PreflightProof(
+      preflightProof(sealed),
+      sealed.identity,
+      new Date(START),
+    );
+    // The database returns the pg_net row id as text (a short numeric string); v1 accepted exactly
+    // that shape and the versioned parser must too.
+    const proof = parseAliasV2AdmissionProof(
+      { ...admissionProof(preflightProof(sealed), sealed), net_request_id: '50018' },
+      sealed.identity,
+      preflight,
+    );
+    assert.equal(proof.net_request_id, '50018');
+    // A missing, empty or non-string identity is still refused.
+    for (const bad of ['', '   ', 7, undefined]) {
+      assert.throws(
+        () =>
+          parseAliasV2AdmissionProof(
+            { ...admissionProof(preflightProof(sealed), sealed), net_request_id: bad },
+            sealed.identity,
+            preflight,
+          ),
+        (error: unknown) =>
+          (error as { code?: string }).code === 'ALIAS_V2_PROTECTED_PROOF_INVALID',
+        String(bad),
+      );
+    }
+  } finally {
+    rmSync(sealed.directory, { recursive: true, force: true });
+  }
+});
+
 /** The actual versioned status envelope of this execution, as the read command returns it. */
 function readEnvelope(sealed: SealedAliasV2Execution, overrides: JsonObject = {}): JsonObject {
   return aliasV2StatusEnvelope(sealed, overrides);

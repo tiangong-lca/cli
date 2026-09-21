@@ -362,12 +362,14 @@ e2eTest(
           retained[`runs/${label}/${file}`] = createHash('sha256').update(bytes).digest('hex');
         }
       }
-      for (const file of readdirSync(EVIDENCE_DIR).sort()) {
-        if (retained[file] !== undefined) {
+      for (const entry of readdirSync(EVIDENCE_DIR, { withFileTypes: true }).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      )) {
+        if (!entry.isFile() || retained[entry.name] !== undefined) {
           continue;
         }
-        const bytes = readFileSync(path.join(EVIDENCE_DIR, file));
-        retained[file] = createHash('sha256').update(bytes).digest('hex');
+        const bytes = readFileSync(path.join(EVIDENCE_DIR, entry.name));
+        retained[entry.name] = createHash('sha256').update(bytes).digest('hex');
       }
       writeFileSync(
         path.join(EVIDENCE_DIR, 'campaign-summary.json'),

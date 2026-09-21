@@ -49,6 +49,9 @@ export type AliasV2InteropReady = {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const TOKEN = /^[A-Za-z0-9._:-]{1,4096}$/u;
 
+/** One monotonic evidence counter per process, shared by every adapter. */
+let evidenceSequence = 0;
+
 /**
  * Reads the interop-ready marker the database owner publishes. Anything that is not a complete,
  * ready document — absent, mid-update, malformed, or explicitly not ready — simply means the shared
@@ -154,13 +157,14 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
   if (evidenceDir !== null) {
     mkdirSync(evidenceDir, { recursive: true, mode: 0o700 });
   }
-  let evidenceIndex = 0;
   const retain = (label: string, text: string): void => {
     if (evidenceDir === null) {
       return;
     }
-    evidenceIndex += 1;
-    const name = `${String(evidenceIndex).padStart(3, '0')}-${label}`;
+    // One monotonic counter across every adapter in the process, so per-adapter counters can never
+    // overwrite an earlier adapter's evidence.
+    evidenceSequence += 1;
+    const name = `${String(evidenceSequence).padStart(4, '0')}-${label}`;
     writeFileSync(path.join(evidenceDir, name), text, { mode: 0o600 });
   };
   const runSql = (sql: string, variables: Record<string, string> = {}, label = 'sql'): string => {

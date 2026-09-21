@@ -143,6 +143,17 @@ function tokenOf(value: unknown, label: string): string {
   }
   return value;
 }
+/**
+ * The dispatched callback's own identity. The database returns the pg_net row id rendered as text
+ * (a short numeric string), exactly the shape v1 already accepted, so this is a non-empty string
+ * rather than a long opaque token.
+ */
+function dispatchIdOf(value: unknown, label: string): string {
+  if (typeof value !== 'string' || value.trim() === '') {
+    fail(`${label} must be a non-empty string.`);
+  }
+  return value;
+}
 function timestampOf(value: unknown, label: string): string {
   if (typeof value !== 'string' || Number.isNaN(Date.parse(value))) {
     fail(`${label} must be an RFC 3339 timestamp.`);
@@ -398,7 +409,7 @@ export function parseAliasV2AdmissionProof(
     status: 'dispatched',
     attempt_count: 1,
     dispatch_count: 1,
-    net_request_id: tokenOf(value.net_request_id, 'net_request_id'),
+    net_request_id: dispatchIdOf(value.net_request_id, 'net_request_id'),
     attempt_consumed: true,
     retry_allowed: false,
   };
