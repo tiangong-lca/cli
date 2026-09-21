@@ -85,7 +85,7 @@ export function planAliasV2(options: { inputPath: string; outDir: string }): {
   plan_path: string;
   batch_path: string;
   plan_sha256: string;
-  counts: JsonObject;
+  expected: JsonObject;
 } {
   const input = readJson(options.inputPath, 'Alias v2 planning input');
   const outDir = ensurePrivateArtifactDirectory(options.outDir);
@@ -98,7 +98,7 @@ export function planAliasV2(options: { inputPath: string; outDir: string }): {
     plan_path: planPath,
     batch_path: batchPath,
     plan_sha256: plan['plan_sha256'] as string,
-    counts: plan['counts'] as JsonObject,
+    expected: plan['expected'] as JsonObject,
   };
 }
 
@@ -278,7 +278,6 @@ export async function freezeAliasV2Protected(options: {
       toolchainEvidenceSha256: toolchainArtifact.file_sha256,
     }),
     derivativeTargets,
-    expectedClosure: { roots: 0, references: 0 },
   });
   const freezePath = path.join(outDir, ALIAS_V2_PROTECTED_ARTIFACTS.freeze);
   const freezeFileSha256 = writeArtifact(freezePath, freezeArtifact.value);
@@ -301,7 +300,7 @@ export async function freezeAliasV2Protected(options: {
     plan_sha256: planArtifact.value['plan_sha256'],
     freeze_file_sha256: freezeFileSha256,
     freeze_sha256: freezeArtifact.value.freeze_sha256,
-    counts: freezeArtifact.value.counts,
+    expected: freezeArtifact.value.expected,
     derivative_target_count: derivativeTargets.length,
     toolchain_evidence_sha256: toolchainArtifact.file_sha256,
     project_ref: projectRef,

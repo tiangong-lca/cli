@@ -57,7 +57,7 @@ function changedPaths(before: unknown, after: unknown, prefix = ''): string[] {
 }
 
 test('the full cohort derives exactly the frozen 387 / 654 / 4 147 counts', () => {
-  assert.deepEqual(PLAN['counts'], { ...COHORT_COUNTS });
+  assert.deepEqual(PLAN['expected'], { ...COHORT_COUNTS });
   assert.equal(ACTIONS.length, COHORT_COUNTS.action_count);
   assert.equal(ACTIONS.filter((action) => action['table'] === 'flows').length, 113);
   assert.equal(ACTIONS.filter((action) => action['table'] === 'processes').length, 274);
@@ -218,7 +218,7 @@ test('the cohort plan resolves to its terminal proof through the protected lifec
   const proof = {
     status: 'applied',
     plan_sha256: PLAN['plan_sha256'],
-    counts: PLAN['counts'],
+    counts: PLAN['expected'],
     audit: { plan_summary_id: 'audit-plan-1', batch_summary_ids: ['b-flows', 'b-processes'] },
     readback: {
       flows: ACTIONS.filter((action) => action['table'] === 'flows').map((action) => ({

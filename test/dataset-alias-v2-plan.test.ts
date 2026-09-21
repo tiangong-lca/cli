@@ -20,7 +20,6 @@ type JsonObject = Record<string, unknown>;
 const SOURCE_FP = 'bd69e542-6a50-524c-8d04-195b1ec23150';
 const TARGET_FP = 'da11d28f-4db8-51eb-b3a9-8784b26771e6';
 const TARGET_UG = '49ce0c2f-2241-54e3-8e75-e75ffbdaecfb';
-const SOURCE_UG = 'aeddc8ee-da6f-5181-9a99-73466e198b86';
 const SOURCE_EVIDENCE = 'e'.repeat(64);
 
 const TARGET_REFERENCE: JsonObject = {
@@ -176,13 +175,29 @@ function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
         },
       },
     },
-    source_unit_group: {
-      id: SOURCE_UG,
-      version: '00.00.001',
-      json: { unitGroupDataSet: { units: { unit: [{ name: 'hr', meanValue: '1' }] } } },
+    // The source alias's CURRENT DECLARATION is the year-based table (its base unit is the year);
+    // the reviewed transform converts each amount's unit from that base unit to hours. The orphan
+    // hour record is not this pointer.
+    declared_source_unit_group: {
+      id: TARGET_UG,
+      version: '01.00.000',
+      json: {
+        unitGroupDataSet: {
+          units: {
+            unit: [
+              { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
+              { '@dataSetInternalID': '2', name: 'hr', meanValue: ALIAS_V2_FACTOR },
+            ],
+          },
+        },
+      },
     },
     source_alias: { id: SOURCE_FP, version: '00.00.001' },
-    source_evidence: { sha256: SOURCE_EVIDENCE, cohort_sha256: '' },
+    source_evidence: {
+      sha256: SOURCE_EVIDENCE,
+      cohort_sha256: '',
+      original_source_unit: 'hr',
+    },
     ...overrides,
   };
   // The evidence document binds this exact cohort: the fixture computes it from the cohort the
@@ -225,25 +240,35 @@ test('the v2 plan derives the exact action, occurrence and invariant counts', ()
     input({
       expected_counts: {
         action_count: 4,
-        flowproperty_count: 0,
-        flow_count: 2,
-        process_count: 2,
+        batch_count: 1,
         exchange_count: 2,
         amount_field_count: 4,
         unrelated_exchange_count: 2,
+        audit_count: 6,
+        flowproperty_count: 0,
+        flow_count: 2,
+        process_count: 2,
+        derivative_target_count: 4,
+        text_action_count: 1,
       },
     }),
   );
   assert.equal(plan.schema_version, ALIAS_V2_PLAN_SCHEMA);
   assert.equal(plan.target_visibility, 'owner_draft');
-  assert.deepEqual(plan.counts, {
+  // The real v1 ten flat expected keys, with v2 values derived here, plus the versioned text
+  // action count: one audit row per action, one batch summary and one plan summary.
+  assert.deepEqual(plan.expected, {
     action_count: 4,
-    flowproperty_count: 0,
-    flow_count: 2,
-    process_count: 2,
+    batch_count: 1,
     exchange_count: 2,
     amount_field_count: 4,
     unrelated_exchange_count: 2,
+    audit_count: 6,
+    flowproperty_count: 0,
+    flow_count: 2,
+    process_count: 2,
+    derivative_target_count: 4,
+    text_action_count: 1,
   });
   assert.equal(plan.plan_sha256, sha256Json({ ...plan, plan_sha256: undefined }));
   assert.equal(batch.schema_version, ALIAS_V2_BATCH_SCHEMA);
@@ -370,7 +395,7 @@ test('each payload shape is resolved through its own accessor, never a neighbour
       ],
     }),
   );
-  assert.equal((singleton.plan.counts as JsonObject).action_count, 2);
+  assert.equal((singleton.plan.expected as JsonObject).action_count, 2);
   // An exchange reference without object id or version stays an explicit null rather than
   // borrowing the process or flow identity.
   const partial = buildAliasV2Plan(
@@ -534,10 +559,40 @@ test('the v2 plan refuses anything outside the reviewed shape', () => {
   );
   rejects({ flows: [] }, invalid);
   rejects({ processes: [] }, invalid);
-  rejects({ source_evidence: { sha256: 'nope', cohort_sha256: 'a'.repeat(64) } }, invalid);
-  rejects({ source_evidence: { sha256: 'a'.repeat(64), cohort_sha256: 'nope' } }, invalid);
   rejects(
-    { source_evidence: undefined as unknown as { sha256: string; cohort_sha256: string } },
+    {
+      source_evidence: {
+        sha256: 'nope',
+        cohort_sha256: 'a'.repeat(64),
+        original_source_unit: 'hr',
+      },
+    },
+    invalid,
+  );
+  rejects(
+    {
+      source_evidence: {
+        sha256: 'a'.repeat(64),
+        cohort_sha256: 'nope',
+        original_source_unit: 'hr',
+      },
+    },
+    invalid,
+  );
+  rejects(
+    {
+      source_evidence: {
+        sha256: 'a'.repeat(64),
+        cohort_sha256: 'a'.repeat(64),
+        original_source_unit: ' ',
+      },
+    },
+    invalid,
+  );
+  rejects(
+    {
+      source_evidence: undefined as unknown as AliasV2PlanInput['source_evidence'],
+    },
     invalid,
   );
   // The target reference is a projection of the locked snapshot, so a snapshot that does not
@@ -1251,7 +1306,16 @@ test('malformed amounts, incomplete occurrence sets and stale evidence fail clos
   }
 
   // Frozen evidence that does not bind this exact before cohort cannot certify the plan.
-  rejects({ source_evidence: { sha256: SOURCE_EVIDENCE, cohort_sha256: 'b'.repeat(64) } }, invalid);
+  rejects(
+    {
+      source_evidence: {
+        sha256: SOURCE_EVIDENCE,
+        cohort_sha256: 'b'.repeat(64),
+        original_source_unit: 'hr',
+      },
+    },
+    invalid,
+  );
   // The derived counts are compared with the frozen ones, never asserted by the caller.
   rejects({ expected_counts: { action_count: 999 } }, 'ALIAS_V2_COUNT_MISMATCH');
 });

@@ -8,31 +8,55 @@
 // Its purpose is to make the frozen cohort counts and the per-action invariants testable at
 // full scale, and to give the storage-side owner the same generated fixture to check against.
 
+import { sha256Json } from '../../src/lib/dataset-maintenance-contract.js';
 import { aliasV2CohortSha256, type AliasV2PlanInput } from '../../src/lib/dataset-alias-v2-plan.js';
 
 type JsonObject = Record<string, unknown>;
 
-/** The frozen cohort counts the current source-proven plan must derive. */
+/**
+ * The frozen cohort counts the current source-proven plan must derive: the real v1 ten flat
+ * expected keys with v2 values, plus the versioned functional-unit text-action count.
+ */
 export const COHORT_COUNTS = {
   action_count: 387,
-  flowproperty_count: 0,
-  flow_count: 113,
-  process_count: 274,
+  batch_count: 1,
   exchange_count: 654,
   amount_field_count: 1308,
   unrelated_exchange_count: 4147,
+  audit_count: 389,
+  flowproperty_count: 0,
+  flow_count: 113,
+  process_count: 274,
+  derivative_target_count: 387,
+  text_action_count: 87,
 } as const;
 
 /** Source-proven functional-unit corrections, and the correct forms that stay untouched. */
-export const COHORT_TEXT_ACTION_COUNT = 87;
+export const COHORT_TEXT_ACTION_COUNT = COHORT_COUNTS.text_action_count;
 export const COHORT_CORRECT_UNIT_TEXT_COUNT = 41;
 
 const FLOW_COUNT = COHORT_COUNTS.flow_count;
 const PROCESS_COUNT = COHORT_COUNTS.process_count;
 const SOURCE_FP = 'bd69e542-6a50-524c-8d04-195b1ec23150';
 const TARGET_FP = 'da11d28f-4db8-51eb-b3a9-8784b26771e6';
-const SOURCE_UG = 'aeddc8ee-da6f-5181-9a99-73466e198b86';
+/**
+ * The orphan hour unit group: an old `hr`-based record that survives in the account. It is
+ * historical provenance for the ORIGINAL source unit, and nothing is made to reference it.
+ */
+const ORPHAN_HOUR_UG = 'aeddc8ee-da6f-5181-9a99-73466e198b86';
 const TARGET_UG = '49ce0c2f-2241-54e3-8e75-e75ffbdaecfb';
+
+/** The synthetic reviewed-evidence record the frozen source-evidence digest binds. */
+const REVIEWED_SOURCE_EVIDENCE = {
+  schema_version: 'alias-v2-reviewed-source-evidence.fixture.v1',
+  campaign_id: 'fixture-campaign',
+  source_archive_sha256: 'a1b2c3d4'.repeat(8),
+  orphan_hour_unit_group_id: ORPHAN_HOUR_UG,
+  // The original physical unit the campaign proves for the before amounts. Some before values are
+  // exponent spellings of it; the unit group the source alias declares TODAY is the year-based
+  // table below, and it is never read as proof that the amounts are already in the original unit.
+  original_source_unit: 'hr',
+} as const;
 
 /** Reviewed spellings the fixture draws its amounts from: exponent forms and plain decimals. */
 const AMOUNT_SPELLINGS = [
@@ -123,7 +147,9 @@ function processPayload(
       '@dataSetInternalID': String(position + 1),
       meanAmount: isReference ? '1.0' : isAlias ? spelling : '1',
       resultingAmount: isReference ? '1.0' : isAlias ? spelling : '1',
-      exchangeDirection: position % 2 === 0 ? 'Input' : 'Output',
+      // The reference exchange is the produced one-hour output at quantity 1.0; the alias
+      // occurrences are separate, exponent-valued inputs.
+      exchangeDirection: isReference ? 'Output' : position % 2 === 0 ? 'Input' : 'Output',
       dataDerivationTypeStatus: 'Unknown derivation',
       uncertaintyDistributionType: UNCERTAINTY_TYPES[(index + position) % 2] as string,
       referenceToFlowDataSet: {
@@ -241,17 +267,30 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
         },
       },
     },
-    source_unit_group: {
-      id: SOURCE_UG,
-      version: '00.00.001',
-      json: { unitGroupDataSet: { units: { unit: [{ name: 'hr', meanValue: '1' }] } } },
+    // The unit group the source alias's flow property declares TODAY: the same locked year-based
+    // "Units of time" table the target uses, whose base unit is the year. The orphan hour record
+    // above is not this pointer.
+    declared_source_unit_group: {
+      id: TARGET_UG,
+      version: '01.00.000',
+      json: {
+        unitGroupDataSet: {
+          units: {
+            unit: [
+              { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
+              { '@dataSetInternalID': '2', name: 'hr', meanValue: '0.00011415525114155251' },
+            ],
+          },
+        },
+      },
     },
     source_evidence: {
-      // The digest of the reviewed evidence artefact the campaign holds. The Database side can
-      // bind this identity; it cannot read the original archive, and this fixture does not claim
-      // it did. The cohort digest is computed from this very cohort through the shared
-      // definition, so the builder's recomputation can only agree with the real tuple set.
-      sha256: 'a1b2c3d4'.repeat(8),
+      // The digest of the reviewed evidence artefact the campaign holds, computed from the
+      // synthetic record above. The Database side can bind this identity; it cannot read the
+      // original archive, and this fixture does not claim it did. The cohort digest is computed
+      // from this very cohort through the shared definition, so the builder's recomputation can
+      // only agree with the real tuple set.
+      sha256: sha256Json(REVIEWED_SOURCE_EVIDENCE),
       cohort_sha256: aliasV2CohortSha256({
         actor_id: 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7',
         source_alias: { id: SOURCE_FP, version: '00.00.001' },
@@ -259,9 +298,14 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
         processes,
         target_flow_property: {} as never,
         target_unit_group: {} as never,
-        source_unit_group: {} as never,
-        source_evidence: { sha256: 'a1b2c3d4'.repeat(8), cohort_sha256: '' },
+        declared_source_unit_group: {} as never,
+        source_evidence: {
+          sha256: sha256Json(REVIEWED_SOURCE_EVIDENCE),
+          cohort_sha256: '',
+          original_source_unit: REVIEWED_SOURCE_EVIDENCE.original_source_unit,
+        },
       }),
+      original_source_unit: REVIEWED_SOURCE_EVIDENCE.original_source_unit,
     },
   };
 }

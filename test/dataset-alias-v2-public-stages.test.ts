@@ -155,7 +155,7 @@ test('the freeze stage binds the plan, the toolchain evidence and the owner acco
       plan_sha256: chain.plan['plan_sha256'],
     });
     assert.deepEqual(freeze['account'], ALIAS_V2_TEST_ACCOUNT);
-    assert.deepEqual(freeze['counts'], chain.plan['counts']);
+    assert.deepEqual(freeze['expected'], chain.plan['expected']);
     assert.deepEqual(freeze['sets'], readArtifact(chain.freezePath)['sets']);
     // The approval request, the approval text and the human approval file carry the same words.
     const request = readArtifact(chain.requestPath);
@@ -231,7 +231,7 @@ test('the seal stage refuses a request that binds other freeze bytes', async () 
       plan_file_sha256: foreign['plan_file_sha256'],
       freeze_file_sha256: foreign['freeze_file_sha256'],
       freeze_sha256: foreign['freeze_sha256'],
-      counts: foreign['counts'],
+      expected: foreign['expected'],
     });
     const foreignPath = path.join(directory, 'foreign-request.json');
     write(foreignPath, foreign);

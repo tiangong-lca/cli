@@ -209,13 +209,27 @@ function planInput(): AliasV2PlanInput {
         },
       },
     },
-    source_unit_group: {
-      id: 'aeddc8ee-da6f-5181-9a99-73466e198b86',
-      version: '00.00.001',
-      json: {},
+    // The source alias's current declaration is the year-based table, not the orphan hour record.
+    declared_source_unit_group: {
+      id: '49ce0c2f-2241-54e3-8e75-e75ffbdaecfb',
+      version: '01.00.000',
+      json: {
+        unitGroupDataSet: {
+          units: {
+            unit: [
+              { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
+              { '@dataSetInternalID': '2', name: 'hr', meanValue: '0.00011415525114155251' },
+            ],
+          },
+        },
+      },
     },
     source_alias: { id: SOURCE_FP, version: '00.00.001' },
-    source_evidence: { sha256: 'e'.repeat(64), cohort_sha256: '' },
+    source_evidence: {
+      sha256: 'e'.repeat(64),
+      cohort_sha256: '',
+      original_source_unit: 'hr',
+    },
   };
 }
 
@@ -237,7 +251,7 @@ function proof(overrides: JsonObject = {}): JsonObject {
   return {
     status: 'applied',
     plan_sha256: PLAN['plan_sha256'],
-    counts: PLAN['counts'],
+    counts: PLAN['expected'],
     audit: {
       plan_summary_id: 'audit-plan-summary-1',
       batch_summary_ids: ['audit-batch-flows-1', 'audit-batch-processes-1'],
@@ -411,7 +425,7 @@ test('an invalid or diverging proof is refused rather than trusted', () => {
     ],
     [proof({ counts: undefined }), ALIAS_V2_RESPONSE_COUNT_MISMATCH],
     [
-      proof({ counts: { ...(PLAN['counts'] as JsonObject), action_count: 999 } }),
+      proof({ counts: { ...(PLAN['expected'] as JsonObject), action_count: 999 } }),
       ALIAS_V2_RESPONSE_COUNT_MISMATCH,
     ],
     [proof({ counts: { action_count: 2 } }), ALIAS_V2_RESPONSE_COUNT_MISMATCH],

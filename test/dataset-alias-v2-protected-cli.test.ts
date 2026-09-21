@@ -214,7 +214,7 @@ function protectedFetch(
   const terminal: JsonObject = {
     status: 'applied',
     plan_sha256: plan['plan_sha256'],
-    counts: plan['counts'],
+    counts: plan['expected'],
     audit: { plan_summary_id: 'audit-plan-1', batch_summary_ids: ['b-flows', 'b-processes'] },
     readback: {
       flows: actions
@@ -282,8 +282,8 @@ function protectedFetch(
         preflight_token: 'preflight-token-abcdefghij',
         preflight_proof_sha256: sha256Json({ proof: plan['plan_sha256'] }),
         simulation: {
-          plan_rows: (plan['counts'] as JsonObject)['action_count'],
-          plan_exchanges: (plan['counts'] as JsonObject)['exchange_count'],
+          plan_rows: (plan['expected'] as JsonObject)['action_count'],
+          plan_exchanges: (plan['expected'] as JsonObject)['exchange_count'],
           rolled_back: true,
         },
         completed_at: new Date(issuedAt).toISOString(),
@@ -362,14 +362,19 @@ test('the public workflow plans, freezes, seals and then runs the cohort through
   t.after(() => rmSync(chain.directory, { recursive: true, force: true }));
   const plan = JSON.parse(readFileSync(chain.planPath, 'utf8')) as JsonObject;
   const approval = JSON.parse(readFileSync(chain.approvalPath, 'utf8')) as JsonObject;
-  assert.deepEqual(plan['counts'], {
+  // The real v1 ten flat expected keys with v2 values, plus the versioned text-action count.
+  assert.deepEqual(plan['expected'], {
     action_count: 387,
-    flowproperty_count: 0,
-    flow_count: 113,
-    process_count: 274,
+    batch_count: 1,
     exchange_count: 654,
     amount_field_count: 1308,
     unrelated_exchange_count: 4147,
+    audit_count: 389,
+    flowproperty_count: 0,
+    flow_count: 113,
+    process_count: 274,
+    derivative_target_count: 387,
+    text_action_count: 87,
   });
   const calls: Call[] = [];
   const result = await executeCli(
@@ -392,7 +397,7 @@ test('the public workflow plans, freezes, seals and then runs the cohort through
     [report['status'], report['phase'], report['admission_attempts']],
     ['passed', 'applied', 1],
   );
-  assert.deepEqual(report['counts'], plan['counts']);
+  assert.deepEqual(report['expected'], plan['expected']);
   assert.deepEqual(
     calls.map((call) => call.url.split('/').pop()),
     [

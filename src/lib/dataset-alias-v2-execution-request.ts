@@ -62,9 +62,11 @@ export const ALIAS_V2_PLAN_KEYS = [
   'schema_version',
   'actor_id',
   'target_visibility',
+  // The reviewed source alias this plan rescales, the evidence it binds and the locked targets.
+  'source_alias',
   'source_evidence',
   'target_snapshots',
-  'counts',
+  'expected',
   'dimensions',
   'text_actions',
   'actions',
@@ -84,14 +86,23 @@ const ALIAS_V2_PREFLIGHT_INPUT_KEYS = [
   'derivativeTargets',
 ] as const;
 
+/**
+ * The reviewed v2 expected counts: the real v1 ten flat keys, with v2 values derived from the
+ * plan, plus the versioned text-action count this capability adds. Each is a claim the server
+ * recomputes from the parsed plan and checks against its own simulation.
+ */
 export const ALIAS_V2_COUNT_KEYS = [
   'action_count',
-  'flowproperty_count',
-  'flow_count',
-  'process_count',
+  'batch_count',
   'exchange_count',
   'amount_field_count',
   'unrelated_exchange_count',
+  'audit_count',
+  'flowproperty_count',
+  'flow_count',
+  'process_count',
+  'derivative_target_count',
+  'text_action_count',
 ] as const;
 
 export const MAX_REQUEST_BYTES = 64 * 1024 * 1024;
@@ -203,10 +214,10 @@ export function buildAliasV2PreflightRequest(input: AliasV2PreflightRequestInput
   if (plan['target_visibility'] !== 'owner_draft') {
     invalid('Alias v2 preflight plan target_visibility must be owner_draft.');
   }
-  if (!isJsonObject(plan['counts']) || !hasExactKeys(plan['counts'], ALIAS_V2_COUNT_KEYS)) {
-    invalid('Alias v2 preflight plan counts must match the reviewed count key set exactly.');
+  if (!isJsonObject(plan['expected']) || !hasExactKeys(plan['expected'], ALIAS_V2_COUNT_KEYS)) {
+    invalid('Alias v2 preflight plan expected counts must match the reviewed key set exactly.');
   }
-  const counts = plan['counts'];
+  const counts = plan['expected'];
   for (const key of ALIAS_V2_COUNT_KEYS) {
     requireCount(counts[key], key);
   }
@@ -244,14 +255,11 @@ export function buildAliasV2PreflightRequest(input: AliasV2PreflightRequestInput
   for (const key of ALIAS_V2_BINDING_KEYS) {
     requireSha256(input.bindings[key], key);
   }
-  if (!isJsonObject(input.expected) || !hasExactKeys(input.expected, ['counts', 'closure'])) {
-    invalid('Alias v2 preflight expected must carry exactly the plan-bound counts and closure.');
-  }
-  if (!isJsonObject(input.expected['counts'])) {
-    invalid('Alias v2 preflight expected counts must be an object.');
+  if (!isJsonObject(input.expected) || !hasExactKeys(input.expected, ALIAS_V2_COUNT_KEYS)) {
+    invalid('Alias v2 preflight expected must match the reviewed expected count key set exactly.');
   }
   for (const key of ALIAS_V2_COUNT_KEYS) {
-    if (input.expected['counts'][key] !== counts[key]) {
+    if (input.expected[key] !== counts[key]) {
       invalid('Alias v2 preflight expected counts must equal the plan counts exactly.', { key });
     }
   }

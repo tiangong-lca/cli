@@ -129,12 +129,16 @@ export const ALIAS_V2_FREEZE_POLICY = {
 
 export const ALIAS_V2_COUNT_KEYS = [
   'action_count',
-  'flowproperty_count',
-  'flow_count',
-  'process_count',
+  'batch_count',
   'exchange_count',
   'amount_field_count',
   'unrelated_exchange_count',
+  'audit_count',
+  'flowproperty_count',
+  'flow_count',
+  'process_count',
+  'derivative_target_count',
+  'text_action_count',
 ] as const;
 
 const SHA256 = /^[a-f0-9]{64}$/u;
@@ -163,11 +167,15 @@ export type AliasV2Freeze = {
   account: AliasV2Account;
   target_visibility: 'owner_draft';
   plan: { plan_file_sha256: string; plan_sha256: string };
-  counts: JsonObject;
+  /**
+   * The reviewed expected counts: the real v1 ten flat keys with v2 values derived from the plan,
+   * plus the versioned text-action count. There is no caller-declared root/reference closure here:
+   * primary and global closure are proven by the preserved preflight/gate/read sets and digests.
+   */
+  expected: JsonObject;
   target_snapshots: JsonObject;
   source_evidence: JsonObject;
   derivative_targets: AliasV2DerivativeTarget[];
-  expected_closure: JsonObject;
   sets: JsonObject;
   policy: typeof ALIAS_V2_FREEZE_POLICY;
   freeze_sha256: string;
@@ -182,7 +190,7 @@ export type AliasV2ApprovalRequest = {
   plan_file_sha256: string;
   freeze_file_sha256: string;
   freeze_sha256: string;
-  counts: JsonObject;
+  expected: JsonObject;
   request_sha256: string;
   approval_text: string;
   approval_text_sha256: string;
@@ -230,7 +238,7 @@ export type AliasV2ProtectedReport = {
   phase: string;
   request_id: string;
   plan_sha256: string;
-  counts: JsonObject;
+  expected: JsonObject;
   code: string | null;
   admission_attempts: number;
   polls: number;
@@ -283,7 +291,7 @@ function accountOf(value: unknown, label: string): AliasV2Account {
     email: token(value['email'], `${label}.email`),
   };
 }
-function countsOf(value: unknown, label: string): JsonObject {
+function expectedOf(value: unknown, label: string): JsonObject {
   if (!isJsonObject(value)) {
     fail(`${label} must be an object.`, 'ALIAS_V2_PROTECTED_ARTIFACT_INVALID', 2);
   }
@@ -388,7 +396,7 @@ export function assertAliasV2PlanDocument(value: unknown): JsonObject {
       2,
     );
   }
-  countsOf(value['counts'], 'plan.counts');
+  expectedOf(value['expected'], 'plan.expected');
   if (!isJsonObject(value['target_snapshots']) || !isJsonObject(value['source_evidence'])) {
     fail(
       'Alias v2 plan artefact must carry its target snapshots and source evidence.',
@@ -413,11 +421,10 @@ export function parseAliasV2Freeze(value: unknown): AliasV2Freeze {
       'account',
       'target_visibility',
       'plan',
-      'counts',
+      'expected',
       'target_snapshots',
       'source_evidence',
       'derivative_targets',
-      'expected_closure',
       'sets',
       'policy',
       'freeze_sha256',
@@ -470,11 +477,10 @@ export function parseAliasV2Freeze(value: unknown): AliasV2Freeze {
       ),
       plan_sha256: hash((value['plan'] as JsonObject)['plan_sha256'], 'freeze.plan.plan_sha256'),
     },
-    counts: countsOf(value['counts'], 'freeze.counts'),
+    expected: expectedOf(value['expected'], 'freeze.expected'),
     target_snapshots: value['target_snapshots'] as JsonObject,
     source_evidence: value['source_evidence'] as JsonObject,
     derivative_targets: derivativeTargetsOf(value['derivative_targets']),
-    expected_closure: value['expected_closure'] as JsonObject,
     sets: setsOf(value['sets']),
     policy: ALIAS_V2_FREEZE_POLICY,
     freeze_sha256: hash(value['freeze_sha256'], 'freeze.freeze_sha256'),
@@ -579,7 +585,7 @@ export function parseAliasV2ApprovalRequest(value: unknown): AliasV2ApprovalRequ
       'plan_file_sha256',
       'freeze_file_sha256',
       'freeze_sha256',
-      'counts',
+      'expected',
       'request_sha256',
       'approval_text',
       'approval_text_sha256',
@@ -605,7 +611,7 @@ export function parseAliasV2ApprovalRequest(value: unknown): AliasV2ApprovalRequ
     plan_file_sha256: hash(value['plan_file_sha256'], 'approval_request.plan_file_sha256'),
     freeze_file_sha256: hash(value['freeze_file_sha256'], 'approval_request.freeze_file_sha256'),
     freeze_sha256: hash(value['freeze_sha256'], 'approval_request.freeze_sha256'),
-    counts: countsOf(value['counts'], 'approval_request.counts'),
+    expected: expectedOf(value['expected'], 'approval_request.expected'),
     request_sha256: hash(value['request_sha256'], 'approval_request.request_sha256'),
     approval_text: token(value['approval_text'], 'approval_request.approval_text'),
     approval_text_sha256: hash(
@@ -622,7 +628,7 @@ export function parseAliasV2ApprovalRequest(value: unknown): AliasV2ApprovalRequ
     plan_file_sha256: request.plan_file_sha256,
     freeze_file_sha256: request.freeze_file_sha256,
     freeze_sha256: request.freeze_sha256,
-    counts: request.counts,
+    expected: request.expected,
   };
   if (
     request.request_sha256 !== sha256Json(core) ||
@@ -669,12 +675,12 @@ export function assertAliasV2Bindings(options: {
   if (
     freeze.plan.plan_file_sha256 !== options.planFileSha256 ||
     freeze.plan.plan_sha256 !== options.plan['plan_sha256'] ||
-    sha256Json(freeze.counts) !== sha256Json(options.plan['counts']) ||
+    sha256Json(freeze.expected) !== sha256Json(options.plan['expected']) ||
     sha256Json(freeze.target_snapshots) !== sha256Json(options.plan['target_snapshots']) ||
     sha256Json(freeze.source_evidence) !== sha256Json(options.plan['source_evidence'])
   ) {
     fail(
-      'Alias v2 freeze does not bind this exact plan file, content, counts and snapshots.',
+      'Alias v2 freeze does not bind this exact plan file, expected counts and snapshots.',
       'ALIAS_V2_PROTECTED_ARTIFACT_INVALID',
       2,
     );
@@ -716,11 +722,28 @@ export function buildAliasV2Freeze(options: {
   account: AliasV2Account;
   sets: JsonObject;
   derivativeTargets: JsonValue[];
-  expectedClosure: JsonObject;
 }): AliasV2Artifact<AliasV2Freeze> {
   const plan = assertAliasV2PlanDocument(options.plan);
   hash(options.planFileSha256, 'planFileSha256');
   token(options.projectRef, 'projectRef');
+  // The derivative targets are the plan's own changed rows: exactly one target per actual
+  // Flow/Process identity, never a placeholder subset covering only part of the execution.
+  const targets = derivativeTargetsOf(options.derivativeTargets);
+  const planIdentities = new Set(
+    (plan['actions'] as JsonObject[]).map(
+      (action) => `${String(action['table'])}:${String(action['id'])}@${String(action['version'])}`,
+    ),
+  );
+  if (
+    targets.length !== planIdentities.size ||
+    targets.some((target) => !planIdentities.has(`${target.table}:${target.id}@${target.version}`))
+  ) {
+    fail(
+      'Alias v2 freeze derivative targets must be exactly the rows this plan changes.',
+      'ALIAS_V2_PROTECTED_ARTIFACT_INVALID',
+      2,
+    );
+  }
   const candidate: AliasV2Freeze = {
     schema_version: ALIAS_V2_PROTECTED_CONTRACT.freeze_schema,
     environment: 'production',
@@ -728,11 +751,10 @@ export function buildAliasV2Freeze(options: {
     account: accountOf(options.account, 'account'),
     target_visibility: 'owner_draft',
     plan: { plan_file_sha256: options.planFileSha256, plan_sha256: plan['plan_sha256'] as string },
-    counts: plan['counts'] as JsonObject,
+    expected: expectedOf(plan['expected'], 'plan.expected'),
     target_snapshots: plan['target_snapshots'] as JsonObject,
     source_evidence: plan['source_evidence'] as JsonObject,
-    derivative_targets: derivativeTargetsOf(options.derivativeTargets),
-    expected_closure: options.expectedClosure,
+    derivative_targets: targets,
     sets: setsOf(options.sets),
     policy: ALIAS_V2_FREEZE_POLICY,
     freeze_sha256: '',
@@ -757,13 +779,13 @@ export function buildAliasV2ApprovalRequest(options: {
     plan_file_sha256: freeze.plan.plan_file_sha256,
     freeze_file_sha256: options.freezeFileSha256,
     freeze_sha256: freeze.freeze_sha256,
-    counts: freeze.counts,
+    expected: freeze.expected,
   };
   const approvalText = [
     `Approved Time alias v2 plan ${freeze.plan.plan_sha256}`,
     `data set under freeze ${freeze.freeze_sha256}`,
     `for project ${freeze.project_ref} at ${options.approvedAtUtc}.`,
-    `Counts: ${stableJsonText(freeze.counts)}.`,
+    `Counts: ${stableJsonText(freeze.expected)}.`,
     'One admission, no automatic retry, owner-draft visibility only.',
   ].join(' ');
   return artifactOf({
@@ -1189,7 +1211,7 @@ export async function runAliasV2Protected(
       phase: state.phase,
       request_id: identity.request_id,
       plan_sha256: identity.plan_sha256,
-      counts: identity.counts,
+      expected: identity.expected,
       code,
       admission_attempts: state.admit_attempts,
       polls: state.polls,

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import type { JsonObject } from '../src/lib/dataset-maintenance-contract.js';
 import {
   ALIAS_V2_BINDING_KEYS,
   ALIAS_V2_ENVIRONMENTS,
@@ -27,6 +28,7 @@ function plan(overrides: Record<string, unknown> = {}) {
     schema_version: 'dataset-alias-plan.v2',
     actor_id: 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7',
     target_visibility: 'owner_draft',
+    source_alias: { id: 'bd69e542-6a50-524c-8d04-195b1ec23150', version: '00.00.001' },
     source_evidence: { sha256: SHA('f'), exchange_count: 654 },
     target_snapshots: {
       flowproperty: {
@@ -40,14 +42,18 @@ function plan(overrides: Record<string, unknown> = {}) {
         sha256: SHA('c'),
       },
     },
-    counts: {
+    expected: {
       action_count: 387,
-      flowproperty_count: 0,
-      flow_count: 113,
-      process_count: 274,
+      batch_count: 1,
       exchange_count: 654,
       amount_field_count: 1308,
       unrelated_exchange_count: 4147,
+      audit_count: 389,
+      flowproperty_count: 0,
+      flow_count: 113,
+      process_count: 274,
+      derivative_target_count: 387,
+      text_action_count: 87,
     },
     dimensions: [{ dimension: 'time', factor: '0.00011415525114155251' }],
     text_actions: [{ process_id: 'p', before_text: '1.0 a x', after_text: '1.0 hr x' }],
@@ -67,10 +73,7 @@ function request(overrides: Record<string, unknown> = {}) {
     freeze: { schema_version: 'dataset-alias-execution-freeze.v2' },
     approval: { schema_version: 'dataset-alias-execution-approval.v2' },
     bindings: bindings(),
-    expected: {
-      counts: (plan() as { counts: unknown }).counts,
-      closure: { roots: 6, references: 33 },
-    },
+    expected: (plan() as { expected: unknown }).expected,
     derivativeTargets: [{ table: 'flows', id: 'f', version: '01.00.000' }],
     ...overrides,
   } as Parameters<typeof buildAliasV2PreflightRequest>[0];
@@ -97,10 +100,7 @@ test('the v2 preflight request keeps the real protected envelope shape', () => {
     email: 'owner@example.com',
   });
   assert.equal((built.plan as { schema_version: string }).schema_version, 'dataset-alias-plan.v2');
-  assert.deepEqual(built.expected, {
-    counts: (plan() as { counts: unknown }).counts,
-    closure: { roots: 6, references: 33 },
-  });
+  assert.deepEqual(built.expected, (plan() as { expected: unknown }).expected);
   assert.ok(Array.isArray(built.derivative_targets) && built.derivative_targets.length === 1);
   for (const environment of ALIAS_V2_ENVIRONMENTS) {
     assert.equal(buildAliasV2PreflightRequest(request({ environment })).environment, environment);
@@ -123,13 +123,27 @@ test('malformed shape, identity and unsupported transformations are refused (400
   rejects({ plan: plan({ dimensions: [{ dimension: 'length_time' }] }) }, invalid);
   rejects({ plan: plan({ dimensions: [{ dimension: 'time' }, { dimension: 'time' }] }) }, invalid);
   rejects({ plan: plan({ schema_version: 'dataset-alias-plan.v2', extra: 1 }) }, invalid);
-  rejects({ plan: plan({ counts: undefined }) }, invalid);
+  rejects({ plan: plan({ expected: undefined }) }, invalid);
   rejects(
-    { plan: plan({ counts: { ...(plan() as { counts: object }).counts, action_count: -1 } }) },
+    {
+      plan: plan({
+        expected: {
+          ...(plan() as { expected: Record<string, unknown> }).expected,
+          action_count: -1,
+        },
+      }),
+    },
     invalid,
   );
   rejects(
-    { plan: plan({ counts: { ...(plan() as { counts: object }).counts, flow_count: 1.5 } }) },
+    {
+      plan: plan({
+        expected: {
+          ...(plan() as { expected: Record<string, unknown> }).expected,
+          flow_count: 1.5,
+        },
+      }),
+    },
     invalid,
   );
   rejects({ plan: plan({ target_visibility: 'owner' }) }, invalid);
@@ -145,9 +159,8 @@ test('malformed shape, identity and unsupported transformations are refused (400
     invalid,
   );
   rejects({ bindings: { ...bindings(), plan_file_sha256: 'not-a-hash' } }, invalid);
-  rejects({ expected: { counts: 'nope', closure: {} } }, invalid);
-  rejects({ expected: { counts: { action_count: 388 }, closure: {} } }, invalid);
-  rejects({ expected: { counts: (plan() as { counts: unknown }).counts, extra: 1 } }, invalid);
+  rejects({ expected: { action_count: 388 } }, invalid);
+  rejects({ expected: { ...(plan() as { expected: JsonObject }).expected, extra: 1 } }, invalid);
   rejects({ derivativeTargets: [] }, invalid);
   rejects({ derivativeTargets: 'nope' }, invalid);
   rejects({ derivativeTargets: ['nope'] }, invalid);
@@ -168,17 +181,14 @@ test('explicit upper bounds are enforced and oversize requests are refused (413)
   rejects(
     {
       plan: plan({
-        counts: {
-          ...(plan() as { counts: Record<string, number> }).counts,
+        expected: {
+          ...(plan() as { expected: Record<string, number> }).expected,
           exchange_count: MAX_PLAN_EXCHANGES + 1,
         },
       }),
       expected: {
-        counts: {
-          ...(plan() as { counts: Record<string, number> }).counts,
-          exchange_count: MAX_PLAN_EXCHANGES + 1,
-        },
-        closure: {},
+        ...(plan() as { expected: Record<string, number> }).expected,
+        exchange_count: MAX_PLAN_EXCHANGES + 1,
       },
     },
     tooLarge,
@@ -188,12 +198,13 @@ test('explicit upper bounds are enforced and oversize requests are refused (413)
     { derivativeTargets: new Array(MAX_DERIVATIVE_TARGETS + 1).fill({ table: 'flows' }) },
     tooLarge,
   );
+  // The expected block is part of the request: an oversize plan-bound block is refused as too
+  // large rather than dispatched.
+  const padded = plan() as { expected: Record<string, number> };
+  padded.expected['text_action_count'] = 87;
   rejects(
     {
-      expected: {
-        counts: (plan() as { counts: unknown }).counts,
-        closure: { padding: 'x'.repeat(64 * 1024 * 1024) },
-      },
+      plan: plan({ actions: [{ padding: 'x'.repeat(64 * 1024 * 1024) }] }),
     },
     tooLarge,
   );
@@ -201,15 +212,12 @@ test('explicit upper bounds are enforced and oversize requests are refused (413)
 
 test('the built request is plan-bound: expected counts must equal the plan counts', () => {
   const built = buildAliasV2PreflightRequest(request());
-  assert.deepEqual(
-    (built.expected as { counts: unknown }).counts,
-    (built.plan as { counts: unknown }).counts,
-  );
+  assert.deepEqual(built.expected, (built.plan as { expected: unknown }).expected);
   rejects(
     {
       expected: {
-        counts: { ...(plan() as { counts: Record<string, number> }).counts, process_count: 275 },
-        closure: {},
+        ...(plan() as { expected: Record<string, number> }).expected,
+        process_count: 275,
       },
     },
     'ALIAS_V2_PREFLIGHT_INVALID_REQUEST',

@@ -189,8 +189,9 @@ function validateProof(
   if (body['plan_sha256'] !== binding.plan['plan_sha256']) {
     return { code: ALIAS_V2_RESPONSE_INVALID };
   }
+  // The proof's count block is the plan's own expected counts, key for key.
   const counts = body['counts'];
-  const planCounts = binding.plan['counts'];
+  const planCounts = binding.plan['expected'];
   if (
     !isJsonObject(counts) ||
     !isJsonObject(planCounts) ||

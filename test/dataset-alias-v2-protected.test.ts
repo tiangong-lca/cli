@@ -16,6 +16,7 @@ import {
 } from '../src/lib/dataset-maintenance-contract.js';
 import {
   ALIAS_V2_PROTECTED_ARTIFACTS,
+  buildAliasV2Freeze,
   parseAliasV2Approval,
   __testInternals as protectedInternals,
   runAliasV2Protected,
@@ -32,6 +33,8 @@ import {
 import {
   ALIAS_V2_TEST_ACCOUNT,
   ALIAS_V2_TEST_PROJECT_REF,
+  aliasV2DerivativeTargets,
+  aliasV2Sets,
   sealedAliasV2Execution,
   type SealedAliasV2Execution,
 } from './helpers/alias-v2-artifacts.js';
@@ -77,7 +80,7 @@ function preflightProof(sealed: SealedAliasV2Execution): JsonObject {
     approval_identity_sha256: sealed.approveExecution,
     plan_request_sha256: sha256Json({ plan: identity.plan_sha256 }),
     bindings_sha256: sha256Json(identity.bindings),
-    expected_sha256: sha256Json({ counts: identity.counts, closure: identity.closure }),
+    expected_sha256: sha256Json(identity.expected),
     derivative_targets_sha256: sha256Json(identity.derivative_targets),
     gate_expectations: Object.fromEntries(
       ['primary_support_plan', 'execution_unused', 'derivative_quiescence'].map((gate) => [
@@ -90,8 +93,8 @@ function preflightProof(sealed: SealedAliasV2Execution): JsonObject {
     preflight_token: 'preflight-token-abcdefghij',
     preflight_proof_sha256: sha256Json({ proof: identity.plan_sha256 }),
     simulation: {
-      plan_rows: identity.counts['action_count'],
-      plan_exchanges: identity.counts['exchange_count'],
+      plan_rows: identity.expected['action_count'],
+      plan_exchanges: identity.expected['exchange_count'],
       rolled_back: true,
     },
     completed_at: iso(0),
@@ -141,7 +144,7 @@ function terminalProof(sealed: SealedAliasV2Execution): JsonObject {
   return {
     status: 'applied',
     plan_sha256: sealed.identity.plan_sha256,
-    counts: sealed.identity.counts,
+    counts: sealed.identity.expected,
     audit: { plan_summary_id: 'audit-plan-1', batch_summary_ids: ['b-flows', 'b-processes'] },
     readback: {
       flows: actions
@@ -357,10 +360,7 @@ test('the preflight request carries the complete freeze and approval documents',
     (request['bindings'] as JsonObject)['plan_file_sha256'],
     sealed.identity.bindings['plan_file_sha256'],
   );
-  assert.deepEqual(request['expected'], {
-    counts: sealed.identity.counts,
-    closure: sealed.identity.closure,
-  });
+  assert.deepEqual(request['expected'], sealed.identity.expected);
   rmSync(sealed.directory, { recursive: true, force: true });
 });
 
@@ -397,8 +397,8 @@ test('a foreign or malformed proof envelope is refused, at every stage', () => {
         {
           ...good,
           simulation: {
-            plan_rows: identity.counts['action_count'],
-            plan_exchanges: identity.counts['exchange_count'],
+            plan_rows: identity.expected['action_count'],
+            plan_exchanges: identity.expected['exchange_count'],
             rolled_back: false,
           },
         },
@@ -862,6 +862,39 @@ test('the freeze document the builder emits is the strict one the parser accepts
     ]);
     assert.equal(freeze.derivative_targets.length, (sealed.plan['actions'] as unknown[]).length);
     assert.equal(readFileSync(sealed.freezePath, 'utf8'), `${stableJsonText(freeze)}\n`);
+    // The freeze's expected counts are the plan's own derived block, and its derivative targets
+    // are exactly the rows the plan changes: a short list, a placeholder or a foreign row is
+    // refused rather than frozen as an executable subset.
+    assert.deepEqual(freeze.expected, sealed.plan['expected']);
+    const targets = aliasV2DerivativeTargets(sealed.plan, ALIAS_V2_TEST_ACCOUNT.user_id);
+    const build = (derivativeTargets: JsonObject[]): unknown =>
+      buildAliasV2Freeze({
+        plan: sealed.plan,
+        planFileSha256: sealed.identity.bindings['plan_file_sha256'] as string,
+        projectRef: ALIAS_V2_TEST_PROJECT_REF,
+        account: ALIAS_V2_TEST_ACCOUNT,
+        sets: aliasV2Sets(sealed.plan['plan_sha256']),
+        derivativeTargets,
+      });
+    assert.throws(
+      () => build(targets.slice(1)),
+      (error: unknown) =>
+        (error as { code?: string }).code === 'ALIAS_V2_PROTECTED_ARTIFACT_INVALID',
+      'a derivative target list that skips a changed row',
+    );
+    assert.throws(
+      () =>
+        build([
+          {
+            ...(targets[0] as JsonObject),
+            id: 'f0000000-0000-4000-8000-000000000000',
+          },
+          ...targets.slice(1),
+        ]),
+      (error: unknown) =>
+        (error as { code?: string }).code === 'ALIAS_V2_PROTECTED_ARTIFACT_INVALID',
+      'a foreign target standing in for a changed row',
+    );
   } finally {
     rmSync(sealed.directory, { recursive: true, force: true });
   }
@@ -979,7 +1012,7 @@ test(
           jsonResponse({
             ok: true,
             ...terminalProof(sealed),
-            counts: { ...(sealed.identity.counts as JsonObject), action_count: 1 },
+            counts: { ...(sealed.identity.expected as JsonObject), action_count: 1 },
           }),
         'failed',
         'ALIAS_V2_RESPONSE_COUNT_MISMATCH',

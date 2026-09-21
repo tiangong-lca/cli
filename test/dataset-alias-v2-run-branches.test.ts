@@ -73,7 +73,7 @@ function preflightProof(sealed: SealedAliasV2Execution, overrides: JsonObject = 
     approval_identity_sha256: sealed.approveExecution,
     plan_request_sha256: sha256Json({ plan: identity.plan_sha256 }),
     bindings_sha256: sha256Json(identity.bindings),
-    expected_sha256: sha256Json({ counts: identity.counts }),
+    expected_sha256: sha256Json(identity.expected),
     derivative_targets_sha256: sha256Json(identity.derivative_targets),
     gate_expectations: Object.fromEntries(
       ['primary_support_plan', 'execution_unused', 'derivative_quiescence'].map((gate) => [
@@ -86,8 +86,8 @@ function preflightProof(sealed: SealedAliasV2Execution, overrides: JsonObject = 
     preflight_token: 'preflight-token-abcdefghij',
     preflight_proof_sha256: sha256Json({ proof: identity.plan_sha256 }),
     simulation: {
-      plan_rows: identity.counts['action_count'],
-      plan_exchanges: identity.counts['exchange_count'],
+      plan_rows: identity.expected['action_count'],
+      plan_exchanges: identity.expected['exchange_count'],
       rolled_back: true,
     },
     completed_at: iso(0),

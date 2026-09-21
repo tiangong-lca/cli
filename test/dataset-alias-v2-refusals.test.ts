@@ -84,9 +84,9 @@ test('every freeze field is validated, and its content identity must be its own'
       ['foreign account', (value) => (value['account'] = { user_id: 'u' })],
       ['account not an object', (value) => (value['account'] = 'nope')],
       ['empty project', (value) => (value['project_ref'] = ' ')],
-      ['counts not an object', (value) => (value['counts'] = 'nope')],
-      ['counts key set', (value) => (value['counts'] = { action_count: 1 })],
-      ['negative count', (value) => ((value['counts'] as JsonObject)['action_count'] = -1)],
+      ['expected not an object', (value) => (value['expected'] = 'nope')],
+      ['expected key set', (value) => (value['expected'] = { action_count: 1 })],
+      ['negative count', (value) => ((value['expected'] as JsonObject)['action_count'] = -1)],
       ['sets key set', (value) => (value['sets'] = {})],
       ['sets not an object', (value) => (value['sets'] = 'nope')],
       [
@@ -112,7 +112,11 @@ test('every freeze field is validated, and its content identity must be its own'
       ['policy key set', (value) => (value['policy'] = {})],
       ['policy not an object', (value) => (value['policy'] = 'nope')],
       ['extra key', (value) => (value['extra'] = 1)],
-      ['stale content', (value) => (value['expected_closure'] = { roots: 1 })],
+      [
+        'stale content',
+        (value) =>
+          (value['expected'] = { ...(value['expected'] as JsonObject), text_action_count: 0 }),
+      ],
     ];
     for (const [label, mutate] of cases) {
       const candidate = JSON.parse(JSON.stringify(freeze)) as JsonObject;
@@ -158,7 +162,7 @@ test('every approval and approval-request field is validated', () => {
       ['foreign request digest', (value) => (value['request_sha256'] = 'f'.repeat(64))],
       ['foreign text digest', (value) => (value['approval_text_sha256'] = 'f'.repeat(64))],
       ['empty text', (value) => (value['approval_text'] = '')],
-      ['counts key set', (value) => (value['counts'] = {})],
+      ['expected key set', (value) => (value['expected'] = {})],
       ['extra key', (value) => (value['extra'] = 1)],
     ];
     for (const [label, mutate] of requestCases) {
@@ -672,7 +676,7 @@ test('the plan document, the canonical bytes and the artefact bindings are prove
       ['foreign schema', { ...plan, schema_version: 'dataset-alias-plan.v1' }],
       ['no actions', { ...plan, actions: [] }],
       ['bad digest', { ...plan, plan_sha256: 'x' }],
-      ['counts key set', { ...plan, counts: { action_count: 1 } }],
+      ['expected key set', { ...plan, expected: { action_count: 1 } }],
       ['missing snapshots', { ...plan, target_snapshots: 'nope' }],
       ['missing evidence', { ...plan, source_evidence: 'nope' }],
     ];
@@ -730,7 +734,7 @@ test('the plan document, the canonical bytes and the artefact bindings are prove
       () =>
         assertAliasV2Bindings({
           ...bindings,
-          plan: { ...plan, counts: { ...(plan['counts'] as JsonObject), action_count: 1 } },
+          plan: { ...plan, expected: { ...(plan['expected'] as JsonObject), action_count: 1 } },
         }),
       ARTIFACT_INVALID,
       'freeze bound to other plan content',

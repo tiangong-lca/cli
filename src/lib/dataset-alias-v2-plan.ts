@@ -77,11 +77,16 @@ export type AliasV2SourceAlias = { id: string; version: string };
 
 /**
  * The frozen source evidence: the digest of the reviewed evidence artefact plus the digest of the
- * exact alias cohort tuple set it proves. The builder recomputes the cohort digest from the before
- * images it was handed and refuses any mismatch, so stale before content, a substituted source
- * quantity or a swapped unit cannot be certified by a placeholder digest.
+ * exact alias cohort tuple set it proves, and the ORIGINAL physical unit that evidence proves for
+ * the before amounts (the reviewed campaign's hour). The builder recomputes the cohort digest from
+ * the before images it was handed and refuses any mismatch, so stale before content, a substituted
+ * source quantity or a swapped unit cannot be certified by a placeholder digest.
  */
-export type AliasV2SourceEvidence = { sha256: string; cohort_sha256: string };
+export type AliasV2SourceEvidence = {
+  sha256: string;
+  cohort_sha256: string;
+  original_source_unit: string;
+};
 
 export type AliasV2PlanInput = {
   actor_id: string;
@@ -90,7 +95,13 @@ export type AliasV2PlanInput = {
   processes: AliasV2ProcessRow[];
   target_flow_property: AliasV2Row;
   target_unit_group: AliasV2Row;
-  source_unit_group: AliasV2Row;
+  /**
+   * The unit group the source alias's flow property DECLARES TODAY — the locked pointer the
+   * before images carry, which for this cohort is the same year-based "Units of time" table as
+   * the target. It is not the orphan `hr` unit group record: that record is historical provenance
+   * for the original source unit, and no row is made to point at it.
+   */
+  declared_source_unit_group: AliasV2Row;
   source_evidence: AliasV2SourceEvidence;
   expected_counts?: JsonObject;
 };
@@ -418,7 +429,9 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
     typeof input.source_evidence.sha256 !== 'string' ||
     !/^[0-9a-f]{64}$/u.test(input.source_evidence.sha256) ||
     typeof input.source_evidence.cohort_sha256 !== 'string' ||
-    !/^[0-9a-f]{64}$/u.test(input.source_evidence.cohort_sha256)
+    !/^[0-9a-f]{64}$/u.test(input.source_evidence.cohort_sha256) ||
+    typeof input.source_evidence.original_source_unit !== 'string' ||
+    input.source_evidence.original_source_unit.trim() === ''
   ) {
     invalid('Alias v2 plan requires the bound source evidence document digest.');
   }
@@ -727,14 +740,44 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
       { recomputed: cohortSha256, expected: input.source_evidence.cohort_sha256 },
     );
   }
+  // One reviewed time dimension, one batch: the batch executor's own document carries the same
+  // derived counts, and the server derives both from the plan.
+  const dimensions: JsonObject[] = [
+    {
+      dimension: 'time',
+      factor: ALIAS_V2_FACTOR,
+      // The unit group the source alias declares today, whose base unit `a` the before amounts are
+      // read in; the transform writes each amount in the target table's `hr`.
+      declared_source_unitgroup: {
+        id: input.declared_source_unit_group.id,
+        version: input.declared_source_unit_group.version,
+      },
+      target_unitgroup: {
+        id: input.target_unit_group.id,
+        version: input.target_unit_group.version,
+      },
+    },
+  ];
   const counts: JsonObject = {
     action_count: actions.length,
-    flowproperty_count: 0,
-    flow_count: input.flows.length,
-    process_count: input.processes.length,
+    batch_count: dimensions.length,
     exchange_count: exchangeCount,
     amount_field_count: amountFieldCount,
     unrelated_exchange_count: unrelatedCount,
+    // One audit row per action, one summary per batch, one plan summary: the topology the
+    // protected plan/batch executors actually emit, which the server simulation re-derives.
+    audit_count: actions.length + dimensions.length + 1,
+    flowproperty_count: actions.filter((action) => action['table'] === 'flowproperties').length,
+    flow_count: actions.filter((action) => action['table'] === 'flows').length,
+    process_count: actions.filter((action) => action['table'] === 'processes').length,
+    // One target per actually changed Flow/Process identity; action identities are unique.
+    derivative_target_count: new Set(
+      actions.map(
+        (action) =>
+          `${String(action['table'])}:${String(action['id'])}@${String(action['version'])}`,
+      ),
+    ).size,
+    text_action_count: textActions.length,
   };
   if (input.expected_counts !== undefined) {
     for (const [key, value] of Object.entries(input.expected_counts)) {
@@ -760,11 +803,16 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
       cohort_sha256: cohortSha256,
       expected_cohort_sha256: input.source_evidence.cohort_sha256,
       exchange_count: counts['exchange_count'],
-      source_unitgroup: {
-        id: input.source_unit_group.id,
-        version: input.source_unit_group.version,
-        sha256: sha256Json(input.source_unit_group.json),
+      // The source alias's CURRENT DECLARED unit group, as locked by its flow property pointer.
+      declared_source_unitgroup: {
+        id: input.declared_source_unit_group.id,
+        version: input.declared_source_unit_group.version,
+        sha256: sha256Json(input.declared_source_unit_group.json),
       },
+      // The ORIGINAL physical unit of the before amounts, proven by the content-bound evidence
+      // above. Provenance only: it is not a current pointer, it is not written to any row, and
+      // the current declaration is never read as proof that the amounts are already in it.
+      original_source_unit: input.source_evidence.original_source_unit,
     },
     target_snapshots: {
       flowproperty: {
@@ -778,21 +826,8 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
         sha256: sha256Json(input.target_unit_group.json),
       },
     },
-    counts,
-    dimensions: [
-      {
-        dimension: 'time',
-        factor: ALIAS_V2_FACTOR,
-        source_unitgroup: {
-          id: input.source_unit_group.id,
-          version: input.source_unit_group.version,
-        },
-        target_unitgroup: {
-          id: input.target_unit_group.id,
-          version: input.target_unit_group.version,
-        },
-      },
-    ],
+    expected: counts,
+    dimensions,
     text_actions: textActions,
     actions,
   };

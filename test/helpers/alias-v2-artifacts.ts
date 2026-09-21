@@ -122,7 +122,6 @@ export function sealedAliasV2Execution(): SealedAliasV2Execution {
     account: ALIAS_V2_TEST_ACCOUNT,
     sets: aliasV2Sets(plan['plan_sha256']),
     derivativeTargets: aliasV2DerivativeTargets(plan, ALIAS_V2_TEST_ACCOUNT.user_id),
-    expectedClosure: { roots: 6, references: 33 },
   });
   const freezePath = path.join(directory, ALIAS_V2_PROTECTED_ARTIFACTS.freeze);
   const freezeFileSha256 = writeCanonical(freezePath, freezeArtifact.value);
