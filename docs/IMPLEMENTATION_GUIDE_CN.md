@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: e623af9
-lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: the execution-contract section now documents the guarded before image and the dry-run preflight; command order, ledger ownership and no-replay statements are unchanged.'
+lastReviewedCommit: 7f7b313cebc30c96154860df30f5d666963bc0b7
+lastReviewedNote: 'Reviewed for CLI #350 after current main integration: Process review 支持单对象或非空有序数组；SDK 0.3.0 过渡兼容层逐项校验并保留索引错误路径，不改变命令顺序、账本职责或执行契约。'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -37,6 +37,8 @@ related:
 # TianGong LCA CLI 实施指南
 
 Review note, 2026-09-20: CLI #340 将 SDK 精确锁升级至已发布 0.2.2，公共规则绑定至 spec 0.2.1。`dataset contract/context-pack` 保留显式请求的 ruleset 文件、manifest 摘要和 AI 上下文路径，但内容由 CLI profile 与已验证公共定义组合；不再读取 SDK 的旧混合规则文件。Process Version 说明采用正式规范修正后的 NN.NN 与可选 NN.NN.NNN 语义。
+
+Review note, 2026-09-21: CLI #350 将内置 18 份 schema 同步到 `tidas-spec` 0.2.2 精确候选 `8a9470a7dd4c074ae246bb9967b3bfae3e371e32`。Process 的 `validation.review` 可为单对象或非空有序数组；在 SDK #147 正式发布前，CLI 通过现有 SDK 0.3.0 逐项校验数组成员，保持输入与顺序不变，并把错误定位恢复到对应数组索引。LCIA Method 仍只接受单对象，CLI 包版本仍为 0.1.18。
 
 Review note, 2026-09-18: CLI #338 将 Process 与 LCIA Method 的 `common:referenceToCompleteReviewReport` 收敛为可选字段；若提供，仍由 TIDAS schema 严格校验，Lifecycle Model 不变。CLI 在已发布 SDK 尚未同步候选 schema 的过渡窗口内，仅对“缺失该引用”的 Process/LCIA Method 校验做内存兼容重试；原始输入不修改，非法或已提供引用不放宽。该桥接不改变命令、公共包导出、版本或发布路径。
 

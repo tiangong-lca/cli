@@ -38,8 +38,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 11a074b072022d1c566f25edcc9ee7fa1c629e8c
-lastReviewedNote: 'Reviewed for CLI #351: the release-only 0.1.19 preparation for merged source PR #349 changes package identity and four live version fixtures only, without changing CLI-owned policy, commands, authorization, or release semantics, and publication has not occurred.'
+lastReviewedCommit: 7f7b313cebc30c96154860df30f5d666963bc0b7
+lastReviewedNote: 'Reviewed for CLI #350 after 0.1.19 main integration: bundled spec 0.2.2 accepts ordered Process review arrays through an indexed SDK compatibility bridge; package identity, CLI-owned policy, authorization and release mechanics remain unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -56,6 +56,8 @@ Review note, 2026-09-21: Issue #351 is the version-only 0.1.19 release preparati
 Review note, 2026-09-17: CLI W6b applies the workspace decision that the original tidas-tools schema, carried by `tidas-spec`, is authoritative. The bundled schemas now match the exact candidate; the sync gate binds commit, source commit, version and manifest hash without changing CLI command or release behavior.
 
 Review note, 2026-09-18: W10S advances the bundled schema identity to reviewed `tidas-spec` candidate `58dc72f5cb2d203a00388fec71d31091911f7dde` / version `0.2.0` / manifest `4677b9cf864326be9d430bf9760c754c4c0c1905d90e62c161655a159fd758c7`. Process and LCIA Method report references are optional in the candidate; the CLI's SDK compatibility wrapper retries only an omitted reference while supplied references remain SDK-validated. Lifecycle Model is not wrapped, and the CLI package/version/release identity does not change.
+
+Review note, 2026-09-21: CLI #350 advances the bundled schema identity to reviewed `tidas-spec` candidate `8a9470a7dd4c074ae246bb9967b3bfae3e371e32` / version `0.2.2` / manifest `620e2e389d91af7a774e92e1d7c67e282ccb910e0c2e9f9391926cbe1c5e5f09`. Process `validation.review` now accepts one object or a non-empty ordered array. Until SDK PR #147 is formally published, the CLI's existing wrapper validates each member through exact SDK 0.3.0, preserves input and order, and retains numeric member paths; LCIA Method remains singleton-only. CLI 0.1.18 and release mechanics do not change.
 
 Review note, 2026-09-18: CLI W9 keeps severity, phases, blocker defaults, profile membership, local mappings, dispositions, and exits under CLI ownership. `src/lib/runtime-rulesets.ts` accepts the SDK public-rule API only when it is exactly equivalent to the bundled W8 candidate; absence falls back, while malformed, stale, not-covered, or incompatible data fails closed. Review note, 2026-09-20: CLI #340 pins released SDK 0.2.2 and spec 0.2.1. `dataset contract` still emits the requested ruleset artifact and manifest/AI-context fields, but it derives their content from CLI-owned profiles plus exact released public definitions; it does not request or read the SDK legacy mixed ruleset. Process Version follows the corrected public Version rule.
 

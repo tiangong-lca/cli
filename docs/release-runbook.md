@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 11a074b072022d1c566f25edcc9ee7fa1c629e8c
-lastReviewedNote: 'Reviewed for CLI #351: 0.1.19 is the separate version-only preparation for merged source PR #349 and follows the existing four-platform tag, Trusted Publishing, provenance and root handoff steps; local publication and manual tags remain forbidden.'
+lastReviewedCommit: 7f7b313cebc30c96154860df30f5d666963bc0b7
+lastReviewedNote: 'Reviewed for CLI #350 after 0.1.19 main integration: spec 0.2.2 review-array support is a source change with no further version claim; SDK publication and any later CLI release remain separate under the existing four-platform, Trusted Publishing, provenance and root-handoff process.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -42,6 +42,8 @@ Review note, 2026-09-17: W6b converges the static schema assets but does not aut
 Review note, 2026-09-18: CLI #338 is a schema/validation feature delivery only. It advances bundled Process and LCIA Method assets to the reviewed `tidas-spec` 0.2.0 candidate and adds no package-version, tag, publication, or provenance claim; the existing four-platform, Docpact, coverage, release and workspace gates remain required for any later release.
 
 Review note, 2026-09-20: CLI #344 advances the exact dependency to published SDK 0.3.0, which omits the old mixed-ruleset files and getter. This remains a source PR with CLI package version 0.1.17 unchanged; a separate version-only CLI release PR, four-platform tag, Trusted Publishing/provenance check, clean installed consumer, and root integration are required before W11/A14 closure.
+
+Review note, 2026-09-21: CLI #350 adds spec 0.2.2 Process review-array compatibility while keeping package 0.1.18 and exact SDK 0.3.0. SDK PR #147 publication, later CLI dependency adoption, version-only release qualification, provenance, installed-consumer proof, and root integration remain separate tracked steps.
 
 Review note, 2026-09-20: CLI #340 pins published SDK 0.2.2 and released spec 0.2.1 public definitions and removes the SDK mixed ruleset input from `dataset contract`. It remains a feature PR with no CLI version change. A separate version-bump PR, four-platform tag, Trusted Publishing/provenance check, clean installed consumer, and root integration are required before treating the replacement as publicly released.
 

@@ -142,6 +142,9 @@ export function validateSchemaWithDeepFallback(
   }
 
   const fastIssues = validationIssues(fastResult);
+  const hasIndexedFastIssue = fastIssues.some((issue) =>
+    issue.path?.some((part) => typeof part === 'number'),
+  );
 
   if (!createEntity) {
     return {
@@ -154,7 +157,11 @@ export function validateSchemaWithDeepFallback(
   try {
     const deepResult = validateEntityWithDeepFallback(payload, createEntity);
     const deepIssues = validationIssues(deepResult);
-    if (!validationSucceeded(deepResult) && (deepIssues.length > 0 || fastIssues.length === 0)) {
+    if (
+      !hasIndexedFastIssue &&
+      !validationSucceeded(deepResult) &&
+      (deepIssues.length > 0 || fastIssues.length === 0)
+    ) {
       return {
         success: false,
         issues: deepIssues,

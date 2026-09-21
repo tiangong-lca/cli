@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 11a074b072022d1c566f25edcc9ee7fa1c629e8c
-lastReviewedNote: 'Reviewed for CLI #351: the 0.1.19 version-only preparation needs no new secret, Trusted Publisher setting, workflow, tag rule or alternate publication path, and records that npm 0.1.19 and its tag are still absent.'
+lastReviewedCommit: 7f7b313cebc30c96154860df30f5d666963bc0b7
+lastReviewedNote: 'Reviewed for CLI #350 after 0.1.19 main integration: Process review-array compatibility adds no secret, Trusted Publisher setting, workflow, tag rule or alternate publication path.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -39,6 +39,8 @@ Review note, 2026-09-21: Issue #351 is that 0.1.19 version-only preparation for 
 Review note, 2026-09-17: W6b adds no Trusted Publisher, npm, token, tag, workflow or package-version change. The canonical asset sync is a source/content change and future publication remains subject to the existing release contract.
 
 Review note, 2026-09-18: CLI #338 adds no release setup surface. The Process/LCIA Method optional review-report schema sync and temporary SDK validation bridge change neither Trusted Publisher settings, credentials, tags, workflows, package version nor publication mechanics.
+
+Review note, 2026-09-21: CLI #350 extends that temporary bridge for non-empty ordered Process review arrays. It adds no credential, Trusted Publisher setting, workflow, tag, package-version, or local publication path.
 
 Review note, 2026-09-20: CLI #344 upgrades the exact SDK dependency to released 0.3.0 without changing Trusted Publisher settings, credentials, tags, workflow names, package version, or publication mechanics. A later CLI release follows the existing separate version-bump route.
 

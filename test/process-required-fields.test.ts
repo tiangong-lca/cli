@@ -764,6 +764,50 @@ test('runProcessRequiredFieldsComplete removes placeholder review metadata', asy
   }
 });
 
+test('runProcessRequiredFieldsComplete repairs placeholder metadata in every ordered review', async () => {
+  const row = processRow();
+  const modelling = (row.json_ordered as any).processDataSet.modellingAndValidation;
+  modelling.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume = [
+    { '@xml:lang': 'en', '#text': '3.6 MJ/year' },
+  ];
+  modelling.validation.review = [
+    {
+      '@type': 'Not reviewed',
+      'common:reviewDetails': { '#text': 'Review details pending confirmation.' },
+    },
+    {
+      '@type': 'Not reviewed',
+      'common:referenceToCompleteReviewReport': {
+        '@uri': 'https://placeholder.example/review-report',
+      },
+    },
+    null,
+  ];
+
+  const report = await runProcessRequiredFieldsComplete({
+    inputPath: 'memory',
+    outPath: path.join(os.tmpdir(), `completed-review-array-${process.pid}.jsonl`),
+    rawInput: [row],
+  });
+
+  assert.equal(report.status, 'completed');
+  assert.deepEqual(
+    report.rows[0]?.completions
+      .filter((completion) => completion.source === 'placeholder_repair')
+      .map((completion) => completion.field_path),
+    [
+      'processDataSet.modellingAndValidation.validation.review.0.common:reviewDetails',
+      'processDataSet.modellingAndValidation.validation.review.1.common:referenceToCompleteReviewReport',
+    ],
+  );
+  const output = readJsonl(report.files.output_rows)[0] as any;
+  assert.deepEqual(output.json_ordered.processDataSet.modellingAndValidation.validation.review, [
+    { '@type': 'Not reviewed' },
+    { '@type': 'Not reviewed' },
+    null,
+  ]);
+});
+
 test('runProcessRequiredFieldsComplete blocks unresolved placeholder content', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-process-required-fields-unresolved-'));
   const inputPath = path.join(dir, 'processes.jsonl');
