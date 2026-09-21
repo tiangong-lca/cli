@@ -26,6 +26,8 @@
 // The multiplier carries the same priors as a parsed quantity (finite ordinary string, at most
 // 64 characters, plain decimal) so a caller can never hand an unbounded factor to `BigInt`.
 
+import { multiplyExactDecimal } from './dataset-maintenance-alias-rewrite.js';
+
 export const BOUNDED_INPUT_LENGTH = 64;
 export const BOUNDED_EXPONENT_LIMIT = 30;
 export const BOUNDED_OUTPUT_LENGTH = 128;
@@ -128,17 +130,19 @@ function boundedFactorParts(factor: unknown): DecimalParts | null {
   return plainParts(factor);
 }
 
-function boundedProduct(value: string, factor: string): DecimalParts | null {
-  const left = parseBoundedExponentDecimal(value);
-  const right = boundedFactorParts(factor);
-  if (!left || !right) {
+/**
+ * The exact product, computed by the capability's existing exact-decimal engine: this module
+ * normalises the bounded exponent spelling to a plain decimal and applies the multiplier priors,
+ * then hands the plain operands to the reviewed `multiplyExactDecimal` — there is no second
+ * bigint multiplication engine here.
+ */
+function boundedProduct(value: string, factor: string): string | null {
+  const normalized = normalizeBoundedDecimalText(value);
+  if (normalized === null || boundedFactorParts(factor) === null) {
     return null;
   }
-  return {
-    negative: left.negative !== right.negative,
-    coefficient: left.coefficient * right.coefficient,
-    scale: left.scale + right.scale,
-  };
+  const product = multiplyExactDecimal(normalized, factor);
+  return product !== null && product.length <= BOUNDED_OUTPUT_LENGTH ? product : null;
 }
 
 /** True when the value is a legal v2 quantity (plain decimal or bounded exponent form). */
@@ -168,8 +172,7 @@ export function canonicalDecimalText(value: string): string | null {
  * as the exact expansion.
  */
 export function multiplyBoundedExactDecimal(value: string, factor: string): string | null {
-  const product = boundedProduct(value, factor);
-  return product === null ? null : renderExactDecimalText(product);
+  return boundedProduct(value, factor);
 }
 
 /**
@@ -178,5 +181,10 @@ export function multiplyBoundedExactDecimal(value: string, factor: string): stri
  */
 export function multiplyBoundedCanonicalDecimal(value: string, factor: string): string | null {
   const product = boundedProduct(value, factor);
-  return product === null ? null : renderCanonicalDecimalText(product);
+  return product === null ? null : canonicalText(product);
+}
+
+/** Canonical v2 spelling of an already-rendered exact decimal: trailing zeros trimmed, no exponent. */
+function canonicalText(exact: string): string {
+  return exact.includes('.') ? exact.replace(/0+$/u, '').replace(/\.$/u, '') : exact;
 }
