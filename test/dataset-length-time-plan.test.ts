@@ -273,6 +273,27 @@ test('the evidence tuple table is the one the builder recomputes', () => {
   );
 });
 
+test('the shared fixture pins the exact plan digest both halves build against', () => {
+  // The one shared fixture: the storage-side owner seeds the same rows and runs this exact
+  // document. If either half changes and the digest moves, this fails loudly rather than letting
+  // two hand-written "green" contracts drift apart.
+  const plan = build(cohortInput());
+  assert.equal(
+    plan['plan_sha256'],
+    'b4371eff9f042d2e88e734fb18b344ba410d6addac6e3f2a1362a1ee149b364c',
+  );
+  const evidence = cohortInput()['source_evidence'] as JsonObject;
+  assert.equal(
+    evidence['sha256'],
+    '9668586aed28628f64d79265b14a079951c9d1dc1c092cde61ebcf983fef3a7d',
+  );
+  assert.equal(
+    evidence['cohort_sha256'],
+    '1814071ed2ab68e6f998df784c30add48d8245ae924ca915d0821091bf004a85',
+  );
+  assert.deepEqual(plan['expected'], LENGTH_TIME_COHORT_COUNTS);
+});
+
 test('the builder is deterministic and does not depend on key order', () => {
   const first = build(cohortInput());
   const second = build(cohortInput());
