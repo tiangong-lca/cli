@@ -22,7 +22,7 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: d45ffb6
+lastReviewedCommit: e623af9
 lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: the execution-contract section now documents the guarded before image and the dry-run preflight; command order, ledger ownership and no-replay statements are unchanged.'
 related:
   - ../AGENTS.md

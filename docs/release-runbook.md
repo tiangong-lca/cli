@@ -26,7 +26,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: d45ffb6
+lastReviewedCommit: e623af9
 lastReviewedNote: 'Reviewed for CLI #283 at head f75eda4 (second atomic stage): the metadata repair admission and retained-attempt precedence add no dependency, version, tag, provenance or publication step.'
 related:
   - ../AGENTS.md

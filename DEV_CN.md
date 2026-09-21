@@ -23,7 +23,7 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: d45ffb6
+lastReviewedCommit: e623af9
 lastReviewedNote: 'Reviewed for CLI #283 at head f75eda4 (second atomic stage): the narrow existing-Process metadata repair admission, the retained-attempt precedence over validation classification and their tests change no development, gate, release or maintenance step described here.'
 related:
   - AGENTS.md

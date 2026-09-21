@@ -32,7 +32,7 @@ checkPaths:
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: d45ffb6
+lastReviewedCommit: e623af9
 lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6 (workspace #1432 campaign): the dataset save-draft execution contract now transports the fresh complete before image as expectedJsonOrdered (absent for legacy callers) and supports a read-only dry-run preflight without --commit; public command examples, ownership and write-authority statements are unchanged.'
 ---
 

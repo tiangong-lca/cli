@@ -32,7 +32,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: d45ffb6
+lastReviewedCommit: e623af9
 lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: the new guarded-transport and dry-run proof bullet and review note describe the added coverage expectations; exact 100% coverage and the four-platform gate remain required.'
 related:
   - ../../AGENTS.md

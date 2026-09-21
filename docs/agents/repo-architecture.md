@@ -31,7 +31,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: d45ffb6
+lastReviewedCommit: e623af9
 lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: saveDraftDatasetRecord carries the optional complete before image and runExecutionContractBatch gained one commit/dry_run mode; the ledger, scheduler and readback owners are unchanged.'
 related:
   - ../../AGENTS.md

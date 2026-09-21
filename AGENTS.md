@@ -38,7 +38,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: d45ffb6
+lastReviewedCommit: e623af9
 lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: the guarded before-image transport and the execution-contract dry-run stay inside the existing command, library, validation and release ownership; no new dependency, version, lockfile, authorization or publication boundary.'
 related:
   - .docpact/config.yaml
