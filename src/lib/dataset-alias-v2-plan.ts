@@ -52,23 +52,46 @@ export const ALIAS_V2_EXCHANGE_KEYS = [
   'uncertaintyDistributionType',
 ] as const;
 
-const FUNCTIONAL_UNIT_RULE = /^(1|1\.0)(\s+)a(\s.*)$/u;
+// The approved anchored form: the quantity token, exactly one space, the unit token 'a', then a
+// non-empty suffix whose whitespace is preserved byte-for-byte. No variant A fallback and no
+// arbitrary numeric or unit prefix is accepted.
+const FUNCTIONAL_UNIT_RULE = /^(1|1\.0) a(\s.*)$/u;
 
 export type AliasV2Row = { id: string; version: string; json: JsonObject };
 
 export type AliasV2ProcessRow = AliasV2Row & {
   exchange_indexes: number[];
+  /**
+   * The reviewed source binding for the functional-unit correction. `source_exchange_number` is
+   * the ORIGINAL EcoSpold exchange number (for example 730045) that the campaign evidence
+   * reviewed; the TIDAS internal id (`@dataSetInternalID`/`referenceToReferenceFlow`, "1") is a
+   * different namespace and is read from the payload, never supplied here.
+   */
   functional_unit?: { source_exchange_number: string };
 };
 
+const SOURCE_EXCHANGE_COMMENT = /Source EcoSpold1 exchange number:\s*(\d+)/u;
+
+/** The reviewed source alias identity the cohort's before images must all carry. */
+export type AliasV2SourceAlias = { id: string; version: string };
+
+/**
+ * The frozen source evidence: the digest of the reviewed evidence artefact plus the digest of the
+ * exact alias cohort tuple set it proves. The builder recomputes the cohort digest from the before
+ * images it was handed and refuses any mismatch, so stale before content, a substituted source
+ * quantity or a swapped unit cannot be certified by a placeholder digest.
+ */
+export type AliasV2SourceEvidence = { sha256: string; cohort_sha256: string };
+
 export type AliasV2PlanInput = {
   actor_id: string;
+  source_alias: AliasV2SourceAlias;
   flows: AliasV2Row[];
   processes: AliasV2ProcessRow[];
   target_flow_property: AliasV2Row;
   target_unit_group: AliasV2Row;
   source_unit_group: AliasV2Row;
-  source_evidence_sha256: string;
+  source_evidence: AliasV2SourceEvidence;
   expected_counts?: JsonObject;
 };
 
@@ -137,6 +160,47 @@ export function flowPropertyInformation(payload: JsonObject): JsonObject | null 
   const root = payload['flowPropertyDataSet'];
   const information = isJsonObject(root) ? root['flowPropertiesInformation'] : null;
   return isJsonObject(information) ? information : null;
+}
+
+/**
+ * Validates the target unit group's unit table: the reviewed base unit for the year at factor 1
+ * and the fixed hour factor. A target whose table does not carry both, or whose factors were
+ * substituted, is refused here — a fixture with hr = 1 is not a target.
+ */
+export function assertAliasV2TargetUnitGroup(target: AliasV2Row): JsonObject {
+  const dataSet = isJsonObject(target.json) ? target.json['unitGroupDataSet'] : null;
+  const root = isJsonObject(dataSet) ? dataSet : null;
+  const units = root === null ? null : root['units'];
+  const entries = isJsonObject(units) ? units['unit'] : null;
+  const table = Array.isArray(entries)
+    ? (entries.filter(isJsonObject) as JsonObject[])
+    : isJsonObject(entries)
+      ? [entries]
+      : null;
+  if (root === null || table === null || table.length === 0) {
+    fail(ALIAS_V2_TARGET_SHAPE_INVALID, 'Alias v2 target unit group must carry its unit table.', {
+      id: target.id,
+    });
+  }
+  const factorOf = (unit: JsonObject): string | null =>
+    typeof unit['meanValue'] === 'string' ? unit['meanValue'] : null;
+  const yearly = table.find((unit) => unit['name'] === 'a');
+  const hourly = table.find((unit) => unit['name'] === 'hr');
+  if (yearly === undefined || factorOf(yearly) !== '1') {
+    fail(
+      ALIAS_V2_TARGET_SHAPE_INVALID,
+      'Alias v2 target unit group must carry the year base unit at factor 1.',
+      { id: target.id, factor: yearly === undefined ? null : factorOf(yearly) },
+    );
+  }
+  if (hourly === undefined || factorOf(hourly) !== ALIAS_V2_FACTOR) {
+    fail(
+      ALIAS_V2_TARGET_SHAPE_INVALID,
+      'Alias v2 target unit group must carry the reviewed hour factor.',
+      { id: target.id, factor: hourly === undefined ? null : factorOf(hourly) },
+    );
+  }
+  return root;
 }
 
 /**
@@ -294,6 +358,40 @@ function functionalUnitText(payload: JsonObject): string | null {
  * Builds the plan and batch. The caller supplies frozen evidence; nothing is fetched or
  * inferred from a live account, and any deviation from the reviewed invariants fails closed.
  */
+/**
+ * The exact alias cohort tuple set this input would rescale: one tuple per occurrence, carrying
+ * the process identity, the occurrence index, the original source amount literal and the flow
+ * reference. A frozen evidence document binds this digest; the builder recomputes it from the
+ * before images it was handed and refuses any mismatch.
+ */
+export function aliasV2CohortTuples(input: AliasV2PlanInput): string[] {
+  const aliasFlows = new Set(input.flows.map((row) => `${row.id}@${row.version}`));
+  const tuples: string[] = [];
+  for (const process of input.processes) {
+    const entries = exchangeEntries(process.json);
+    if (!entries) continue;
+    for (const [index, exchange] of entries.entries()) {
+      const reference = referenceIdentity(exchange['referenceToFlowDataSet']);
+      if (
+        reference.id === null ||
+        reference.version === null ||
+        !aliasFlows.has(`${reference.id}@${reference.version}`)
+      ) {
+        continue;
+      }
+      tuples.push(
+        `${process.id}@${process.version}#${index}:${String(exchange['meanAmount'])}:${reference.id}@${reference.version}`,
+      );
+    }
+  }
+  return tuples.sort();
+}
+
+/** The digest a frozen source-evidence document must carry for this input. */
+export function aliasV2CohortSha256(input: AliasV2PlanInput): string {
+  return sha256Json(aliasV2CohortTuples(input));
+}
+
 export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
   if (!isJsonObject(input) || typeof input.actor_id !== 'string') {
     invalid('Alias v2 plan requires an actor id.');
@@ -307,11 +405,28 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
     invalid('Alias v2 plan requires non-empty flow and process cohorts.');
   }
   if (
-    typeof input.source_evidence_sha256 !== 'string' ||
-    !/^[0-9a-f]{64}$/u.test(input.source_evidence_sha256)
+    !isJsonObject(input.source_alias) ||
+    typeof input.source_alias.id !== 'string' ||
+    input.source_alias.id === '' ||
+    typeof input.source_alias.version !== 'string' ||
+    !/^[0-9]{2}\.[0-9]{2}\.[0-9]{3}$/u.test(input.source_alias.version)
   ) {
-    invalid('Alias v2 plan requires the source evidence sha256.');
+    invalid('Alias v2 plan requires the reviewed source alias identity.');
   }
+  if (
+    !isJsonObject(input.source_evidence) ||
+    typeof input.source_evidence.sha256 !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(input.source_evidence.sha256) ||
+    typeof input.source_evidence.cohort_sha256 !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(input.source_evidence.cohort_sha256)
+  ) {
+    invalid('Alias v2 plan requires the bound source evidence document digest.');
+  }
+  // The target must not be the source: the cohort is rescaled under the reviewed target only.
+  if (input.source_alias.id === input.target_flow_property.id) {
+    invalid('Alias v2 plan source and target flow properties must differ.');
+  }
+  assertAliasV2TargetUnitGroup(input.target_unit_group);
   const target = input.target_flow_property;
   // The reference is a projection of the locked target snapshot at its real schema paths, not a
   // caller-supplied template: the identity comes from the row and the description from the
@@ -321,6 +436,9 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
     input.target_unit_group,
   );
 
+  // The alias cohort tuple set this plan actually touches: identity, version and the source
+  // amount literal of every occurrence it will rescale. The frozen evidence must name exactly it.
+  const cohortTuples: string[] = [];
   const actions: JsonObject[] = [];
   const textActions: JsonObject[] = [];
   const flowIds = new Set<string>();
@@ -350,6 +468,16 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
     const source = referenceIdentity(entry['referenceToFlowPropertyDataSet']);
     if (source.id === target.id) {
       invalid('Alias v2 flow already references the target property.', { id: flow.id });
+    }
+    // Both ends of the operation are pinned: this row must carry exactly the reviewed source
+    // alias, so a row that is already canonical or sourced elsewhere is refused rather than
+    // silently rescaled under a new request.
+    if (source.id !== input.source_alias.id || source.version !== input.source_alias.version) {
+      fail(
+        ALIAS_V2_REFERENCE_SHAPE_INVALID,
+        'Alias v2 flow before image must reference the reviewed source alias exactly.',
+        { id: flow.id, source_id: source.id, source_version: source.version },
+      );
     }
     // Only the property entry's own reference is retargeted. The clone is taken first, so the
     // desired payload can never alias the caller's node graph, and `flowInformation` — the
@@ -401,6 +529,33 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
     if (new Set(indexes).size !== indexes.length) {
       invalid('Alias v2 process action repeats an alias exchange index.', { id: process.id });
     }
+    // The occurrence set is derived from the before payload and the selected cohort flows, and the
+    // caller's set must be exactly it: an omission, a duplicate or a foreign flow version fails.
+    const aliasFlows = new Set(input.flows.map((row) => `${row.id}@${row.version}`));
+    const derived: number[] = [];
+    for (const [position, exchange] of entries.entries()) {
+      const reference = referenceIdentity(exchange['referenceToFlowDataSet']);
+      if (
+        reference.id !== null &&
+        reference.version !== null &&
+        aliasFlows.has(`${reference.id}@${reference.version}`)
+      ) {
+        derived.push(position);
+      }
+    }
+    if (derived.length === 0) {
+      invalid('Alias v2 process carries no alias occurrence to rescale.', { id: process.id });
+    }
+    if (
+      derived.length !== indexes.length ||
+      derived.some((value, offset) => value !== indexes[offset])
+    ) {
+      fail(
+        ALIAS_V2_PLAN_INVALID,
+        'Alias v2 process alias occurrence set is not the complete set this payload carries.',
+        { id: process.id, declared: indexes, derived },
+      );
+    }
     const desired = clone(process.json);
     const desiredExchanges = exchangeEntries(desired) as JsonObject[];
     const instances: JsonObject[] = [];
@@ -433,6 +588,9 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
       const desiredExchange = (desiredExchanges as JsonObject[])[index] as JsonObject;
       desiredExchange['meanAmount'] = afterMean;
       desiredExchange['resultingAmount'] = afterResulting;
+      cohortTuples.push(
+        `${process.id}@${process.version}#${index}:${beforeMean}:${referenceIdentity(exchange['referenceToFlowDataSet']).id}@${referenceIdentity(exchange['referenceToFlowDataSet']).version}`,
+      );
       instances.push({
         index,
         internal_id: exchange['@dataSetInternalID'],
@@ -460,13 +618,57 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
     const beforeText = functionalUnitText(process.json);
     const sourceNumber = process.functional_unit?.source_exchange_number;
     if (process.functional_unit !== undefined) {
-      if (typeof sourceNumber !== 'string' || sourceNumber.trim() === '') {
+      if (typeof sourceNumber !== 'string' || !/^[0-9]{1,12}$/u.test(sourceNumber)) {
         fail(
           ALIAS_V2_TEXT_RULE_VIOLATION,
-          'Alias v2 text action requires its source exchange number.',
+          'Alias v2 text action requires its original source exchange number.',
           {
             id: process.id,
           },
+        );
+      }
+      // The functional unit belongs to the exchange the quantitative reference points at by its
+      // INTERNAL id; that exchange's own comment carries the ORIGINAL source number, and the two
+      // must agree with the reviewed binding without either namespace standing in for the other.
+      const referencePosition = Number(referenceIndex) - 1;
+      const referenceExchange = Number.isSafeInteger(referencePosition)
+        ? (entries[referencePosition] as JsonObject | undefined)
+        : undefined;
+      if (referenceExchange === undefined) {
+        fail(
+          ALIAS_V2_TEXT_RULE_VIOLATION,
+          'Alias v2 functional unit must resolve to its reference exchange by internal id.',
+          { id: process.id, reference_internal_id: referenceIndex },
+        );
+      }
+      if (referenceExchange['@dataSetInternalID'] !== referenceIndex) {
+        fail(
+          ALIAS_V2_TEXT_RULE_VIOLATION,
+          'Alias v2 reference exchange internal id must match the quantitative reference.',
+          { id: process.id },
+        );
+      }
+      const comment = referenceExchange['generalComment'];
+      const commentText = isJsonObject(comment) ? comment['#text'] : null;
+      const commentNumber =
+        typeof commentText === 'string'
+          ? (SOURCE_EXCHANGE_COMMENT.exec(commentText)?.[1] ?? null)
+          : null;
+      if (commentNumber !== sourceNumber) {
+        fail(
+          ALIAS_V2_TEXT_RULE_VIOLATION,
+          'Alias v2 functional unit source number must match the reference exchange comment.',
+          { id: process.id, reviewed: sourceNumber, comment: commentNumber },
+        );
+      }
+      // The reviewed reference-process output quantity is 1 or 1.0: the text prefix and the
+      // amount must describe the same occurrence.
+      const referenceMean = referenceExchange['meanAmount'];
+      if (referenceMean !== '1' && referenceMean !== '1.0') {
+        fail(
+          ALIAS_V2_TEXT_RULE_VIOLATION,
+          'Alias v2 functional unit quantity must equal the reference exchange amount.',
+          { id: process.id, amount: referenceMean },
         );
       }
       const match = beforeText === null ? null : FUNCTIONAL_UNIT_RULE.exec(beforeText);
@@ -477,7 +679,7 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
           { id: process.id, text: beforeText },
         );
       }
-      const afterText = `${match[1] as string}${match[2] as string}hr${match[3] as string}`;
+      const afterText = `${match[1] as string} hr${match[2] as string}`;
       const desiredDataSet = desired['processDataSet'] as JsonObject;
       const desiredQuantitative = (desiredDataSet['processInformation'] as JsonObject)[
         'quantitativeReference'
@@ -517,6 +719,14 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
     });
   }
 
+  const cohortSha256 = sha256Json(cohortTuples.slice().sort());
+  if (cohortSha256 !== input.source_evidence.cohort_sha256) {
+    fail(
+      ALIAS_V2_PLAN_INVALID,
+      'Alias v2 source evidence does not bind the exact before cohort this plan touches.',
+      { recomputed: cohortSha256, expected: input.source_evidence.cohort_sha256 },
+    );
+  }
   const counts: JsonObject = {
     action_count: actions.length,
     flowproperty_count: 0,
@@ -540,8 +750,15 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
     schema_version: ALIAS_V2_PLAN_SCHEMA,
     actor_id: input.actor_id,
     target_visibility: 'owner_draft',
+    source_alias: {
+      id: input.source_alias.id,
+      version: input.source_alias.version,
+      sha256: sha256Json(input.source_alias),
+    },
     source_evidence: {
-      sha256: input.source_evidence_sha256,
+      sha256: input.source_evidence.sha256,
+      cohort_sha256: cohortSha256,
+      expected_cohort_sha256: input.source_evidence.cohort_sha256,
       exchange_count: counts['exchange_count'],
       source_unitgroup: {
         id: input.source_unit_group.id,

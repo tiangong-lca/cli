@@ -8,7 +8,7 @@
 // Its purpose is to make the frozen cohort counts and the per-action invariants testable at
 // full scale, and to give the storage-side owner the same generated fixture to check against.
 
-import type { AliasV2PlanInput } from '../../src/lib/dataset-alias-v2-plan.js';
+import { aliasV2CohortSha256, type AliasV2PlanInput } from '../../src/lib/dataset-alias-v2-plan.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -110,29 +110,38 @@ function processPayload(
   exchangeCount: number,
   unitText: string,
 ): { json: JsonObject; exchange_indexes: number[] } {
-  const exchange_indexes = Array.from({ length: aliases }, (_, offset) => offset);
+  const exchange_indexes = Array.from({ length: aliases }, (_, offset) => offset + 1);
   const exchanges: JsonObject[] = [];
   for (let position = 0; position < exchangeCount; position += 1) {
-    const isAlias = position < aliases;
+    const isAlias = position > 0 && position <= aliases;
     const spelling = AMOUNT_SPELLINGS[
       (index * 7 + position * 3) % AMOUNT_SPELLINGS.length
     ] as string;
+    const isReference = position === 0;
+    const sourceNumber = 730_000 + index;
     const exchange: JsonObject = {
       '@dataSetInternalID': String(position + 1),
-      meanAmount: isAlias ? spelling : '1',
-      resultingAmount: isAlias ? spelling : '1',
+      meanAmount: isReference ? '1.0' : isAlias ? spelling : '1',
+      resultingAmount: isReference ? '1.0' : isAlias ? spelling : '1',
       exchangeDirection: position % 2 === 0 ? 'Input' : 'Output',
       dataDerivationTypeStatus: 'Unknown derivation',
       uncertaintyDistributionType: UNCERTAINTY_TYPES[(index + position) % 2] as string,
       referenceToFlowDataSet: {
         '@type': 'flow data set',
-        '@refObjectId': syntheticId('flow', (index * 31 + position) % FLOW_COUNT),
+        '@refObjectId': isAlias
+          ? syntheticId('flow', (index * 31 + position) % FLOW_COUNT)
+          : syntheticId('flow', FLOW_COUNT + (index % 5)),
         '@version': '00.00.001',
       },
-      generalComment: {
-        '#text': `Fixture occurrence ${position + 1}.`,
-        '@xml:lang': 'en',
-      },
+      generalComment: isReference
+        ? {
+            '#text': `Source EcoSpold1 exchange number: ${sourceNumber}.`,
+            '@xml:lang': 'en',
+          }
+        : {
+            '#text': `Fixture occurrence ${position + 1}.`,
+            '@xml:lang': 'en',
+          },
     };
     if (position % 20 === 0) {
       // Dimensionless dispersion: preserved byte-for-byte, never scaled.
@@ -184,12 +193,13 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
       json,
       exchange_indexes,
       ...(index < COHORT_TEXT_ACTION_COUNT
-        ? { functional_unit: { source_exchange_number: String(10_000 + index) } }
+        ? { functional_unit: { source_exchange_number: String(730_000 + index) } }
         : {}),
     };
   });
   return {
     actor_id: 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7',
+    source_alias: { id: SOURCE_FP, version: '00.00.001' },
     flows,
     processes,
     target_flow_property: {
@@ -221,9 +231,11 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
       json: {
         unitGroupDataSet: {
           units: {
+            // The real "Units of time" table: the year base unit at factor 1 and the fixed hour
+            // factor. A fixture with hr = 1 is not a target and is refused by the plan builder.
             unit: [
-              { name: 'a', meanValue: '1' },
-              { name: 'hr', meanValue: '1' },
+              { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
+              { '@dataSetInternalID': '2', name: 'hr', meanValue: '0.00011415525114155251' },
             ],
           },
         },
@@ -234,6 +246,22 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
       version: '00.00.001',
       json: { unitGroupDataSet: { units: { unit: [{ name: 'hr', meanValue: '1' }] } } },
     },
-    source_evidence_sha256: 'a1b2c3d4'.repeat(8),
+    source_evidence: {
+      // The digest of the reviewed evidence artefact the campaign holds. The Database side can
+      // bind this identity; it cannot read the original archive, and this fixture does not claim
+      // it did. The cohort digest is computed from this very cohort through the shared
+      // definition, so the builder's recomputation can only agree with the real tuple set.
+      sha256: 'a1b2c3d4'.repeat(8),
+      cohort_sha256: aliasV2CohortSha256({
+        actor_id: 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7',
+        source_alias: { id: SOURCE_FP, version: '00.00.001' },
+        flows,
+        processes,
+        target_flow_property: {} as never,
+        target_unit_group: {} as never,
+        source_unit_group: {} as never,
+        source_evidence: { sha256: 'a1b2c3d4'.repeat(8), cohort_sha256: '' },
+      }),
+    },
   };
 }

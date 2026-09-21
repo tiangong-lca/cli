@@ -315,6 +315,13 @@ import {
   type RunDatasetMaintenanceProtectedOptions,
 } from './lib/dataset-maintenance-protected-run.js';
 import { runDatasetMaintenanceProtectedDispatch } from './lib/dataset-maintenance-protected-dispatch.js';
+import {
+  freezeAliasV2Protected,
+  isAliasV2FreezeFile,
+  isAliasV2PlanFile,
+  planAliasV2,
+  sealAliasV2ProtectedApproval,
+} from './lib/dataset-alias-v2-public.js';
 import type { AliasV2ProtectedReport } from './lib/dataset-alias-v2-protected.js';
 import { sealDatasetMaintenanceProtectedApproval } from './lib/dataset-maintenance-protected-seal.js';
 import { runDatasetMaintenanceVerify } from './lib/dataset-maintenance-verify.js';
@@ -4604,6 +4611,7 @@ function parseDatasetMaintenancePlanFlags(args: string[]): {
   json: boolean;
   scopePath: string;
   operation: DatasetMaintenanceOperation | null;
+  aliasV2InputPath: string;
   outDir: string;
   pageSize: number | undefined;
   timeoutMs: number | undefined;
@@ -4619,6 +4627,7 @@ function parseDatasetMaintenancePlanFlags(args: string[]): {
         json: { type: 'boolean' },
         scope: { type: 'string' },
         operation: { type: 'string' },
+        'alias-v2-input': { type: 'string' },
         'out-dir': { type: 'string' },
         'page-size': { type: 'string' },
         'timeout-ms': { type: 'string' },
@@ -4658,6 +4667,7 @@ function parseDatasetMaintenancePlanFlags(args: string[]): {
     json: Boolean(values.json),
     scopePath: typeof values.scope === 'string' ? values.scope : '',
     operation: rawOperation as DatasetMaintenanceOperation | null,
+    aliasV2InputPath: typeof values['alias-v2-input'] === 'string' ? values['alias-v2-input'] : '',
     outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : '',
     pageSize: parseDatasetMaintenancePositiveInteger(values['page-size'], '--page-size'),
     timeoutMs: parseDatasetMaintenancePositiveInteger(values['timeout-ms'], '--timeout-ms'),
@@ -4765,6 +4775,7 @@ function parseDatasetMaintenanceFreezeProtectedFlags(args: string[]): {
   json: boolean;
   planPath: string;
   toolchainEvidencePath: string;
+  derivativeBaselinesPath: string;
   outDir: string;
   expectedProjectRef: string;
   confirm: string;
@@ -4782,6 +4793,7 @@ function parseDatasetMaintenanceFreezeProtectedFlags(args: string[]): {
         json: { type: 'boolean' },
         plan: { type: 'string' },
         'toolchain-evidence': { type: 'string' },
+        'derivative-baselines': { type: 'string' },
         'out-dir': { type: 'string' },
         'expected-project-ref': { type: 'string' },
         confirm: { type: 'string' },
@@ -4801,6 +4813,8 @@ function parseDatasetMaintenanceFreezeProtectedFlags(args: string[]): {
     planPath: typeof values.plan === 'string' ? values.plan : '',
     toolchainEvidencePath:
       typeof values['toolchain-evidence'] === 'string' ? values['toolchain-evidence'] : '',
+    derivativeBaselinesPath:
+      typeof values['derivative-baselines'] === 'string' ? values['derivative-baselines'] : '',
     outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : '',
     expectedProjectRef:
       typeof values['expected-project-ref'] === 'string' ? values['expected-project-ref'] : '',
@@ -4877,6 +4891,7 @@ function parseDatasetMaintenanceProtectedFlags(args: string[]): {
   statusOnly: boolean;
   approveExecution: string | undefined;
   confirm: string | undefined;
+  derivativeBaselinesPath: string;
   waitSeconds: number | undefined;
   pollMs: number | undefined;
   pageSize: number | undefined;
@@ -4899,6 +4914,7 @@ function parseDatasetMaintenanceProtectedFlags(args: string[]): {
         'status-only': { type: 'boolean' },
         'approve-execution': { type: 'string' },
         confirm: { type: 'string' },
+        'derivative-baselines': { type: 'string' },
         'wait-seconds': { type: 'string' },
         'poll-ms': { type: 'string' },
         'page-size': { type: 'string' },
@@ -4924,6 +4940,8 @@ function parseDatasetMaintenanceProtectedFlags(args: string[]): {
     approveExecution:
       typeof values['approve-execution'] === 'string' ? values['approve-execution'] : undefined,
     confirm: typeof values.confirm === 'string' ? values.confirm : undefined,
+    derivativeBaselinesPath:
+      typeof values['derivative-baselines'] === 'string' ? values['derivative-baselines'] : '',
     waitSeconds: parseDatasetMaintenanceNonNegativeInteger(
       values['wait-seconds'],
       '--wait-seconds',
@@ -8478,6 +8496,25 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
             stderr: '',
           };
         }
+        if (datasetFlags.aliasV2InputPath) {
+          // Explicit versioned selection: the reviewed alias-plan input document builds the
+          // versioned plan and batch through the same builder the protected run consumes.
+          if (!datasetFlags.outDir) {
+            throw new CliError('dataset maintenance plan requires --out-dir.', {
+              code: 'DATASET_MAINTENANCE_OUT_DIR_REQUIRED',
+              exitCode: 2,
+            });
+          }
+          const v2Plan = planAliasV2({
+            inputPath: datasetFlags.aliasV2InputPath,
+            outDir: datasetFlags.outDir,
+          });
+          return {
+            exitCode: 0,
+            stdout: stringifyJson(v2Plan, datasetFlags.json),
+            stderr: '',
+          };
+        }
         if (!datasetFlags.scopePath) {
           throw new CliError('dataset maintenance plan requires --scope.', {
             code: 'DATASET_MAINTENANCE_SCOPE_REQUIRED',
@@ -8626,6 +8663,36 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
             exitCode: 2,
           });
         }
+        if (isAliasV2PlanFile(datasetFlags.planPath)) {
+          // The versioned freeze derives every binding from the plan, the toolchain evidence and
+          // the frozen derivative baselines; the account is the authenticated owner's.
+          if (!datasetFlags.derivativeBaselinesPath) {
+            throw new CliError(
+              'dataset maintenance freeze-protected requires --derivative-baselines for a versioned plan.',
+              {
+                code: 'DATASET_MAINTENANCE_PROTECTED_BASELINES_REQUIRED',
+                exitCode: 2,
+              },
+            );
+          }
+          const v2Freeze = await freezeAliasV2Protected({
+            planPath: datasetFlags.planPath,
+            toolchainEvidencePath: datasetFlags.toolchainEvidencePath,
+            derivativeBaselinesPath: datasetFlags.derivativeBaselinesPath,
+            outDir: datasetFlags.outDir,
+            expectedProjectRef: datasetFlags.expectedProjectRef,
+            confirm: datasetFlags.confirm,
+            cliVersion: loadCliPackageVersion(import.meta.url),
+            env: deps.env,
+            fetchImpl: deps.fetchImpl,
+            ...(datasetFlags.timeoutMs === undefined ? {} : { timeoutMs: datasetFlags.timeoutMs }),
+          });
+          return {
+            exitCode: 0,
+            stdout: stringifyJson(v2Freeze, datasetFlags.json),
+            stderr: '',
+          };
+        }
         const report = await datasetMaintenanceProtectedFreezeImpl({
           planPath: datasetFlags.planPath,
           toolchainEvidencePath: datasetFlags.toolchainEvidencePath,
@@ -8727,6 +8794,24 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
             code: 'DATASET_MAINTENANCE_PROTECTED_OUT_DIR_REQUIRED',
             exitCode: 2,
           });
+        }
+        if (isAliasV2FreezeFile(datasetFlags.freezePath)) {
+          const v2Seal = sealAliasV2ProtectedApproval({
+            freezePath: datasetFlags.freezePath,
+            approvalRequestPath: datasetFlags.approvalRequestPath,
+            humanApprovalPath: datasetFlags.humanApprovalPath,
+            outDir: datasetFlags.outDir,
+            approveFreezeFile: datasetFlags.approveFreezeFile,
+            approveRequest: datasetFlags.approveRequest,
+            approveText: datasetFlags.approveText,
+            confirm: datasetFlags.confirm,
+            approvedAtUtc: datasetFlags.approvedAtUtc,
+          });
+          return {
+            exitCode: 0,
+            stdout: stringifyJson(v2Seal, datasetFlags.json),
+            stderr: '',
+          };
         }
         const report = await datasetMaintenanceProtectedApprovalSealImpl({
           freezePath: datasetFlags.freezePath,

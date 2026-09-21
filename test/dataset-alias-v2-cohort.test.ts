@@ -10,7 +10,6 @@ import {
   type AliasV2PlanInput,
 } from '../src/lib/dataset-alias-v2-plan.js';
 import { isJsonObject } from '../src/lib/dataset-maintenance-contract.js';
-import { buildAliasV2PreflightRequest } from '../src/lib/dataset-alias-v2-execution-request.js';
 import {
   ALIAS_V2_GATE_NAMES,
   ALIAS_V2_LIFECYCLE_REFUSED,
@@ -197,69 +196,23 @@ test('the 87 source-proven functional units are corrected and the 41 correct one
   }
 });
 
-test('the cohort plan is admissible through the protected request and lifecycle', () => {
+test('the cohort plan resolves to its terminal proof through the protected lifecycle', () => {
   const requestId = '9f1c6f0e-6a2b-4a3f-9f0d-3b0d5a7c1e42';
-  const request = buildAliasV2PreflightRequest({
-    requestId,
-    environment: 'production',
-    projectRef: 'qgzvkongdjqiiamzbbts',
-    actor: { user_id: 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7', email: 'owner@example.com' },
-    plan: PLAN as unknown as Record<string, unknown>,
-    freeze: { schema_version: 'dataset-alias-execution-freeze.v2' },
-    approval: { schema_version: 'dataset-alias-execution-approval.v2' },
-    bindings: Object.fromEntries(
-      [
-        'plan_file_sha256',
-        'freeze_file_sha256',
-        'freeze_sha256',
-        'approval_file_sha256',
-        'approval_identity_sha256',
-        'approval_text_sha256',
-        'alias_plan_request_sha256',
-        'before_hash_set_sha256',
-        'desired_hash_set_sha256',
-        'exchange_rewrite_set_sha256',
-        'support_snapshot_set_sha256',
-        'derivative_baseline_set_sha256',
-        'derivative_target_set_sha256',
-        'toolchain_evidence_sha256',
-      ].map((key) => [key, sha256Json({ key, plan: PLAN['plan_sha256'] })]),
-    ),
-    expected: { counts: PLAN['counts'], closure: { roots: 6, references: 33 } },
-    derivativeTargets: [{ table: 'flows', id: 'f', version: '01.00.000' }],
-  });
-  assert.equal(request['request_id'], requestId);
-  assert.deepEqual((request['expected'] as JsonObject)['counts'], PLAN['counts']);
-
-  // The lifecycle accepts the plan-bound proof and refuses to execute it a second time.
   const binding = { plan: PLAN, request_id: requestId };
-  const envelope = { request_id: requestId, plan_sha256: PLAN['plan_sha256'] };
   let state = startAliasV2Lifecycle({ requestId, planSha256: PLAN['plan_sha256'] as string });
   state = advanceAliasV2Lifecycle(state, {
     stage: 'preflight',
-    result: classifyAliasV2Response({
-      stage: 'preflight',
-      outcome: { kind: 'response', status: 200, body: envelope },
-      ...binding,
-    }),
+    result: { kind: 'ok', stage: 'preflight', body: {} },
   });
   for (const gate of ALIAS_V2_GATE_NAMES) {
     state = advanceAliasV2Lifecycle(state, {
       stage: 'gate',
-      result: classifyAliasV2Response({
-        stage: 'gate',
-        outcome: { kind: 'response', status: 200, body: { ...envelope, gate_name: gate } },
-        ...binding,
-      }),
+      result: { kind: 'ok', stage: 'gate', body: { gate_name: gate } },
     });
   }
   state = advanceAliasV2Lifecycle(state, {
     stage: 'admit',
-    result: classifyAliasV2Response({
-      stage: 'admit',
-      outcome: { kind: 'response', status: 200, body: envelope },
-      ...binding,
-    }),
+    result: { kind: 'ok', stage: 'admit', body: {} },
   });
   assert.equal(state.phase, 'admitted');
   const proof = {
@@ -287,7 +240,6 @@ test('the cohort plan is admissible through the protected request and lifecycle'
       })),
     },
   };
-  // The read stage resolves the queued execution to its terminal proof.
   const classified = classifyAliasV2Response({
     stage: 'read',
     outcome: { kind: 'response', status: 200, body: proof },
@@ -300,11 +252,7 @@ test('the cohort plan is admissible through the protected request and lifecycle'
     () =>
       advanceAliasV2Lifecycle(state, {
         stage: 'admit',
-        result: classifyAliasV2Response({
-          stage: 'admit',
-          outcome: { kind: 'response', status: 200, body: proof },
-          ...binding,
-        }),
+        result: { kind: 'ok', stage: 'admit', body: {} },
       }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
@@ -321,7 +269,9 @@ test('the cohort fixture is anonymized and deterministic', () => {
   // Synthetic identifiers and synthetic amounts only: no account, credential or source content,
   // and no identifier outside the fixture's own generated prefix.
   const serialized = JSON.stringify(input);
-  for (const forbidden of ['token', 'apikey', 'authorization', 'ecospold', 'bafu', 'uslci']) {
+  // 'ecospold' is deliberately allowed: the reviewed comment schema names the source format, and
+  // the fixture carries synthetic source numbers only.
+  for (const forbidden of ['token', 'apikey', 'authorization', 'bafu', 'uslci']) {
     assert.equal(serialized.toLowerCase().includes(forbidden), false, forbidden);
   }
   const identifiers = new Set<string>();

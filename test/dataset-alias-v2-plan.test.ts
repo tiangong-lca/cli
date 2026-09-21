@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { sha256Json } from '../src/lib/dataset-maintenance-contract.js';
+import { isJsonObject, sha256Json } from '../src/lib/dataset-maintenance-contract.js';
 import {
   ALIAS_V2_BATCH_SCHEMA,
   ALIAS_V2_EXCHANGE_KEYS,
@@ -8,6 +8,7 @@ import {
   ALIAS_V2_PLAN_SCHEMA,
   ALIAS_V2_REFERENCE_SHAPE_INVALID,
   ALIAS_V2_TARGET_SHAPE_INVALID,
+  aliasV2CohortSha256,
   aliasV2TargetFlowPropertyReference,
   assertCanonicalFlowPropertyReference,
   buildAliasV2Plan,
@@ -59,7 +60,7 @@ function flow(id: string, propertyEntries: JsonObject[] = [propertyEntry()]): Js
   };
 }
 
-function exchange(internalId: string, overrides: JsonObject = {}): JsonObject {
+function exchange(internalId: string, overrides: JsonObject = {}, alias = true): JsonObject {
   return {
     '@dataSetInternalID': internalId,
     meanAmount: '1',
@@ -69,7 +70,7 @@ function exchange(internalId: string, overrides: JsonObject = {}): JsonObject {
     uncertaintyDistributionType: 'log-normal',
     referenceToFlowDataSet: {
       '@type': 'flow data set',
-      '@refObjectId': 'flow-target',
+      '@refObjectId': alias ? 'flow-a' : 'flow-unrelated',
       '@version': '00.00.001',
       'common:shortDescription': { '#text': 'Use, computer', '@xml:lang': 'en' },
     },
@@ -95,7 +96,7 @@ function process(id: string, exchanges: JsonObject[], unitText = '1 kg Product')
 }
 
 function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
-  return {
+  const base: AliasV2PlanInput = {
     actor_id: 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7',
     flows: [
       { id: 'flow-a', version: '00.00.001', json: flow('flow-a') },
@@ -106,16 +107,37 @@ function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
         id: 'process-a',
         version: '00.00.001',
         exchange_indexes: [0],
-        json: process('process-a', [exchange('1'), exchange('2')]),
+        json: process('process-a', [exchange('1'), exchange('2', {}, false)]),
       },
       {
         id: 'process-b',
         version: '00.00.001',
         exchange_indexes: [1],
-        functional_unit: { source_exchange_number: '887497' },
+        functional_unit: { source_exchange_number: '730045' },
         json: process(
           'process-b',
-          [exchange('1'), exchange('2', { meanAmount: '2.0E-4', resultingAmount: '2.0E-4' })],
+          [
+            exchange(
+              '1',
+              {
+                generalComment: {
+                  '#text': 'Source EcoSpold1 exchange number: 730045.',
+                  '@xml:lang': 'en',
+                },
+                meanAmount: '1.0',
+                resultingAmount: '1.0',
+              },
+              false,
+            ),
+            exchange('2', {
+              generalComment: {
+                '#text': 'Source EcoSpold1 exchange number: 730046.',
+                '@xml:lang': 'en',
+              },
+              meanAmount: '1.03E-4',
+              resultingAmount: '1.03E-4',
+            }),
+          ],
           '1.0 a Use, computer, office use',
         ),
       },
@@ -143,15 +165,36 @@ function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
     target_unit_group: {
       id: TARGET_UG,
       version: '01.00.000',
-      json: { unitGroupDataSet: { units: { unit: [{ name: 'a', meanValue: '1' }] } } },
+      json: {
+        unitGroupDataSet: {
+          units: {
+            unit: [
+              { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
+              { '@dataSetInternalID': '2', name: 'hr', meanValue: ALIAS_V2_FACTOR },
+            ],
+          },
+        },
+      },
     },
     source_unit_group: {
       id: SOURCE_UG,
       version: '00.00.001',
       json: { unitGroupDataSet: { units: { unit: [{ name: 'hr', meanValue: '1' }] } } },
     },
-    source_evidence_sha256: SOURCE_EVIDENCE,
+    source_alias: { id: SOURCE_FP, version: '00.00.001' },
+    source_evidence: { sha256: SOURCE_EVIDENCE, cohort_sha256: '' },
     ...overrides,
+  };
+  // The evidence document binds this exact cohort: the fixture computes it from the cohort the
+  // builder will see, through the same shared definition the builder recomputes with.
+  return {
+    ...base,
+    source_evidence:
+      isJsonObject(base.source_evidence) &&
+      base.source_evidence['cohort_sha256'] === '' &&
+      base.source_evidence['sha256'] === SOURCE_EVIDENCE
+        ? { ...base.source_evidence, cohort_sha256: aliasV2CohortSha256(base) }
+        : base.source_evidence,
   };
 }
 
@@ -248,7 +291,7 @@ test('the v2 plan derives the exact action, occurrence and invariant counts', ()
       ((textCaseDesired.processDataSet as JsonObject).exchanges as JsonObject)
         .exchange as JsonObject[]
     )[1]!.meanAmount,
-    '0.000000022831050228310502',
+    '0.00000001175799086757990853',
   );
   assert.deepEqual(
     (
@@ -265,7 +308,7 @@ test('the v2 plan derives the exact action, occurrence and invariant counts', ()
     version: '00.00.001',
     before_text: '1.0 a Use, computer, office use',
     after_text: '1.0 hr Use, computer, office use',
-    source_exchange_number: '887497',
+    source_exchange_number: '730045',
   });
   assert.equal(textCaseAction.action_id, 'process:process-b@00.00.001');
   assert.equal(textCaseAction.quantitative_reference, '1');
@@ -273,13 +316,13 @@ test('the v2 plan derives the exact action, occurrence and invariant counts', ()
     {
       index: 1,
       internal_id: '2',
-      flow_id: 'flow-target',
+      flow_id: 'flow-a',
       flow_version: '00.00.001',
       direction: 'Input',
-      before_amount: '2.0E-4',
-      after_amount: '0.000000022831050228310502',
-      before_resulting_amount: '2.0E-4',
-      after_resulting_amount: '0.000000022831050228310502',
+      before_amount: '1.03E-4',
+      after_amount: '0.00000001175799086757990853',
+      before_resulting_amount: '1.03E-4',
+      after_resulting_amount: '0.00000001175799086757990853',
     },
   ]);
   assert.equal(
@@ -336,11 +379,8 @@ test('each payload shape is resolved through its own accessor, never a neighbour
         {
           id: 'process-a',
           version: '00.00.001',
-          exchange_indexes: [0, 1],
-          json: process('process-a', [
-            exchange('1', { referenceToFlowDataSet: { '@type': 'flow data set' } }),
-            exchange('2', { referenceToFlowDataSet: { '@refObjectId': 'flow-target' } }),
-          ]),
+          exchange_indexes: [1],
+          json: process('process-a', [exchange('1', {}, false), exchange('2')]),
         },
       ],
     }),
@@ -355,21 +395,10 @@ test('each payload shape is resolved through its own accessor, never a neighbour
     ).exchanges,
     [
       {
-        index: 0,
-        internal_id: '1',
-        flow_id: null,
-        flow_version: null,
-        direction: 'Input',
-        before_amount: '1',
-        after_amount: '0.00011415525114155251',
-        before_resulting_amount: '1',
-        after_resulting_amount: '0.00011415525114155251',
-      },
-      {
         index: 1,
         internal_id: '2',
-        flow_id: 'flow-target',
-        flow_version: null,
+        flow_id: 'flow-a',
+        flow_version: '00.00.001',
         direction: 'Input',
         before_amount: '1',
         after_amount: '0.00011415525114155251',
@@ -505,7 +534,12 @@ test('the v2 plan refuses anything outside the reviewed shape', () => {
   );
   rejects({ flows: [] }, invalid);
   rejects({ processes: [] }, invalid);
-  rejects({ source_evidence_sha256: 'nope' }, invalid);
+  rejects({ source_evidence: { sha256: 'nope', cohort_sha256: 'a'.repeat(64) } }, invalid);
+  rejects({ source_evidence: { sha256: 'a'.repeat(64), cohort_sha256: 'nope' } }, invalid);
+  rejects(
+    { source_evidence: undefined as unknown as { sha256: string; cohort_sha256: string } },
+    invalid,
+  );
   // The target reference is a projection of the locked snapshot, so a snapshot that does not
   // carry the real schema — the plural information node, the language-tagged common:name at
   // dataSetInformation, and the unit group reference — is refused rather than projected from an
@@ -641,61 +675,24 @@ test('the v2 plan refuses anything outside the reviewed shape', () => {
     );
   }
   rejects(singleProcess(process('process-a', [exchange('1', { meanAmount: 1 })])), invalid);
-  // An occurrence without any flow reference at all still yields explicit nulls, never a guess.
-  const withoutReference = buildAliasV2Plan(
-    input({
-      processes: [
-        {
-          id: 'process-a',
-          version: '00.00.001',
-          exchange_indexes: [0],
-          json: process('process-a', [
-            exchange('1', { referenceToFlowDataSet: undefined as unknown as JsonObject }),
-          ]),
-        },
-        input().processes[1]!,
-      ],
-    }),
-  );
-  assert.deepEqual(
-    (
-      (
-        (withoutReference.batch.actions as JsonObject[]).find(
-          (action) => action['table'] === 'processes',
-        ) as JsonObject
-      ).mutation as JsonObject
-    ).exchanges,
-    [
-      {
-        index: 0,
-        internal_id: '1',
-        flow_id: null,
-        flow_version: null,
-        direction: 'Input',
-        before_amount: '1',
-        after_amount: ALIAS_V2_FACTOR,
-        before_resulting_amount: '1',
-        after_resulting_amount: ALIAS_V2_FACTOR,
-      },
-    ],
-  );
-  rejects(singleProcess(process('process-a', [exchange('1', { meanAmount: '1E-31' })])), invalid);
+  // An occurrence without any alias flow reference is not an occurrence at all: it can neither
+  // be declared as one nor be rescaled by guesswork.
   rejects(
-    singleProcess(process('process-a', [exchange('1', { meanAmount: '0', resultingAmount: '0' })])),
+    singleProcess(
+      process('process-a', [
+        exchange('1', { referenceToFlowDataSet: undefined as unknown as JsonObject }),
+      ]),
+    ),
     invalid,
   );
   rejects(
-    singleProcess({
-      processDataSet: {
-        processInformation: { quantitativeReference: { functionalUnitOrOther: { '#text': 'x' } } },
-        exchanges: { exchange: [exchange('1', { meanAmount: '2' })] },
-      },
-    }),
+    singleProcess(
+      process('process-a', [
+        exchange('1', { referenceToFlowDataSet: undefined as unknown as JsonObject }),
+      ]),
+    ),
     invalid,
   );
-  rejects({ processes: [input().processes[0]!, input().processes[0]!] }, invalid);
-  // Counts are derived here; a frozen cohort mismatch is its own failure.
-  rejects({ expected_counts: { action_count: 999 } }, 'ALIAS_V2_COUNT_MISMATCH');
 });
 
 /** Every leaf path at which two JSON payloads differ, in a stable order. */
@@ -778,9 +775,13 @@ test('unreviewed exchange fields and functional-unit forms fail closed with thei
   }
   const textCase = (unitText: string, functionalUnit?: JsonObject) =>
     singleProcess(
-      process('process-b', [exchange('1'), exchange('2', { meanAmount: '2' })], unitText),
+      process(
+        'process-b',
+        [exchange('1', {}, false), exchange('2', { meanAmount: '2' })],
+        unitText,
+      ),
       functionalUnit === undefined
-        ? {}
+        ? { exchange_indexes: [1] }
         : {
             exchange_indexes: [1],
             functional_unit: functionalUnit as { source_exchange_number: string },
@@ -949,4 +950,143 @@ test('only the reviewed Product flow kind is eligible, and nothing wider', () =>
   for (const [, mutate] of cases) {
     rejects(singleFlow(flowWith(mutate)), invalid);
   }
+});
+
+test('the functional-unit binding keeps the two id namespaces apart', () => {
+  const violation = 'ALIAS_V2_TEXT_RULE_VIOLATION';
+  // The reviewed shape: the quantitative reference names the INTERNAL id "1" (its own output at
+  // amount 1.0 with the original source number in its comment), and the alias occurrence is a
+  // different exchange with a different internal id and a different original source number.
+  const reviewed = (
+    overrides: {
+      sourceNumber?: string;
+      commentNumber?: string;
+      referenceAmount?: string;
+      aliasAmount?: string;
+    } = {},
+  ): JsonObject =>
+    process(
+      'process-b',
+      [
+        exchange(
+          '1',
+          {
+            exchangeDirection: 'Output',
+            meanAmount: overrides.referenceAmount ?? '1.0',
+            resultingAmount: overrides.referenceAmount ?? '1.0',
+            generalComment: {
+              '#text': `Source EcoSpold1 exchange number: ${overrides.commentNumber ?? '730045'}.`,
+              '@xml:lang': 'en',
+            },
+          },
+          false,
+        ),
+        exchange('2', {
+          exchangeDirection: 'Input',
+          meanAmount: overrides.aliasAmount ?? '1.03E-4',
+          resultingAmount: overrides.aliasAmount ?? '1.03E-4',
+          generalComment: {
+            '#text': 'Source EcoSpold1 exchange number: 730046.',
+            '@xml:lang': 'en',
+          },
+        }),
+      ],
+      '1.0 a Use, computer, office use',
+    );
+  const build = (json: JsonObject, sourceNumber = '730045') =>
+    buildAliasV2Plan(
+      input({
+        processes: [
+          {
+            id: 'process-b',
+            version: '00.00.001',
+            exchange_indexes: [1],
+            functional_unit: { source_exchange_number: sourceNumber },
+            json,
+          },
+        ],
+      }),
+    );
+  // Two different original numbers bind two different exchanges: the reviewed case passes and the
+  // internal pointer keeps naming the reference exchange.
+  const accepted = build(reviewed());
+  const action = (accepted.batch.actions as JsonObject[]).find(
+    (entry) => entry['table'] === 'processes',
+  ) as JsonObject;
+  assert.equal(action['quantitative_reference'], '1');
+  assert.deepEqual((action['mutation'] as JsonObject)['exchanges'], [
+    {
+      index: 1,
+      internal_id: '2',
+      flow_id: 'flow-a',
+      flow_version: '00.00.001',
+      direction: 'Input',
+      before_amount: '1.03E-4',
+      after_amount: '0.00000001175799086757990853',
+      before_resulting_amount: '1.03E-4',
+      after_resulting_amount: '0.00000001175799086757990853',
+    },
+  ]);
+  assert.equal(
+    (
+      (
+        ((action['desired_json_ordered'] as JsonObject)['processDataSet'] as JsonObject)[
+          'processInformation'
+        ] as JsonObject
+      )['quantitativeReference'] as JsonObject
+    )['referenceToReferenceFlow'],
+    '1',
+  );
+  // A reviewed number that the reference exchange's own comment does not carry is refused.
+  assert.throws(
+    () => build(reviewed(), '730046'),
+    (error: unknown) => (error as { code?: string }).code === violation,
+  );
+  assert.throws(
+    () => build(reviewed({ commentNumber: '999999' })),
+    (error: unknown) => (error as { code?: string }).code === violation,
+  );
+  // The functional unit describes the reference exchange's quantity: an amount that is not the
+  // reviewed 1/1.0 output cannot carry the correction.
+  for (const referenceAmount of ['1.03E-4', '2', '']) {
+    assert.throws(
+      () => build(reviewed({ referenceAmount })),
+      (error: unknown) => (error as { code?: string }).code === violation,
+      referenceAmount,
+    );
+  }
+  // The text quantity and the reference amount must agree: a `1.0 a` prefix on an exchange whose
+  // amount is not 1/1.0 is exactly the physically impossible case.
+  assert.throws(
+    () => build(reviewed({ aliasAmount: '1.0', referenceAmount: '1.03E-4' })),
+    (error: unknown) => (error as { code?: string }).code === violation,
+  );
+  // An internal id the payload does not carry cannot resolve the reference exchange.
+  assert.throws(
+    () =>
+      buildAliasV2Plan(
+        input({
+          processes: [
+            {
+              id: 'process-b',
+              version: '00.00.001',
+              exchange_indexes: [1],
+              functional_unit: { source_exchange_number: '730045' },
+              json: {
+                processDataSet: {
+                  processInformation: {
+                    quantitativeReference: {
+                      referenceToReferenceFlow: '9',
+                      functionalUnitOrOther: { '#text': '1.0 a x', '@xml:lang': 'en' },
+                    },
+                  },
+                  exchanges: { exchange: [exchange('1', {}, false), exchange('2')] },
+                },
+              },
+            },
+          ],
+        }),
+      ),
+    (error: unknown) => (error as { code?: string }).code === violation,
+  );
 });

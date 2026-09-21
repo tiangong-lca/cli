@@ -826,7 +826,12 @@ export function assertProtectedApprovalBindings(options: {
   hash(options.approvalFileSha256, 'approval_file_sha256');
 }
 
-function deterministicUuidFromSha256(digest: string): string {
+/**
+ * The reviewed deterministic request identity: the same digest always yields the same uuid, so a
+ * rerun of the same frozen execution reuses one server-side request row. Exported so the
+ * versioned (v2) capability derives its identity the same way instead of inventing another.
+ */
+export function deterministicUuidFromSha256(digest: string): string {
   const chars = digest.slice(0, 32).split('');
   chars[12] = '5';
   chars[16] = ((Number.parseInt(chars[16]!, 16) & 0x3) | 0x8).toString(16);

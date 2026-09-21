@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildAliasV2Plan, type AliasV2PlanInput } from '../src/lib/dataset-alias-v2-plan.js';
+import {
+  aliasV2CohortSha256,
+  buildAliasV2Plan,
+  type AliasV2PlanInput,
+} from '../src/lib/dataset-alias-v2-plan.js';
 import {
   ALIAS_V2_AUDIT_COMMANDS,
   ALIAS_V2_ENDPOINTS,
@@ -88,8 +92,8 @@ function planInput(): AliasV2PlanInput {
       {
         id: 'process-a',
         version: '00.00.001',
-        exchange_indexes: [0],
-        functional_unit: { source_exchange_number: '1' },
+        exchange_indexes: [1],
+        functional_unit: { source_exchange_number: '730045' },
         json: {
           processDataSet: {
             processInformation: {
@@ -102,15 +106,28 @@ function planInput(): AliasV2PlanInput {
               exchange: [
                 {
                   '@dataSetInternalID': '1',
+                  meanAmount: '1.0',
+                  resultingAmount: '1.0',
+                  exchangeDirection: 'Output',
+                  referenceToFlowDataSet: {
+                    '@refObjectId': 'flow-unrelated',
+                    '@version': '00.00.001',
+                  },
+                  generalComment: {
+                    '#text': 'Source EcoSpold1 exchange number: 730045.',
+                    '@xml:lang': 'en',
+                  },
+                },
+                {
+                  '@dataSetInternalID': '2',
                   meanAmount: '2.0E-4',
                   resultingAmount: '2.0E-4',
                   exchangeDirection: 'Input',
                   referenceToFlowDataSet: {
-                    '@refObjectId': 'flow-target',
+                    '@refObjectId': 'flow-a',
                     '@version': '00.00.001',
                   },
                 },
-                { '@dataSetInternalID': '2', meanAmount: '1', resultingAmount: '1' },
               ],
             },
           },
@@ -120,7 +137,7 @@ function planInput(): AliasV2PlanInput {
         id: 'process-b',
         version: '00.00.001',
         exchange_indexes: [1],
-        functional_unit: { source_exchange_number: '2' },
+        functional_unit: { source_exchange_number: '730046' },
         json: {
           processDataSet: {
             processInformation: {
@@ -131,14 +148,27 @@ function planInput(): AliasV2PlanInput {
             },
             exchanges: {
               exchange: [
-                { '@dataSetInternalID': '1', meanAmount: '1', resultingAmount: '1' },
+                {
+                  '@dataSetInternalID': '1',
+                  meanAmount: '1.0',
+                  resultingAmount: '1.0',
+                  exchangeDirection: 'Output',
+                  referenceToFlowDataSet: {
+                    '@refObjectId': 'flow-unrelated',
+                    '@version': '00.00.001',
+                  },
+                  generalComment: {
+                    '#text': 'Source EcoSpold1 exchange number: 730046.',
+                    '@xml:lang': 'en',
+                  },
+                },
                 {
                   '@dataSetInternalID': '2',
                   meanAmount: '9.1E-5',
                   resultingAmount: '9.1E-5',
                   exchangeDirection: 'Input',
                   referenceToFlowDataSet: {
-                    '@refObjectId': 'flow-target',
+                    '@refObjectId': 'flow-a',
                     '@version': '00.00.001',
                   },
                 },
@@ -168,18 +198,35 @@ function planInput(): AliasV2PlanInput {
     target_unit_group: {
       id: '49ce0c2f-2241-54e3-8e75-e75ffbdaecfb',
       version: '01.00.000',
-      json: {},
+      json: {
+        unitGroupDataSet: {
+          units: {
+            unit: [
+              { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
+              { '@dataSetInternalID': '2', name: 'hr', meanValue: '0.00011415525114155251' },
+            ],
+          },
+        },
+      },
     },
     source_unit_group: {
       id: 'aeddc8ee-da6f-5181-9a99-73466e198b86',
       version: '00.00.001',
       json: {},
     },
-    source_evidence_sha256: 'e'.repeat(64),
+    source_alias: { id: SOURCE_FP, version: '00.00.001' },
+    source_evidence: { sha256: 'e'.repeat(64), cohort_sha256: '' },
   };
 }
 
-const built = buildAliasV2Plan(planInput());
+const withEvidence = (value: AliasV2PlanInput): AliasV2PlanInput => ({
+  ...value,
+  source_evidence: {
+    ...value.source_evidence,
+    cohort_sha256: aliasV2CohortSha256(value),
+  },
+});
+const built = buildAliasV2Plan(withEvidence(planInput()));
 const PLAN = built.plan;
 const BINDING = { plan: PLAN, request_id: REQUEST_ID };
 

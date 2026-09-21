@@ -52,6 +52,9 @@ export async function runDatasetMaintenanceProtectedDispatch(
       outDir: options.outDir,
       commit: options.commit,
       statusOnly: options.statusOnly,
+      ...(options.approveExecution === undefined
+        ? {}
+        : { approveExecution: options.approveExecution }),
       ...(options.confirm === undefined ? {} : { confirm: options.confirm }),
       ...(options.waitSeconds === undefined ? {} : { waitSeconds: options.waitSeconds }),
       ...(options.pollMs === undefined ? {} : { pollMs: options.pollMs }),
