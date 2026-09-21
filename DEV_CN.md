@@ -24,7 +24,7 @@ checkPaths:
   - .github/workflows/**
 lastReviewedAt: 2026-09-21
 lastReviewedCommit: d45ffb6
-lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: the guarded before-image transport and contract dry-run change no development, gate, release or maintenance step described here.'
+lastReviewedNote: 'Reviewed for CLI #283 at head f75eda4 (second atomic stage): the narrow existing-Process metadata repair admission, the retained-attempt precedence over validation classification and their tests change no development, gate, release or maintenance step described here.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

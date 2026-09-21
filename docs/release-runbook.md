@@ -27,7 +27,7 @@ checkPaths:
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
 lastReviewedCommit: d45ffb6
-lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: the guarded before-image transport and contract dry-run add no dependency, version, tag, provenance or publication step.'
+lastReviewedNote: 'Reviewed for CLI #283 at head f75eda4 (second atomic stage): the metadata repair admission and retained-attempt precedence add no dependency, version, tag, provenance or publication step.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

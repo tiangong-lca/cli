@@ -8,6 +8,13 @@ import { createBatchContract, runBoundedBatch, type BatchJsonValue } from '../ba
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
 import { collectImportContentIssues } from './dataset-validate.js';
 import {
+  DRAFT_REPAIR_ADMISSION_SCHEMA,
+  DRAFT_REPAIR_POLICY,
+  evaluateProcessMetadataRepairAdmission,
+  isProcessMetadataRepairCandidate,
+  type DraftRepairAdmission,
+} from './dataset-draft-repair-admission.js';
+import {
   createDatasetRecord,
   saveDraftDatasetRecord,
   type DatasetCommandTable,
@@ -132,6 +139,7 @@ export type DatasetSaveDraftRowReport = {
   attempt_consumed?: boolean;
   replayed?: false;
   readback?: 'desired_exact' | 'not_desired' | 'not_performed';
+  draft_repair_admission?: DraftRepairAdmission;
 };
 
 export type DatasetSaveDraftReport = {
@@ -229,9 +237,41 @@ type DatasetSaveDraftLedgerEvent = {
   outcome: 'executed' | 'unknown' | null;
   recovered: boolean;
   recorded_at_utc: string;
+  // Optional and hash-bound: a first attempt of an admitted metadata repair carries the verified
+  // admission so a later recovery can return the original evidence instead of re-inventing it.
+  draft_repair_admission?: DraftRepairAdmission;
   previous_event_sha256: string | null;
   event_sha256: string;
 };
+
+const DRAFT_REPAIR_ADMISSION_KEYS = [
+  'before_sha256',
+  'changed_paths',
+  'desired_sha256',
+  'policy',
+  'publication_ready',
+  'schema',
+  'status',
+].join(',');
+
+function isLedgerRepairAdmission(value: unknown): value is DraftRepairAdmission {
+  if (!isRecord(value) || !Array.isArray(value.changed_paths)) {
+    return false;
+  }
+  return (
+    Object.keys(value).sort().join(',') === DRAFT_REPAIR_ADMISSION_KEYS &&
+    value.schema === DRAFT_REPAIR_ADMISSION_SCHEMA &&
+    value.status === 'admitted' &&
+    value.policy === DRAFT_REPAIR_POLICY &&
+    value.publication_ready === false &&
+    typeof value.before_sha256 === 'string' &&
+    SHA256_PATTERN.test(value.before_sha256) &&
+    typeof value.desired_sha256 === 'string' &&
+    SHA256_PATTERN.test(value.desired_sha256) &&
+    value.changed_paths.length > 0 &&
+    value.changed_paths.every((path) => typeof path === 'string' && path.length > 0)
+  );
+}
 
 type ExecutionLedgerState = {
   events: Map<string, DatasetSaveDraftLedgerEvent[]>;
@@ -528,6 +568,8 @@ function parseLedgerEvent(value: unknown, index: number): DatasetSaveDraftLedger
     typeof event.recovered !== 'boolean' ||
     !trimToken(event.recorded_at_utc) ||
     !(event.previous_event_sha256 === null || SHA256_PATTERN.test(event.previous_event_sha256)) ||
+    (event.draft_repair_admission !== undefined &&
+      !isLedgerRepairAdmission(event.draft_repair_admission)) ||
     !SHA256_PATTERN.test(event.event_sha256)
   ) {
     executionContractError(`Execution ledger event ${index} has an invalid shape.`);
@@ -559,6 +601,9 @@ function loadExecutionLedger(
         event.desired_sha256 !== action.desired_sha256 ||
         event.action_binding_sha256 !== executionActionBindingSha256(action) ||
         event.operation !== action.expected_operation ||
+        (event.draft_repair_admission !== undefined &&
+          (event.draft_repair_admission.before_sha256 !== action.before_sha256 ||
+            event.draft_repair_admission.desired_sha256 !== action.desired_sha256)) ||
         event.previous_event_sha256 !== (previous?.event_sha256 ?? null) ||
         event.event_sha256 !== sha256Json(eventWithoutSha(event))
       ) {
@@ -595,6 +640,7 @@ function appendExecutionEvent(options: {
   outcome: 'executed' | 'unknown' | null;
   recovered: boolean;
   recordedAtUtc: string;
+  draftRepairAdmission?: DraftRepairAdmission;
 }): DatasetSaveDraftLedgerEvent {
   const actionEvents = options.ledger.events.get(
     options.action.action_id,
@@ -611,6 +657,9 @@ function appendExecutionEvent(options: {
     outcome: options.outcome,
     recovered: options.recovered,
     recorded_at_utc: options.recordedAtUtc,
+    ...(options.draftRepairAdmission
+      ? { draft_repair_admission: options.draftRepairAdmission }
+      : {}),
     previous_event_sha256: actionEvents.at(-1)?.event_sha256 ?? null,
   };
   const event: DatasetSaveDraftLedgerEvent = { ...core, event_sha256: sha256Json(core) };
@@ -1321,6 +1370,7 @@ function contractRowReport(options: {
   readback: DatasetSaveDraftRowReport['readback'];
   error?: { message: string; details?: unknown };
   visibleRow?: VisibleDatasetRow | null;
+  draftRepairAdmission?: DraftRepairAdmission;
 }): DatasetSaveDraftRowReport {
   return {
     index: options.row.index,
@@ -1337,6 +1387,9 @@ function contractRowReport(options: {
     replayed: false,
     readback: options.readback,
     ...(options.visibleRow !== undefined ? { visible_row: options.visibleRow } : {}),
+    ...(options.draftRepairAdmission
+      ? { draft_repair_admission: options.draftRepairAdmission }
+      : {}),
     ...(options.error ? { error: options.error } : {}),
   };
 }
@@ -1352,6 +1405,7 @@ async function finalizeAttemptedAction(options: {
   restBaseUrl: string;
   now: () => string;
   recovered: boolean;
+  draftRepairAdmission?: DraftRepairAdmission;
 }): Promise<DatasetSaveDraftRowReport> {
   const desiredExact = await readbackIsDesiredExact(options);
   appendExecutionEvent({
@@ -1374,6 +1428,7 @@ async function finalizeAttemptedAction(options: {
         : options.action.expected_operation,
     attemptConsumed: true,
     readback: desiredExact ? 'desired_exact' : 'not_desired',
+    ...(options.draftRepairAdmission ? { draftRepairAdmission: options.draftRepairAdmission } : {}),
     ...(desiredExact
       ? {}
       : {
@@ -1569,19 +1624,6 @@ async function runExecutionContractBatch(options: {
       statuses.set(action.action_id, report.status);
     };
     const preparedFailure = buildPreparedFailure(row, options.allowReferenceOnlySupport);
-    if (preparedFailure) {
-      const report = {
-        ...preparedFailure,
-        action_id: action.action_id,
-        desired_sha256: action.desired_sha256,
-        attempt_consumed: false,
-        replayed: false as const,
-        readback: 'not_performed' as const,
-      };
-      storeReport(report);
-      return;
-    }
-
     if (options.mode === 'dry_run') {
       // Retained evidence is read-only in a preflight: an action that already owns an attempt or
       // outcome is never re-authorized as prepared, and it is never reported as executed either.
@@ -1608,6 +1650,10 @@ async function runExecutionContractBatch(options: {
       }
     }
 
+    // Recovery returns the admission bound to the original attempt; it is never re-derived from a
+    // fresh read that may already hold the desired content.
+    const recoveredAdmission = ledger.attempts.get(action.action_id)?.draft_repair_admission;
+
     const priorOutcome = ledger.outcomes.get(action.action_id);
     if (priorOutcome) {
       const desiredStillExact =
@@ -1626,6 +1672,7 @@ async function runExecutionContractBatch(options: {
         operation: action.expected_operation,
         attemptConsumed: true,
         readback: desiredStillExact ? 'desired_exact' : 'not_desired',
+        ...(recoveredAdmission ? { draftRepairAdmission: recoveredAdmission } : {}),
         ...(status === 'unknown'
           ? {
               error: {
@@ -1653,7 +1700,31 @@ async function runExecutionContractBatch(options: {
         restBaseUrl: options.dataClient.restBaseUrl,
         now: options.now,
         recovered: true,
+        ...(recoveredAdmission ? { draftRepairAdmission: recoveredAdmission } : {}),
       });
+      storeReport(report);
+      return;
+    }
+
+    // Validation and policy classification come after every retained-attempt decision above: an
+    // already consumed attempt must never be reported as an unconsumed preparation failure.
+    const repairCandidate = Boolean(
+      preparedFailure &&
+      isProcessMetadataRepairCandidate({
+        operation: action.expected_operation,
+        table: action.table,
+        validation: row.validation,
+      }),
+    );
+    if (preparedFailure && !repairCandidate) {
+      const report = {
+        ...preparedFailure,
+        action_id: action.action_id,
+        desired_sha256: action.desired_sha256,
+        attempt_consumed: false,
+        replayed: false as const,
+        readback: 'not_performed' as const,
+      };
       storeReport(report);
       return;
     }
@@ -1783,6 +1854,43 @@ async function runExecutionContractBatch(options: {
       return;
     }
 
+    // The bounded Process metadata repair decides only here, against the complete before image
+    // this run just read and proved owner/state-0/before-hash for.
+    let draftRepairAdmission: DraftRepairAdmission | undefined;
+    if (repairCandidate) {
+      const outcome = evaluateProcessMetadataRepairAdmission({
+        before: beforeImage,
+        candidate: row.payload,
+        // The stored draft is verified with the same real validator the candidate uses, on a
+        // clone, so a before with any other error is refused and its exact bytes cannot change.
+        beforeValidation: validatePayload(
+          structuredClone(beforeImage as JsonObject),
+          'process',
+          DATASET_CONFIGS.process,
+        ),
+        beforeSha256: sha256Json(beforeImage as JsonObject),
+        desiredSha256: action.desired_sha256,
+      });
+      if (outcome.status !== 'admitted') {
+        storeReport(
+          contractRowReport({
+            row,
+            action,
+            status: 'failed',
+            operation: action.expected_operation,
+            attemptConsumed: false,
+            readback: 'not_performed',
+            error: {
+              message: outcome.message,
+              details: { code: outcome.code, ...outcome.details },
+            },
+          }),
+        );
+        return;
+      }
+      draftRepairAdmission = outcome.admission;
+    }
+
     if (options.mode === 'dry_run') {
       // Preflight evidence only: this run verified the exact contract, owner, draft state and
       // before/content binding. Nothing is dispatched, no attempt is consumed, and the row can
@@ -1795,6 +1903,7 @@ async function runExecutionContractBatch(options: {
           operation: 'would_sync',
           attemptConsumed: false,
           readback: 'not_performed',
+          ...(draftRepairAdmission ? { draftRepairAdmission } : {}),
           visibleRow: beforeRows.length
             ? {
                 id: beforeRows[0]!.id,
@@ -1819,6 +1928,7 @@ async function runExecutionContractBatch(options: {
           outcome: null,
           recovered: false,
           recordedAtUtc: options.now(),
+          ...(draftRepairAdmission ? { draftRepairAdmission } : {}),
         });
       };
       if (action.expected_operation === 'insert') {
@@ -1841,7 +1951,9 @@ async function runExecutionContractBatch(options: {
           version: action.version,
           payload: row.payload,
           expectedJsonOrdered: beforeImage as JsonObject,
-          extraData: { ruleVerification: true },
+          // Only the bounded metadata repair writes without the platform rule-verification flag;
+          // it is exactly the case whose authoring evidence gap the admission records.
+          extraData: { ruleVerification: draftRepairAdmission === undefined },
           beforeDispatch,
         });
       }
@@ -1863,6 +1975,7 @@ async function runExecutionContractBatch(options: {
       restBaseUrl: options.dataClient.restBaseUrl,
       now: options.now,
       recovered: transportFailed,
+      ...(draftRepairAdmission ? { draftRepairAdmission } : {}),
     });
     storeReport(report);
   };

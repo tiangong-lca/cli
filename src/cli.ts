@@ -1599,7 +1599,7 @@ Outputs written under --out-dir:
 Contract:
   This generic dataset path writes only mutable rows such as contact/source/flow/process. Unit group and flow property rows are reference-only; select existing database rows and rewrite references instead of creating My Data support rows.
   Process and lifecyclemodel imports may still use their dedicated save-draft commands when the workflow needs their specialized reports.
-  With an execution contract, each save_draft action sends the complete before image read fresh in this run; the platform rejects a stale or changed before content and the CLI never falls back to an unguarded save or retries it. A contract dry-run reports preflight evidence only, treats an action prepared earlier in the same preflight as a satisfied dependency, reports an already consumed attempt as retained, and can never close an import.
+  With an execution contract, each save_draft action sends the complete before image read fresh in this run; a bounded existing-Process owner draft whose only authoring gap is the unknown annual volume may repair the reviewed reference short descriptions with ruleVerification=false and a recorded draft_repair_admission (bound into the first attempt event, so recovery returns the original admission), never reporting the row as ready; the platform rejects a stale or changed before content and the CLI never falls back to an unguarded save or retries it. A contract dry-run reports preflight evidence only, treats an action prepared earlier in the same preflight as a satisfied dependency, reports an already consumed attempt as retained, and can never close an import.
 `.trim();
 }
 

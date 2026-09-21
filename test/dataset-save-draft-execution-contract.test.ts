@@ -1924,3 +1924,99 @@ test('execution contract dry-run retains prior attempts and outcomes without re-
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('execution contract never masks a consumed attempt behind a validation failure', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-retained-validation-'));
+  const before = flow('f1000000-0000-4000-8000-000000000001', 'Stored draft');
+  const invalid = flow('f1000000-0000-4000-8000-000000000001', 'Candidate');
+  delete (invalid.flowDataSet as JsonObject).modellingAndValidation;
+  const state = new Map<string, JsonObject>();
+  const writes: string[] = [];
+  const calls: Array<{ path: string; body: JsonObject }> = [];
+  try {
+    const contractValue = contract({ desired: [invalid], before: [before] });
+    const parsed = __testInternals.parseExecutionContract(contractValue);
+    const env = executionEnv(dir, 'retained-validation-1');
+    const ledgerRoot = __testInternals.executionLedgerRoot(env, parsed);
+    const ledgerPath = __testInternals.executionLedgerPath(ledgerRoot, parsed.actions[0]!);
+    const attempt = ledgerEvent({
+      contractSha256: sha256Json(parsed),
+      action: parsed.actions[0] as unknown as JsonObject,
+      sequence: 1,
+      eventType: 'attempt_emitted',
+      outcome: null,
+    });
+    writeLedgerEvents(ledgerPath, [attempt]);
+    const attemptBytes = readFileSync(ledgerPath, 'utf8');
+
+    const commitReport = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [invalid] },
+      type: 'flow',
+      outDir: path.join(dir, 'commit-out'),
+      commit: true,
+      executionContractPath: writeContract(dir, contractValue),
+      env,
+      fetchImpl: executionFetch({ state, writes, calls }),
+    });
+    assert.equal(commitReport.rows[0]?.status, 'unknown');
+    assert.equal(commitReport.rows[0]?.attempt_consumed, true);
+    assert.equal(commitReport.rows[0]?.validation?.ok, false);
+    assert.equal(commitReport.counts.attempts_consumed, 1);
+    assert.deepEqual(
+      calls.filter((call) => call.path.includes('/functions/v1/app_dataset_')),
+      [],
+      'a retained attempt is never re-dispatched',
+    );
+    assert.deepEqual(writes, []);
+    const afterCommit = readFileSync(ledgerPath, 'utf8');
+    assert.ok(afterCommit.startsWith(attemptBytes), 'the original attempt line is preserved');
+    assert.equal(afterCommit.trimEnd().split('\n').length, 2, 'recovery appends one outcome');
+
+    const outcomeEvent = ledgerEvent({
+      contractSha256: sha256Json(parsed),
+      action: parsed.actions[0] as unknown as JsonObject,
+      sequence: 2,
+      eventType: 'outcome',
+      outcome: 'unknown',
+      previousEventSha256: attempt.event_sha256 as string,
+    });
+    writeLedgerEvents(ledgerPath, [attempt, outcomeEvent]);
+    const retainedBytes = readFileSync(ledgerPath, 'utf8');
+
+    const dryReport = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [invalid] },
+      type: 'flow',
+      outDir: path.join(dir, 'dry-run-out'),
+      commit: false,
+      executionContractPath: writeContract(dir, contractValue),
+      env,
+      fetchImpl: executionFetch({ state, writes, calls }),
+    });
+    assert.equal(dryReport.rows[0]?.status, 'blocked');
+    assert.equal(dryReport.rows[0]?.operation, 'retained_outcome');
+    assert.equal(dryReport.rows[0]?.attempt_consumed, true);
+    assert.equal(dryReport.rows[0]?.validation?.ok, false);
+    assert.equal(readFileSync(ledgerPath, 'utf8'), retainedBytes);
+    assert.deepEqual(writes, []);
+
+    const freshDir = path.join(dir, 'fresh-state');
+    mkdirSync(freshDir, { recursive: true });
+    const freshReport = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [invalid] },
+      type: 'flow',
+      outDir: path.join(dir, 'fresh-out'),
+      commit: true,
+      executionContractPath: writeContract(dir, contractValue),
+      env: executionEnv(freshDir, 'retained-validation-2'),
+      fetchImpl: executionFetch({ state, writes, calls }),
+    });
+    assert.equal(freshReport.rows[0]?.status, 'failed');
+    assert.equal(freshReport.rows[0]?.operation, 'skipped_invalid');
+    assert.equal(freshReport.rows[0]?.attempt_consumed, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
