@@ -260,13 +260,26 @@ export function assertAliasV2SourceFlowProperty(input: AliasV2PlanInput): {
   return { id: row.id, version: row.version, sha256: sha256Json(row.json) };
 }
 
+// The real canonical shape spells the year base factor `1.0` (the practical campaign snapshot),
+// while a fixture may spell the same exact value `1`. Both are the reviewed one-year factor; any
+// other spelling of the base is refused.
+const YEAR_BASE_FACTORS = ['1', '1.0'] as const;
+
 /**
- * Validates the target unit group's unit table: the reviewed base unit for the year at factor 1
- * and the fixed hour factor. A target whose table does not carry both, or whose factors were
- * substituted, is refused here — a fixture with hr = 1 is not a target.
+ * Validates a unit group's table at the real canonical schema, for the target and for the source
+ * alias's currently declared group.
+ *
+ * The base unit is selected the way the data actually does it: `quantitativeReference.
+ * referenceToReferenceUnit` names the internal id of the base row, and that row lives in
+ * `units.unit[]` beside its factor. The table must carry that referenced base row at the reviewed
+ * one-year factor plus the reviewed `hr` row at the fixed hour factor. A substituted factor, a
+ * missing base reference, a reference id the table does not carry, or a table without both rows is
+ * refused — a fixture with `hr = 1` is not a unit group of this campaign.
  */
-export function assertAliasV2TargetUnitGroup(target: AliasV2Row): JsonObject {
-  const dataSet = isJsonObject(target.json) ? target.json['unitGroupDataSet'] : null;
+function assertAliasV2UnitGroupTable(row: AliasV2Row, role: 'target' | 'source'): JsonObject {
+  const code = role === 'target' ? ALIAS_V2_TARGET_SHAPE_INVALID : ALIAS_V2_SOURCE_SHAPE_INVALID;
+  const label = role === 'target' ? 'Alias v2 target unit group' : 'Alias v2 source unit group';
+  const dataSet = isJsonObject(row.json) ? row.json['unitGroupDataSet'] : null;
   const root = isJsonObject(dataSet) ? dataSet : null;
   const units = root === null ? null : root['units'];
   const entries = isJsonObject(units) ? units['unit'] : null;
@@ -276,29 +289,44 @@ export function assertAliasV2TargetUnitGroup(target: AliasV2Row): JsonObject {
       ? [entries]
       : null;
   if (root === null || table === null || table.length === 0) {
-    fail(ALIAS_V2_TARGET_SHAPE_INVALID, 'Alias v2 target unit group must carry its unit table.', {
-      id: target.id,
+    fail(code, `${label} must carry its unit table.`, { id: row.id });
+  }
+  const quantitativeReference = root['quantitativeReference'];
+  const baseReference = isJsonObject(quantitativeReference)
+    ? quantitativeReference['referenceToReferenceUnit']
+    : null;
+  if (typeof baseReference !== 'string' || baseReference === '') {
+    fail(code, `${label} must name its reference unit by internal id.`, {
+      id: row.id,
+      reference: baseReference ?? null,
     });
   }
   const factorOf = (unit: JsonObject): string | null =>
     typeof unit['meanValue'] === 'string' ? unit['meanValue'] : null;
-  const yearly = table.find((unit) => unit['name'] === 'a');
-  const hourly = table.find((unit) => unit['name'] === 'hr');
-  if (yearly === undefined || factorOf(yearly) !== '1') {
-    fail(
-      ALIAS_V2_TARGET_SHAPE_INVALID,
-      'Alias v2 target unit group must carry the year base unit at factor 1.',
-      { id: target.id, factor: yearly === undefined ? null : factorOf(yearly) },
-    );
+  const base = table.find((unit) => unit['@dataSetInternalID'] === baseReference);
+  if (
+    base === undefined ||
+    !(YEAR_BASE_FACTORS as readonly (string | null)[]).includes(factorOf(base))
+  ) {
+    fail(code, `${label} must carry the referenced base unit at the year factor 1.`, {
+      id: row.id,
+      reference: baseReference,
+      factor: base === undefined ? null : factorOf(base),
+    });
   }
+  const hourly = table.find((unit) => unit['name'] === 'hr');
   if (hourly === undefined || factorOf(hourly) !== ALIAS_V2_FACTOR) {
-    fail(
-      ALIAS_V2_TARGET_SHAPE_INVALID,
-      'Alias v2 target unit group must carry the reviewed hour factor.',
-      { id: target.id, factor: hourly === undefined ? null : factorOf(hourly) },
-    );
+    fail(code, `${label} must carry the reviewed hour factor.`, {
+      id: row.id,
+      factor: hourly === undefined ? null : factorOf(hourly),
+    });
   }
   return root;
+}
+
+/** Validates the locked target unit group at the real canonical shape. */
+export function assertAliasV2TargetUnitGroup(target: AliasV2Row): JsonObject {
+  return assertAliasV2UnitGroupTable(target, 'target');
 }
 
 /**
@@ -527,6 +555,9 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
     invalid('Alias v2 plan source and target flow properties must differ.');
   }
   const sourceFlowProperty = assertAliasV2SourceFlowProperty(input);
+  // The group the source alias declares today is read at the same real schema as the target: its
+  // referenced base row must be the year at factor 1 and it must carry the reviewed hour factor.
+  assertAliasV2UnitGroupTable(input.declared_source_unit_group, 'source');
   assertAliasV2TargetUnitGroup(input.target_unit_group);
   const target = input.target_flow_property;
   // The reference is a projection of the locked target snapshot at its real schema paths, not a
@@ -747,6 +778,16 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
           ALIAS_V2_TEXT_RULE_VIOLATION,
           'Alias v2 reference exchange internal id must match the quantitative reference.',
           { id: process.id },
+        );
+      }
+      // The reviewed relationship in the campaign: the functional unit's reference exchange is one
+      // of the selected alias occurrences this plan rescales (checked over all 87 actual processes).
+      // A reference exchange outside that set is a different, unreviewed shape and is refused here.
+      if (!indexes.includes(referencePosition)) {
+        fail(
+          ALIAS_V2_TEXT_RULE_VIOLATION,
+          'Alias v2 functional unit reference exchange must be one of the selected alias occurrences.',
+          { id: process.id, reference_internal_id: referenceIndex, selected: indexes },
         );
       }
       const comment = referenceExchange['generalComment'];

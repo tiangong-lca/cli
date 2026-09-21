@@ -110,7 +110,8 @@ function planInput(): AliasV2PlanInput {
       {
         id: 'process-a',
         version: '00.00.001',
-        exchange_indexes: [1],
+        // The functional unit's reference exchange (internal id "1") is a selected alias occurrence.
+        exchange_indexes: [0, 1],
         functional_unit: { source_exchange_number: '730045' },
         json: {
           processDataSet: {
@@ -128,7 +129,7 @@ function planInput(): AliasV2PlanInput {
                   resultingAmount: '1.0',
                   exchangeDirection: 'Output',
                   referenceToFlowDataSet: {
-                    '@refObjectId': 'flow-unrelated',
+                    '@refObjectId': 'flow-a',
                     '@version': '00.00.001',
                   },
                   generalComment: {
@@ -154,7 +155,7 @@ function planInput(): AliasV2PlanInput {
       {
         id: 'process-b',
         version: '00.00.001',
-        exchange_indexes: [1],
+        exchange_indexes: [0, 1],
         functional_unit: { source_exchange_number: '730046' },
         json: {
           processDataSet: {
@@ -172,7 +173,7 @@ function planInput(): AliasV2PlanInput {
                   resultingAmount: '1.0',
                   exchangeDirection: 'Output',
                   referenceToFlowDataSet: {
-                    '@refObjectId': 'flow-unrelated',
+                    '@refObjectId': 'flow-a',
                     '@version': '00.00.001',
                   },
                   generalComment: {
@@ -218,6 +219,8 @@ function planInput(): AliasV2PlanInput {
       version: '01.00.000',
       json: {
         unitGroupDataSet: {
+          // The real canonical shape: the base unit is selected by the reference's internal id,
+          quantitativeReference: { referenceToReferenceUnit: '1' },
           units: {
             unit: [
               { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
@@ -233,6 +236,8 @@ function planInput(): AliasV2PlanInput {
       version: '01.00.000',
       json: {
         unitGroupDataSet: {
+          // The real canonical shape: the base unit is selected by the reference's internal id,
+          quantitativeReference: { referenceToReferenceUnit: '1' },
           units: {
             unit: [
               { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },

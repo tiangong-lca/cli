@@ -146,23 +146,21 @@ function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
       {
         id: 'process-b',
         version: '00.00.001',
-        exchange_indexes: [1],
+        // The functional unit's reference exchange is one of the selected alias occurrences.
+        exchange_indexes: [0, 1],
         functional_unit: { source_exchange_number: '730045' },
         json: process(
           'process-b',
           [
-            exchange(
-              '1',
-              {
-                generalComment: {
-                  '#text': 'Source EcoSpold1 exchange number: 730045.',
-                  '@xml:lang': 'en',
-                },
-                meanAmount: '1.0',
-                resultingAmount: '1.0',
+            exchange('1', {
+              exchangeDirection: 'Output',
+              generalComment: {
+                '#text': 'Source EcoSpold1 exchange number: 730045.',
+                '@xml:lang': 'en',
               },
-              false,
-            ),
+              meanAmount: '1.0',
+              resultingAmount: '1.0',
+            }),
             exchange('2', {
               generalComment: {
                 '#text': 'Source EcoSpold1 exchange number: 730046.',
@@ -201,6 +199,8 @@ function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
       version: '01.00.000',
       json: {
         unitGroupDataSet: {
+          // The real canonical shape: the base unit is selected by the reference's internal id,
+          quantitativeReference: { referenceToReferenceUnit: '1' },
           units: {
             unit: [
               { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
@@ -218,6 +218,8 @@ function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
       version: '01.00.000',
       json: {
         unitGroupDataSet: {
+          // The real canonical shape: the base unit is selected by the reference's internal id,
+          quantitativeReference: { referenceToReferenceUnit: '1' },
           units: {
             unit: [
               { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
@@ -276,9 +278,9 @@ test('the v2 plan derives the exact action, occurrence and invariant counts', ()
       expected_counts: {
         action_count: 4,
         batch_count: 1,
-        exchange_count: 2,
-        amount_field_count: 4,
-        unrelated_exchange_count: 2,
+        exchange_count: 3,
+        amount_field_count: 6,
+        unrelated_exchange_count: 1,
         audit_count: 6,
         flowproperty_count: 0,
         flow_count: 2,
@@ -295,9 +297,9 @@ test('the v2 plan derives the exact action, occurrence and invariant counts', ()
   assert.deepEqual(plan.expected, {
     action_count: 4,
     batch_count: 1,
-    exchange_count: 2,
-    amount_field_count: 4,
-    unrelated_exchange_count: 2,
+    exchange_count: 3,
+    amount_field_count: 6,
+    unrelated_exchange_count: 1,
     audit_count: 6,
     flowproperty_count: 0,
     flow_count: 2,
@@ -309,7 +311,7 @@ test('the v2 plan derives the exact action, occurrence and invariant counts', ()
   assert.equal(batch.schema_version, ALIAS_V2_BATCH_SCHEMA);
   assert.equal(batch.plan_sha256, plan.plan_sha256);
   assert.equal((batch.actions as unknown[]).length, 4);
-  assert.equal((batch.counts as JsonObject).exchange_count, 2);
+  assert.equal((batch.counts as JsonObject).exchange_count, 3);
 
   // Flow actions: only the property reference changes; the quantitative reference id is kept.
   const flowAction = (batch.actions as JsonObject[])[0] as JsonObject;
@@ -374,6 +376,17 @@ test('the v2 plan derives the exact action, occurrence and invariant counts', ()
   assert.equal(textCaseAction.quantitative_reference, '1');
   assert.deepEqual((textCaseAction.mutation as JsonObject).exchanges, [
     {
+      index: 0,
+      internal_id: '1',
+      flow_id: 'flow-a',
+      flow_version: '00.00.001',
+      direction: 'Output',
+      before_amount: '1.0',
+      after_amount: '0.00011415525114155251',
+      before_resulting_amount: '1.0',
+      after_resulting_amount: '0.00011415525114155251',
+    },
+    {
       index: 1,
       internal_id: '2',
       flow_id: 'flow-a',
@@ -389,7 +402,7 @@ test('the v2 plan derives the exact action, occurrence and invariant counts', ()
     ((plan.dimensions as JsonObject[])[0] as JsonObject).factor,
     '0.00011415525114155251',
   );
-  assert.equal((plan.source_evidence as JsonObject).exchange_count, 2);
+  assert.equal((plan.source_evidence as JsonObject).exchange_count, 3);
   assert.deepEqual((plan.target_snapshots as JsonObject).flowproperty, {
     id: TARGET_FP,
     version: '01.00.000',
@@ -833,10 +846,13 @@ test('each action changes exactly the reviewed paths and nothing else', () => {
       'processDataSet.exchanges.exchange.0.resultingAmount',
     ],
   );
-  // Process with the functional-unit correction: the same two fields plus the unit text.
+  // Process with the functional-unit correction: the reference occurrence's own two amount fields
+  // (it is a selected alias occurrence), the other alias occurrence's, plus the unit text.
   assert.deepEqual(
     changedPaths(actions[3]!.expected_json_ordered, actions[3]!.desired_json_ordered).sort(),
     [
+      'processDataSet.exchanges.exchange.0.meanAmount',
+      'processDataSet.exchanges.exchange.0.resultingAmount',
       'processDataSet.exchanges.exchange.1.meanAmount',
       'processDataSet.exchanges.exchange.1.resultingAmount',
       'processDataSet.processInformation.quantitativeReference.functionalUnitOrOther.#text',
@@ -865,15 +881,11 @@ test('unreviewed exchange fields and functional-unit forms fail closed with thei
   }
   const textCase = (unitText: string, functionalUnit?: JsonObject) =>
     singleProcess(
-      process(
-        'process-b',
-        [exchange('1', {}, false), exchange('2', { meanAmount: '2' })],
-        unitText,
-      ),
+      process('process-b', [exchange('1', {}, true), exchange('2', { meanAmount: '2' })], unitText),
       functionalUnit === undefined
-        ? { exchange_indexes: [1] }
+        ? { exchange_indexes: [0, 1] }
         : {
-            exchange_indexes: [1],
+            exchange_indexes: [0, 1],
             functional_unit: functionalUnit as { source_exchange_number: string },
           },
     );
@@ -883,6 +895,19 @@ test('unreviewed exchange fields and functional-unit forms fail closed with thei
   rejects(textCase('1 a', { source_exchange_number: '1' }), 'ALIAS_V2_TEXT_RULE_VIOLATION');
   rejects(textCase('1 kg x', { source_exchange_number: '1' }), 'ALIAS_V2_TEXT_RULE_VIOLATION');
   rejects(textCase('1.0 a x', { source_exchange_number: ' ' }), 'ALIAS_V2_TEXT_RULE_VIOLATION');
+  // A reference exchange that is not one of the selected alias occurrences is a different,
+  // unreviewed shape: the narrow correction never applies to it.
+  rejects(
+    singleProcess(
+      process(
+        'process-b',
+        [exchange('1', {}, false), exchange('2', { meanAmount: '2' })],
+        '1.0 a x',
+      ),
+      { exchange_indexes: [1], functional_unit: { source_exchange_number: '1' } },
+    ),
+    'ALIAS_V2_TEXT_RULE_VIOLATION',
+  );
   // The reviewed incorrect prefix without its source proof is never left silently in place.
   rejects(textCase('1.0 a x'), 'ALIAS_V2_TEXT_RULE_VIOLATION');
   rejects(textCase('1 a x'), 'ALIAS_V2_TEXT_RULE_VIOLATION');
@@ -1044,9 +1069,10 @@ test('only the reviewed Product flow kind is eligible, and nothing wider', () =>
 
 test('the functional-unit binding keeps the two id namespaces apart', () => {
   const violation = 'ALIAS_V2_TEXT_RULE_VIOLATION';
-  // The reviewed shape: the quantitative reference names the INTERNAL id "1" (its own output at
-  // amount 1.0 with the original source number in its comment), and the alias occurrence is a
-  // different exchange with a different internal id and a different original source number.
+  // The reviewed shape: the quantitative reference names the INTERNAL id "1" — its own output at
+  // amount 1.0 with the original source number in its comment, and it is itself one of the selected
+  // alias occurrences; a further alias occurrence is a different exchange with a different internal
+  // id and a different original source number.
   const reviewed = (
     overrides: {
       sourceNumber?: string;
@@ -1069,7 +1095,7 @@ test('the functional-unit binding keeps the two id namespaces apart', () => {
               '@xml:lang': 'en',
             },
           },
-          false,
+          true,
         ),
         exchange('2', {
           exchangeDirection: 'Input',
@@ -1090,7 +1116,9 @@ test('the functional-unit binding keeps the two id namespaces apart', () => {
           {
             id: 'process-b',
             version: '00.00.001',
-            exchange_indexes: [1],
+            // The functional unit's reference exchange (internal id "1") is one of the selected
+            // alias occurrences, exactly as the reviewed campaign processes are.
+            exchange_indexes: [0, 1],
             functional_unit: { source_exchange_number: sourceNumber },
             json,
           },
@@ -1105,6 +1133,17 @@ test('the functional-unit binding keeps the two id namespaces apart', () => {
   ) as JsonObject;
   assert.equal(action['quantitative_reference'], '1');
   assert.deepEqual((action['mutation'] as JsonObject)['exchanges'], [
+    {
+      index: 0,
+      internal_id: '1',
+      flow_id: 'flow-a',
+      flow_version: '00.00.001',
+      direction: 'Output',
+      before_amount: '1.0',
+      after_amount: '0.00011415525114155251',
+      before_resulting_amount: '1.0',
+      after_resulting_amount: '0.00011415525114155251',
+    },
     {
       index: 1,
       internal_id: '2',
@@ -1138,10 +1177,15 @@ test('the functional-unit binding keeps the two id namespaces apart', () => {
   );
   // The functional unit describes the reference exchange's quantity: an amount that is not the
   // reviewed 1/1.0 output cannot carry the correction.
-  for (const referenceAmount of ['1.03E-4', '2', '']) {
+  for (const [referenceAmount, code] of [
+    ['1.03E-4', violation],
+    ['2', violation],
+    // The empty spelling is not a quantity at all, so the reviewed numeric-bounds rule refuses it.
+    ['', 'ALIAS_V2_PLAN_INVALID'],
+  ] as ReadonlyArray<readonly [string, string]>) {
     assert.throws(
       () => build(reviewed({ referenceAmount })),
-      (error: unknown) => (error as { code?: string }).code === violation,
+      (error: unknown) => (error as { code?: string }).code === code,
       referenceAmount,
     );
   }
@@ -1252,21 +1296,101 @@ test('malformed amounts, incomplete occurrence sets and stale evidence fail clos
     invalid,
   );
 
-  // The target unit table is read through one accessor, and every deficient shape is refused.
+  // The target unit table is read at the real canonical shape: `units.unit[]` beside a
+  // `quantitativeReference.referenceToReferenceUnit` internal id that selects the base row. Every
+  // deficient shape — including a substituted or missing base reference — is refused.
   const unitGroup = (json: unknown): Partial<AliasV2PlanInput> => ({
     target_unit_group: { id: TARGET_UG, version: '01.00.000', json: json as JsonObject },
   });
+  const table = (
+    unit: unknown,
+    referenceToReferenceUnit: unknown = '1',
+  ): Partial<AliasV2PlanInput> =>
+    unitGroup({
+      unitGroupDataSet: {
+        quantitativeReference: { referenceToReferenceUnit },
+        units: { unit },
+      },
+    });
   rejects(unitGroup('nope'), targetShapeInvalid);
-  rejects(unitGroup({ unitGroupDataSet: { units: { unit: 'nope' } } }), targetShapeInvalid);
+  rejects(table('nope'), targetShapeInvalid);
+  rejects(table({ name: 'a', meanValue: '1' }), targetShapeInvalid);
+  rejects(table([{ name: 'hr', meanValue: ALIAS_V2_FACTOR }]), targetShapeInvalid);
+  // The base unit is selected by the referenced internal id, not by a name: a table that names no
+  // reference, or references a row it does not carry, is refused.
   rejects(
-    unitGroup({ unitGroupDataSet: { units: { unit: { name: 'a', meanValue: '1' } } } }),
+    table([{ '@dataSetInternalID': '1', name: 'a', meanValue: '1' }], undefined),
     targetShapeInvalid,
   );
   rejects(
-    unitGroup({
-      unitGroupDataSet: { units: { unit: [{ name: 'hr', meanValue: ALIAS_V2_FACTOR }] } },
-    }),
+    table([{ '@dataSetInternalID': '1', name: 'a', meanValue: '1' }], ''),
     targetShapeInvalid,
+  );
+  rejects(
+    table([{ '@dataSetInternalID': '1', name: 'a', meanValue: '1' }], '9'),
+    targetShapeInvalid,
+  );
+  // The referenced base row must be the reviewed year factor: the real snapshot spells it `1.0`.
+  rejects(
+    table([{ '@dataSetInternalID': '1', name: 'a', meanValue: '2' }], '1'),
+    targetShapeInvalid,
+  );
+  // The hour row is the reviewed target token at the fixed factor.
+  rejects(
+    table([
+      { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
+      { '@dataSetInternalID': '2', name: 'hr', meanValue: '1' },
+    ]),
+    targetShapeInvalid,
+  );
+  rejects(
+    table([
+      { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
+      { '@dataSetInternalID': '2', name: 'hr', meanValue: 1 },
+    ]),
+    targetShapeInvalid,
+  );
+  // The real shape is accepted under both reviewed spellings of the year base factor, and the
+  // reference may select any row that carries it (the real table also carries `yr`/`year`).
+  for (const baseFactor of ['1', '1.0']) {
+    const accepted = buildAliasV2Plan(
+      input({
+        target_unit_group: {
+          id: TARGET_UG,
+          version: '01.00.000',
+          json: {
+            unitGroupDataSet: {
+              quantitativeReference: { referenceToReferenceUnit: '2' },
+              units: {
+                unit: [
+                  { '@dataSetInternalID': '1', name: 'a', meanValue: baseFactor },
+                  { '@dataSetInternalID': '2', name: 'yr', meanValue: baseFactor },
+                  { '@dataSetInternalID': '4', name: 'hr', meanValue: ALIAS_V2_FACTOR },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    );
+    assert.equal(typeof accepted.plan['plan_sha256'], 'string', baseFactor);
+  }
+  // The group the source alias declares today is read at the same canonical shape: a base
+  // reference it does not carry is refused as source evidence, not silently accepted.
+  rejects(
+    {
+      declared_source_unit_group: {
+        id: TARGET_UG,
+        version: '01.00.000',
+        json: {
+          unitGroupDataSet: {
+            quantitativeReference: { referenceToReferenceUnit: '7' },
+            units: { unit: [{ '@dataSetInternalID': '1', name: 'a', meanValue: '1' }] },
+          },
+        },
+      },
+    },
+    'ALIAS_V2_SOURCE_SHAPE_INVALID',
   );
 
   // The functional unit resolves its reference exchange by TIDAS internal id, and the id at that
@@ -1330,11 +1454,13 @@ test('malformed amounts, incomplete occurrence sets and stale evidence fail clos
               meanAmount: '1.0',
               resultingAmount: '1.0',
             },
-            false,
+            true,
           ),
           exchange('2'),
         ]),
-        { exchange_indexes: [1], functional_unit: { source_exchange_number: '730045' } },
+        // The reference exchange is the selected alias occurrence; its own comment is what must
+        // carry the reviewed original source number.
+        { exchange_indexes: [0, 1], functional_unit: { source_exchange_number: '730045' } },
       ),
       violation,
     );
@@ -1373,8 +1499,9 @@ test('the shared functional-unit text vectors are accepted and refused exactly',
   assert.equal(vectors.regex_source, '^(1|1\\.0) a( [^\\r\\n]*[^ \\t\\r\\n][^\\r\\n]*)$');
   const violation = 'ALIAS_V2_TEXT_RULE_VIOLATION';
   // One reviewed process whose functional unit is the vector under test. The reference exchange is
-  // the produced output at quantity 1.0 carrying its own original source number, and the alias
-  // occurrence is a separate exponent-valued input — the two id namespaces stay apart.
+  // the produced output at quantity 1.0 carrying its own original source number and is itself a
+  // selected alias occurrence; a further alias occurrence carries the exponent-valued input, so the
+  // two id namespaces stay apart.
   const build = (unitText: string): JsonObject =>
     buildAliasV2Plan(
       input({
@@ -1382,7 +1509,7 @@ test('the shared functional-unit text vectors are accepted and refused exactly',
           {
             id: 'process-b',
             version: '00.00.001',
-            exchange_indexes: [1],
+            exchange_indexes: [0, 1],
             functional_unit: { source_exchange_number: '730045' },
             json: process(
               'process-b',
@@ -1398,7 +1525,7 @@ test('the shared functional-unit text vectors are accepted and refused exactly',
                       '@xml:lang': 'en',
                     },
                   },
-                  false,
+                  true,
                 ),
                 exchange('2', {
                   exchangeDirection: 'Input',

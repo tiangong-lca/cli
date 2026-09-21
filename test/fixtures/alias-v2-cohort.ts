@@ -134,10 +134,13 @@ function processPayload(
   exchangeCount: number,
   unitText: string,
 ): { json: JsonObject; exchange_indexes: number[] } {
-  const exchange_indexes = Array.from({ length: aliases }, (_, offset) => offset + 1);
+  // The reviewed campaign relationship: the functional unit's reference exchange IS one of the
+  // selected alias occurrences, so the selection starts at the reference (internal id "1" at
+  // position 0) and covers the alias inputs that follow it.
+  const exchange_indexes = Array.from({ length: aliases }, (_, offset) => offset);
   const exchanges: JsonObject[] = [];
   for (let position = 0; position < exchangeCount; position += 1) {
-    const isAlias = position > 0 && position <= aliases;
+    const isAlias = position < aliases;
     const spelling = AMOUNT_SPELLINGS[
       (index * 7 + position * 3) % AMOUNT_SPELLINGS.length
     ] as string;
@@ -278,11 +281,13 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
       version: '01.00.000',
       json: {
         unitGroupDataSet: {
+          // The real canonical shape: the base unit is selected by the reference's internal id,
+          quantitativeReference: { referenceToReferenceUnit: '1' },
           units: {
             // The real "Units of time" table: the year base unit at factor 1 and the fixed hour
             // factor. A fixture with hr = 1 is not a target and is refused by the plan builder.
             unit: [
-              { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
+              { '@dataSetInternalID': '1', name: 'a', meanValue: '1.0' },
               { '@dataSetInternalID': '2', name: 'hr', meanValue: '0.00011415525114155251' },
             ],
           },
@@ -297,9 +302,11 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
       version: '01.00.000',
       json: {
         unitGroupDataSet: {
+          // The real canonical shape: the base unit is selected by the reference's internal id,
+          quantitativeReference: { referenceToReferenceUnit: '1' },
           units: {
             unit: [
-              { '@dataSetInternalID': '1', name: 'a', meanValue: '1' },
+              { '@dataSetInternalID': '1', name: 'a', meanValue: '1.0' },
               { '@dataSetInternalID': '2', name: 'hr', meanValue: '0.00011415525114155251' },
             ],
           },
