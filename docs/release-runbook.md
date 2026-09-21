@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 8cb5a100d59463c08e009089da8ce9707fe98aef
-lastReviewedNote: 'Reviewed for CLI #356: 0.1.20 is the separate version-only preparation for merged source PR #355 and follows the existing four-platform tag, Trusted Publishing, provenance and root handoff steps; local publication and manual tags remain forbidden.'
+lastReviewedCommit: 83189e2
+lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: 指数数学仅为 source 增量，任何 v2 能力仍需独立 release 流程（四平台 tag、Trusted Publishing/provenance、workspace 集成），历史 v1 行为不变。'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

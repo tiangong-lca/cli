@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 8cb5a100d59463c08e009089da8ce9707fe98aef
-lastReviewedNote: 'Reviewed for CLI #356: the 0.1.20 version-only preparation needs no new secret, Trusted Publisher setting, workflow, tag rule or alternate publication path, and records that npm 0.1.20 and its tag are still absent.'
+lastReviewedCommit: 83189e2
+lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: 无新增 secret、环境、workflow、tag 规则或发布通道；v2 wire 未实现。'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

@@ -38,8 +38,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 8cb5a100d59463c08e009089da8ce9707fe98aef
-lastReviewedNote: 'Reviewed for CLI #356: the release-only 0.1.20 preparation for merged source PR #355 changes package identity and four live version fixtures only, without changing CLI-owned policy, commands, authorization, or release semantics, and publication has not occurred (npm latest 0.1.19, no cli-v0.1.20 tag).'
+lastReviewedCommit: 83189e2
+lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2 (exponent math milestone): the v2 plan gains a bounded exact exponent decimal module with anonymized real-shape tests, the frozen v1 grammar and historical replay identities stay byte-unchanged, and the v2 wire awaits the Database #673 proposal.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -156,6 +156,8 @@ Review note, 2026-07-23: Issue #194 extends `dataset save-draft` with an explici
 Review note, 2026-07-23: Issue #196 is the dedicated 0.0.30 release for merged Issue #194 / PR #195. Windows release-gate evidence exposed that `fsync` on a reopened read-only execution-ledger descriptor returns `EPERM`; the release now fsyncs create/append operations on their write-capable descriptors before close. Attempt-before-dispatch ordering, no-replay semantics, dependencies, authorization, tag automation, npm Trusted Publishing, provenance verification, and exact released-commit workspace integration remain unchanged.
 
 Review note, 2026-07-23: Issue #198 releases 0.0.31 and makes dataset save-draft validation side-effect free. SDK schema/entity validation receives a deep clone, while execution-contract hashing, dispatch, and readback remain bound to the original exact input payload. Owner/state/project fencing, attempt-before-dispatch ordering, no-replay semantics, command ownership, and publication boundaries remain unchanged.
+
+Review note, 2026-09-21: CLI #358 adds the bounded exact exponent decimal module for the versioned v2 Time alias plan (mantissa up to 64 digits, exponent within +/-30, bigint normalisation, no floating point) and its anonymized real-shape RED/GREEN tests. It is additive: the frozen v1 alias grammar, profiles, constants, plan/response shape and every historical replay identity are byte-unchanged, and the tests pin that v1 still refuses exponent quantities. The v2 wire (plan/batch schema, counts, response shape) awaits the Database #673 proposal and is not decided here.
 
 Review note, 2026-09-21: Issue #356 is the version-only 0.1.20 release preparation for merged source PR #355 on `codex/issue-356-cli-0.1.20` (base main merge `8cb5a10`). Only package identity and the four live CLI-version fixtures change; dependencies, the sole lock, runtime, public exports, authorization, workflows and release automation are unchanged. The source feature is merged while publication has not occurred (npm latest 0.1.19, no `cli-v0.1.20` tag), and local publication or manual tag creation remains forbidden.
 

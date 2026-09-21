@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 'd603d53ac6d54dd0ea6ce65f8c1ebf4f6e345311'
-lastReviewedNote: 'Reviewed the combined CLI #354 support-metadata repair and concurrent CLI #350 Process review-array adoption at main d603d53. Reviewed for CLI #354 at head a1295ac: 维护者说明补充有界既有草稿 support 元数据修复（仅合同 save_draft、双侧四层全通过、仅既有引用 shortDescription 文本变化、复用 guarded 传输与 ledger），命令面、依赖、版本与发布路径不变。 Reviewed for CLI #350 after current main integration: Process review 可为单对象或非空有序数组；SDK 0.3.0 过渡桥接保留真实问题并移除旧对象类型伪阳性，不改变既有开发、门禁、发布或维护步骤。'
+lastReviewedCommit: 83189e2
+lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: 维护者说明补充有界精确指数十进制模块（v1 不变，v2 wire 待提案），无依赖/版本/lock 变化。'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -35,6 +35,8 @@ related:
 ---
 
 当前 #274 平台合同仅支持 macOS arm64、Linux x64/arm64、Windows x64；不通过旧版安装器回退 macOS Intel。`runtime ensure/status/prune/lease-release/exec` 已由 CLI 的 manifest、完整文件清单、锁、缓存及 lease 控制；无 Node 的 POSIX/PowerShell bootstrap 已进入 `scripts/bootstrap/`，只读取相邻的产品 lock；公开 C1 和组件资格仍待完成。运行时描述/组件分发的 owner 与验证边界见 [Runtime Distribution Contract](docs/agents/runtime-distribution-contract.md)。
+
+Review note, 2026-09-21: CLI #358 新增 v2 Time alias 计划所需的**有界精确指数十进制**模块（mantissa ≤64 位、指数 ±30、bigint 归一、无浮点）及其匿名真实 shape 的 RED/GREEN 测试；纯增量，v1 grammar/profile/常量/历史重放身份逐字节不变（测试钉住 v1 仍拒绝指数形态）。v2 wire（schema/计数/响应）待 Database #673 提案，不在本次决定。
 
 Review note, 2026-09-21: CLI #354 在有界准入中新增第二条 policy。执行合同的 `save_draft` action 现在也可进入既有草稿的 Unit Group / Flow Property 元数据修复：fresh before 与 candidate 必须同时通过全部四层校验，数据集 id/version 与该行自身 ownership/source 引用的 id/version/URI、语言结构、单位/因子/引用性质完全不变，唯一允许的改动是该引用的既有 `common:shortDescription.#text`；准入后仍使用完整 before 的 guarded 传输、同一 attempt/no-replay ledger 与 exact readback，行报告 policy 为 `support-reference-metadata.v1` 且 `ruleVerification` 保持 `true`（该行是完整有效行），ledger 中的 admission 必须与其所属表的 policy 匹配。其余 support 行的 reference-only 拒绝、insert、已发布行、科学/引用改写与非合同命令完全不变。该能力仅为 source 变更，不属于 0.1.19 版本发布。
 

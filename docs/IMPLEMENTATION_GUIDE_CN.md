@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 'd603d53ac6d54dd0ea6ce65f8c1ebf4f6e345311'
-lastReviewedNote: 'Reviewed the combined CLI #354 support-metadata repair and concurrent CLI #350 Process review-array adoption at main d603d53. Reviewed for CLI #354 at head a1295ac: 实施指南补充有界既有草稿 support 元数据修复（仅 save_draft 合同、双侧四层全通过、仅既有引用 shortDescription 文本变化、复用 guarded 传输与 ledger），不影响命令面、依赖、版本或发布路径。 Reviewed for CLI #350 after current main integration: Process review 支持单对象或非空有序数组；SDK 0.3.0 过渡兼容层逐项校验并保留索引错误路径，不改变命令顺序、账本职责或执行契约。'
+lastReviewedCommit: 83189e2
+lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: 实施指南补充 v2 有界精确指数十进制模块（无浮点、v1 不变），v2 wire 待 Database #673 提案。'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -37,6 +37,8 @@ related:
 # TianGong LCA CLI 实施指南
 
 Review note, 2026-09-20: CLI #340 将 SDK 精确锁升级至已发布 0.2.2，公共规则绑定至 spec 0.2.1。`dataset contract/context-pack` 保留显式请求的 ruleset 文件、manifest 摘要和 AI 上下文路径，但内容由 CLI profile 与已验证公共定义组合；不再读取 SDK 的旧混合规则文件。Process Version 说明采用正式规范修正后的 NN.NN 与可选 NN.NN.NNN 语义。
+
+Review note, 2026-09-21: CLI #358 新增 v2 Time alias 计划所需的**有界精确指数十进制**模块（mantissa ≤64 位、指数 ±30、bigint 归一、无浮点）及其匿名真实 shape 的 RED/GREEN 测试；纯增量，冻结的 v1 grammar/profile/常量/计划与响应形状/历史重放身份逐字节不变（测试同时钉住 v1 仍拒绝指数形态）。v2 wire（schema/计数/响应）待 Database #673 提案，不在本次决定。
 
 Review note, 2026-09-21: CLI #350 将内置 18 份 schema 同步到 `tidas-spec` 0.2.2 精确候选 `8a9470a7dd4c074ae246bb9967b3bfae3e371e32`。Process 的 `validation.review` 可为单对象或非空有序数组；在 SDK #147 正式发布前，CLI 通过现有 SDK 0.3.0 逐项校验数组成员，保持输入与顺序不变，并把错误定位恢复到对应数组索引。LCIA Method 仍只接受单对象，CLI 包版本仍为 0.1.18。
 

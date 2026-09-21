@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 8cb5a100d59463c08e009089da8ce9707fe98aef
-lastReviewedNote: 'Reviewed for CLI #356: package 0.1.20 changes no architecture, public export, dependency, ledger transport or ownership boundary; the merged #355 source stays exactly as reviewed.'
+lastReviewedCommit: 83189e2
+lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: 新增一个自包含的精确十进制模块（归一化 + bigint 乘法 + 渲染），不改 v1 alias 架构、导出、依赖或写路径。'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -146,6 +146,8 @@ Review note, 2026-07-23: Issue #196 changes the CLI package version to 0.0.30, u
 Review note, 2026-07-23: Issue #198 changes the package version to 0.0.31 and confines SDK schema/entity mutation to a validation clone. The original dataset save-draft payload remains the single source for contract hashing, protected command dispatch, and exact owner readback. No command family, session, artifact schema, dependency, authorization, publication, or integration architecture changes.
 
 Review note, 2026-07-24: Issue #200 releases 0.0.32 and extends the existing execution-contract scheduler without adding a second write path. The scheduler derives one serial prefix ending at the highest action referenced by any dependency, verifies that the remaining suffix has unique table/id/version targets, and runs that suffix with explicit concurrency 1..8. Each action still owns its independent protected transaction and ledger file. The existing session runtime supplies a current token immediately before dispatch, and the runner rejects any renewed user/email mismatch before attempt consumption.
+
+Review note, 2026-09-21: CLI #358 adds the bounded exact exponent decimal module for the versioned v2 Time alias plan (mantissa up to 64 digits, exponent within +/-30, bigint normalisation, no floating point) and its anonymized real-shape RED/GREEN tests. It is additive: the frozen v1 alias grammar, profiles, constants, plan/response shape and every historical replay identity are byte-unchanged, and the tests pin that v1 still refuses exponent quantities. The v2 wire (plan/batch schema, counts, response shape) awaits the Database #673 proposal and is not decided here.
 
 Review note, 2026-09-21: Issue #356 prepares package 0.1.20 for merged source PR #355 without changing architecture. Package identity and the four live CLI-version fixtures follow the package file; runtime modules, public exports, the sole lock, dependencies, command families, ledger/transport design and ownership boundaries remain exactly as reviewed for #354.
 
