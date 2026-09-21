@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: e623af9
-lastReviewedNote: 'Reviewed for CLI #283 at head f75eda4 (second atomic stage): the narrow existing-Process metadata repair admission, the retained-attempt precedence over validation classification and their tests change no development, gate, release or maintenance step described here.'
+lastReviewedCommit: a1295ac
+lastReviewedNote: 'Reviewed for CLI #354 at head a1295ac: 维护者说明补充有界既有草稿 support 元数据修复（仅合同 save_draft、双侧四层全通过、仅既有引用 shortDescription 文本变化、复用 guarded 传输与 ledger），命令面、依赖、版本与发布路径不变。'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -35,6 +35,8 @@ related:
 ---
 
 当前 #274 平台合同仅支持 macOS arm64、Linux x64/arm64、Windows x64；不通过旧版安装器回退 macOS Intel。`runtime ensure/status/prune/lease-release/exec` 已由 CLI 的 manifest、完整文件清单、锁、缓存及 lease 控制；无 Node 的 POSIX/PowerShell bootstrap 已进入 `scripts/bootstrap/`，只读取相邻的产品 lock；公开 C1 和组件资格仍待完成。运行时描述/组件分发的 owner 与验证边界见 [Runtime Distribution Contract](docs/agents/runtime-distribution-contract.md)。
+
+Review note, 2026-09-21: CLI #354 在有界准入中新增第二条 policy。执行合同的 `save_draft` action 现在也可进入既有草稿的 Unit Group / Flow Property 元数据修复：fresh before 与 candidate 必须同时通过全部四层校验，数据集 id/version 与该行自身 ownership/source 引用的 id/version/URI、语言结构、单位/因子/引用性质完全不变，唯一允许的改动是该引用的既有 `common:shortDescription.#text`；准入后仍使用完整 before 的 guarded 传输、同一 attempt/no-replay ledger 与 exact readback，行报告 policy 为 `support-reference-metadata.v1` 且 `ruleVerification` 保持 `true`（该行是完整有效行），ledger 中的 admission 必须与其所属表的 policy 匹配。其余 support 行的 reference-only 拒绝、insert、已发布行、科学/引用改写与非合同命令完全不变。该能力仅为 source 变更，不属于 0.1.19 版本发布。
 
 Review note, 2026-09-18: CLI #338 将 Process/LCIA Method 的完整评审报告引用改为可选，并在已发布 SDK 尚未携带候选 schema 的短窗口内对缺失引用做一次内存兼容重试；提供的引用仍严格校验，Lifecycle Model 不变。该变更只影响 schema/validation 与测试，不改变命令、依赖、版本、认证或发布路径。
 

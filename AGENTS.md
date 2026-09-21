@@ -38,8 +38,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 11a074b072022d1c566f25edcc9ee7fa1c629e8c
-lastReviewedNote: 'Reviewed for CLI #351: the release-only 0.1.19 preparation for merged source PR #349 changes package identity and four live version fixtures only, without changing CLI-owned policy, commands, authorization, or release semantics, and publication has not occurred.'
+lastReviewedCommit: a1295ac
+lastReviewedNote: "Reviewed for CLI #354 at head a1295ac: the execution contract may now also admit a bounded existing owner Unit Group / Flow Property metadata repair (both sides fully valid, only the row's own ownership/source reference short description changes, same guarded transport, ledger and readback), the ordinary reference-only policy and every other support restriction stay unchanged, and the capability is source-only pending its own release."
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -154,6 +154,8 @@ Review note, 2026-07-23: Issue #194 extends `dataset save-draft` with an explici
 Review note, 2026-07-23: Issue #196 is the dedicated 0.0.30 release for merged Issue #194 / PR #195. Windows release-gate evidence exposed that `fsync` on a reopened read-only execution-ledger descriptor returns `EPERM`; the release now fsyncs create/append operations on their write-capable descriptors before close. Attempt-before-dispatch ordering, no-replay semantics, dependencies, authorization, tag automation, npm Trusted Publishing, provenance verification, and exact released-commit workspace integration remain unchanged.
 
 Review note, 2026-07-23: Issue #198 releases 0.0.31 and makes dataset save-draft validation side-effect free. SDK schema/entity validation receives a deep clone, while execution-contract hashing, dispatch, and readback remain bound to the original exact input payload. Owner/state/project fencing, attempt-before-dispatch ordering, no-replay semantics, command ownership, and publication boundaries remain unchanged.
+
+Review note, 2026-09-21: CLI #354 adds the bounded existing-draft support metadata repair. The execution contract may now also admit an existing owner Unit Group or Flow Property `save_draft` action whose fresh before image and candidate both pass every validation layer, whose dataset id/version and the stored ownership/source reference ids, versions, URIs and language structure stay identical, and whose only delta is that reference's existing `common:shortDescription.#text`. It reuses the same guarded before-image transport, durable attempt/no-replay ledger and exact readback; its row reports policy `support-reference-metadata.v1` with `ruleVerification` left `true`, and a stored ledger admission must match the policy that owns its table. Ordinary reference-only rejection for every other support row, inserts, published rows, science or reference retargeting, language/shape changes and non-contract commands are unchanged. The deployed guarded facade already accepts both support tables and reuses the single existing writer, so no new Edge/Database capability is required. This is source work only: it is not part of the version-only 0.1.19 release and needs its own later release.
 
 Review note, 2026-09-21: CLI #283 (workspace #1432 campaign) hardens the narrow existing-Process metadata repair: the stored draft is re-validated with the same real validator on a clone (a before with any other error, including a blank or placeholder reference description, is refused), and the verified admission is hash-bound into the first `attempt_emitted` ledger event so recovery returns the original evidence instead of re-deriving it, with tampered or drifting admissions failing closed and legacy attempts staying compatible.
 

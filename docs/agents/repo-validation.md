@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 11a074b072022d1c566f25edcc9ee7fa1c629e8c
-lastReviewedNote: 'Reviewed for CLI #351: release-only 0.1.19 re-runs the unchanged pre-mutation npm/tag absence proof, package, coverage, pre-push, pack and four-platform gates, with the four version fixtures proven RED before the bump.'
+lastReviewedCommit: a1295ac
+lastReviewedNote: 'Reviewed for CLI #354 at head a1295ac: 新增 support 元数据修复测试文件（匿名化 fixture、真实 RED、guard/refusal/ledger/no-replay/普通拒绝全覆盖），exact 100% coverage 与完整 pre-push/四平台门禁仍为必需，且该能力不属于 0.1.19 版本发布。'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -184,6 +184,8 @@ Review note, 2026-07-23: Issue #194 adds focused proof for ordered contract bind
 Review note, 2026-07-23: Issue #196 keeps the validation contract unchanged for the dedicated 0.0.30 release. The manually dispatched Windows gate is required to prove durable attempt/outcome ledger writes no longer fail on read-only-descriptor `fsync`; all execution-contract recovery/no-replay tests, all four live CLI-version fixtures, exact 100% coverage, dry-run package inspection, Docpact, tag/publish workflows, and exact npm provenance remain required.
 
 Review note, 2026-07-23: Issue #198 adds a regression proving SDK validation cannot mutate the execution-contract input payload, its desired SHA, or the eventual dispatch target, and releases the repair as 0.0.31. Focused execution-contract coverage, all four live CLI-version fixtures, exact 100% coverage, Docpact, the full pre-push gate, the four-platform quality gate, package inspection, and exact npm provenance remain required.
+
+Review note, 2026-09-21: CLI #354 adds `test/dataset-save-draft-support-metadata-repair.test.ts` on anonymized fixtures derived from the reviewed Unit Group / Flow Property row shape. It proves one guarded dispatch per admitted row carrying the complete before image with `ruleVerification: true` and policy `support-reference-metadata.v1`, the same admission in a dry-run with zero dispatch/no ledger directory, refusal of science, reference-identity/version/URI, language-structure, unreviewed-description, empty/trivial/no-op and not-fully-valid sides with no attempt and no dispatch, owner/state/stale-before drift, a retained attempt resolved by exact readback that returns the original admission, a tampered policy-to-table admission rejected by the ledger binding, and the untouched ordinary `reference_only_type` policy for non-contract runs, insert actions and invalid candidates. Exact 100% coverage, the full pre-push gate and the four-platform quality gate remain required, and this source capability is not part of the version-only 0.1.19 release.
 
 Review note, 2026-09-21: CLI #283 adds the narrow existing-Process metadata repair admission and the retained-attempt precedence over validation classification, with the two proof bullets below covering both; focused coverage keeps exactly one guarded dispatch, no fallback or retry, an unchanged legacy request body, a dry-run that reads the ledger read-only and the repair row's preserved `validation.ok=false`.
 

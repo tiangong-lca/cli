@@ -25,14 +25,16 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 11a074b072022d1c566f25edcc9ee7fa1c629e8c
-lastReviewedNote: 'Reviewed for CLI #351: the 0.1.19 version-only preparation needs no new secret, Trusted Publisher setting, workflow, tag rule or alternate publication path, and records that npm 0.1.19 and its tag are still absent.'
+lastReviewedCommit: a1295ac
+lastReviewedNote: 'Reviewed for CLI #354 at head a1295ac: 复用既有 guarded 命令、capability grant 与 Trusted Publishing 路径，不新增 secret、环境、runner、workflow、tag 规则或其它发布通道，且不属于 0.1.19 发布。'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
   - ./release-runbook.md
   - ./agents/repo-validation.md
 ---
+
+Review note, 2026-09-21: CLI #354 adds no release setup surface. The bounded support metadata repair is a source capability that reuses the existing guarded command transport, capability grant and Trusted Publishing path; it adds no secret, environment, runner, workflow, tag rule or alternate publication route, and it is not part of the version-only 0.1.19 release.
 
 Review note, 2026-09-21: Issue #351 is that 0.1.19 version-only preparation for merged source PR #349. It adds no secret, environment, runner, dependency, lockfile change, Trusted Publisher setting, workflow filename, tag rule, credential, or alternate publication path, and it records honestly that publication has not occurred: npm latest is 0.1.18 and no `cli-v0.1.19` tag exists. The merge-triggered four-platform tag workflow, native pnpm OIDC Trusted Publishing and provenance verification remain the only publication route, and any later release still requires exactly the same setup.
 

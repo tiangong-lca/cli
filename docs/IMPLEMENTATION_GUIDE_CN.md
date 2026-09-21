@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: e623af9
-lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: the execution-contract section now documents the guarded before image and the dry-run preflight; command order, ledger ownership and no-replay statements are unchanged.'
+lastReviewedCommit: a1295ac
+lastReviewedNote: 'Reviewed for CLI #354 at head a1295ac: 实施指南补充有界既有草稿 support 元数据修复（仅 save_draft 合同、双侧四层全通过、仅既有引用 shortDescription 文本变化、复用 guarded 传输与 ledger），不影响命令面、依赖、版本或发布路径。'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -57,6 +57,8 @@ Issue #247 将 OAuth/session 与普通状态文件共用的 `readStateLockMetada
 Issue #250 为 `readCachedSessionRecord()` / `writeCachedSessionRecord()` 增加仅内部可用的可选 platform 参数，默认仍为 `process.platform`。测试在所有 host 上显式执行 `linux` 与 `win32`，从而同时覆盖 POSIX public-mode 拒绝、目录/文件 chmod 与 Windows 跳过目录 chmod；运行时代码不传该参数，session schema、atomic rename、token、公开 API、依赖及认证语义均不变。
 
 `dataset save-draft --execution-contract` 只把 unique-target parallel suffix 的 resource-aware claim/fatal-stop 调度接入公共 batch engine。依赖 prefix 仍逐项串行；`executeAction` 继续独占 before-state、PREPARED、token renewal、DML、append-only attempt/outcome、exact readback 与 no-replay 判断。因此 rows 的输入顺序、progress/failures/summary 字节和 fatal worker 传播保持原契约；blocked target 不消耗 worker 或越过 stop claim 窗口。
+
+Review note, 2026-09-21: CLI #354 在执行合同内新增有界的既有草稿 support 元数据修复。仅 `save_draft` 合同 action 可进入；fresh before 与 candidate 必须同时通过全部四层校验，数据集 id/version、引用 id/version/URI、语言结构与单位/因子/引用性质保持完全一致，唯一允许的改动是该行自身 ownership/source 引用的既有 `common:shortDescription.#text`。写入复用同一 guarded before-image 传输、attempt/no-replay ledger 与 exact readback，行报告 policy 为 `support-reference-metadata.v1` 且 `ruleVerification` 保持 `true`；ledger 中的 admission 必须与其表所属 policy 匹配。其余 support 行的 reference-only 拒绝、insert、已发布行、科学/引用改写与非合同命令完全不变。部署侧 guarded facade 已支持两张 support 表并复用同一 writer，无需新的 Edge/Database 能力。本次为 source 变更，不属于 0.1.19 版本发布。
 
 Review note, 2026-09-21: CLI #283（workspace #1432 战役）追加两件事。(1) 窄 existing Process draft metadata admission（新模块 `dataset-draft-repair-admission.ts`）：仅 execution-contract 的 `save_draft` 可进入；必须 fresh 读取完整 before 并验证 owner/state0/before_sha 后才判定。before 与 candidate 的 schema/content/multilingual 必须 passed，authoring 失败只能是 `annual_supply_or_production_volume_missing`，且双方 `annualSupplyOrProductionVolume` 必须严格为 `[]` 且不变；唯一允许的 delta 是两个既有引用节点的 `common:shortDescription.#text`（单节点或数组皆可，但数组长度/顺序、lang、引用 ID/version/URI、其余字段必须完全一致，且至少一处真实变化）；names/amount/units/exchanges/geography/classification 一律不准入，缺失 annual 字段自动变 `[]` 也不属于例外。准入的行仍走完整 before 的 guarded 传输，但 `ruleVerification=false`（仅此例外），并在行报告写入内容绑定的 `draft_repair_admission`（schema `dataset-draft-repair-admission.v1`、policy `process-metadata-unknown-annual.v1`、before/desired SHA-256、`changed_paths`、`publication_ready:false`）；报告保留 `validation.ok=false` 与 authoring failed，不伪造 ready。insert、无合同命令与其它任何 blocker 仍严格走原准入；dry-run 同样在 fresh before 后给出 admission 但零派发。(2) before 侧真实校验 + admission 的 ledger 绑定：准入判定除结构 diff 外，还会用**同一个真实 validator**（对 clone，保证 fresh before 字节与哈希不变）复核 stored draft——before 若 schema/content/multilingual 失败、authoring 含 annual 以外的 code、或引用描述为空/占位（即便 candidate 文本能"修好"它），一律拒绝；admission 不再只看结构相似。已验证的 admission 在首次 `attempt_emitted` 事件前写入该事件并纳入其哈希绑定（可选字段，旧事件严格兼容）；恢复（crash-after-dispatch-before-outcome、或已有 outcome 的重跑）从原 attempt 读回原 admission 并带回行报告，绝不用当前已是 desired 的 fresh before 重新发明原 before；篡改/丢失/语义漂移（before/desired 与 action 不符、`publication_ready` 非 false、未知 schema/policy、空 `changed_paths`）都会被 ledger 校验拒绝，历史无 admission 的普通 attempt 依然兼容且不伪造 admission。(3) attempt ledger 优先于 validation 分类：当前 validator 拒绝的候选若已有 attempt/outcome，不再报 `attempt_consumed=false` 的 failed 行，而是按 ledger 只读表达（commit：按读回判 `executed`/`UNKNOWN` 且 `attempt_consumed=true`；dry-run：`blocked` + `retained_attempt`/`retained_outcome`），报告字节与既有 ledger 均不被掩盖；无 attempt 的行分类完全不变。
 
