@@ -123,15 +123,49 @@ function admitRpcCalls(adapter: LocalAdapter): number {
  */
 function persistDispatchedNonce(adapter: LocalAdapter): void {
   assert.ok(READY);
+  // With the owner's transport stub installed the queued row lives in the scratch hold instead of the
+  // live queue, so both sources are consulted (the hold only when it exists).
+  const holdExists =
+    adapter.runSql(
+      [
+        `select count(*)::int from pg_class as c`,
+        `join pg_namespace as n on n.oid = c.relnamespace`,
+        `where n.nspname = 'private' and c.relname = 'db673_net_hold';`,
+      ].join('\n'),
+    ) === '1';
+  const holdSelect = [
+    `(select convert_from(held.body, 'UTF8')::jsonb->>'p_nonce'`,
+    `from private.db673_net_hold as held`,
+    `where convert_from(held.body, 'UTF8')::jsonb->>'p_request_id' = '${READY.request_id}'`,
+    `order by held.id desc limit 1)`,
+  ].join('\n');
+  const queueSelect = [
+    `(select convert_from(queued.body, 'UTF8')::jsonb->>'p_nonce'`,
+    `from net.http_request_queue as queued`,
+    `join util.dataset_alias_execution_v2_requests as request`,
+    `on request.net_request_id = queued.id`,
+    `where request.id = '${READY.request_id}'::uuid)`,
+  ].join('\n');
+  const nonce = adapter.runSql(
+    `select coalesce(${[holdExists ? holdSelect : 'null::text', queueSelect].join(',\n')});`,
+  );
+  assert.notEqual(nonce, '', 'the dispatched nonce must be recoverable before the completion runs');
   adapter.runSql(
-    [
-      `\\o /tmp/db673-admit-nonce.txt`,
-      `select convert_from(queued.body, 'UTF8')::jsonb->>'p_nonce'`,
-      `from net.http_request_queue as queued`,
-      `join util.dataset_alias_execution_v2_requests as request on request.net_request_id = queued.id`,
-      `where request.id = '${READY.request_id}'::uuid;`,
-      `\\o`,
-    ].join('\n'),
+    [`\\o /tmp/db673-admit-nonce.txt`, `select '${nonce.replaceAll("'", "''")}';`, `\\o`].join(
+      '\n',
+    ),
+  );
+}
+
+/** The owner's transport stub must be installed, so no committing path can queue a live callback. */
+function assertTransportStubInstalled(adapter: LocalAdapter): void {
+  const installed = adapter.runSql(
+    `select count(*)::int from pg_trigger where tgname = 'db673_net_hold_capture';`,
+  );
+  assert.equal(
+    installed,
+    '1',
+    'the outbound transport stub must be installed before any committing step runs',
   );
 }
 
@@ -215,6 +249,7 @@ e2eTest(
       async () => {
         const adapter = localAdapter();
         assertPristineSeed(adapter);
+        assertTransportStubInstalled(adapter);
         let noncePersisted = false;
         const report = await runCli({
           adapter,
