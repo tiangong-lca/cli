@@ -38,8 +38,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 83189e2
-lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2 (exponent math milestone): the v2 plan gains a bounded exact exponent decimal module with anonymized real-shape tests, the frozen v1 grammar and historical replay identities stay byte-unchanged, and the v2 wire awaits the Database #673 proposal.'
+lastReviewedCommit: 4e95f24
+lastReviewedNote: 'Reviewed for CLI #358 at head 4e95f24: the versioned capability is coverage-complete and its protected wire carries the real v1 ten flat expected keys with v2 values plus the versioned text_action_count, exactly-one derivative target per changed row, and the declared-versus-original source-unit distinction; the frozen v1 chain, grammar and historical replay identities stay byte-unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -50,6 +50,8 @@ related:
   - docs/release-runbook.md
   - docs/release-setup.md
 ---
+
+Review note, 2026-09-21: CLI #358 (fifth stage) closes the versioned capability's coverage to 100% on lines, statements, functions and branches, and aligns its protected wire with the real v1 expected semantics: the plan, freeze, identity, preflight request and approval request carry the v1 ten flat expected keys with v2 values (387 / 1 / 654 / 1308 / 4147 / 389 / 0 / 113 / 274 / 387) plus the versioned text_action_count (87); the caller-declared root/reference closure is removed and closure stays proven by the preserved preflight/gate/read sets and digests; the freeze refuses a derivative-target list that is not exactly the plan's changed Flow/Process identities; and the source alias's CURRENT DECLARED unit group is named separately from the ORIGINAL unit the campaign evidence proves, with the orphan hour record as provenance only. Two provably unreachable constructs are gone rather than tested (the renderer's output bound now lives in one helper every quantity path passes through, and the readback budget sits in the read loop's own condition), and `dataset maintenance run-protected` no longer accepts the `--derivative-baselines` option this branch added but nothing consumed. No v1 behaviour, dependency, version, workflow, ownership or publication boundary changes.
 
 Review note, 2026-09-21: Issue #351 is the version-only 0.1.19 release preparation for merged source PR #349 on `codex/issue-351-cli-0.1.19` (base main merge `11a074b0`). Only package identity and the four live CLI-version fixtures change; dependencies, the sole lock, runtime, public exports, authorization, workflows and release automation are unchanged. The source feature is merged while publication has not occurred (npm latest 0.1.18, no `cli-v0.1.19` tag), and local publication or manual tag creation remains forbidden.
 
