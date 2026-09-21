@@ -35,6 +35,7 @@ import {
   type AliasV2ProtectedReport,
 } from '../src/lib/dataset-alias-v2-protected.js';
 import { ALIAS_V2_PROTOCOL } from '../src/lib/dataset-alias-v2-protected-contract.js';
+import { LENGTH_TIME_PROTECTED_ARTIFACTS } from '../src/lib/dataset-length-time-public.js';
 import {
   aliasV2LocalRpcAdapter,
   aliasV2LocalRpcEnv,
@@ -51,9 +52,14 @@ const HOLD_SCHEMA = READY?.net_hold_schema ?? 'scratch_673';
 const ENABLED = process.env['TIANGONG_LCA_LENGTH_TIME_LOCAL_E2E'] === '1';
 const EVIDENCE_DIR = process.env['TIANGONG_LCA_LENGTH_TIME_EVIDENCE_DIR'] ?? null;
 
-/** The sealed artefact paths: the marker's own map first, the canonical file names otherwise. */
+/**
+ * The sealed artefact paths: the marker's own map first, this profile's canonical file names
+ * otherwise. The plan keeps the Length*time name — the Time plan-file name is a different document
+ * and reading it here would be a silent mismatch rather than a missing file.
+ */
 const ARTIFACT_PATHS = {
-  plan: READY?.artifacts?.['plan'] ?? path.join(ARTIFACTS, ALIAS_V2_PROTECTED_ARTIFACTS.plan_file),
+  plan:
+    READY?.artifacts?.['plan'] ?? path.join(ARTIFACTS, LENGTH_TIME_PROTECTED_ARTIFACTS.plan_file),
   freeze: READY?.artifacts?.['freeze'] ?? path.join(ARTIFACTS, ALIAS_V2_PROTECTED_ARTIFACTS.freeze),
   approval:
     READY?.artifacts?.['approval'] ?? path.join(ARTIFACTS, ALIAS_V2_PROTECTED_ARTIFACTS.approval),
