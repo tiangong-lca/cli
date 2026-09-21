@@ -238,6 +238,10 @@ test('v2 desired amounts are canonical ordinary decimals and never exponent nota
   assert.equal(canonicalDecimalText('2.0E-4'), '0.0002');
   assert.equal(canonicalDecimalText('-0.0E-4'), '0');
   assert.equal(canonicalDecimalText('1.0E+3'), '1000');
+  // A product that is a whole number carries no fractional part at all: the canonical spelling
+  // never leaves a trailing `.` or `.0` behind.
+  assert.equal(multiplyBoundedCanonicalDecimal('2.5E+3', '4'), '10000');
+  assert.equal(canonicalDecimalText('1000'), '1000');
 });
 
 test('bounded exponent multiplication stays exact decimal multiplication, never floating point', () => {

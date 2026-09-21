@@ -4891,7 +4891,6 @@ function parseDatasetMaintenanceProtectedFlags(args: string[]): {
   statusOnly: boolean;
   approveExecution: string | undefined;
   confirm: string | undefined;
-  derivativeBaselinesPath: string;
   waitSeconds: number | undefined;
   pollMs: number | undefined;
   pageSize: number | undefined;
@@ -4914,7 +4913,6 @@ function parseDatasetMaintenanceProtectedFlags(args: string[]): {
         'status-only': { type: 'boolean' },
         'approve-execution': { type: 'string' },
         confirm: { type: 'string' },
-        'derivative-baselines': { type: 'string' },
         'wait-seconds': { type: 'string' },
         'poll-ms': { type: 'string' },
         'page-size': { type: 'string' },
@@ -4940,8 +4938,6 @@ function parseDatasetMaintenanceProtectedFlags(args: string[]): {
     approveExecution:
       typeof values['approve-execution'] === 'string' ? values['approve-execution'] : undefined,
     confirm: typeof values.confirm === 'string' ? values.confirm : undefined,
-    derivativeBaselinesPath:
-      typeof values['derivative-baselines'] === 'string' ? values['derivative-baselines'] : '',
     waitSeconds: parseDatasetMaintenanceNonNegativeInteger(
       values['wait-seconds'],
       '--wait-seconds',

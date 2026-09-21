@@ -1090,3 +1090,168 @@ test('the functional-unit binding keeps the two id namespaces apart', () => {
     (error: unknown) => (error as { code?: string }).code === violation,
   );
 });
+
+test('malformed amounts, incomplete occurrence sets and stale evidence fail closed', () => {
+  const invalid = 'ALIAS_V2_PLAN_INVALID';
+  const violation = 'ALIAS_V2_TEXT_RULE_VIOLATION';
+  const targetShapeInvalid = ALIAS_V2_TARGET_SHAPE_INVALID;
+  const single = (
+    json: JsonObject,
+    extra: Partial<AliasV2PlanInput['processes'][number]> = {},
+  ): Partial<AliasV2PlanInput> => ({
+    processes: [{ id: 'process-a', version: '00.00.001', exchange_indexes: [0], json, ...extra }],
+  });
+
+  // The source alias is the reviewed identity or nothing: a version outside the reviewed form
+  // cannot pin the before images this plan rescales.
+  rejects({ source_alias: { id: SOURCE_FP, version: '1.0' } }, invalid);
+
+  // The caller's occurrence set must be exactly the set the payload carries. Declaring an
+  // exchange that is not an alias occurrence is refused rather than rescaled under this request.
+  rejects(
+    {
+      processes: [
+        {
+          id: 'process-a',
+          version: '00.00.001',
+          exchange_indexes: [0, 1],
+          json: process('process-a', [exchange('1'), exchange('2', {}, false)]),
+        },
+      ],
+    },
+    invalid,
+  );
+  // One row, one action: the same process twice is a repeated action, not two actions.
+  rejects(
+    {
+      processes: [
+        {
+          id: 'process-a',
+          version: '00.00.001',
+          exchange_indexes: [0],
+          json: process('process-a', [exchange('1')]),
+        },
+        {
+          id: 'process-a',
+          version: '00.00.001',
+          exchange_indexes: [0],
+          json: process('process-a', [exchange('1')]),
+        },
+      ],
+    },
+    invalid,
+  );
+  // A reference whose identity fields are not strings is not an alias occurrence at all.
+  for (const referenceToFlowDataSet of [
+    { '@refObjectId': 42, '@version': '00.00.001' },
+    { '@refObjectId': 'flow-a', '@version': 7 },
+  ]) {
+    rejects(single(process('process-a', [exchange('1', { referenceToFlowDataSet })])), invalid);
+  }
+  // An amount outside the reviewed numeric bounds is refused before any desired value exists.
+  rejects(
+    single(
+      process('process-a', [exchange('1', { meanAmount: '1E-31', resultingAmount: '1E-31' })]),
+    ),
+    invalid,
+  );
+  // An occurrence whose canonical amount is already the reviewed one carries no change at all:
+  // a zero amount is the degenerate case and cannot become an action.
+  rejects(
+    single(process('process-a', [exchange('1', { meanAmount: '0', resultingAmount: '0' })])),
+    invalid,
+  );
+
+  // The target unit table is read through one accessor, and every deficient shape is refused.
+  const unitGroup = (json: unknown): Partial<AliasV2PlanInput> => ({
+    target_unit_group: { id: TARGET_UG, version: '01.00.000', json: json as JsonObject },
+  });
+  rejects(unitGroup('nope'), targetShapeInvalid);
+  rejects(unitGroup({ unitGroupDataSet: { units: { unit: 'nope' } } }), targetShapeInvalid);
+  rejects(
+    unitGroup({ unitGroupDataSet: { units: { unit: { name: 'a', meanValue: '1' } } } }),
+    targetShapeInvalid,
+  );
+  rejects(
+    unitGroup({
+      unitGroupDataSet: { units: { unit: [{ name: 'hr', meanValue: ALIAS_V2_FACTOR }] } },
+    }),
+    targetShapeInvalid,
+  );
+
+  // The functional unit resolves its reference exchange by TIDAS internal id, and the id at that
+  // position must be the one the quantitative reference names.
+  const withReference = (
+    referenceToReferenceFlow: string,
+    firstInternalId: string,
+  ): Partial<AliasV2PlanInput> =>
+    single(
+      {
+        processDataSet: {
+          processInformation: {
+            quantitativeReference: {
+              referenceToReferenceFlow,
+              functionalUnitOrOther: { '#text': '1.0 a x', '@xml:lang': 'en' },
+            },
+          },
+          exchanges: {
+            exchange: [
+              exchange(
+                firstInternalId,
+                {
+                  generalComment: {
+                    '#text': 'Source EcoSpold1 exchange number: 730045.',
+                    '@xml:lang': 'en',
+                  },
+                  meanAmount: '1.0',
+                  resultingAmount: '1.0',
+                },
+                false,
+              ),
+              exchange('2', {
+                generalComment: {
+                  '#text': 'Source EcoSpold1 exchange number: 730046.',
+                  '@xml:lang': 'en',
+                },
+                meanAmount: '1.03E-4',
+                resultingAmount: '1.03E-4',
+              }),
+            ],
+          },
+        },
+      },
+      { exchange_indexes: [1], functional_unit: { source_exchange_number: '730045' } },
+    );
+  rejects(withReference('not-a-number', '1'), violation);
+  rejects(withReference('1', '3'), violation);
+  // A comment that is not the language object the payload family uses, or that carries no source
+  // number at all, cannot prove the reviewed source exchange.
+  for (const generalComment of [
+    'Source EcoSpold1 exchange number: 730045.',
+    { '#text': 'No source number recorded.', '@xml:lang': 'en' },
+  ]) {
+    rejects(
+      single(
+        process('process-a', [
+          exchange(
+            '1',
+            {
+              generalComment,
+              meanAmount: '1.0',
+              resultingAmount: '1.0',
+            },
+            false,
+          ),
+          exchange('2'),
+        ]),
+        { exchange_indexes: [1], functional_unit: { source_exchange_number: '730045' } },
+      ),
+      violation,
+    );
+  }
+
+  // Frozen evidence that does not bind this exact before cohort cannot certify the plan.
+  rejects({ source_evidence: { sha256: SOURCE_EVIDENCE, cohort_sha256: 'b'.repeat(64) } }, invalid);
+  // The derived counts are compared with the frozen ones, never asserted by the caller.
+  rejects({ expected_counts: { action_count: 999 } }, 'ALIAS_V2_COUNT_MISMATCH');
+});

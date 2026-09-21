@@ -3,6 +3,7 @@
 // observe rather than retry. These are the behaviours root's reviews found unprotected.
 
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,10 +16,14 @@ import {
 import {
   ALIAS_V2_PROTECTED_ARTIFACTS,
   __testInternals as protectedInternals,
+  assertAliasV2Bindings,
+  assertAliasV2CanonicalArtifact,
+  assertAliasV2PlanDocument,
   parseAliasV2Approval,
   parseAliasV2ApprovalRequest,
   parseAliasV2Freeze,
   runAliasV2Protected,
+  sealAliasV2Approval,
 } from '../src/lib/dataset-alias-v2-protected.js';
 import {
   ALIAS_V2_PROTOCOL,
@@ -75,18 +80,22 @@ test('every freeze field is validated, and its content identity must be its own'
       ['foreign visibility', (value) => (value['target_visibility'] = 'owner')],
       ['missing plan binding', (value) => delete value['plan']],
       ['incomplete plan binding', (value) => (value['plan'] = { plan_sha256: 'a'.repeat(64) })],
+      ['plan binding not an object', (value) => (value['plan'] = 'nope')],
       ['foreign account', (value) => (value['account'] = { user_id: 'u' })],
+      ['account not an object', (value) => (value['account'] = 'nope')],
       ['empty project', (value) => (value['project_ref'] = ' ')],
       ['counts not an object', (value) => (value['counts'] = 'nope')],
       ['counts key set', (value) => (value['counts'] = { action_count: 1 })],
       ['negative count', (value) => ((value['counts'] as JsonObject)['action_count'] = -1)],
       ['sets key set', (value) => (value['sets'] = {})],
+      ['sets not an object', (value) => (value['sets'] = 'nope')],
       [
         'set not a hash',
         (value) => ((value['sets'] as JsonObject)['before_hash_set_sha256'] = 'x'),
       ],
       ['no derivative targets', (value) => (value['derivative_targets'] = [])],
       ['derivative target shape', (value) => (value['derivative_targets'] = [{ table: 'flows' }])],
+      ['derivative target not an object', (value) => (value['derivative_targets'] = ['nope'])],
       [
         'derivative target table',
         (value) => {
@@ -101,6 +110,7 @@ test('every freeze field is validated, and its content identity must be its own'
       ],
       ['foreign policy', (value) => ((value['policy'] as JsonObject)['max_admit_posts'] = 2)],
       ['policy key set', (value) => (value['policy'] = {})],
+      ['policy not an object', (value) => (value['policy'] = 'nope')],
       ['extra key', (value) => (value['extra'] = 1)],
       ['stale content', (value) => (value['expected_closure'] = { roots: 1 })],
     ];
@@ -448,6 +458,37 @@ test('the version dispatch routes a v2 seal to v2 and a foreign seal elsewhere',
       calls.some((url) => url.includes(ALIAS_V2_PROTOCOL.admit_command)),
       false,
     );
+    // A caller that names no window still reaches the same versioned chain: only the options
+    // that were actually supplied are passed on, and the reviewed defaults apply.
+    const defaults = await runDatasetMaintenanceProtectedDispatch({
+      planPath: sealed.planPath,
+      freezePath: sealed.freezePath,
+      approvalPath: sealed.approvalPath,
+      outDir: mkdtempSync(path.join(os.tmpdir(), 'alias-v2-dispatch-defaults-')),
+      commit: false,
+      statusOnly: true,
+      env: buildSupabaseTestEnv({
+        TIANGONG_LCA_API_BASE_URL: `https://${ALIAS_V2_TEST_PROJECT_REF}.supabase.co/functions/v1`,
+      }),
+      fetchImpl: (async (input: string) => {
+        const url = String(input);
+        if (isSupabaseAuthTokenUrl(url)) {
+          return makeSupabaseAuthResponse({
+            userId: ALIAS_V2_TEST_ACCOUNT.user_id,
+            email: ALIAS_V2_TEST_ACCOUNT.email,
+          });
+        }
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          async text() {
+            return JSON.stringify({ ok: true });
+          },
+        };
+      }) as FetchLike,
+    });
+    assert.deepEqual([defaults.mode, defaults.status], ['status_only', 'not_admitted']);
     // A seal that is not a v2 freeze is routed to the frozen v1 chain, never to the v2 module.
     const foreign = path.join(sealed.directory, 'foreign-freeze.json');
     writeFileSync(foreign, `${stableJsonText({ schema_version: 'other' })}\n`, { mode: 0o600 });
@@ -619,4 +660,119 @@ test('the bounded quantity helpers refuse what the reviewed bounds exclude', asy
   assert.equal(multiplyBoundedCanonicalDecimal(value, factor), null);
   const product = multiplyBoundedExactDecimal('1', factor);
   assert.equal(product !== null && product.length <= BOUNDED_OUTPUT_LENGTH, true);
+});
+
+test('the plan document, the canonical bytes and the artefact bindings are proved before dispatch', () => {
+  const sealed = sealedAliasV2Execution();
+  try {
+    const plan = readArtifact(sealed.directory, ALIAS_V2_PROTECTED_ARTIFACTS.plan_file);
+    // The plan a v2 freeze binds is the reviewed schema with its actions, counts and snapshots.
+    const planCases: Array<[string, unknown]> = [
+      ['not an object', []],
+      ['foreign schema', { ...plan, schema_version: 'dataset-alias-plan.v1' }],
+      ['no actions', { ...plan, actions: [] }],
+      ['bad digest', { ...plan, plan_sha256: 'x' }],
+      ['counts key set', { ...plan, counts: { action_count: 1 } }],
+      ['missing snapshots', { ...plan, target_snapshots: 'nope' }],
+      ['missing evidence', { ...plan, source_evidence: 'nope' }],
+    ];
+    for (const [label, value] of planCases) {
+      rejects(() => assertAliasV2PlanDocument(value), ARTIFACT_INVALID, label);
+    }
+    assert.equal(assertAliasV2PlanDocument(plan)['plan_sha256'], plan['plan_sha256']);
+
+    // A parsed artefact must be exactly the bytes on disk: a reformatted file is not the
+    // document its own digests bind, so it is never treated as canonical evidence.
+    rejects(
+      () =>
+        assertAliasV2CanonicalArtifact({
+          label: 'Alias v2 freeze',
+          text: '{"a": 1}\n',
+          value: { a: 1 },
+        }),
+      ARTIFACT_INVALID,
+      'non-canonical bytes',
+    );
+    assertAliasV2CanonicalArtifact({
+      label: 'Alias v2 freeze',
+      text: `${stableJsonText({})}\n`,
+      value: {},
+    });
+
+    // The freeze must bind exactly this plan file and content; the approval must bind exactly
+    // this freeze file, freeze content and the operator's explicit hash.
+    const freeze = parseAliasV2Freeze(
+      readArtifact(sealed.directory, ALIAS_V2_PROTECTED_ARTIFACTS.freeze),
+    );
+    const approval = parseAliasV2Approval(
+      readArtifact(sealed.directory, ALIAS_V2_PROTECTED_ARTIFACTS.approval),
+    );
+    const bindings = {
+      plan,
+      planFileSha256: sealed.freeze.plan.plan_file_sha256,
+      freeze,
+      freezeFileSha256: sealed.freezeFileSha256,
+      approval,
+      approvalFileSha256: sealed.approvalFileSha256,
+      approveExecution: sealed.approveExecution,
+    };
+    assert.equal(
+      assertAliasV2Bindings(bindings).request_id,
+      sealed.identity.request_id,
+      'the reviewed bindings derive the sealed identity',
+    );
+    rejects(
+      () => assertAliasV2Bindings({ ...bindings, planFileSha256: 'a'.repeat(64) }),
+      ARTIFACT_INVALID,
+      'freeze bound to another plan file',
+    );
+    rejects(
+      () =>
+        assertAliasV2Bindings({
+          ...bindings,
+          plan: { ...plan, counts: { ...(plan['counts'] as JsonObject), action_count: 1 } },
+        }),
+      ARTIFACT_INVALID,
+      'freeze bound to other plan content',
+    );
+
+    // The operator approves the words the request carries: a paraphrase is refused even when
+    // every explicit hash the caller supplies is the right one, and the exact text is accepted.
+    const requestArtifact = readArtifact(
+      sealed.directory,
+      ALIAS_V2_PROTECTED_ARTIFACTS.approval_request,
+    );
+    const request = parseAliasV2ApprovalRequest(requestArtifact);
+    const requestFileSha256 = createHash('sha256')
+      .update(
+        readFileSync(path.join(sealed.directory, ALIAS_V2_PROTECTED_ARTIFACTS.approval_request)),
+      )
+      .digest('hex');
+    const seal = (humanApprovalText: string): unknown =>
+      sealAliasV2Approval({
+        request,
+        requestFileSha256,
+        humanApprovalText,
+        approvals: {
+          plan: request.plan_sha256,
+          freeze: request.freeze_sha256,
+          request: requestFileSha256,
+          text: request.approval_text_sha256,
+        },
+        confirm: request.account.email,
+        approvedAtUtc: '2026-09-21T00:00:00.000Z',
+      });
+    assert.throws(
+      () => seal(`${request.approval_text} (paraphrased)`),
+      (error: unknown) =>
+        (error as { code?: string }).code === 'DATASET_MAINTENANCE_PROTECTED_APPROVAL_MISMATCH',
+    );
+    assert.equal(
+      (seal(request.approval_text) as { value: JsonObject }).value['approval_identity_sha256'],
+      sealed.approveExecution,
+      'the exact approved text seals the same identity',
+    );
+  } finally {
+    rmSync(sealed.directory, { recursive: true, force: true });
+  }
 });

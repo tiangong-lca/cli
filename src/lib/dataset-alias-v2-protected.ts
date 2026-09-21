@@ -34,6 +34,7 @@ import {
   resolveMaintenanceRemoteContext,
 } from './dataset-maintenance-remote.js';
 import {
+  ALIAS_V2_EXECUTION_NOT_APPLIED,
   ALIAS_V2_STATUS_PENDING,
   ALIAS_V2_STAGE_UNKNOWN,
   MAX_READBACK_ATTEMPTS,
@@ -1366,11 +1367,13 @@ export async function runAliasV2Protected(
   }
 
   // The read stage runs for an admitted execution and equally after an unknown admission: a
-  // readback-required state still has to ask the server what actually happened, bounded.
-  while (!isAliasV2Terminal(state.phase) || state.phase === 'readback_required') {
-    if (state.phase === 'readback_required' && state.read_attempts >= MAX_READBACK_ATTEMPTS) {
-      return finish(state.code, 'indeterminate');
-    }
+  // readback-required state still has to ask the server what actually happened. The loop is
+  // bounded by the readback attempt budget, and every path inside it returns, so the run never
+  // leaves the read stage through anything but a published outcome.
+  while (
+    !isAliasV2Terminal(state.phase) ||
+    (state.phase === 'readback_required' && state.read_attempts < MAX_READBACK_ATTEMPTS)
+  ) {
     const readOutcome = await dispatchOutcome(() =>
       readMaintenanceAliasExecutionV2({ context, requestId: identity.request_id }),
     );
@@ -1396,7 +1399,9 @@ export async function runAliasV2Protected(
       return finish(null, 'passed');
     }
     if (classified.kind === 'not_applied') {
-      return finish(state.code ?? 'ALIAS_V2_EXECUTION_NOT_APPLIED', 'failed');
+      // The read lifecycle records this exact refusal as it observes the result, so the run ends
+      // in the reviewed not-applied code for the request it just read.
+      return finish(ALIAS_V2_EXECUTION_NOT_APPLIED, 'failed');
     }
     if (classified.kind === 'refused') {
       // A refusal inside the reviewed policy ends the run unless it is a server failure, which

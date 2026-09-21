@@ -22,6 +22,7 @@ import {
   ALIAS_V2_TEST_ACCOUNT,
   ALIAS_V2_TEST_PROJECT_REF,
   aliasV2DerivativeTargets,
+  protectedToolchainEvidence,
 } from './helpers/alias-v2-artifacts.js';
 import {
   buildSupabaseTestEnv,
@@ -72,37 +73,11 @@ const authOnlyFetch: FetchLike = (async (input: string) => {
   throw new Error(`Unexpected request: ${url}`);
 }) as FetchLike;
 
-function toolchainEvidence(): JsonObject {
-  return {
-    schema_version: 'dataset-alias-protected-toolchain-evidence.v1',
-    environment: 'production',
-    project_ref: ALIAS_V2_TEST_PROJECT_REF,
-    verified_at_utc: '2026-09-21T00:00:00.000Z',
-    database_engine: {
-      repository: 'tiangong-lca/database',
-      production_main_commit_sha: 'a'.repeat(40),
-      production_readback_evidence_sha256: 'b'.repeat(64),
-      status: 'released_and_read_back',
-    },
-    cli: {
-      repository: 'tiangong-lca/cli',
-      package_name: '@tiangong-lca/cli',
-      package_version: '0.1.20',
-      release_commit_sha: 'c'.repeat(40),
-      release_evidence_sha256: 'd'.repeat(64),
-      status: 'published_and_verified',
-    },
-    workspace: {
-      repository: 'tiangong-lca/workspace',
-      integration_commit_sha: 'e'.repeat(40),
-      integration_issue_url: 'https://github.com/tiangong-lca/workspace/issues/358',
-      status: 'integrated',
-    },
-  };
-}
-
 type PublicChain = {
   directory: string;
+  inputPath: string;
+  toolchainPath: string;
+  baselinesPath: string;
   planPath: string;
   freezePath: string;
   approvalRequestPath: string;
@@ -137,7 +112,9 @@ async function buildPublicChain(): Promise<PublicChain> {
   const plan = JSON.parse(readFileSync(planPath, 'utf8')) as JsonObject;
 
   const toolchainPath = path.join(directory, 'toolchain.json');
-  writeFileSync(toolchainPath, `${stableJsonText(toolchainEvidence())}\n`, { mode: 0o600 });
+  writeFileSync(toolchainPath, `${stableJsonText(protectedToolchainEvidence('0.1.20'))}\n`, {
+    mode: 0o600,
+  });
   const baselinesPath = path.join(directory, 'baselines.json');
   writeFileSync(
     baselinesPath,
@@ -209,6 +186,9 @@ async function buildPublicChain(): Promise<PublicChain> {
   assert.equal(sealed.exitCode, 0, sealed.stderr);
   return {
     directory,
+    inputPath,
+    toolchainPath,
+    baselinesPath,
     planPath,
     freezePath,
     approvalRequestPath,
@@ -519,4 +499,91 @@ test('a v1 seal still reaches the frozen v1 chain', async (t) => {
   assert.notEqual(result.exitCode, 0);
   assert.deepEqual(calls, []);
   assert.equal(result.stdout.includes('dataset-alias-execution-report.v2'), false);
+});
+
+function errorCode(result: { exitCode: number; stderr: string }, label: string): string {
+  assert.equal(result.exitCode, 2, `${label}: ${result.stderr}`);
+  return (JSON.parse(result.stderr) as { error: { code: string } }).error.code;
+}
+
+test('each versioned stage refuses its own missing argument before any fetch', async (t) => {
+  const chain = await buildPublicChain();
+  t.after(() => rmSync(chain.directory, { recursive: true, force: true }));
+  const calls: Call[] = [];
+  const deps = cliDeps(protectedFetch(chain, { calls }));
+  // A versioned plan is built only where it can be written.
+  assert.equal(
+    errorCode(
+      await executeCli(
+        ['dataset', 'maintenance', 'plan', '--alias-v2-input', chain.inputPath, '--json'],
+        deps,
+      ),
+      'plan without --out-dir',
+    ),
+    'DATASET_MAINTENANCE_OUT_DIR_REQUIRED',
+  );
+  // A versioned freeze carries the reviewed derivative baselines, or it is not built at all.
+  assert.equal(
+    errorCode(
+      await executeCli(
+        [
+          'dataset',
+          'maintenance',
+          'freeze-protected',
+          '--plan',
+          chain.planPath,
+          '--toolchain-evidence',
+          chain.toolchainPath,
+          '--out-dir',
+          chain.directory,
+          '--expected-project-ref',
+          ALIAS_V2_TEST_PROJECT_REF,
+          '--confirm',
+          ALIAS_V2_TEST_ACCOUNT.email,
+          '--json',
+        ],
+        deps,
+      ),
+      'freeze-protected without --derivative-baselines',
+    ),
+    'DATASET_MAINTENANCE_PROTECTED_BASELINES_REQUIRED',
+  );
+  // The same command's help parses the identical flag set with no versioned argument at all.
+  const help = await executeCli(['dataset', 'maintenance', 'freeze-protected', '--help'], deps);
+  assert.equal(help.exitCode, 0, help.stderr);
+  assert.equal(help.stdout.includes('freeze-protected'), true);
+  assert.deepEqual(calls, [], 'no protected endpoint is contacted for a missing argument');
+});
+
+test('the argv path passes the reviewed timeout through to the versioned freeze', async (t) => {
+  const chain = await buildPublicChain();
+  t.after(() => rmSync(chain.directory, { recursive: true, force: true }));
+  const calls: Call[] = [];
+  const frozen = await executeCli(
+    [
+      'dataset',
+      'maintenance',
+      'freeze-protected',
+      '--plan',
+      chain.planPath,
+      '--toolchain-evidence',
+      chain.toolchainPath,
+      '--derivative-baselines',
+      chain.baselinesPath,
+      '--out-dir',
+      chain.directory,
+      '--expected-project-ref',
+      ALIAS_V2_TEST_PROJECT_REF,
+      '--confirm',
+      ALIAS_V2_TEST_ACCOUNT.email,
+      '--timeout-ms',
+      '5000',
+      '--json',
+    ],
+    cliDeps(protectedFetch(chain, { calls })),
+  );
+  assert.equal(frozen.exitCode, 0, frozen.stderr);
+  const report = JSON.parse(frozen.stdout) as JsonObject;
+  assert.equal(typeof report['approval_request_sha256'], 'string');
+  assert.deepEqual(calls, [], 'the freeze stage reads only the local artefacts and the session');
 });

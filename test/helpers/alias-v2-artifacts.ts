@@ -33,6 +33,40 @@ export const ALIAS_V2_TEST_ACCOUNT = {
 export const ALIAS_V2_TEST_PROJECT_REF = 'qgzvkongdjqiiamzbbts';
 export const ALIAS_V2_TEST_APPROVED_AT = '2026-09-21T00:00:00.000Z';
 
+/**
+ * The protected toolchain evidence a v2 freeze requires: the frozen database, CLI and workspace
+ * statuses that must have been verified before this capability may build an approval. Shape-only
+ * dummies — nothing here is a live release, and the CLI version must be the running one.
+ */
+export function protectedToolchainEvidence(cliVersion: string): JsonObject {
+  return {
+    schema_version: 'dataset-alias-protected-toolchain-evidence.v1',
+    environment: 'production',
+    project_ref: ALIAS_V2_TEST_PROJECT_REF,
+    verified_at_utc: ALIAS_V2_TEST_APPROVED_AT,
+    database_engine: {
+      repository: 'tiangong-lca/database',
+      production_main_commit_sha: 'a'.repeat(40),
+      production_readback_evidence_sha256: 'b'.repeat(64),
+      status: 'released_and_read_back',
+    },
+    cli: {
+      repository: 'tiangong-lca/cli',
+      package_name: '@tiangong-lca/cli',
+      package_version: cliVersion,
+      release_commit_sha: 'c'.repeat(40),
+      release_evidence_sha256: 'd'.repeat(64),
+      status: 'published_and_verified',
+    },
+    workspace: {
+      repository: 'tiangong-lca/workspace',
+      integration_commit_sha: 'e'.repeat(40),
+      integration_issue_url: 'https://github.com/tiangong-lca/workspace/issues/358',
+      status: 'integrated',
+    },
+  };
+}
+
 export type SealedAliasV2Execution = {
   directory: string;
   planPath: string;

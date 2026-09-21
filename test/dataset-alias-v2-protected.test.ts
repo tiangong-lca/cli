@@ -406,6 +406,16 @@ test('a foreign or malformed proof envelope is refused, at every stage', () => {
       ['window too wide', { ...good, expires_at: iso(200_000) }],
       ['already expired', { ...good, expires_at: iso(-1) }],
       ['nonce too short', { ...good, preflight_token: 'short' }],
+      ['context digest not a sha256', { ...good, server_context_sha256: 'not-a-sha256' }],
+      ['unparsable completion time', { ...good, completed_at: 'not-a-timestamp' }],
+      ['missing gate expectations', { ...good, gate_expectations: 'nope' }],
+      [
+        'issued ahead of the clock-skew allowance',
+        { ...good, completed_at: iso(10_000), expires_at: iso(150_000) },
+      ],
+      // A token that is stale, and no longer than the window: the window is fine, the token
+      // is not, so this is refused for its age rather than for its length.
+      ['stale token', { ...good, completed_at: iso(-100_000), expires_at: iso(-1_000) }],
     ];
     for (const [label, value] of cases) {
       assert.throws(
@@ -425,6 +435,10 @@ test('a foreign or malformed proof envelope is refused, at every stage', () => {
         { ...gateProof(good, 'primary_support_plan'), observed_sha256: 'f'.repeat(64) },
       ],
       ['outside window', { ...gateProof(good, 'primary_support_plan'), captured_at: iso(200_000) }],
+      [
+        'unparsable capture time',
+        { ...gateProof(good, 'primary_support_plan'), captured_at: 'nope' },
+      ],
       [
         'other preflight',
         { ...gateProof(good, 'primary_support_plan'), preflight_proof_sha256: 'f'.repeat(64) },
@@ -852,3 +866,230 @@ test('the freeze document the builder emits is the strict one the parser accepts
     rmSync(sealed.directory, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------------------------
+// The admission and the read stage
+// ---------------------------------------------------------------------------------------------
+
+/** Answers the named stage with one scripted answer and every other stage as usual. */
+function stageFetch(
+  sealed: SealedAliasV2Execution,
+  stage: 'preflight' | 'admit' | 'read',
+  answer: (input: string, init?: RequestInit) => Promise<ResponseLike>,
+  fallback: { reads?: unknown[] } = {},
+): FetchLike {
+  const marker =
+    stage === 'preflight'
+      ? ALIAS_V2_PROTOCOL.preflight_command
+      : stage === 'admit'
+        ? ALIAS_V2_PROTOCOL.admit_command
+        : 'cmd_dataset_alias_execution_read_v2';
+  return (async (input: string, init?: RequestInit) => {
+    if (String(input).includes(marker)) {
+      return answer(String(input), init);
+    }
+    return scriptedFetch(sealed, fallback)(input, init);
+  }) as FetchLike;
+}
+
+test(
+  'an admission that fails with a status, or answers with an unusable proof, recovers by read',
+  withSealed(async (sealed) => {
+    // A non-200 admission status is reported with that status, and the attempt itself is durable:
+    // a later run of the same execution must not post a second admission for it.
+    let admits = 0;
+    const unavailable = stageFetch(
+      sealed,
+      'admit',
+      async () => {
+        admits += 1;
+        return jsonResponse({ message: 'service unavailable' }, 503);
+      },
+      { reads: [terminalProof(sealed)] },
+    );
+    const failed = await runAliasV2Protected(
+      runOptions(sealed, { waitSeconds: 0, fetchImpl: unavailable }),
+    );
+    assert.deepEqual(
+      [failed.status, failed.code, failed.admission_attempts, admits],
+      ['failed', 'ALIAS_V2_ADMIT_HTTP_503', 1, 1],
+    );
+    const resumed = await runAliasV2Protected(runOptions(sealed, { fetchImpl: unavailable }));
+    assert.deepEqual([resumed.status, resumed.admission_attempts, admits], ['passed', 1, 1]);
+
+    // An admission acknowledged with a proof that does not prove a single consumed attempt is not
+    // an admission: the run moves to the readback path, posts nothing further, and lets the
+    // server's read decide the outcome.
+    const outDir = mkdtempSync(path.join(os.tmpdir(), 'alias-v2-admit-proof-'));
+    let posts = 0;
+    try {
+      const recovered = await runAliasV2Protected(
+        runOptions(sealed, {
+          outDir,
+          fetchImpl: stageFetch(
+            sealed,
+            'admit',
+            async () => {
+              posts += 1;
+              return jsonResponse({
+                ...admissionProof(preflightProof(sealed), sealed),
+                attempt_count: 2,
+              });
+            },
+            { reads: [terminalProof(sealed)] },
+          ),
+        }),
+      );
+      assert.equal(posts, 1, 'an unusable admission proof is never re-posted');
+      assert.deepEqual(
+        [recovered.status, recovered.phase, recovered.admission_attempts],
+        ['passed', 'applied', 1],
+      );
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  }),
+);
+
+test(
+  'a status-only run decides from the server, never from a fresh directory',
+  withSealed(async (sealed) => {
+    const cases: Array<[string, () => ResponseLike, string, string | null]> = [
+      [
+        'a coded refusal',
+        () => jsonResponse({ ok: false, code: 'ALIAS_V2_REPLAY_CONFLICT', status: 409 }, 409),
+        'failed',
+        'ALIAS_V2_REPLAY_CONFLICT',
+      ],
+      [
+        'an applied proof',
+        () => jsonResponse({ ok: true, ...terminalProof(sealed) }),
+        'passed',
+        null,
+      ],
+      [
+        'an idempotent replay proof',
+        () => jsonResponse({ ok: true, ...terminalProof(sealed), status: 'idempotent_replay' }),
+        'passed',
+        null,
+      ],
+      [
+        'a proof that is not this plan',
+        () =>
+          jsonResponse({
+            ok: true,
+            ...terminalProof(sealed),
+            counts: { ...(sealed.identity.counts as JsonObject), action_count: 1 },
+          }),
+        'failed',
+        'ALIAS_V2_RESPONSE_COUNT_MISMATCH',
+      ],
+      [
+        'an in-flight read',
+        () =>
+          jsonResponse({
+            ok: true,
+            status: 'pending',
+            plan_sha256: sealed.identity.plan_sha256,
+          }),
+        'indeterminate',
+        'ALIAS_V2_STAGE_UNKNOWN',
+      ],
+    ];
+    for (const [label, answer, status, code] of cases) {
+      // A fresh directory holds no marker: the run must still ask the server rather than report
+      // that nothing was admitted.
+      const outDir = mkdtempSync(path.join(os.tmpdir(), 'alias-v2-status-only-'));
+      const calls: string[] = [];
+      try {
+        const report = await runAliasV2Protected(
+          runOptions(sealed, {
+            outDir,
+            commit: false,
+            statusOnly: true,
+            waitSeconds: 0,
+            fetchImpl: stageFetch(sealed, 'read', async () => {
+              calls.push('read');
+              return answer();
+            }),
+          }),
+        );
+        assert.deepEqual([report.status, report.code], [status, code], label);
+        assert.deepEqual(
+          [calls.length, report.admission_attempts],
+          [1, 0],
+          `${label}: a status-only run reads once and never admits`,
+        );
+      } finally {
+        rmSync(outDir, { recursive: true, force: true });
+      }
+    }
+
+    // An operator who names no window still runs under the reviewed defaults: the same read
+    // decides the run, and no unbounded wait is created by omitting the option.
+    const defaultOutDir = mkdtempSync(path.join(os.tmpdir(), 'alias-v2-status-defaults-'));
+    try {
+      const report = await runAliasV2Protected(
+        runOptions(sealed, {
+          outDir: defaultOutDir,
+          commit: false,
+          statusOnly: true,
+          waitSeconds: undefined,
+          pollMs: undefined,
+          fetchImpl: stageFetch(sealed, 'read', async () =>
+            jsonResponse({ ok: true, ...terminalProof(sealed) }),
+          ),
+        }),
+      );
+      assert.deepEqual([report.status, report.polls, report.read_attempts], ['passed', 0, 0]);
+    } finally {
+      rmSync(defaultOutDir, { recursive: true, force: true });
+    }
+  }),
+);
+
+test(
+  'the run refuses an ambiguous mode, a non-Error transport failure and an exhausted deadline',
+  withSealed(async (sealed) => {
+    // Neither commit nor status-only: there is no defined action, so nothing is even read.
+    await assert.rejects(
+      () =>
+        runAliasV2Protected({
+          planPath: sealed.planPath,
+          freezePath: sealed.freezePath,
+          approvalPath: sealed.approvalPath,
+          outDir: sealed.directory,
+          commit: false,
+          statusOnly: false,
+          env: buildSupabaseTestEnv({}),
+          fetchImpl: (async () => {
+            throw new Error('no endpoint is contacted without a mode');
+          }) as FetchLike,
+        }),
+      (error: unknown) =>
+        (error as { code?: string }).code === 'DATASET_MAINTENANCE_PROTECTED_MODE_REQUIRED',
+    );
+
+    // A transport that fails without an Error still reaches the reviewed unknown-outcome path.
+    const nonError = await runAliasV2Protected(
+      runOptions(sealed, {
+        waitSeconds: 0,
+        fetchImpl: stageFetch(sealed, 'preflight', async () => {
+          throw 'socket hang up';
+        }),
+      }),
+    );
+    assert.deepEqual([nonError.status, nonError.code], ['indeterminate', 'ALIAS_V2_STAGE_UNKNOWN']);
+
+    // The deadline is the same bound whether it is measured on the progress clock or the wall
+    // clock: neither can be talked into an unbounded wait or a false exhaustion.
+    assert.equal(protectedInternals.nowMsExceeded(0, 1, 999, true), false);
+    assert.equal(protectedInternals.nowMsExceeded(0, 1, 1_000, true), true);
+    assert.equal(protectedInternals.nowMsExceeded(Date.now(), 1, 0, false), false);
+    assert.equal(protectedInternals.nowMsExceeded(Date.now() - 5_000, 1, 0, false), true);
+    // A body that is absent or blank is not a payload; a JSON body is.
+    assert.equal(protectedInternals.parseMaybeJson(undefined), null);
+    assert.equal(protectedInternals.parseMaybeJson('   '), null);
+    assert.deepEqual(protectedInternals.parseMaybeJson('{"a":1}'), { a: 1 });
+  }),
+);

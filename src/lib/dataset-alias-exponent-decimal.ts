@@ -93,33 +93,34 @@ export function parseBoundedExponentDecimal(value: string): DecimalParts | null 
 }
 
 /**
- * Exact expansion: the plain-decimal spelling that keeps the input's fractional scale. Returns
- * null when the reviewed output bound is exceeded, so a bounded helper never returns a text it
- * claimed not to produce.
+ * The reviewed output bound, in one place: a text above 128 characters is refused rather than
+ * returned. Every quantity path passes through here — the exact expansion, the canonical
+ * spelling and the exact product — so no helper can return a text it claimed not to produce.
+ * The product is the path where the bound actually bites: a 64-character quantity can expand
+ * past it, while a bounded spelling on its own cannot.
  */
-function renderExactDecimalText(parts: DecimalParts): string | null {
+function boundedText(text: string | null): string | null {
+  return text !== null && text.length <= BOUNDED_OUTPUT_LENGTH ? text : null;
+}
+
+/**
+ * Renders one parsed quantity. The exact expansion keeps the input's fractional scale and is the
+ * arithmetic truth used for evidence; the canonical spelling additionally trims unnecessary
+ * trailing fractional zeros, so it is never longer than the exact expansion. Both refuse a text
+ * above the reviewed output bound.
+ */
+function renderDecimalText(parts: DecimalParts, canonicalSpelling: boolean): string | null {
   let digits = parts.coefficient.toString().padStart(parts.scale + 1, '0');
   if (parts.scale > 0) {
     const split = digits.length - parts.scale;
     digits = `${digits.slice(0, split)}.${digits.slice(split)}`;
+    if (canonicalSpelling) {
+      // A zero quantity never carries a sign here: the sign is suppressed below when the
+      // coefficient is zero, so `-0` cannot occur and `0` is the only zero spelling.
+      digits = digits.replace(/0+$/u, '').replace(/\.$/u, '');
+    }
   }
-  const text = `${parts.negative && parts.coefficient !== 0n ? '-' : ''}${digits}`;
-  return text.length <= BOUNDED_OUTPUT_LENGTH ? text : null;
-}
-
-/**
- * Canonical v2 spelling: finite ordinary decimal, unnecessary trailing fractional zeros
- * trimmed, `0` for zero, never exponent notation. Trimming only removes characters, so a
- * canonical text is never longer than the exact expansion the output bound was applied to.
- */
-function renderCanonicalDecimalText(parts: DecimalParts): string | null {
-  const exact = renderExactDecimalText(parts);
-  if (exact === null) {
-    return null;
-  }
-  // A zero quantity never carries a sign here: the exact renderer already suppresses the sign
-  // when the coefficient is zero, so `-0` cannot occur and `0` is the only zero spelling.
-  return exact.includes('.') ? exact.replace(/0+$/u, '').replace(/\.$/u, '') : exact;
+  return boundedText(`${parts.negative && parts.coefficient !== 0n ? '-' : ''}${digits}`);
 }
 
 /** The multiplier priors: a finite ordinary string of at most 64 characters, plain decimal. */
@@ -141,8 +142,7 @@ function boundedProduct(value: string, factor: string): string | null {
   if (normalized === null || boundedFactorParts(factor) === null) {
     return null;
   }
-  const product = multiplyExactDecimal(normalized, factor);
-  return product !== null && product.length <= BOUNDED_OUTPUT_LENGTH ? product : null;
+  return boundedText(multiplyExactDecimal(normalized, factor));
 }
 
 /** True when the value is a legal v2 quantity (plain decimal or bounded exponent form). */
@@ -158,13 +158,13 @@ export function isBoundedFactorValue(factor: string): boolean {
 /** Exact expansion of one bounded quantity, or null when the spelling is out of bounds. */
 export function normalizeBoundedDecimalText(value: string): string | null {
   const parts = parseBoundedExponentDecimal(value);
-  return parts === null ? null : renderExactDecimalText(parts);
+  return parts === null ? null : renderDecimalText(parts, false);
 }
 
 /** Canonical v2 spelling of one bounded quantity, or null when it is out of bounds. */
 export function canonicalDecimalText(value: string): string | null {
   const parts = parseBoundedExponentDecimal(value);
-  return parts === null ? null : renderCanonicalDecimalText(parts);
+  return parts === null ? null : renderDecimalText(parts, true);
 }
 
 /**
