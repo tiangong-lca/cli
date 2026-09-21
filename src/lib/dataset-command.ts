@@ -219,6 +219,12 @@ export async function saveDraftDatasetRecord(options: {
   id: string;
   version: string;
   payload: JsonObject;
+  /**
+   * Complete before image read fresh in this run. When present, the platform routes the save
+   * through its guarded draft-save path and rejects a stale or changed before content; when it is
+   * absent the legacy save behaviour is unchanged. Never a hash: the stored JSON value itself.
+   */
+  expectedJsonOrdered?: JsonObject;
   extraData?: JsonObject;
   beforeDispatch?: () => void;
 }): Promise<JsonObject> {
@@ -228,6 +234,9 @@ export async function saveDraftDatasetRecord(options: {
     version: options.version,
     jsonOrdered: options.payload,
   };
+  if (options.expectedJsonOrdered !== undefined) {
+    body.expectedJsonOrdered = options.expectedJsonOrdered;
+  }
   const modelId = readOptionalModelId(options.extraData, false);
   if (modelId !== undefined) {
     body.modelId = modelId;

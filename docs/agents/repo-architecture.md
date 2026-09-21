@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: e83f2010c27b2e1d2e54d00e9a13488c780a02f4
-lastReviewedNote: 'Reviewed for CLI #346: package 0.1.18 releases the merged SDK 0.3.0 source adoption without changing architecture, public exports, or ownership.'
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: d45ffb6
+lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: saveDraftDatasetRecord carries the optional complete before image and runExecutionContractBatch gained one commit/dry_run mode; the ledger, scheduler and readback owners are unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -142,6 +142,8 @@ Review note, 2026-07-23: Issue #196 changes the CLI package version to 0.0.30, u
 Review note, 2026-07-23: Issue #198 changes the package version to 0.0.31 and confines SDK schema/entity mutation to a validation clone. The original dataset save-draft payload remains the single source for contract hashing, protected command dispatch, and exact owner readback. No command family, session, artifact schema, dependency, authorization, publication, or integration architecture changes.
 
 Review note, 2026-07-24: Issue #200 releases 0.0.32 and extends the existing execution-contract scheduler without adding a second write path. The scheduler derives one serial prefix ending at the highest action referenced by any dependency, verifies that the remaining suffix has unique table/id/version targets, and runs that suffix with explicit concurrency 1..8. Each action still owns its independent protected transaction and ledger file. The existing session runtime supplies a current token immediately before dispatch, and the runner rejects any renewed user/email mismatch before attempt consumption.
+
+Review note, 2026-09-21: CLI #283 adds the guarded before-image transport and contract dry-run to the same owner. `saveDraftDatasetRecord` carries an optional complete `expectedJsonOrdered` object (the stored JSON value, never a client hash) and omits it for legacy callers, so the platform routes a present before image to the guarded draft-save facade from Database #670 / Edge #425; a rejection is terminal and resolved by readback only. `runExecutionContractBatch` now takes one `mode`: `commit` keeps the existing ledger, scheduler and dispatch path, while `dry_run` loads the same ledger read-only (never creating a directory or event), verifies owner/project/before/content/reference, consumes no attempt, dispatches nothing and stays serial. A dry-run dependency is satisfied by an action `prepared` earlier in that same preflight (a commit still requires `executed`), a retained attempt or outcome is reported `blocked` with `retained_attempt`/`retained_outcome`, and a reference that only an earlier insert action of the contract creates is reported `blocked_dependency` rather than invented or failed. A contract dry-run additionally requires the env/fetch runtime bindings and cannot report an executed row.
 
 Review note, 2026-07-24: Issue #202 releases 0.0.33 and extends only ordinary dataset-maintenance apply. Explicit bounded mode is restricted to flow delete-only plans, reuses owner-session RLS reads and `cmd_dataset_delete`, adds a complete all-visible-process inbound barrier, and records append-only action dispatch/outcome events beside the immutable plan. It adds no RPC, schema, dependency, service-role, direct-table, publication, or cross-owner architecture.
 

@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: fb2958157960a65c40d816042b3f1c5a0fcdee7e
-lastReviewedNote: 'Reviewed for CLI #340: dataset contract ruleset artifact remains an explicit CLI-owned projection over released public definitions and local profiles, independent of the SDK mixed compatibility input.'
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: d45ffb6
+lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: the execution-contract section now documents the guarded before image and the dry-run preflight; command order, ledger ownership and no-replay statements are unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -57,6 +57,8 @@ Issue #247 将 OAuth/session 与普通状态文件共用的 `readStateLockMetada
 Issue #250 为 `readCachedSessionRecord()` / `writeCachedSessionRecord()` 增加仅内部可用的可选 platform 参数，默认仍为 `process.platform`。测试在所有 host 上显式执行 `linux` 与 `win32`，从而同时覆盖 POSIX public-mode 拒绝、目录/文件 chmod 与 Windows 跳过目录 chmod；运行时代码不传该参数，session schema、atomic rename、token、公开 API、依赖及认证语义均不变。
 
 `dataset save-draft --execution-contract` 只把 unique-target parallel suffix 的 resource-aware claim/fatal-stop 调度接入公共 batch engine。依赖 prefix 仍逐项串行；`executeAction` 继续独占 before-state、PREPARED、token renewal、DML、append-only attempt/outcome、exact readback 与 no-replay 判断。因此 rows 的输入顺序、progress/failures/summary 字节和 fatal worker 传播保持原契约；blocked target 不消耗 worker 或越过 stop claim 窗口。
+
+Review note, 2026-09-21: CLI #283（workspace #1432 战役）加入 guarded before-image 运输与 execution-contract dry-run。每个 `save_draft` action 把本轮 fresh read 且通过 owner/state0/before_sha 校验的**完整 before JSON** 作为 `expectedJsonOrdered` 交给 `saveDraftDatasetRecord`；平台在行锁内做 JSON 值比较，stale/变更/非 draft 一律拒绝（`DATASET_BEFORE_CONTENT_CHANGED` 等）。禁止 guard 失败后 fallback 到旧 RPC 或重试：attempt 已持久化，结果只由 exact readback 判定，行状态为 `UNKNOWN`。缺省 `expectedJsonOrdered` 时 legacy body 逐字节不变。合同在执行合同模式下新增 `commit` / `dry_run` 两种运行：dry-run 需要真实 auth 与 env/fetch 绑定，执行 owner/state/before/content/reference preflight，但不派发任何命令、不创建 attempt 与 ledger、不进入 parallel suffix 调度。依赖语义按模式区分：commit 仍要求前置 action `executed`；dry-run 接受前置 action 在本轮 preflight 中 `prepared`，因此两个现存 owner draft 的依赖链可完整逐项验证；根 action 失败仍阻断后代。dry-run 只读加载 ledger：已有 attempt/outcome 的 action 报 `blocked` + `retained_attempt`/`retained_outcome`，绝不退回 `prepared`。当前置 insert 尚未执行、后续 action 的远程引用因此缺失时，明确报 `blocked_dependency`（绝不伪造远端存在），其余缺失引用仍按真实失败处理。报告为 `mode: dry_run` + `commit: false`，closeout 永远无法把它当作已执行导入。
 
 Review note, 2026-08-26: Issue #233 对公共 batch 做纯移动式模块化。`src/batch.ts` 只从内部 owner 逐项 re-export，因此函数/类对象身份与 `instanceof` 不变；`types`/`errors` 为叶层，`canonical-contracts` 向上提供 JSON/hash/contract，`run-lock` 与 `scheduler-runtime` 相互独立，`item-projection`/`attempt-recovery` 复用叶层，`engine` 是唯一协调顶层。`test/public-batch-architecture.test.mjs` 与 shrink-only budget fixture 固定 62 行 facade、最大 445 行内部模块、精确 allowed edges、禁止回引 facade/CLI/dataset owner、零 SCC，以及公开 runtime/type/declaration/error/event/result 契约。无新依赖、版本、lockfile、npm/yarn 或发布路径；pnpm 11.23.0 与 TS7 单轨不变。
 

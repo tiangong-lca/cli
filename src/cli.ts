@@ -1578,9 +1578,12 @@ Options:
   --commit         Execute remote save-draft writes
   --dry-run        Validate and plan without remote writes (default)
   --execution-contract <file>
-                   Execute a content-bound ordered owner-draft batch with append-only attempt/readback evidence (requires --commit)
+                   Run a content-bound ordered owner-draft batch. With --commit: dispatch guarded writes
+                   with append-only attempt/readback evidence. Without --commit: preflight the exact
+                   owner/state/before/content contract state, block the report on any failure, dispatch
+                   nothing and create no attempt or ledger
   --max-parallel <1-8>
-                   Keep the dependency prefix serial, then run only the target-unique suffix with this concurrency (default: 1)
+                   Keep the dependency prefix serial, then run only the target-unique suffix with this concurrency (requires --commit; default: 1)
   --allow-account-local-support
                    Explicitly permit account-local Unit Group / Flow Property rows in the execution contract
   --json           Print compact JSON
@@ -1596,6 +1599,7 @@ Outputs written under --out-dir:
 Contract:
   This generic dataset path writes only mutable rows such as contact/source/flow/process. Unit group and flow property rows are reference-only; select existing database rows and rewrite references instead of creating My Data support rows.
   Process and lifecyclemodel imports may still use their dedicated save-draft commands when the workflow needs their specialized reports.
+  With an execution contract, each save_draft action sends the complete before image read fresh in this run; the platform rejects a stale or changed before content and the CLI never falls back to an unguarded save or retries it. A contract dry-run reports preflight evidence only, treats an action prepared earlier in the same preflight as a satisfied dependency, reports an already consumed attempt as retained, and can never close an import.
 `.trim();
 }
 

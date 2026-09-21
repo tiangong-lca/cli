@@ -294,6 +294,8 @@ test('executeCli exposes generic dataset save-draft for support rows', async () 
   assert.match(help.stdout, /auto, contact, source, flow, process/u);
   assert.match(help.stdout, /--max-parallel <1-8>/u);
   assert.match(help.stdout, /Unit group and flow property rows are reference-only/u);
+  assert.match(help.stdout, /Without --commit: preflight the exact/u);
+  assert.match(help.stdout, /never falls back to an unguarded save or retries it/u);
 
   const result = await executeCli(
     [

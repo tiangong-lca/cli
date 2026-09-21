@@ -219,3 +219,47 @@ test('dataset command helper normalizes optional metadata helpers and rejects ma
     },
   );
 });
+
+test('dataset command helper carries an optional complete before image and omits it for legacy saves', async () => {
+  const observed: Array<{ url: string; body?: string }> = [];
+  const transport = await resolveDatasetCommandTransport({
+    env: buildSupabaseTestEnv({
+      TIANGONG_LCA_API_BASE_URL: 'https://example.supabase.co/rest/v1',
+      TIANGONG_LCA_ACCESS_TOKEN: 'key',
+    }),
+    fetchImpl: withSupabaseAuthBootstrap(async (url, init) => {
+      observed.push({
+        url: String(url),
+        body: typeof init?.body === 'string' ? init.body : undefined,
+      });
+      return makeResponse({ ok: true, status: 200, body: '{"ok":true,"data":{"id":"ok"}}' });
+    }),
+    timeoutMs: 10,
+  });
+  const id = '77777777-7777-4777-8777-777777777777';
+  const payload = { processDataSet: { processInformation: {} } };
+  const before = { processDataSet: { processInformation: { 'common:generalComment': 'before' } } };
+
+  await saveDraftDatasetRecord({
+    transport,
+    table: 'processes',
+    id,
+    version: '00.00.001',
+    payload,
+  });
+  await saveDraftDatasetRecord({
+    transport,
+    table: 'processes',
+    id,
+    version: '00.00.001',
+    payload,
+    expectedJsonOrdered: before,
+  });
+
+  const legacy = JSON.parse(observed[0]?.body ?? '{}') as Record<string, unknown>;
+  const guarded = JSON.parse(observed[1]?.body ?? '{}') as Record<string, unknown>;
+  assert.equal(Object.hasOwn(legacy, 'expectedJsonOrdered'), false);
+  assert.deepEqual(legacy.jsonOrdered, payload);
+  assert.deepEqual(guarded.expectedJsonOrdered, before);
+  assert.deepEqual(guarded.jsonOrdered, payload);
+});
