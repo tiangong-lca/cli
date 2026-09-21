@@ -34,6 +34,8 @@ related:
   - ./agents/repo-validation.md
 ---
 
+Review note, 2026-09-22: CLI #359 adds no secret, environment, runner, dependency, lockfile change, Trusted Publisher setting, workflow filename, tag rule, credential, or alternate publication path. The Length*time profile is source only and reuses the existing release setup unchanged.
+
 Review note, 2026-09-21: Issue #356 is the 0.1.20 version-only preparation for merged source PR #355. It adds no secret, environment, runner, dependency, lockfile change, Trusted Publisher setting, workflow filename, tag rule, credential, or alternate publication path, and it records honestly that publication has not occurred: npm latest is 0.1.19 and no `cli-v0.1.20` tag exists. The merge-triggered four-platform tag workflow, native pnpm OIDC Trusted Publishing and provenance verification remain the only publication route.
 
 Review note, 2026-09-21: CLI #354 adds no release setup surface. The bounded support metadata repair is a source capability that reuses the existing guarded command transport, capability grant and Trusted Publishing path; it adds no secret, environment, runner, workflow, tag rule or alternate publication route, and it is not part of the version-only 0.1.19 release.
