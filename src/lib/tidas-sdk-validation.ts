@@ -2,6 +2,7 @@ export type SafeParseIssue = {
   code?: string;
   message?: string;
   path?: Array<string | number>;
+  errors?: SafeParseIssue[][];
 };
 
 export type SafeParseResult =

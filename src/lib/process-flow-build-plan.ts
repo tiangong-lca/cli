@@ -671,7 +671,7 @@ function referenceFlowRef(plan: JsonObject): JsonObject {
   });
 }
 
-function buildAnnualSupply(plan: JsonObject, referenceExchange: JsonObject): JsonObject[] {
+function buildAnnualSupply(plan: JsonObject): unknown {
   const explicit = firstValue(plan, [
     'required_fields.annualSupplyOrProductionVolume',
     'requiredFields.annualSupplyOrProductionVolume',
@@ -680,22 +680,13 @@ function buildAnnualSupply(plan: JsonObject, referenceExchange: JsonObject): Jso
     'modelling_and_validation.annualSupplyOrProductionVolume',
     'modellingAndValidation.annualSupplyOrProductionVolume',
   ]);
-  if (explicit !== undefined && explicit !== null) {
-    return multiLangFromValue(explicit, String(explicit));
-  }
-
-  const amount =
-    textToken(referenceExchange.meanAmount) ??
-    textToken(referenceExchange.resultingAmount) ??
-    '1.0';
-  const unit =
-    firstToken(plan, [
-      'quantitative_reference_plan.reference_unit',
-      'quantitativeReferencePlan.referenceUnit',
-      'flow_property_plan.reference_unit',
-      'flowPropertyPlan.referenceUnit',
-    ]) ?? 'unit';
-  return [localizedText(`${amount} ${unit}/year`, 'en')];
+  // No annual-volume evidence: the supported unknown representation. A quantitative reference
+  // amount and a reference/default unit are never annual-volume evidence, so no quantity is
+  // synthesized from them. An explicit array is passed through exactly as declared, including
+  // the empty array, so a malformed shape reaches the SDK gate instead of being repaired here.
+  if (explicit === undefined) return [];
+  if (Array.isArray(explicit)) return explicit;
+  return multiLangFromValue(explicit, String(explicit));
 }
 
 function normalizeExchangeDirection(value: string | null): 'Input' | 'Output' {
@@ -896,7 +887,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
   const reference = referenceExchange(plan);
   const exchangeEntries = exchangePlanEntries(plan);
   const exchanges = [reference, ...exchangeEntries.filter((entry) => !entry.quantitativeReference)];
-  const annualSupply = buildAnnualSupply(plan, reference);
+  const annualSupply = buildAnnualSupply(plan);
   const sourceRef = evidenceSourceReference(plan);
 
   return {

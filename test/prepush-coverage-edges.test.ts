@@ -2342,53 +2342,47 @@ test('prepush coverage covers lifecyclemodel and process required field helpers'
     deferred.some((issue) => issue.code === 'annual_supply_or_production_volume_missing'),
     false,
   );
-  assert.equal(
-    processRequiredInternals.hasDeferredAnnualSupplyTrace({
-      processInformation: {
-        dataSetInformation: {
-          'common:other': {
-            'tiangongfoundry:unresolvedTrace': {
-              blocked_path:
-                'processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume',
-              status: 'needs_followup',
-            },
+  // A legacy deferred trace is not annual-volume evidence. The collector used to consult a
+  // bypass predicate for exactly these trace shapes; the real external behavior is that a
+  // complete, side-effect-free payload keeps reporting the evidence gap whatever the trace says.
+  for (const legacyTrace of [
+    {
+      blocked_path:
+        'processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume',
+      status: 'needs_followup',
+    },
+    {
+      fieldPath:
+        'modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume',
+      decisionStatus: 'deferred_to_common_other',
+    },
+    { path: 'nested.annualSupplyOrProductionVolume', status: 'unresolved_deferred' },
+  ]) {
+    const payload = {
+      processDataSet: {
+        processInformation: {
+          dataSetInformation: {
+            'common:UUID': '77777777-7777-4777-8777-777777777777',
+            'common:other': { 'tiangongfoundry:unresolvedTrace': legacyTrace },
+          },
+        },
+        modellingAndValidation: {
+          dataSourcesTreatmentAndRepresentativeness: {
+            annualSupplyOrProductionVolume: [],
           },
         },
       },
-    }),
-    true,
-  );
-  assert.equal(
-    processRequiredInternals.hasDeferredAnnualSupplyTrace({
-      processInformation: {
-        dataSetInformation: {
-          'common:other': {
-            'tiangongfoundry:unresolvedTrace': {
-              fieldPath:
-                'modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume',
-              decisionStatus: 'deferred_to_common_other',
-            },
-          },
-        },
-      },
-    }),
-    true,
-  );
-  assert.equal(
-    processRequiredInternals.hasDeferredAnnualSupplyTrace({
-      processInformation: {
-        dataSetInformation: {
-          'common:other': {
-            'tiangongfoundry:unresolvedTrace': {
-              path: 'nested.annualSupplyOrProductionVolume',
-              status: 'unresolved_deferred',
-            },
-          },
-        },
-      },
-    }),
-    true,
-  );
+    };
+    const before = JSON.stringify(payload);
+    assert.equal(
+      processRequiredInternals
+        .collectProcessRequiredFieldIssues(payload)
+        .some((issue) => issue.code === 'annual_supply_or_production_volume_missing'),
+      true,
+      `legacy trace must not waive the gap: ${JSON.stringify(legacyTrace)}`,
+    );
+    assert.equal(JSON.stringify(payload), before, 'issue collection must not mutate its input');
+  }
   const deferredWithDataSources = processRequiredInternals.collectProcessRequiredFieldIssues({
     processDataSet: {
       processInformation: {
@@ -2412,7 +2406,8 @@ test('prepush coverage covers lifecyclemodel and process required field helpers'
     deferredWithDataSources.some(
       (issue) => issue.code === 'annual_supply_or_production_volume_missing',
     ),
-    false,
+    true,
+    'a deferred_to_common_other trace is not evidence and must not waive the annual-volume gap',
   );
 
   const missingDataSources = processRequiredInternals.collectProcessRequiredFieldIssues({

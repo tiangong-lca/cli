@@ -25,14 +25,16 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 340c15df11692688467e1e3e1cdc9688b8240268
-lastReviewedNote: 'Reviewed for CLI #350: Process review-array compatibility adds no secret, Trusted Publisher setup, workflow, tag rule, or publication path.'
+lastReviewedCommit: 7f7b313cebc30c96154860df30f5d666963bc0b7
+lastReviewedNote: 'Reviewed for CLI #350 after 0.1.19 main integration: Process review-array compatibility adds no secret, Trusted Publisher setting, workflow, tag rule or alternate publication path.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
   - ./release-runbook.md
   - ./agents/repo-validation.md
 ---
+
+Review note, 2026-09-21: Issue #351 is that 0.1.19 version-only preparation for merged source PR #349. It adds no secret, environment, runner, dependency, lockfile change, Trusted Publisher setting, workflow filename, tag rule, credential, or alternate publication path, and it records honestly that publication has not occurred: npm latest is 0.1.18 and no `cli-v0.1.19` tag exists. The merge-triggered four-platform tag workflow, native pnpm OIDC Trusted Publishing and provenance verification remain the only publication route, and any later release still requires exactly the same setup.
 
 Review note, 2026-09-17: W6b adds no Trusted Publisher, npm, token, tag, workflow or package-version change. The canonical asset sync is a source/content change and future publication remains subject to the existing release contract.
 
@@ -226,3 +228,5 @@ The repository now includes a local pre-push gate that runs `scripts/docpact-gat
 ## Runner allocation
 
 All CI jobs use GitHub-hosted runners. The quality matrix covers Linux x64, Linux ARM64, Windows x64 and macOS Apple Silicon. Issue #298 reverses the CodeBuild routing after the benchmark showed limited total-wait benefit; no AWS runner is required. Existing-tag recovery continues through workflow_dispatch and the direct canonical gate from the tagged checkout.
+
+Review note, 2026-09-21: independently reviewed CLI #283 annual-volume commit d45ffb6. Existing values and language order are preserved; unknown annual evidence remains [] and an authoring gap, never a reference-flow/default-unit quantity. The separate schema, content and multilingual layers retain their own results. This document requires no additional annual-volume or release-policy change.

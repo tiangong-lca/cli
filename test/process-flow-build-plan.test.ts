@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { ProcessSchema } from '@tiangong-lca/tidas-sdk';
 import {
   runFlowBuildPlanMaterialize,
   runFlowBuildPlanValidate,
@@ -379,7 +380,8 @@ test('process build-plan materialize builds canonical payloads from name, qref, 
     assert.deepEqual(
       materialized.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
         .annualSupplyOrProductionVolume,
-      [{ '#text': '3.6 MJ/year', '@xml:lang': 'en' }],
+      [],
+      'the 3.6 MJ quantitative reference is a reference amount, not annual-volume evidence',
     );
     assert.deepEqual(
       materialized.processDataSet.processInformation.dataSetInformation.classificationInformation[
@@ -1307,7 +1309,8 @@ test('build-plan internals cover evidence path normalization and SDK schema fall
       (defaultedProcessDataSet.modellingAndValidation as Record<string, unknown>)
         .dataSourcesTreatmentAndRepresentativeness as Record<string, unknown>
     ).annualSupplyOrProductionVolume,
-    [{ '#text': '1 unit/year', '@xml:lang': 'en' }],
+    [],
+    'a defaulted plan carries no annual-volume evidence, so it must stay unknown',
   );
 
   const resultingAmountProcess = __testInternals.buildCanonicalProcessPayload(
@@ -1327,14 +1330,25 @@ test('build-plan internals cover evidence path normalization and SDK schema fall
           .modellingAndValidation as Record<string, unknown>
       ).dataSourcesTreatmentAndRepresentativeness as Record<string, unknown>
     ).annualSupplyOrProductionVolume,
-    [{ '#text': '4.2 kg/year', '@xml:lang': 'en' }],
+    [],
+    'a 4.2 kg resulting amount is a reference amount, not annual-volume evidence',
   );
-  assert.deepEqual(__testInternals.buildAnnualSupply({}, { resultingAmount: '5.5' }), [
-    { '#text': '5.5 unit/year', '@xml:lang': 'en' },
-  ]);
-  assert.deepEqual(__testInternals.buildAnnualSupply({}, {}), [
-    { '#text': '1.0 unit/year', '@xml:lang': 'en' },
-  ]);
+  assert.deepEqual(__testInternals.buildAnnualSupply({}), []);
+  assert.deepEqual(
+    __testInternals.buildAnnualSupply({
+      required_fields: {
+        annualSupplyOrProductionVolume: [
+          { '#text': '1000 kg/year', '@xml:lang': 'zh' },
+          { '#text': '1000 kg/year', '@xml:lang': 'en' },
+        ],
+      },
+    }),
+    [
+      { '#text': '1000 kg/year', '@xml:lang': 'zh' },
+      { '#text': '1000 kg/year', '@xml:lang': 'en' },
+    ],
+    'a real explicit language array keeps its exact content and order',
+  );
 
   __testInternals.buildCanonicalProcessPayload(
     processPlan({
@@ -1360,4 +1374,92 @@ test('build-plan internals cover evidence path normalization and SDK schema fall
     }),
     '/tmp/named-compliance-flow-plan.json',
   );
+});
+
+function annualSupplyOf(payload: Record<string, unknown>): unknown {
+  return (
+    (
+      (payload.processDataSet as Record<string, unknown>).modellingAndValidation as Record<
+        string,
+        unknown
+      >
+    ).dataSourcesTreatmentAndRepresentativeness as Record<string, unknown>
+  ).annualSupplyOrProductionVolume;
+}
+
+test('build plan never fabricates annual supply from the quantitative reference', () => {
+  for (const [amount, unit] of [
+    ['1', 'kg'],
+    ['3.6', 'MJ'],
+  ] as const) {
+    const payload = __testInternals.buildCanonicalProcessPayload(
+      processPlan({
+        quantitative_reference_plan: {
+          reference_flow_id: '190f39ca-0ec8-5aab-b2d9-c91fc55ee58d',
+          mean_amount: amount,
+          reference_unit: unit,
+        },
+      }),
+      `/tmp/qref-${amount}-process-plan.json`,
+    ) as Record<string, unknown>;
+    assert.deepEqual(
+      annualSupplyOf(payload),
+      [],
+      `a ${amount} ${unit} quantitative reference is not annual-volume evidence`,
+    );
+    assert.equal(
+      ProcessSchema.safeParse(structuredClone(payload)).success,
+      true,
+      'the unknown representation must stay SDK-valid',
+    );
+  }
+
+  // The same rule holds at the internals boundary, whatever the reference exchange carries.
+  assert.deepEqual(__testInternals.buildAnnualSupply({}), []);
+  assert.deepEqual(
+    __testInternals.buildAnnualSupply({
+      required_fields: { annualSupplyOrProductionVolume: ['Not specified'] },
+    }),
+    ['Not specified'],
+    'a malformed explicit shape must reach the SDK gate instead of being repaired',
+  );
+});
+
+test('build plan preserves an explicit annual-supply language array and the unknown array', () => {
+  const explicit = [
+    { '#text': '3.6 MJ/年', '@xml:lang': 'zh' },
+    { '#text': '3.6 MJ/year', '@xml:lang': 'en' },
+  ];
+  const payload = __testInternals.buildCanonicalProcessPayload(
+    processPlan({
+      quantitative_reference_plan: {
+        reference_flow_id: '190f39ca-0ec8-5aab-b2d9-c91fc55ee58d',
+        mean_amount: '1',
+        reference_unit: 'kg',
+      },
+      required_fields: { annualSupplyOrProductionVolume: explicit },
+    }),
+    '/tmp/explicit-annual-supply-process-plan.json',
+  ) as Record<string, unknown>;
+  assert.equal(
+    JSON.stringify(annualSupplyOf(payload)),
+    JSON.stringify(explicit),
+    'an explicit language array must keep its exact content and order',
+  );
+  assert.equal(ProcessSchema.safeParse(structuredClone(payload)).success, true);
+
+  assert.deepEqual(
+    __testInternals.buildAnnualSupply({ required_fields: { annualSupplyOrProductionVolume: [] } }),
+    [],
+    'an explicit unknown array must stay unknown rather than be filled in',
+  );
+
+  const emptyPlanPayload = __testInternals.buildCanonicalProcessPayload(
+    processPlan({
+      required_fields: { annualSupplyOrProductionVolume: [] },
+    }),
+    '/tmp/explicit-unknown-annual-supply-process-plan.json',
+  ) as Record<string, unknown>;
+  assert.deepEqual(annualSupplyOf(emptyPlanPayload), []);
+  assert.equal(ProcessSchema.safeParse(structuredClone(emptyPlanPayload)).success, true);
 });

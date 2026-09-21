@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -155,6 +155,11 @@ function executionFetch(options: {
   email?: string;
   missingSources?: boolean;
   rowIdentityOverride?: { id?: string; version?: string };
+  rowUserOverride?: string;
+  rowStateOverride?: number;
+  sourcesRequireState?: boolean;
+  calls?: Array<{ path: string; body: JsonObject }>;
+  guardedConflict?: Set<string>;
 }): FetchLike {
   const userId = options.userId ?? OWNER_USER_ID;
   const email = options.email ?? 'user@example.com';
@@ -173,9 +178,19 @@ function executionFetch(options: {
         id: string;
         version?: string;
         jsonOrdered: JsonObject;
+        expectedJsonOrdered?: JsonObject;
       };
+      options.calls?.push({ path: parsed.pathname, body });
       options.writes.push(body.id);
       const operation = parsed.pathname.endsWith('app_dataset_create') ? 'insert' : 'save_draft';
+      if (options.guardedConflict?.has(body.id)) {
+        return response({
+          ok: false,
+          code: 'DATASET_BEFORE_CONTENT_CHANGED',
+          status: 409,
+          message: 'Draft content changed since it was read',
+        });
+      }
       const behavior = options.behavior?.get(body.id) ?? 'success';
       if (behavior !== 'throw_without_mutation') {
         options.state.set(body.id, body.jsonOrdered);
@@ -194,8 +209,8 @@ function executionFetch(options: {
               {
                 ...identity(payload),
                 ...options.rowIdentityOverride,
-                user_id: userId,
-                state_code: 0,
+                user_id: options.rowUserOverride ?? userId,
+                state_code: options.rowStateOverride ?? 0,
                 json_ordered: payload,
               },
             ]
@@ -213,6 +228,9 @@ function executionFetch(options: {
         return response([]);
       }
       const id = parsed.searchParams.get('id')?.replace(/^eq\./u, '') ?? '';
+      if (options.sourcesRequireState && !options.state.has(id)) {
+        return response([]);
+      }
       return response([{ id, version: '00.00.001' }]);
     }
     throw new Error(`Unexpected URL: ${url}`);
@@ -659,6 +677,17 @@ test('execution contract rejects unsafe parallel configuration before DML', asyn
       }),
       /requires --execution-contract/u,
     );
+    await assert.rejects(
+      runDatasetSaveDraft({
+        inputPath: path.join(dir, 'rows.json'),
+        rawInput: { rows: [first] },
+        type: 'flow',
+        outDir: path.join(dir, 'dry-run-parallel-out'),
+        executionContractPath: contractPath,
+        maxParallel: 2,
+      }),
+      /max-parallel greater than 1 requires --commit/u,
+    );
     assert.deepEqual(writes, []);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -936,17 +965,22 @@ test('execution contract keeps preparation, reference, and dry-run failures at z
     assert.equal(unresolvedReport.rows[0]?.attempt_consumed, false);
     assert.deepEqual(writes, []);
 
-    await assert.rejects(
-      () =>
-        runDatasetSaveDraft({
-          inputPath: path.join(unresolvedDir, 'rows.json'),
-          rawInput: { rows: [valid] },
-          type: 'flow',
-          outDir: path.join(unresolvedDir, 'dry-run'),
-          executionContractPath: unresolvedContractPath,
-        }),
-      /requires --commit/u,
-    );
+    const unresolvedDryRun = await runDatasetSaveDraft({
+      inputPath: path.join(unresolvedDir, 'rows.json'),
+      rawInput: { rows: [valid] },
+      type: 'flow',
+      outDir: path.join(unresolvedDir, 'dry-run'),
+      executionContractPath: unresolvedContractPath,
+      env: executionEnv(dir, 'unresolved-dry-1'),
+      fetchImpl: executionFetch({ state: new Map(), writes, missingSources: true }),
+    });
+    assert.equal(unresolvedDryRun.mode, 'dry_run');
+    assert.equal(unresolvedDryRun.commit, false);
+    assert.equal(unresolvedDryRun.status, 'completed_with_failures');
+    assert.equal(unresolvedDryRun.rows[0]?.status, 'failed');
+    assert.match(unresolvedDryRun.rows[0]?.error?.message ?? '', /unresolved remote references/u);
+    assert.equal(unresolvedDryRun.rows[0]?.attempt_consumed, false);
+    assert.deepEqual(writes, []);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -996,7 +1030,7 @@ test('execution contract validation cannot mutate its exact desired payload', as
           commit: true,
           executionContractPath: contractPath,
         }),
-      /commit requires env and fetch runtime bindings/u,
+      /execution requires env and fetch runtime bindings/u,
     );
     assert.deepEqual(desired, exactInput);
   } finally {
@@ -1291,6 +1325,698 @@ test('execution ledger rejects binding, repeated-attempt, and outcome-order corr
       () => __testInternals.loadExecutionLedger(orderingRoot, parsed),
       /outcome ordering is invalid/u,
     );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('execution contract save_draft transports the fresh complete before image exactly once', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-guarded-transport-'));
+  const before = flow('77777777-7777-4777-8777-777777777777', 'Before content');
+  const desired = flow('77777777-7777-4777-8777-777777777777', 'After content');
+  const id = identity(before).id;
+  const state = new Map([[id, before]]);
+  const writes: string[] = [];
+  const calls: Array<{ path: string; body: JsonObject }> = [];
+  try {
+    const contractPath = writeContract(dir, contract({ desired: [desired], before: [before] }));
+    const report = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [desired] },
+      type: 'flow',
+      outDir: path.join(dir, 'out'),
+      commit: true,
+      executionContractPath: contractPath,
+      env: executionEnv(dir, 'guarded-1'),
+      fetchImpl: executionFetch({ state, writes, calls }),
+    });
+    assert.equal(report.rows[0]?.status, 'executed');
+    assert.equal(report.rows[0]?.readback, 'desired_exact');
+    const saves = calls.filter((call) => call.path.endsWith('app_dataset_save_draft'));
+    assert.equal(saves.length, 1, 'one guarded dispatch and no fallback');
+    assert.deepEqual(saves[0]?.body.expectedJsonOrdered, before);
+    assert.deepEqual(saves[0]?.body.jsonOrdered, desired);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a guarded before-content conflict is terminal without fallback or replay', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-guarded-conflict-'));
+  const before = flow('88888888-8888-4888-8888-888888888888', 'Before content');
+  const desired = flow('88888888-8888-4888-8888-888888888888', 'After content');
+  const id = identity(before).id;
+  const state = new Map([[id, before]]);
+  const writes: string[] = [];
+  const calls: Array<{ path: string; body: JsonObject }> = [];
+  try {
+    const contractPath = writeContract(dir, contract({ desired: [desired], before: [before] }));
+    const report = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [desired] },
+      type: 'flow',
+      outDir: path.join(dir, 'out'),
+      commit: true,
+      executionContractPath: contractPath,
+      env: executionEnv(dir, 'guarded-2'),
+      fetchImpl: executionFetch({ state, writes, calls, guardedConflict: new Set([id]) }),
+    });
+    assert.equal(report.rows[0]?.status, 'unknown');
+    assert.equal(report.rows[0]?.attempt_consumed, true);
+    assert.equal(report.rows[0]?.readback, 'not_desired');
+    assert.equal(report.counts.attempts_consumed, 1);
+    const commands = calls.filter((call) => /app_dataset_(create|save_draft)$/u.test(call.path));
+    assert.equal(commands.length, 1, 'a guard conflict cannot fall back or retry');
+    assert.deepEqual(state.get(id), before, 'the refused write changed nothing');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('execution contract dry-run preflights the exact before state and dispatches nothing', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dry-run-preflight-'));
+  const before = flow('99999999-9999-4999-8999-999999999999', 'Before content');
+  const desired = flow('99999999-9999-4999-8999-999999999999', 'After content');
+  const id = identity(before).id;
+  const state = new Map([[id, before]]);
+  const writes: string[] = [];
+  const calls: Array<{ path: string; body: JsonObject }> = [];
+  try {
+    const contractValue = contract({ desired: [desired], before: [before] });
+    const contractPath = writeContract(dir, contractValue);
+    const env = executionEnv(dir, 'dry-run-1');
+    const report = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [desired] },
+      type: 'flow',
+      outDir: path.join(dir, 'out'),
+      commit: false,
+      executionContractPath: contractPath,
+      env,
+      fetchImpl: executionFetch({ state, writes, calls }),
+    });
+    assert.equal(report.schema_version, 2);
+    assert.equal(report.mode, 'dry_run');
+    assert.equal(report.commit, false);
+    assert.equal(report.status, 'completed');
+    assert.equal(report.counts.prepared, 1);
+    assert.equal(report.counts.executed, 0);
+    assert.equal(report.counts.attempts_consumed, 0);
+    assert.equal(report.rows[0]?.status, 'prepared');
+    assert.equal(report.rows[0]?.operation, 'would_sync');
+    assert.equal(report.rows[0]?.attempt_consumed, false);
+    assert.equal(report.rows[0]?.readback, 'not_performed');
+    assert.deepEqual(report.rows[0]?.visible_row, {
+      id,
+      version: identity(before).version,
+      user_id: OWNER_USER_ID,
+      state_code: 0,
+    });
+    assert.equal(report.files.execution_ledger, undefined);
+    assert.deepEqual(writes, []);
+    assert.equal(
+      calls.filter((call) => call.path.includes('/functions/v1/app_dataset_')).length,
+      0,
+      'a dry-run preflight never dispatches an owner command',
+    );
+    assert.equal(
+      existsSync(
+        __testInternals.executionLedgerRoot(
+          env,
+          __testInternals.parseExecutionContract(contractValue),
+        ),
+      ),
+      false,
+      'a dry-run preflight never creates an attempt ledger',
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('execution contract dry-run reports drift, foreign and non-draft before states as failures', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dry-run-drift-'));
+  const before = flow('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Before content');
+  const desired = flow('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'After content');
+  const drifted = flow('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Someone else wrote');
+  const id = identity(before).id;
+  const insertOnly = flow('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'Insert target');
+  const cases: Array<{ name: string; state: Map<string, JsonObject>; options?: JsonObject }> = [
+    { name: 'content drift', state: new Map([[id, drifted]]) },
+    {
+      name: 'foreign owner',
+      state: new Map([[id, before]]),
+      options: { rowUserOverride: '99999999-9999-4999-8999-999999999999' },
+    },
+    { name: 'non-draft state', state: new Map([[id, before]]), options: { rowStateOverride: 100 } },
+  ];
+  try {
+    for (const scenario of cases) {
+      const writes: string[] = [];
+      const contractPath = writeContract(dir, contract({ desired: [desired], before: [before] }));
+      const report = await runDatasetSaveDraft({
+        inputPath: path.join(dir, 'rows.json'),
+        rawInput: { rows: [desired] },
+        type: 'flow',
+        outDir: path.join(dir, `out-${scenario.name.replace(/ /gu, '-')}`),
+        commit: false,
+        executionContractPath: contractPath,
+        env: executionEnv(dir, `dry-run-${scenario.name.replace(/ /gu, '-')}`),
+        fetchImpl: executionFetch({ state: scenario.state, writes, ...(scenario.options ?? {}) }),
+      });
+      assert.equal(report.status, 'completed_with_failures', scenario.name);
+      assert.equal(report.rows[0]?.status, 'failed', scenario.name);
+      assert.match(
+        report.rows[0]?.error?.message ?? '',
+        /before-state or expected operation drifted/u,
+        scenario.name,
+      );
+      assert.equal(report.rows[0]?.attempt_consumed, false, scenario.name);
+      assert.deepEqual(writes, [], scenario.name);
+    }
+
+    const insertWrites: string[] = [];
+    const insertContractPath = writeContract(dir, contract({ desired: [insertOnly] }));
+    const insertReport = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [insertOnly] },
+      type: 'flow',
+      outDir: path.join(dir, 'out-insert-existing'),
+      commit: false,
+      executionContractPath: insertContractPath,
+      env: executionEnv(dir, 'dry-run-insert-existing'),
+      fetchImpl: executionFetch({
+        state: new Map([[identity(insertOnly).id, insertOnly]]),
+        writes: insertWrites,
+      }),
+    });
+    assert.equal(insertReport.status, 'completed_with_failures');
+    assert.equal(insertReport.rows[0]?.status, 'failed');
+    assert.match(
+      insertReport.rows[0]?.error?.message ?? '',
+      /before-state or expected operation drifted/u,
+    );
+    assert.deepEqual(insertWrites, []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('execution contract dry-run preflights a dependency chain once every earlier action is prepared', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dry-run-dependency-'));
+  const first = flow('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'First insert');
+  const second = flow('dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'Dependent insert');
+  const writes: string[] = [];
+  try {
+    const contractPath = writeContract(
+      dir,
+      contract({ desired: [first, second], dependencies: [[], ['action-1']] }),
+    );
+    const report = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [first, second] },
+      type: 'flow',
+      outDir: path.join(dir, 'out'),
+      commit: false,
+      executionContractPath: contractPath,
+      env: executionEnv(dir, 'dry-run-dependency-1'),
+      fetchImpl: executionFetch({ state: new Map(), writes }),
+    });
+    assert.equal(report.status, 'completed');
+    assert.deepEqual(
+      report.rows.map((row) => [row.status, row.operation]),
+      [
+        ['prepared', 'would_sync'],
+        ['prepared', 'would_sync'],
+      ],
+    );
+    assert.equal(report.rows[1]?.attempt_consumed, false);
+    assert.deepEqual(writes, []);
+
+    await assert.rejects(
+      () =>
+        runDatasetSaveDraft({
+          inputPath: path.join(dir, 'rows.json'),
+          rawInput: { rows: [first, second] },
+          type: 'flow',
+          outDir: path.join(dir, 'out-missing-runtime'),
+          executionContractPath: contractPath,
+        }),
+      /execution requires env and fetch runtime bindings/u,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('execution contract dry-run preflights each action of an existing-draft dependency chain', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dry-run-existing-chain-'));
+  const firstBefore = flow('e1000000-0000-4000-8000-000000000001', 'First before');
+  const firstDesired = flow('e1000000-0000-4000-8000-000000000001', 'First after');
+  const secondBefore = flow('e1000000-0000-4000-8000-000000000002', 'Second before');
+  const secondDesired = flow('e1000000-0000-4000-8000-000000000002', 'Second after');
+  const firstId = identity(firstBefore).id;
+  const secondId = identity(secondBefore).id;
+  const state = new Map<string, JsonObject>([
+    [firstId, firstBefore],
+    [secondId, secondBefore],
+  ]);
+  const writes: string[] = [];
+  try {
+    const contractValue = contract({
+      desired: [firstDesired, secondDesired],
+      before: [firstBefore, secondBefore],
+      dependencies: [[], ['action-1']],
+    });
+    const contractPath = writeContract(dir, contractValue);
+    const env = executionEnv(dir, 'dry-run-existing-chain-1');
+    const report = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [firstDesired, secondDesired] },
+      type: 'flow',
+      outDir: path.join(dir, 'out'),
+      commit: false,
+      executionContractPath: contractPath,
+      env,
+      fetchImpl: executionFetch({ state, writes }),
+    });
+    assert.equal(report.status, 'completed', JSON.stringify(report.rows));
+    assert.deepEqual(
+      report.rows.map((row) => [row.status, row.operation, row.attempt_consumed]),
+      [
+        ['prepared', 'would_sync', false],
+        ['prepared', 'would_sync', false],
+      ],
+    );
+    assert.deepEqual(
+      report.rows.map((row) => row.visible_row?.id),
+      [firstId, secondId],
+    );
+    assert.deepEqual(writes, []);
+    assert.equal(
+      existsSync(
+        __testInternals.executionLedgerRoot(
+          env,
+          __testInternals.parseExecutionContract(contractValue),
+        ),
+      ),
+      false,
+      'a dry-run preflight never creates an attempt ledger',
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('execution contract dry-run blocks descendants of a drifted root action', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dry-run-root-drift-'));
+  const firstBefore = flow('e2000000-0000-4000-8000-000000000001', 'First before');
+  const firstDesired = flow('e2000000-0000-4000-8000-000000000001', 'First after');
+  const firstDrifted = flow('e2000000-0000-4000-8000-000000000001', 'Someone else wrote');
+  const secondBefore = flow('e2000000-0000-4000-8000-000000000002', 'Second before');
+  const secondDesired = flow('e2000000-0000-4000-8000-000000000002', 'Second after');
+  const state = new Map<string, JsonObject>([
+    [identity(firstBefore).id, firstDrifted],
+    [identity(secondBefore).id, secondBefore],
+  ]);
+  const writes: string[] = [];
+  try {
+    const contractPath = writeContract(
+      dir,
+      contract({
+        desired: [firstDesired, secondDesired],
+        before: [firstBefore, secondBefore],
+        dependencies: [[], ['action-1']],
+      }),
+    );
+    const report = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [firstDesired, secondDesired] },
+      type: 'flow',
+      outDir: path.join(dir, 'out'),
+      commit: false,
+      executionContractPath: contractPath,
+      env: executionEnv(dir, 'dry-run-root-drift-1'),
+      fetchImpl: executionFetch({ state, writes }),
+    });
+    assert.equal(report.status, 'completed_with_failures');
+    assert.deepEqual(
+      report.rows.map((row) => [row.status, row.operation]),
+      [
+        ['failed', 'save_draft'],
+        ['blocked', 'blocked_dependency'],
+      ],
+    );
+    assert.match(report.rows[0]?.error?.message ?? '', /drifted/u);
+    assert.match(report.rows[1]?.error?.message ?? '', /prepared in this preflight/u);
+    assert.equal(report.rows[1]?.attempt_consumed, false);
+    assert.deepEqual(writes, []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+function sourcePayload(id: string): JsonObject {
+  return {
+    sourceDataSet: {
+      '@xmlns': 'http://lca.jrc.it/ILCD/Source',
+      '@xmlns:common': 'http://lca.jrc.it/ILCD/Common',
+      '@xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+      '@version': '1.1',
+      '@locations': '../ILCDLocations.xml',
+      '@xsi:schemaLocation': 'http://lca.jrc.it/ILCD/Source ../../schemas/ILCD_SourceDataSet.xsd',
+      sourceInformation: {
+        dataSetInformation: {
+          'common:UUID': id,
+          'common:shortName': localized('Referenced source'),
+          classificationInformation: {
+            'common:classification': {
+              'common:class': { '@level': '0', '@classId': '1', '#text': 'Data set formats' },
+            },
+          },
+        },
+      },
+      administrativeInformation: {
+        dataEntryBy: {
+          'common:timeStamp': '2026-07-23T00:00:00.000Z',
+          'common:referenceToDataSetFormat': reference(
+            'source data set',
+            '33333333-3333-3333-3333-333333333333',
+            '00.00.001',
+          ),
+        },
+        publicationAndOwnership: {
+          'common:dataSetVersion': '00.00.001',
+          'common:referenceToOwnershipOfDataSet': reference(
+            'contact data set',
+            '44444444-4444-4444-4444-444444444444',
+            '00.00.001',
+          ),
+        },
+      },
+    },
+  };
+}
+
+function sourceAction(
+  actionId: string,
+  payload: JsonObject,
+  dependencies: string[] = [],
+): JsonObject {
+  return {
+    action_id: actionId,
+    desired_sha256: sha256Json(payload),
+    expected_operation: 'insert',
+    table: 'sources',
+    id: identityOfSource(payload),
+    version: '00.00.001',
+    before_sha256: null,
+    dependency_action_ids: dependencies,
+  };
+}
+
+function identityOfSource(payload: JsonObject): string {
+  const root = payload.sourceDataSet as JsonObject;
+  const information = root.sourceInformation as JsonObject;
+  const dataSetInformation = information.dataSetInformation as JsonObject;
+  return dataSetInformation['common:UUID'] as string;
+}
+
+test('execution contract dry-run blocks a reference an earlier insert action would create', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dry-run-pending-reference-'));
+  const insertedSource = sourcePayload('22222222-2222-2222-2222-222222222222');
+  const dependentBefore = flow('e3000000-0000-4000-8000-000000000001', 'Dependent before');
+  const dependentDesired = flow('e3000000-0000-4000-8000-000000000001', 'Dependent after');
+  const state = new Map<string, JsonObject>([[identity(dependentBefore).id, dependentBefore]]);
+  const writes: string[] = [];
+  try {
+    const formatSource = sourcePayload('33333333-3333-3333-3333-333333333333');
+    const contractPath = writeContract(dir, {
+      schema_version: 'dataset-save-draft-execution-contract.v1',
+      execution_id: 'pending-reference-1',
+      project_ref: 'example',
+      target_mode: 'owner_draft',
+      owner: { user_id: OWNER_USER_ID, email: 'user@example.com', state_code: 0 },
+      actions: [
+        sourceAction('action-1', insertedSource),
+        sourceAction('action-2', formatSource),
+        {
+          action_id: 'action-3',
+          desired_sha256: sha256Json(dependentDesired),
+          expected_operation: 'save_draft',
+          table: 'flows',
+          ...identity(dependentDesired),
+          before_sha256: sha256Json(dependentBefore),
+          dependency_action_ids: ['action-1', 'action-2'],
+        },
+      ],
+    });
+    const report = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [insertedSource, formatSource, dependentDesired] },
+      type: 'auto',
+      outDir: path.join(dir, 'out'),
+      commit: false,
+      executionContractPath: contractPath,
+      env: executionEnv(dir, 'dry-run-pending-reference-1'),
+      fetchImpl: executionFetch({ state, writes, sourcesRequireState: true }),
+    });
+    assert.equal(report.status, 'completed_with_failures', JSON.stringify(report.rows));
+    assert.deepEqual(
+      report.rows.map((row) => [row.status, row.operation]),
+      [
+        ['prepared', 'would_sync'],
+        ['prepared', 'would_sync'],
+        ['blocked', 'blocked_dependency'],
+      ],
+      JSON.stringify(report.rows.map((row) => row.validation)),
+    );
+    assert.match(
+      report.rows[2]?.error?.message ?? '',
+      /created by an earlier action of this contract/u,
+    );
+    assert.equal(report.rows[2]?.attempt_consumed, false);
+    assert.deepEqual(writes, []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('execution contract dry-run still fails an unresolved reference no earlier action creates', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dry-run-unresolved-reference-'));
+  const unrelatedSource = sourcePayload('99999999-9999-4999-8999-999999999999');
+  const dependentBefore = flow('e4000000-0000-4000-8000-000000000001', 'Dependent before');
+  const dependentDesired = flow('e4000000-0000-4000-8000-000000000001', 'Dependent after');
+  const state = new Map<string, JsonObject>([[identity(dependentBefore).id, dependentBefore]]);
+  const writes: string[] = [];
+  try {
+    const contractPath = writeContract(dir, {
+      schema_version: 'dataset-save-draft-execution-contract.v1',
+      execution_id: 'unresolved-reference-1',
+      project_ref: 'example',
+      target_mode: 'owner_draft',
+      owner: { user_id: OWNER_USER_ID, email: 'user@example.com', state_code: 0 },
+      actions: [
+        {
+          ...sourceAction('action-1', unrelatedSource),
+          id: '99999999-9999-4999-8999-999999999999',
+        },
+        {
+          action_id: 'action-2',
+          desired_sha256: sha256Json(dependentDesired),
+          expected_operation: 'save_draft',
+          table: 'flows',
+          ...identity(dependentDesired),
+          before_sha256: sha256Json(dependentBefore),
+          dependency_action_ids: ['action-1'],
+        },
+      ],
+    });
+    const report = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [unrelatedSource, dependentDesired] },
+      type: 'auto',
+      outDir: path.join(dir, 'out'),
+      commit: false,
+      executionContractPath: contractPath,
+      env: executionEnv(dir, 'dry-run-unresolved-reference-1'),
+      fetchImpl: executionFetch({ state, writes, sourcesRequireState: true }),
+    });
+    assert.equal(report.status, 'completed_with_failures');
+    assert.equal(report.rows[0]?.status, 'prepared');
+    assert.equal(report.rows[1]?.status, 'failed');
+    assert.match(report.rows[1]?.error?.message ?? '', /unresolved remote references/u);
+    assert.deepEqual(writes, []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('execution contract dry-run retains prior attempts and outcomes without re-authorizing them', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dry-run-retained-'));
+  const before = flow('e5000000-0000-4000-8000-000000000001', 'Before content');
+  const desired = flow('e5000000-0000-4000-8000-000000000001', 'After content');
+  const state = new Map<string, JsonObject>([[identity(before).id, before]]);
+  const writes: string[] = [];
+  try {
+    for (const retained of ['outcome', 'attempt'] as const) {
+      const contractValue = contract({ desired: [desired], before: [before] });
+      const parsed = __testInternals.parseExecutionContract(contractValue);
+      const action = parsed.actions[0] as unknown as JsonObject;
+      const env = executionEnv(dir, `dry-run-retained-${retained}`);
+      const ledgerRoot = __testInternals.executionLedgerRoot(env, parsed);
+      const ledgerPath = __testInternals.executionLedgerPath(ledgerRoot, parsed.actions[0]!);
+      const contractSha256 = sha256Json(parsed);
+      const attempt = ledgerEvent({
+        contractSha256,
+        action,
+        sequence: 1,
+        eventType: 'attempt_emitted',
+        outcome: null,
+      });
+      const events =
+        retained === 'outcome'
+          ? [
+              attempt,
+              ledgerEvent({
+                contractSha256,
+                action,
+                sequence: 2,
+                eventType: 'outcome',
+                outcome: 'unknown',
+                previousEventSha256: attempt.event_sha256 as string,
+              }),
+            ]
+          : [attempt];
+      writeLedgerEvents(ledgerPath, events);
+      const beforeBytes = readFileSync(ledgerPath, 'utf8');
+      const report = await runDatasetSaveDraft({
+        inputPath: path.join(dir, 'rows.json'),
+        rawInput: { rows: [desired] },
+        type: 'flow',
+        outDir: path.join(dir, `out-${retained}`),
+        commit: false,
+        executionContractPath: writeContract(dir, contractValue),
+        env,
+        fetchImpl: executionFetch({ state, writes }),
+      });
+      assert.equal(report.status, 'completed_with_failures', retained);
+      assert.equal(report.rows[0]?.status, 'blocked', retained);
+      assert.equal(
+        report.rows[0]?.operation,
+        retained === 'outcome' ? 'retained_outcome' : 'retained_attempt',
+        retained,
+      );
+      assert.equal(report.rows[0]?.attempt_consumed, true, retained);
+      assert.equal(report.rows[0]?.readback, 'not_performed', retained);
+      assert.match(
+        report.rows[0]?.error?.message ?? '',
+        retained === 'outcome' ? /terminal attempt evidence/iu : /unresolved attempt/iu,
+        retained,
+      );
+      assert.equal(
+        readFileSync(ledgerPath, 'utf8'),
+        beforeBytes,
+        'a dry-run never rewrites ledger bytes',
+      );
+      assert.deepEqual(writes, []);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('execution contract never masks a consumed attempt behind a validation failure', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-retained-validation-'));
+  const before = flow('f1000000-0000-4000-8000-000000000001', 'Stored draft');
+  const invalid = flow('f1000000-0000-4000-8000-000000000001', 'Candidate');
+  delete (invalid.flowDataSet as JsonObject).modellingAndValidation;
+  const state = new Map<string, JsonObject>();
+  const writes: string[] = [];
+  const calls: Array<{ path: string; body: JsonObject }> = [];
+  try {
+    const contractValue = contract({ desired: [invalid], before: [before] });
+    const parsed = __testInternals.parseExecutionContract(contractValue);
+    const env = executionEnv(dir, 'retained-validation-1');
+    const ledgerRoot = __testInternals.executionLedgerRoot(env, parsed);
+    const ledgerPath = __testInternals.executionLedgerPath(ledgerRoot, parsed.actions[0]!);
+    const attempt = ledgerEvent({
+      contractSha256: sha256Json(parsed),
+      action: parsed.actions[0] as unknown as JsonObject,
+      sequence: 1,
+      eventType: 'attempt_emitted',
+      outcome: null,
+    });
+    writeLedgerEvents(ledgerPath, [attempt]);
+    const attemptBytes = readFileSync(ledgerPath, 'utf8');
+
+    const commitReport = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [invalid] },
+      type: 'flow',
+      outDir: path.join(dir, 'commit-out'),
+      commit: true,
+      executionContractPath: writeContract(dir, contractValue),
+      env,
+      fetchImpl: executionFetch({ state, writes, calls }),
+    });
+    assert.equal(commitReport.rows[0]?.status, 'unknown');
+    assert.equal(commitReport.rows[0]?.attempt_consumed, true);
+    assert.equal(commitReport.rows[0]?.validation?.ok, false);
+    assert.equal(commitReport.counts.attempts_consumed, 1);
+    assert.deepEqual(
+      calls.filter((call) => call.path.includes('/functions/v1/app_dataset_')),
+      [],
+      'a retained attempt is never re-dispatched',
+    );
+    assert.deepEqual(writes, []);
+    const afterCommit = readFileSync(ledgerPath, 'utf8');
+    assert.ok(afterCommit.startsWith(attemptBytes), 'the original attempt line is preserved');
+    assert.equal(afterCommit.trimEnd().split('\n').length, 2, 'recovery appends one outcome');
+
+    const outcomeEvent = ledgerEvent({
+      contractSha256: sha256Json(parsed),
+      action: parsed.actions[0] as unknown as JsonObject,
+      sequence: 2,
+      eventType: 'outcome',
+      outcome: 'unknown',
+      previousEventSha256: attempt.event_sha256 as string,
+    });
+    writeLedgerEvents(ledgerPath, [attempt, outcomeEvent]);
+    const retainedBytes = readFileSync(ledgerPath, 'utf8');
+
+    const dryReport = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [invalid] },
+      type: 'flow',
+      outDir: path.join(dir, 'dry-run-out'),
+      commit: false,
+      executionContractPath: writeContract(dir, contractValue),
+      env,
+      fetchImpl: executionFetch({ state, writes, calls }),
+    });
+    assert.equal(dryReport.rows[0]?.status, 'blocked');
+    assert.equal(dryReport.rows[0]?.operation, 'retained_outcome');
+    assert.equal(dryReport.rows[0]?.attempt_consumed, true);
+    assert.equal(dryReport.rows[0]?.validation?.ok, false);
+    assert.equal(readFileSync(ledgerPath, 'utf8'), retainedBytes);
+    assert.deepEqual(writes, []);
+
+    const freshDir = path.join(dir, 'fresh-state');
+    mkdirSync(freshDir, { recursive: true });
+    const freshReport = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'rows.json'),
+      rawInput: { rows: [invalid] },
+      type: 'flow',
+      outDir: path.join(dir, 'fresh-out'),
+      commit: true,
+      executionContractPath: writeContract(dir, contractValue),
+      env: executionEnv(freshDir, 'retained-validation-2'),
+      fetchImpl: executionFetch({ state, writes, calls }),
+    });
+    assert.equal(freshReport.rows[0]?.status, 'failed');
+    assert.equal(freshReport.rows[0]?.operation, 'skipped_invalid');
+    assert.equal(freshReport.rows[0]?.attempt_consumed, false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

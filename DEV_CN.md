@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 340c15df11692688467e1e3e1cdc9688b8240268
-lastReviewedNote: 'Reviewed for CLI #350: Process review 可为单对象或非空有序数组；SDK 0.3.0 过渡桥接保留真实问题并移除旧对象类型伪阳性。'
+lastReviewedCommit: 7f7b313cebc30c96154860df30f5d666963bc0b7
+lastReviewedNote: 'Reviewed for CLI #350 after current main integration: Process review 可为单对象或非空有序数组；SDK 0.3.0 过渡桥接保留真实问题并移除旧对象类型伪阳性，不改变既有开发、门禁、发布或维护步骤。'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -885,3 +885,5 @@ tiangong-lca-cli/
 ## 详细说明
 
 - [docs/IMPLEMENTATION_GUIDE_CN.md](./docs/IMPLEMENTATION_GUIDE_CN.md)
+
+Review note, 2026-09-21: independently reviewed CLI #283 annual-volume commit d45ffb6. Existing values and language order are preserved; unknown annual evidence remains [] and an authoring gap, never a reference-flow/default-unit quantity. The separate schema, content and multilingual layers retain their own results. This document requires no additional annual-volume or release-policy change.

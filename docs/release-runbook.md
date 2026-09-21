@@ -26,14 +26,16 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 340c15df11692688467e1e3e1cdc9688b8240268
-lastReviewedNote: 'Reviewed for CLI #350: spec 0.2.2 review-array support is a source change at CLI 0.1.18; SDK publication and any CLI version release remain separate.'
+lastReviewedCommit: 7f7b313cebc30c96154860df30f5d666963bc0b7
+lastReviewedNote: 'Reviewed for CLI #350 after 0.1.19 main integration: spec 0.2.2 review-array support is a source change with no further version claim; SDK publication and any later CLI release remain separate under the existing four-platform, Trusted Publishing, provenance and root-handoff process.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
   - ./release-setup.md
   - ./agents/repo-validation.md
 ---
+
+Review note, 2026-09-21: Issue #351 is the dedicated 0.1.19 release preparation for merged source PR #349 (main merge `11a074b072022d1c566f25edcc9ee7fa1c629e8c`). It changes only `package.json` identity and the four live CLI-version fixtures (three in `test/cli.test.ts`, one in `test/dataset-maintenance-flow-identity-coverage-cli-remote.test.ts`), and keeps the sole lock, dependencies, runtime files, strict exports, workflows and release automation byte-unchanged. The source feature is merged but publication has not happened: npm latest is 0.1.18, no `cli-v0.1.19` tag exists locally or on `origin`, and `scripts/ci/release-version.cjs assert-unpublished --version 0.1.19` passes before any mutation. The four fixtures were genuinely RED against the bumped package identity and GREEN after the fixture update, and local npm/tag absence was re-proved with the existing helper rather than by a new check. Before merge this preparation requires the unchanged package/Docpact/pre-push gates with exact 100% coverage and the pack dry-run; after merge it requires `cli-v0.1.19`, native pnpm Trusted Publishing with cryptographic provenance, registry integrity and `gitHead` binding, fresh credential-free consumers, and exact release-merge workspace integration. Local publication and manual tag creation remain forbidden.
 
 Review note, 2026-09-17: W6b converges the static schema assets but does not authorize a release or package publication. Any new CLI version must still use the existing release gates, provenance and version/content review.
 
@@ -325,3 +327,5 @@ Use only that task's successful preflight continuation to complete delivery. Do 
 ## Local Docpact Push Gate
 
 The repository now includes a local pre-push gate that runs `scripts/docpact-gate.sh` and then `pnpm prepush:gate`. It is the ordinary local validation path for source pushes. Only verified pure branch deletions skip both local gates, as defined in the validation guide; tag and release qualification are unchanged. For a detected CLI version change, the merge-triggered tag workflow additionally calls the reusable four-platform pnpm matrix and makes tag creation depend on its success; the publish workflow retains its independent tag-bound release gate.
+
+Review note, 2026-09-21: independently reviewed CLI #283 annual-volume commit d45ffb6. Existing values and language order are preserved; unknown annual evidence remains [] and an authoring gap, never a reference-flow/default-unit quantity. The separate schema, content and multilingual layers retain their own results. This document requires no additional annual-volume or release-policy change.

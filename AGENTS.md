@@ -38,8 +38,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 340c15df11692688467e1e3e1cdc9688b8240268
-lastReviewedNote: 'Reviewed for CLI #350: bundled spec 0.2.2 accepts ordered Process review arrays through an indexed SDK compatibility bridge; package identity and release mechanics remain unchanged.'
+lastReviewedCommit: 7f7b313cebc30c96154860df30f5d666963bc0b7
+lastReviewedNote: 'Reviewed for CLI #350 after 0.1.19 main integration: bundled spec 0.2.2 accepts ordered Process review arrays through an indexed SDK compatibility bridge; package identity, CLI-owned policy, authorization and release mechanics remain unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -50,6 +50,8 @@ related:
   - docs/release-runbook.md
   - docs/release-setup.md
 ---
+
+Review note, 2026-09-21: Issue #351 is the version-only 0.1.19 release preparation for merged source PR #349 on `codex/issue-351-cli-0.1.19` (base main merge `11a074b0`). Only package identity and the four live CLI-version fixtures change; dependencies, the sole lock, runtime, public exports, authorization, workflows and release automation are unchanged. The source feature is merged while publication has not occurred (npm latest 0.1.18, no `cli-v0.1.19` tag), and local publication or manual tag creation remains forbidden.
 
 Review note, 2026-09-17: CLI W6b applies the workspace decision that the original tidas-tools schema, carried by `tidas-spec`, is authoritative. The bundled schemas now match the exact candidate; the sync gate binds commit, source commit, version and manifest hash without changing CLI command or release behavior.
 
@@ -154,6 +156,12 @@ Review note, 2026-07-23: Issue #194 extends `dataset save-draft` with an explici
 Review note, 2026-07-23: Issue #196 is the dedicated 0.0.30 release for merged Issue #194 / PR #195. Windows release-gate evidence exposed that `fsync` on a reopened read-only execution-ledger descriptor returns `EPERM`; the release now fsyncs create/append operations on their write-capable descriptors before close. Attempt-before-dispatch ordering, no-replay semantics, dependencies, authorization, tag automation, npm Trusted Publishing, provenance verification, and exact released-commit workspace integration remain unchanged.
 
 Review note, 2026-07-23: Issue #198 releases 0.0.31 and makes dataset save-draft validation side-effect free. SDK schema/entity validation receives a deep clone, while execution-contract hashing, dispatch, and readback remain bound to the original exact input payload. Owner/state/project fencing, attempt-before-dispatch ordering, no-replay semantics, command ownership, and publication boundaries remain unchanged.
+
+Review note, 2026-09-21: CLI #283 (workspace #1432 campaign) hardens the narrow existing-Process metadata repair: the stored draft is re-validated with the same real validator on a clone (a before with any other error, including a blank or placeholder reference description, is refused), and the verified admission is hash-bound into the first `attempt_emitted` ledger event so recovery returns the original evidence instead of re-deriving it, with tampered or drifting admissions failing closed and legacy attempts staying compatible.
+
+Review note, 2026-09-21: CLI #283 (workspace #1432 campaign) adds the narrow existing-Process metadata repair admission (`src/lib/dataset-draft-repair-admission.ts`): only a bounded contract `save_draft` whose sole authoring gap is the unknown annual volume, with both sides' `annualSupplyOrProductionVolume` unchanged at `[]` and a delta limited to the two reviewed reference short-description texts, may write with `ruleVerification=false` and a content-bound `draft_repair_admission`; the row keeps `validation.ok=false`, and inserts, contract-less commands or any other blocker stay strictly refused. The same revision makes a consumed attempt win over the validation classification so a successor never reads a retained attempt as a zero-dispatch report. No new flag, dependency, version, lockfile, authorization or publication boundary.
+
+Review note, 2026-09-21: CLI #283 (workspace #1432 campaign) adds the guarded before-image transport and the contract dry-run for `dataset save-draft --execution-contract`. `saveDraftDatasetRecord` gains an optional `expectedJsonOrdered` object; legacy callers omit it so the legacy request body is unchanged, and a present before image is routed by the platform to the guarded database facade (Database #670 / Edge #425). Every `save_draft` action sends the exact before image it read fresh in that run; a guard rejection is terminal with no unguarded fallback and no retry, resolved by exact readback only. An execution contract without `--commit` now runs a read-only preflight that requires the env/fetch runtime bindings, dispatches no command, consumes no attempt and writes no ledger, and reports its rows as prepared/failed/blocked so closeout can never treat it as executed. No new command flag, dependency, version, lockfile, or publication boundary is added.
 
 Review note, 2026-07-24: Issue #200 releases 0.0.32 and makes large ordered owner-draft contracts finish within the authenticated session window. `--max-parallel` remains opt-in and capped at 8: every action through the highest referenced dependency stays serial, and only the remaining unique-target suffix can overlap. The command resolves and revalidates the exact owner token immediately before each DML dispatch. Attempt-before-dispatch durability, exact readback, dependency blocking, UNKNOWN/success no-replay, and all public/foreign/publication/delete/state/schema/service-role prohibitions remain unchanged.
 
@@ -291,3 +299,5 @@ Install the versioned local hook once per checkout:
 ```
 
 The `pre-push` hook runs `scripts/docpact-gate.sh`, which delegates CLI lookup to `scripts/docpact` and performs strict config validation plus enforced lint before the push leaves the machine. It then runs `pnpm prepush:gate` as the local test gate. The sole exception is a complete, verified branch-deletion-only stdin stream: it publishes no source. Tags, source/mixed updates, empty/TTY/malformed input and classification failures retain both gates. The wrapper checks `DOCPACT_BIN`, Cargo install locations, Homebrew install locations, and then `PATH`, so local agent shells should not fail only because bare `docpact` is unavailable. The default comparison base is `origin/main`. Override it for unusual stacks with `DOCPACT_BASE_REF=<ref>` or `scripts/docpact-gate.sh --base <ref>`. The gate writes its detailed report to a temporary file so normal pushes do not create `.docpact/runs/` artifacts. The GitHub `quality-gate` supports manual exact-head reproduction and reusable invocation; a detected CLI release must pass its four-platform invocation before the tag job can run.
+
+Review note, 2026-09-21: independently reviewed CLI #283 annual-volume commit d45ffb6. Existing values and language order are preserved; unknown annual evidence remains [] and an authoring gap, never a reference-flow/default-unit quantity. The separate schema, content and multilingual layers retain their own results. This document requires no additional annual-volume or release-policy change.

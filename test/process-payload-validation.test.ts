@@ -1,11 +1,27 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
+import { sha256Json } from '../src/lib/dataset-maintenance-contract.js';
 import {
   __testInternals,
   summarizeProcessPayloadValidation,
   validateProcessPayload,
 } from '../src/lib/process-payload-validation.js';
+
+// Every report must carry the exact payload hash and all four layer statuses, so the layer
+// contract is asserted by name and value rather than by the shape of the whole report.
+function layerStatuses(result: {
+  validation_layers?: Record<string, { status: string } | undefined>;
+}): Record<string, string | undefined> {
+  const layers = result.validation_layers ?? {};
+  assert.deepEqual(Object.keys(layers).sort(), [
+    'authoring_evidence',
+    'content',
+    'multilingual',
+    'schema',
+  ]);
+  return Object.fromEntries(Object.entries(layers).map(([name, layer]) => [name, layer?.status]));
+}
 
 function validProcessPayload(overrides: Record<string, unknown> = {}) {
   return {
@@ -53,17 +69,23 @@ test('process payload validation summarizes ok and failure results with normaliz
         data: {},
       }) as unknown as ReturnType<typeof originalSafeParse>) as typeof originalSafeParse;
 
-    const okResult = validateProcessPayload(validProcessPayload());
-    assert.deepEqual(okResult, {
-      ok: true,
-      validator: '@tiangong-lca/tidas-sdk/ProcessSchema+tiangong/process-authoring-required-fields',
-      issue_count: 0,
-      issues: [],
-    });
+    const okPayload = validProcessPayload();
+    const okResult = validateProcessPayload(okPayload);
+    assert.equal(okResult.ok, true);
     assert.equal(
-      summarizeProcessPayloadValidation(okResult),
-      'local ProcessSchema validation passed',
+      okResult.validator,
+      '@tiangong-lca/tidas-sdk/ProcessSchema+tiangong/process-authoring-required-fields',
     );
+    assert.equal(okResult.issue_count, 0);
+    assert.deepEqual(okResult.issues, []);
+    assert.equal(okResult.payload_sha256, sha256Json(okPayload));
+    assert.deepEqual(layerStatuses(okResult), {
+      schema: 'passed',
+      authoring_evidence: 'passed',
+      content: 'passed',
+      multilingual: 'passed',
+    });
+    assert.equal(summarizeProcessPayloadValidation(okResult), 'local process validation passed');
 
     tidasSdk.ProcessSchema.safeParse = (() =>
       ({
@@ -82,7 +104,8 @@ test('process payload validation summarizes ok and failure results with normaliz
         },
       }) as unknown as ReturnType<typeof originalSafeParse>) as typeof originalSafeParse;
 
-    const invalidResult = validateProcessPayload(validProcessPayload(), undefined, null);
+    const invalidPayload = validProcessPayload();
+    const invalidResult = validateProcessPayload(invalidPayload, undefined, null);
     assert.equal(invalidResult.ok, false);
     assert.equal(invalidResult.issue_count, 2);
     assert.deepEqual(invalidResult.issues, [
@@ -97,9 +120,16 @@ test('process payload validation summarizes ok and failure results with normaliz
         code: 'custom',
       },
     ]);
-    assert.match(
+    assert.equal(invalidResult.payload_sha256, sha256Json(invalidPayload));
+    assert.deepEqual(layerStatuses(invalidResult), {
+      schema: 'failed',
+      authoring_evidence: 'passed',
+      content: 'passed',
+      multilingual: 'passed',
+    });
+    assert.equal(
       summarizeProcessPayloadValidation(invalidResult),
-      /local ProcessSchema validation failed with 2 issue\(s\) \(<root>: Top-level failure; processDataSet\.exchanges\.0: Validation failed\)/u,
+      'local process validation failed with 2 issue(s) (<root>: Top-level failure; processDataSet.exchanges.0: Validation failed) [schema: failed; authoring_evidence: passed; content: passed; multilingual: passed]',
     );
 
     tidasSdk.ProcessSchema.safeParse = (() =>
@@ -107,12 +137,20 @@ test('process payload validation summarizes ok and failure results with normaliz
         success: false,
         error: undefined,
       }) as unknown as ReturnType<typeof originalSafeParse>) as typeof originalSafeParse;
-    const emptyIssueResult = validateProcessPayload(validProcessPayload(), undefined, null);
+    const emptyIssueInput = validProcessPayload();
+    const emptyIssueResult = validateProcessPayload(emptyIssueInput, undefined, null);
     assert.equal(emptyIssueResult.ok, false);
     assert.equal(emptyIssueResult.issue_count, 0);
+    assert.equal(emptyIssueResult.payload_sha256, sha256Json(emptyIssueInput));
+    assert.deepEqual(layerStatuses(emptyIssueResult), {
+      schema: 'failed',
+      authoring_evidence: 'passed',
+      content: 'passed',
+      multilingual: 'passed',
+    });
     assert.equal(
       summarizeProcessPayloadValidation(emptyIssueResult),
-      'local ProcessSchema validation failed with 0 issue(s)',
+      'local process validation failed with 0 issue(s) [schema: failed; authoring_evidence: passed; content: passed; multilingual: passed]',
     );
 
     tidasSdk.ProcessSchema.safeParse = undefined as unknown as typeof originalSafeParse;
