@@ -32,8 +32,8 @@ checkPaths:
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: a1295ac
-lastReviewedNote: 'Reviewed for CLI #354 at head a1295ac: the save-draft guide documents the bounded existing-draft support metadata repair and its unchanged reference-only rejection for every other Unit Group / Flow Property write, without changing commands, exports, dependencies or the version identity.'
+lastReviewedCommit: 'd603d53ac6d54dd0ea6ce65f8c1ebf4f6e345311'
+lastReviewedNote: 'Reviewed the combined CLI #354 support-metadata repair and concurrent CLI #350 Process review-array adoption at main d603d53. Reviewed for CLI #354 at head a1295ac: the save-draft guide documents the bounded existing-draft support metadata repair and its unchanged reference-only rejection for every other Unit Group / Flow Property write, without changing commands, exports, dependencies or the version identity. Reviewed for CLI #350 after 0.1.19 main integration: Process review accepts one object or a non-empty ordered array through the exact spec 0.2.2 compatibility path; this source change adds no further version or publication claim.'
 ---
 
 CLI 0.1.10 is the designated C1 release for `tiangong-lca runtime describe --json` and the explicit `@tiangong-lca/cli/runtime` API for package, asset and Node content inspection. Runtime inspection loads no project `.env`, performs no authentication and downloads nothing. See [the runtime distribution contract](docs/agents/runtime-distribution-contract.md) for exact fields and trust boundaries; verify public availability and provenance before treating the candidate version as released.
@@ -51,6 +51,8 @@ Review note, 2026-09-21: Issue #351 prepares the 0.1.19 version-only release for
 Review note, 2026-08-25: Issue #224 migrates repository development and release automation to the sole root `pnpm-workspace.yaml` / `pnpm-lock.yaml`, TypeScript 7.0.2, and type-aware Oxlint on Node 24. The feature change deliberately keeps version 0.0.33. A separate release-only PR should prepare 0.1.0 after the toolchain change merges and its full package/coverage/release gates pass.
 
 Review note, 2026-09-18: CLI #338 advances the bundled Process and LCIA Method schemas to the reviewed `tidas-spec` 0.2.0 candidate. Their complete-review-report reference is optional, while any supplied reference remains strictly schema-validated; Lifecycle Model remains unchanged. The candidate SDK compatibility bridge affects validation only, changes no command, package version, public export, or release path, and is covered by the existing pre-push and release gates.
+
+Review note, 2026-09-21: CLI #350 advances the bundled schemas to exact `tidas-spec` 0.2.2. Process `validation.review` accepts one object or a non-empty ordered array; until the corresponding SDK source is published, CLI validation checks every array member through SDK 0.3.0 and preserves indexed failures. LCIA Method remains singleton-only, and CLI package 0.1.18 is unchanged.
 
 Review note, 2026-08-25: Issue #226 publishes that 0.1.0 compatibility boundary after merged PR #225. Version metadata and public release evidence advance to 0.1.0; the runtime JavaScript/assets surface, command behavior, Node 24 runtime, pnpm/TypeScript 7 development baseline, native pnpm Trusted Publishing/provenance, and exact released-commit workspace handoff remain unchanged from the reviewed feature delivery.
 

@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: a1295ac
-lastReviewedNote: 'Reviewed for CLI #354 at head a1295ac: 复用既有 guarded 命令、capability grant 与 Trusted Publishing 路径，不新增 secret、环境、runner、workflow、tag 规则或其它发布通道，且不属于 0.1.19 发布。'
+lastReviewedCommit: 'd603d53ac6d54dd0ea6ce65f8c1ebf4f6e345311'
+lastReviewedNote: 'Reviewed the combined CLI #354 support-metadata repair and concurrent CLI #350 Process review-array adoption at main d603d53. Reviewed for CLI #354 at head a1295ac: 复用既有 guarded 命令、capability grant 与 Trusted Publishing 路径，不新增 secret、环境、runner、workflow、tag 规则或其它发布通道，且不属于 0.1.19 发布。 Reviewed for CLI #350 after 0.1.19 main integration: Process review-array compatibility adds no secret, Trusted Publisher setting, workflow, tag rule or alternate publication path.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -41,6 +41,8 @@ Review note, 2026-09-21: Issue #351 is that 0.1.19 version-only preparation for 
 Review note, 2026-09-17: W6b adds no Trusted Publisher, npm, token, tag, workflow or package-version change. The canonical asset sync is a source/content change and future publication remains subject to the existing release contract.
 
 Review note, 2026-09-18: CLI #338 adds no release setup surface. The Process/LCIA Method optional review-report schema sync and temporary SDK validation bridge change neither Trusted Publisher settings, credentials, tags, workflows, package version nor publication mechanics.
+
+Review note, 2026-09-21: CLI #350 extends that temporary bridge for non-empty ordered Process review arrays. It adds no credential, Trusted Publisher setting, workflow, tag, package-version, or local publication path.
 
 Review note, 2026-09-20: CLI #344 upgrades the exact SDK dependency to released 0.3.0 without changing Trusted Publisher settings, credentials, tags, workflow names, package version, or publication mechanics. A later CLI release follows the existing separate version-bump route.
 

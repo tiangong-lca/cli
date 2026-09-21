@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: a1295ac
-lastReviewedNote: 'Reviewed for CLI #354 at head a1295ac: 维护者说明补充有界既有草稿 support 元数据修复（仅合同 save_draft、双侧四层全通过、仅既有引用 shortDescription 文本变化、复用 guarded 传输与 ledger），命令面、依赖、版本与发布路径不变。'
+lastReviewedCommit: 'd603d53ac6d54dd0ea6ce65f8c1ebf4f6e345311'
+lastReviewedNote: 'Reviewed the combined CLI #354 support-metadata repair and concurrent CLI #350 Process review-array adoption at main d603d53. Reviewed for CLI #354 at head a1295ac: 维护者说明补充有界既有草稿 support 元数据修复（仅合同 save_draft、双侧四层全通过、仅既有引用 shortDescription 文本变化、复用 guarded 传输与 ledger），命令面、依赖、版本与发布路径不变。 Reviewed for CLI #350 after current main integration: Process review 可为单对象或非空有序数组；SDK 0.3.0 过渡桥接保留真实问题并移除旧对象类型伪阳性，不改变既有开发、门禁、发布或维护步骤。'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -41,6 +41,8 @@ Review note, 2026-09-21: CLI #354 在有界准入中新增第二条 policy。执
 Review note, 2026-09-18: CLI #338 将 Process/LCIA Method 的完整评审报告引用改为可选，并在已发布 SDK 尚未携带候选 schema 的短窗口内对缺失引用做一次内存兼容重试；提供的引用仍严格校验，Lifecycle Model 不变。该变更只影响 schema/validation 与测试，不改变命令、依赖、版本、认证或发布路径。
 
 Review note, 2026-09-20: CLI #340 精确锁定 SDK 0.2.2 与已发布 spec 0.2.1 公共规则。`dataset contract` 的 ruleset、manifest 与 AI context 路径保持，内容由 CLI profile 和经校验的公共定义组合；不再读取 SDK 旧混合规则文件。CLI 包版本不变，公开发行仍需独立版本 PR 和完整门禁。
+
+Review note, 2026-09-21: CLI #350 同步 `tidas-spec` 0.2.2，并允许 Process `validation.review` 使用单对象或非空有序数组。SDK 0.3.0 过渡桥接逐项校验、保留索引和其他独立问题；空数组继续失败。CLI 0.1.18、依赖、命令、认证与发布流程均不变。
 
 # 项目配置
 

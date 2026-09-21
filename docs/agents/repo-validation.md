@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: a1295ac
-lastReviewedNote: 'Reviewed for CLI #354 at head a1295ac: 新增 support 元数据修复测试文件（匿名化 fixture、真实 RED、guard/refusal/ledger/no-replay/普通拒绝全覆盖），exact 100% coverage 与完整 pre-push/四平台门禁仍为必需，且该能力不属于 0.1.19 版本发布。'
+lastReviewedCommit: 'd603d53ac6d54dd0ea6ce65f8c1ebf4f6e345311'
+lastReviewedNote: 'Reviewed the combined CLI #354 support-metadata repair and concurrent CLI #350 Process review-array adoption at main d603d53. Reviewed for CLI #354 at head a1295ac: 新增 support 元数据修复测试文件（匿名化 fixture、真实 RED、guard/refusal/ledger/no-replay/普通拒绝全覆盖），exact 100% coverage 与完整 pre-push/四平台门禁仍为必需，且该能力不属于 0.1.19 版本发布。 Reviewed for CLI #350 after 0.1.19 main integration: Process review-array coverage includes singleton, ordered multi-review, empty rejection, indexed later-member failure, placeholder repair, exact spec convergence, and the unchanged package/coverage/pre-push/four-platform gates.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -49,6 +49,8 @@ Review note, 2026-09-21: Issue #351 is the release-only 0.1.19 preparation for m
 Review note, 2026-09-17: W6b adds `test-sync-tidas-spec.py` and the explicit `sync-tidas-spec.py --check` gate. The converged assets pass dataset classification, contract, runtime-descriptor and package tests; full release qualification remains required.
 
 Review note, 2026-09-18: W10S refreshes the sync gate to the reviewed 0.2.0 candidate and adds focused Process/LCIA Method optionality tests. The SDK compatibility path retries only an omitted report reference, malformed/supplied references remain failures, and Lifecycle Model is asserted unchanged. Candidate qualification is not a formal CLI or SDK publication. Review note, 2026-09-20: CLI #340 checks the released SDK 0.2.2/spec 0.2.1 identity, contract output with the old SDK mixed file absent or invalid, context-pack manifest and AI-context parity, explicit local/fallback source rejection, and unchanged review/publish gate outcomes. CLI #344 advances the exact dependency to SDK 0.3.0, whose published package physically omits the two old files; full local gate and Process/Flow context-pack checks must pass again. A merged source PR and separate qualified CLI package release/root integration remain distinct.
+
+Review note, 2026-09-21: CLI #350 synchronizes all 18 schemas to exact spec 0.2.2 candidate `8a9470a7dd4c074ae246bb9967b3bfae3e371e32` and proves zero semantic differences. Focused tests require Process review object and non-empty array success, ordered multi-review preservation, empty-array rejection, malformed second-member index `1`, strict supplied-reference handling, unchanged LCIA singleton behavior, and indexed placeholder cleanup. The full pre-push and Docpact gates remain mandatory; package release and adoption of the generated SDK PR #147 remain separate.
 
 Issue #274 adds runtime descriptor and expectation schemas, file/manifest/asset/Node drift and race tests, immutable observations, explicit four-tuple admission, dotenv-free runtime commands, and clean ESM/CJS/TypeScript packed consumers. Private real-case RED proves public CLI 0.1.9 lacks this surface after actual fresh OAuth identity; candidate GREEN must use an installed package and preserve the frozen input. Package-only hashes do not qualify a full production dependency component. Manager proof additionally requires manifest/parser/path/download/archive/cache/concurrency/lease/exec coverage, a real managed C0 identity case, and byte-bound bootstrap-lock, no-Node POSIX/PowerShell, concurrency/warm/offline and native platform proof. Public-component/C1 qualification remains final release evidence. Existing exact-100% coverage and all four release hosts remain mandatory.
 

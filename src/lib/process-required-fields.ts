@@ -446,15 +446,21 @@ function repairPlaceholderReviewMetadata(root: JsonObject): ProcessRequiredField
     removePlaceholderField(validation, key, `${validationPath}.${key}`, completions);
   }
 
-  if (isRecord(validation.review)) {
-    const reviewPath = `${validationPath}.review`;
+  const reviews = Array.isArray(validation.review)
+    ? validation.review.map((review, index) => ({
+        review,
+        path: `${validationPath}.review.${index}`,
+      }))
+    : [{ review: validation.review, path: `${validationPath}.review` }];
+  for (const { review, path: reviewPath } of reviews) {
+    if (!isRecord(review)) continue;
     for (const key of [
       'reviewDetails',
       'common:reviewDetails',
       'common:referenceToCompleteReviewReport',
       'common:referenceToNameOfReviewerAndInstitution',
     ]) {
-      removePlaceholderField(validation.review, key, `${reviewPath}.${key}`, completions);
+      removePlaceholderField(review, key, `${reviewPath}.${key}`, completions);
     }
   }
 
