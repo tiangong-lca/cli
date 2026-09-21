@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: e623af9
-lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: the new guarded-transport and dry-run proof bullet and review note describe the added coverage expectations; exact 100% coverage and the four-platform gate remain required.'
+lastReviewedCommit: 11a074b072022d1c566f25edcc9ee7fa1c629e8c
+lastReviewedNote: 'Reviewed for CLI #351: release-only 0.1.19 re-runs the unchanged pre-mutation npm/tag absence proof, package, coverage, pre-push, pack and four-platform gates, with the four version fixtures proven RED before the bump.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -43,6 +43,8 @@ related:
   - ../release-runbook.md
   - ../release-setup.md
 ---
+
+Review note, 2026-09-21: Issue #351 is the release-only 0.1.19 preparation for merged source PR #349. The four live CLI-version fixtures were proven RED against the bumped package identity and GREEN after the fixture update; the gate set is unchanged and was re-run on the release head: pre-mutation npm/tag absence via `release-version.cjs`, focused tests, `test:package`, the full pre-push gate with exact 100% coverage, the pack dry-run, Docpact, and — after merge — the four-platform tag workflow with Trusted Publishing/provenance, registry integrity, fresh public consumers and exact workspace integration.
 
 Review note, 2026-09-17: W6b adds `test-sync-tidas-spec.py` and the explicit `sync-tidas-spec.py --check` gate. The converged assets pass dataset classification, contract, runtime-descriptor and package tests; full release qualification remains required.
 

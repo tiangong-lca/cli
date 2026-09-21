@@ -38,8 +38,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: e623af9
-lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: the guarded before-image transport and the execution-contract dry-run stay inside the existing command, library, validation and release ownership; no new dependency, version, lockfile, authorization or publication boundary.'
+lastReviewedCommit: 11a074b072022d1c566f25edcc9ee7fa1c629e8c
+lastReviewedNote: 'Reviewed for CLI #351: the release-only 0.1.19 preparation for merged source PR #349 changes package identity and four live version fixtures only, without changing CLI-owned policy, commands, authorization, or release semantics, and publication has not occurred.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -50,6 +50,8 @@ related:
   - docs/release-runbook.md
   - docs/release-setup.md
 ---
+
+Review note, 2026-09-21: Issue #351 is the version-only 0.1.19 release preparation for merged source PR #349 on `codex/issue-351-cli-0.1.19` (base main merge `11a074b0`). Only package identity and the four live CLI-version fixtures change; dependencies, the sole lock, runtime, public exports, authorization, workflows and release automation are unchanged. The source feature is merged while publication has not occurred (npm latest 0.1.18, no `cli-v0.1.19` tag), and local publication or manual tag creation remains forbidden.
 
 Review note, 2026-09-17: CLI W6b applies the workspace decision that the original tidas-tools schema, carried by `tidas-spec`, is authoritative. The bundled schemas now match the exact candidate; the sync gate binds commit, source commit, version and manifest hash without changing CLI command or release behavior.
 

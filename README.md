@@ -32,8 +32,8 @@ checkPaths:
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: e623af9
-lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6 (workspace #1432 campaign): the dataset save-draft execution contract now transports the fresh complete before image as expectedJsonOrdered (absent for legacy callers) and supports a read-only dry-run preflight without --commit; public command examples, ownership and write-authority statements are unchanged.'
+lastReviewedCommit: 11a074b072022d1c566f25edcc9ee7fa1c629e8c
+lastReviewedNote: 'Reviewed for CLI #351: 0.1.19 is the version-only release preparation for merged source PR #349; the package-version line separates the in-repository preparation from the actually published 0.1.18, and no cli-v0.1.19 tag exists yet.'
 ---
 
 CLI 0.1.10 is the designated C1 release for `tiangong-lca runtime describe --json` and the explicit `@tiangong-lca/cli/runtime` API for package, asset and Node content inspection. Runtime inspection loads no project `.env`, performs no authentication and downloads nothing. See [the runtime distribution contract](docs/agents/runtime-distribution-contract.md) for exact fields and trust boundaries; verify public availability and provenance before treating the candidate version as released.
@@ -42,9 +42,11 @@ Issue #278 adds a managed Node host interface in source, for the subsequent qual
 
 # TianGong LCA CLI
 
-Package: `@tiangong-lca/cli` Executable: `tiangong-lca` Current package version: `0.1.10` Node: `24.19.0`
+Package: `@tiangong-lca/cli` Executable: `tiangong-lca` Current package version: `0.1.19` (release preparation; npm latest remains `0.1.18`) Node: `24.19.0`
 
 Repository development is single-track on pnpm `11.24.0` and TypeScript `7.0.2`. The published package remains a clean, package-manager-neutral consumer artifact: it contains runtime files only, not pnpm, TypeScript, Oxlint, tests, source-only tooling, or repository lockfiles.
+
+Review note, 2026-09-21: Issue #351 prepares the 0.1.19 version-only release for merged source PR #349 on branch `codex/issue-351-cli-0.1.19` (base main merge `11a074b0`). Package identity and the four live CLI-version fixtures advance; dependencies, the sole lock, runtime files, strict exports, commands and release automation stay unchanged. The source feature is merged but publication has not happened — npm latest is `0.1.18` and no `cli-v0.1.19` tag exists — so the package-version line above states the in-repository release preparation and the actually published version separately instead of claiming a release.
 
 Review note, 2026-08-25: Issue #224 migrates repository development and release automation to the sole root `pnpm-workspace.yaml` / `pnpm-lock.yaml`, TypeScript 7.0.2, and type-aware Oxlint on Node 24. The feature change deliberately keeps version 0.0.33. A separate release-only PR should prepare 0.1.0 after the toolchain change merges and its full package/coverage/release gates pass.
 
