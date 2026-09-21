@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 'd603d53ac6d54dd0ea6ce65f8c1ebf4f6e345311'
-lastReviewedNote: 'Reviewed the combined CLI #354 support-metadata repair and concurrent CLI #350 Process review-array adoption at main d603d53. Reviewed for CLI #354 at head a1295ac: 修复准入模块新增第二条 policy（support-reference-metadata.v1）并复用同一 walker/artifact/close-out，run 侧只新增策略解析与 policy-to-table ledger 绑定；无新模块边界、导出、依赖或写路径。 Reviewed for CLI #350 after 0.1.19 main integration: the existing review compatibility layer bridges ordered Process arrays through SDK 0.3.0 without adding schema authority, dependency, export, command, ledger transport or ownership boundary.'
+lastReviewedCommit: 8cb5a100d59463c08e009089da8ce9707fe98aef
+lastReviewedNote: 'Reviewed for CLI #356: package 0.1.20 changes no architecture, public export, dependency, ledger transport or ownership boundary; the merged #355 source stays exactly as reviewed.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -146,6 +146,8 @@ Review note, 2026-07-23: Issue #196 changes the CLI package version to 0.0.30, u
 Review note, 2026-07-23: Issue #198 changes the package version to 0.0.31 and confines SDK schema/entity mutation to a validation clone. The original dataset save-draft payload remains the single source for contract hashing, protected command dispatch, and exact owner readback. No command family, session, artifact schema, dependency, authorization, publication, or integration architecture changes.
 
 Review note, 2026-07-24: Issue #200 releases 0.0.32 and extends the existing execution-contract scheduler without adding a second write path. The scheduler derives one serial prefix ending at the highest action referenced by any dependency, verifies that the remaining suffix has unique table/id/version targets, and runs that suffix with explicit concurrency 1..8. Each action still owns its independent protected transaction and ledger file. The existing session runtime supplies a current token immediately before dispatch, and the runner rejects any renewed user/email mismatch before attempt consumption.
+
+Review note, 2026-09-21: Issue #356 prepares package 0.1.20 for merged source PR #355 without changing architecture. Package identity and the four live CLI-version fixtures follow the package file; runtime modules, public exports, the sole lock, dependencies, command families, ledger/transport design and ownership boundaries remain exactly as reviewed for #354.
 
 Review note, 2026-09-21: CLI #354 adds the second reviewed admission policy to the existing metadata-repair module. `dataset-draft-repair-admission.ts` now owns `support-reference-metadata.v1` beside the released `process-metadata-unknown-annual.v1`: the walker, the rejection codes, the `dataset-draft-repair-admission.v1` artifact and the close-out rules are shared, while the support policy additionally requires both the stored draft and the candidate to pass all four validation layers and allows only the `common:shortDescription.#text` of the row's own ownership or source reference (`flowPropertyDataSet`/`unitGroupDataSet` roots) to change. `dataset-save-draft-run.ts` resolves the policy before the before-state read (contract `save_draft` only), evaluates it against the fresh before image, keeps `ruleVerification` disabled only for the Process annual policy, and binds a recovered ledger admission to the policy that owns the action's table. No new module boundary, export, dependency or write path is introduced: the dispatch still goes through `saveDraftDatasetRecord` with the complete before image, and the deployed guarded facade already covers `unitgroups`/`flowproperties` by delegating to the single writer.
 
