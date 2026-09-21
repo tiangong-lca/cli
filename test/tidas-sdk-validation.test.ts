@@ -64,6 +64,29 @@ test('tidas sdk validation helpers use deep entity issues after schema failure',
   assert.deepEqual(result.issues, [{ path: ['deep'], message: 'deep issue', code: 'deep' }]);
 });
 
+test('tidas sdk validation helpers preserve indexed schema issues over unindexed deep failures', () => {
+  const indexedIssue = {
+    path: ['processDataSet', 'modellingAndValidation', 'validation', 'review', 1, '@type'],
+    message: 'invalid second review',
+    code: 'invalid_type',
+  };
+  const result = validateSchemaWithDeepFallback(
+    {
+      safeParse: () => ({ success: false, error: { issues: [indexedIssue] } }),
+    },
+    { invalid: true },
+    (() => ({
+      validateEnhanced: () => ({
+        success: false,
+        error: { issues: [{ path: ['review'], message: 'entity rejected review array' }] },
+      }),
+    })) as SdkValidationFactory,
+  );
+
+  assert.equal(result.success, false);
+  assert.deepEqual(result.issues, [indexedIssue]);
+});
+
 test('tidas sdk validation helpers prefer empty deep failures when schema has no issues', () => {
   const deepFailure = { success: false, error: { issues: [] } };
   const result = validateSchemaWithDeepFallback(

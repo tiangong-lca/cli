@@ -25,9 +25,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: e83f2010c27b2e1d2e54d00e9a13488c780a02f4
-lastReviewedNote: 'Reviewed for CLI #346: 0.1.18 is the separate version-only release of merged SDK 0.3.0 adoption and follows existing four-platform tag, Trusted Publishing, provenance and root handoff steps.'
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 340c15df11692688467e1e3e1cdc9688b8240268
+lastReviewedNote: 'Reviewed for CLI #350: spec 0.2.2 review-array support is a source change at CLI 0.1.18; SDK publication and any CLI version release remain separate.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -40,6 +40,8 @@ Review note, 2026-09-17: W6b converges the static schema assets but does not aut
 Review note, 2026-09-18: CLI #338 is a schema/validation feature delivery only. It advances bundled Process and LCIA Method assets to the reviewed `tidas-spec` 0.2.0 candidate and adds no package-version, tag, publication, or provenance claim; the existing four-platform, Docpact, coverage, release and workspace gates remain required for any later release.
 
 Review note, 2026-09-20: CLI #344 advances the exact dependency to published SDK 0.3.0, which omits the old mixed-ruleset files and getter. This remains a source PR with CLI package version 0.1.17 unchanged; a separate version-only CLI release PR, four-platform tag, Trusted Publishing/provenance check, clean installed consumer, and root integration are required before W11/A14 closure.
+
+Review note, 2026-09-21: CLI #350 adds spec 0.2.2 Process review-array compatibility while keeping package 0.1.18 and exact SDK 0.3.0. SDK PR #147 publication, later CLI dependency adoption, version-only release qualification, provenance, installed-consumer proof, and root integration remain separate tracked steps.
 
 Review note, 2026-09-20: CLI #340 pins published SDK 0.2.2 and released spec 0.2.1 public definitions and removes the SDK mixed ruleset input from `dataset contract`. It remains a feature PR with no CLI version change. A separate version-bump PR, four-platform tag, Trusted Publishing/provenance check, clean installed consumer, and root integration are required before treating the replacement as publicly released.
 

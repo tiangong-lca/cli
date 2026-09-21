@@ -22,9 +22,9 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: fb2958157960a65c40d816042b3f1c5a0fcdee7e
-lastReviewedNote: 'Reviewed for CLI #340: SDK 0.2.2 and released spec 0.2.1 public definitions replace the W8 candidate; dataset context-pack rulesets now project CLI policy and no longer read the SDK mixed asset.'
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 340c15df11692688467e1e3e1cdc9688b8240268
+lastReviewedNote: 'Reviewed for CLI #350: Process review 可为单对象或非空有序数组；SDK 0.3.0 过渡桥接保留真实问题并移除旧对象类型伪阳性。'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -39,6 +39,8 @@ related:
 Review note, 2026-09-18: CLI #338 将 Process/LCIA Method 的完整评审报告引用改为可选，并在已发布 SDK 尚未携带候选 schema 的短窗口内对缺失引用做一次内存兼容重试；提供的引用仍严格校验，Lifecycle Model 不变。该变更只影响 schema/validation 与测试，不改变命令、依赖、版本、认证或发布路径。
 
 Review note, 2026-09-20: CLI #340 精确锁定 SDK 0.2.2 与已发布 spec 0.2.1 公共规则。`dataset contract` 的 ruleset、manifest 与 AI context 路径保持，内容由 CLI profile 和经校验的公共定义组合；不再读取 SDK 旧混合规则文件。CLI 包版本不变，公开发行仍需独立版本 PR 和完整门禁。
+
+Review note, 2026-09-21: CLI #350 同步 `tidas-spec` 0.2.2，并允许 Process `validation.review` 使用单对象或非空有序数组。SDK 0.3.0 过渡桥接逐项校验、保留索引和其他独立问题；空数组继续失败。CLI 0.1.18、依赖、命令、认证与发布流程均不变。
 
 # 项目配置
 

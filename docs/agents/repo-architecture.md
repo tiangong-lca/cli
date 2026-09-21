@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: e83f2010c27b2e1d2e54d00e9a13488c780a02f4
-lastReviewedNote: 'Reviewed for CLI #346: package 0.1.18 releases the merged SDK 0.3.0 source adoption without changing architecture, public exports, or ownership.'
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 340c15df11692688467e1e3e1cdc9688b8240268
+lastReviewedNote: 'Reviewed for CLI #350: the existing review compatibility layer now bridges ordered Process arrays through SDK 0.3.0 without adding a schema authority, dependency, export, or command.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -44,6 +44,8 @@ related:
 Review note, 2026-09-17: W6b keeps the retained CLI `assets/tidas-schemas` path but synchronizes its bytes to exact `tidas-spec` candidate `6fb497bad562125ccc0c00a803351207b9ed438f`; the source identity file is package evidence only and adds no command or runtime architecture.
 
 Review note, 2026-09-18: W10S keeps the historical `assets/tidas-schemas` path and synchronizes it to candidate `58dc72f5cb2d203a00388fec71d31091911f7dde` (0.2.0). The narrow `tidas-review-report-optionality` composition layer is used at CLI SDK schema call sites and package validation: a missing Process/LCIA Method report reference is retried against an in-memory complete reference, while supplied references and Lifecycle Model remain untouched. It is a candidate bridge for the published SDK package's older conditional schema, not a second schema authority or a release/version change.
+
+Review note, 2026-09-21: CLI #350 keeps that same narrow composition point while synchronizing `assets/tidas-schemas` to exact spec 0.2.2 candidate `8a9470a7dd4c074ae246bb9967b3bfae3e371e32`. For Process only, a non-empty review array is validated member-by-member through published SDK 0.3.0 and returned unchanged; member failures gain the original numeric index, while unrelated failures preserve the SDK's original result. LCIA Method arrays, empty arrays, malformed references, commands, exports, dependencies, and package version remain unchanged.
 
 The `src/runtime.ts` public facade and bounded `src/lib/runtime/**` owners expose package/Node/asset identity through one read-only API and `runtime describe`. [The runtime distribution contract](runtime-distribution-contract.md) separates this package observation from complete component/dependency provenance, host ABI readiness and task authorization. `src/main.ts` admits supported architecture tuples before loading user configuration and bypasses dotenv for runtime commands. The manifest/manager/cache/lease/exec owners are now implemented under #274; the no-Node POSIX/PowerShell bootstrap is implemented under `scripts/bootstrap/`; #275 designates 0.1.10 as C1, while public product component assembly remains downstream.
 
