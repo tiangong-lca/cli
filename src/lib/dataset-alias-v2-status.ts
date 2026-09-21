@@ -336,17 +336,16 @@ export function validateAliasV2TerminalProof(
     }
     if (entry['table'] === 'processes') {
       // A process carrying a text action must show the approved post text; every other process must
-      // still show the functional-unit text of its own before image. The observation must be a real
-      // string: an absent or null field is not an observation of anything, and the plan's own value
-      // may never stand in for one.
+      // still show the functional-unit text of its own before image. The published Time-v2 contract
+      // reads a before image whose leaf is missing or unreadable as "no text" and accepts the live
+      // row's own NULL as the observation of that missing text, bound by the complete observed
+      // payload hash above; a profile that requires the text to be present (Length*time) enforces it
+      // in its own plan validation instead of tightening this shared comparison.
       const expectedText =
         typeof action['after_text'] === 'string'
           ? action['after_text']
           : beforeTextOfProcess(action);
-      if (
-        typeof entry['functional_unit_text'] !== 'string' ||
-        entry['functional_unit_text'] !== expectedText
-      ) {
+      if ((entry['functional_unit_text'] ?? null) !== expectedText) {
         return { code: ALIAS_V2_RESPONSE_READBACK_MISMATCH };
       }
     }

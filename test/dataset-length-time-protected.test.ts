@@ -190,6 +190,18 @@ test('the Length plan predicate refuses every widened or malformed document', ()
       'a malformed action digest',
       (plan) => (((plan['actions'] as JsonObject[])[0] as JsonObject)['before_sha256'] = 'x'),
     ],
+    [
+      'an action without its functional-unit text',
+      (plan) => {
+        const action = (plan['actions'] as JsonObject[])[0] as JsonObject;
+        const before = action['expected_json_ordered'] as JsonObject;
+        delete (
+          ((before['processDataSet'] as JsonObject)['processInformation'] as JsonObject)[
+            'quantitativeReference'
+          ] as JsonObject
+        )['functionalUnitOrOther'];
+      },
+    ],
   ];
   for (const [label, mutate] of cases) {
     assert.equal(

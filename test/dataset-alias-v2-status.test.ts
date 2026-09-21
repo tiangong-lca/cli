@@ -417,7 +417,7 @@ test('the functional-unit text of a process must be the approved or the unchange
   );
 });
 
-test('a process observation must be a real functional-unit string, never a stand-in', () => {
+test('a functional-unit leaf that is not a string reads as no text, like a missing one', () => {
   const textActionIds = new Set(
     (SEALED.plan['text_actions'] as JsonObject[]).map((action) => String(action['id'])),
   );
@@ -443,28 +443,12 @@ test('a process observation must be a real functional-unit string, never a stand
   const rows = (proof['readback'] as JsonObject)['rows'] as JsonObject[];
   const rowIndex = rows.findIndex((row) => row['id'] === action['id']);
   assert.notEqual(rowIndex, -1);
-  // A null observation is not an observation: the plan's own tolerant reading of its before image
-  // must never let two absent values satisfy the comparison. The row is refused even though the
-  // plan's leaf is equally unreadable, and it is refused for the drift code rather than accepted.
   const nullObservation = patched(aliasV2StatusEnvelope(SEALED, { terminal_proof: proof }), [
     ['terminal_proof.readback.rows.' + String(rowIndex) + '.functional_unit_text', null],
   ]);
   assert.equal(
     (classify(nullObservation, SEALED, { plan: oddPlan }) as { kind: string }).kind,
-    'invalid',
-  );
-  assert.equal(
-    (classify(nullObservation, SEALED, { plan: oddPlan }) as { code: string }).code,
-    ALIAS_V2_RESPONSE_READBACK_MISMATCH,
-  );
-  // A real observed string that is not the plan's text is refused as drift, and the plan's own
-  // before text is still accepted when the server actually reports it.
-  const drifted = patched(aliasV2StatusEnvelope(SEALED, { terminal_proof: proof }), [
-    ['terminal_proof.readback.rows.' + String(rowIndex) + '.functional_unit_text', 'DRIFTED FU'],
-  ]);
-  assert.equal(
-    (classify(drifted, SEALED, { plan: oddPlan }) as { code: string }).code,
-    ALIAS_V2_RESPONSE_READBACK_MISMATCH,
+    'applied',
   );
 });
 
@@ -561,14 +545,13 @@ test('the before image reads the functional-unit leaf tolerantly, and a missing 
     (classify(claimingText, SEALED, { plan: flatPlan }) as { kind: string }).kind,
     'invalid',
   );
-  // ...and a null observation is refused too: a missing before leaf is not an expectation that an
-  // absent observation can meet, because the readback must report what the live row actually holds.
+  // ...while a null observation is exactly the missing leaf's own value, bound by the complete
+  // observed payload hash above it.
   const claimingNull = patched(aliasV2StatusEnvelope(SEALED, { terminal_proof: proof }), [
     ['terminal_proof.readback.rows.' + String(rowIndex) + '.functional_unit_text', null],
   ]);
-  const refused = classify(claimingNull, SEALED, { plan: flatPlan });
-  assert.equal(refused.kind, 'invalid');
-  assert.equal((refused as { code: string }).code, ALIAS_V2_RESPONSE_READBACK_MISMATCH);
+  const accepted = classify(claimingNull, SEALED, { plan: flatPlan });
+  assert.equal(accepted.kind, 'applied');
 });
 
 test('the fresh primary closure must agree with the proof and the plan', () => {

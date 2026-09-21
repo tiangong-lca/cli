@@ -907,6 +907,15 @@ export function assertLengthTimePlanDocument(value: unknown): JsonObject {
     ) {
       invalid('Length*time plan actions must be complete owner-draft process actions.');
     }
+    // This profile requires the functional-unit text to be a present, non-empty string: the
+    // correction never rewrites it, so the terminal readback has a real value to compare the server's
+    // observation with. The rule lives here, in the Length plan's own validation, rather than in the
+    // shared read adapter — the published Time-v2 contract keeps its tolerant null/missing reading.
+    if (functionalUnitText(action['expected_json_ordered'] as JsonObject) === null) {
+      invalid('Length*time plan actions must carry their functional-unit text.', {
+        action_id: action['action_id'],
+      });
+    }
   }
   return plan;
 }
