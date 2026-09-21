@@ -26,14 +26,16 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: e623af9
-lastReviewedNote: 'Reviewed for CLI #283 at head f75eda4 (second atomic stage): the metadata repair admission and retained-attempt precedence add no dependency, version, tag, provenance or publication step.'
+lastReviewedCommit: 11a074b072022d1c566f25edcc9ee7fa1c629e8c
+lastReviewedNote: 'Reviewed for CLI #351: 0.1.19 is the separate version-only preparation for merged source PR #349 and follows the existing four-platform tag, Trusted Publishing, provenance and root handoff steps; local publication and manual tags remain forbidden.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
   - ./release-setup.md
   - ./agents/repo-validation.md
 ---
+
+Review note, 2026-09-21: Issue #351 is the dedicated 0.1.19 release preparation for merged source PR #349 (main merge `11a074b072022d1c566f25edcc9ee7fa1c629e8c`). It changes only `package.json` identity and the four live CLI-version fixtures (three in `test/cli.test.ts`, one in `test/dataset-maintenance-flow-identity-coverage-cli-remote.test.ts`), and keeps the sole lock, dependencies, runtime files, strict exports, workflows and release automation byte-unchanged. The source feature is merged but publication has not happened: npm latest is 0.1.18, no `cli-v0.1.19` tag exists locally or on `origin`, and `scripts/ci/release-version.cjs assert-unpublished --version 0.1.19` passes before any mutation. The four fixtures were genuinely RED against the bumped package identity and GREEN after the fixture update, and local npm/tag absence was re-proved with the existing helper rather than by a new check. Before merge this preparation requires the unchanged package/Docpact/pre-push gates with exact 100% coverage and the pack dry-run; after merge it requires `cli-v0.1.19`, native pnpm Trusted Publishing with cryptographic provenance, registry integrity and `gitHead` binding, fresh credential-free consumers, and exact release-merge workspace integration. Local publication and manual tag creation remain forbidden.
 
 Review note, 2026-09-17: W6b converges the static schema assets but does not authorize a release or package publication. Any new CLI version must still use the existing release gates, provenance and version/content review.
 

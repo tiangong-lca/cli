@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: e623af9
-lastReviewedNote: 'Reviewed for CLI #283 at head d45ffb6: saveDraftDatasetRecord carries the optional complete before image and runExecutionContractBatch gained one commit/dry_run mode; the ledger, scheduler and readback owners are unchanged.'
+lastReviewedCommit: 11a074b072022d1c566f25edcc9ee7fa1c629e8c
+lastReviewedNote: 'Reviewed for CLI #351: package 0.1.19 changes no architecture, public export, dependency, ledger transport or ownership boundary; the merged #349 source stays exactly as reviewed.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -40,6 +40,8 @@ related:
   - ../../README.md
   - ../../DEV_CN.md
 ---
+
+Review note, 2026-09-21: Issue #351 prepares package 0.1.19 for merged source PR #349 without changing architecture. Package identity and the four live CLI-version fixtures follow the package file; runtime modules, public exports, the sole lock, dependencies, command families, ledger/transport design and ownership boundaries remain exactly as reviewed for #283.
 
 Review note, 2026-09-17: W6b keeps the retained CLI `assets/tidas-schemas` path but synchronizes its bytes to exact `tidas-spec` candidate `6fb497bad562125ccc0c00a803351207b9ed438f`; the source identity file is package evidence only and adds no command or runtime architecture.
 
