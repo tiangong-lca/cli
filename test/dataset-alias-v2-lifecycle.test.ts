@@ -14,6 +14,7 @@ import {
   ALIAS_V2_RESPONSE_READBACK_MISMATCH,
   ALIAS_V2_RESPONSE_STATUS_UNEXPECTED,
   ALIAS_V2_STAGE_UNKNOWN,
+  MAX_POLL_ATTEMPTS,
   MAX_READBACK_ATTEMPTS,
   advanceAliasV2Lifecycle,
   classifyAliasV2Response,
@@ -21,6 +22,7 @@ import {
   startAliasV2Lifecycle,
   type AliasV2DispatchOutcome,
   type AliasV2Lifecycle,
+  type AliasV2Stage,
   type AliasV2StepResult,
 } from '../src/lib/dataset-alias-v2-lifecycle.js';
 
@@ -169,7 +171,7 @@ const built = buildAliasV2Plan(planInput());
 const PLAN = built.plan;
 const BINDING = { plan: PLAN, request_id: REQUEST_ID };
 
-/** The proof the server is expected to return for this plan, before any case mutates it. */
+/** The terminal proof the server is expected to return for this plan, before any case mutates it. */
 function proof(overrides: JsonObject = {}): JsonObject {
   const actions = PLAN['actions'] as JsonObject[];
   const textActions = PLAN['text_actions'] as JsonObject[];
@@ -208,8 +210,11 @@ function proof(overrides: JsonObject = {}): JsonObject {
   };
 }
 
+const ENVELOPE = { request_id: REQUEST_ID, plan_sha256: PLAN['plan_sha256'] };
+const PENDING_READ = { status: 'pending', plan_sha256: PLAN['plan_sha256'] };
+
 function classify(
-  stage: Parameters<typeof classifyAliasV2Response>[0]['stage'],
+  stage: AliasV2Stage,
   outcome: AliasV2DispatchOutcome,
   binding = BINDING,
 ): AliasV2StepResult {
@@ -220,14 +225,29 @@ function response(body: unknown, status = 200): AliasV2DispatchOutcome {
   return { kind: 'response', status, body };
 }
 
-function refusals(
-  body: unknown,
-  status: number,
-  stage: Parameters<typeof classifyAliasV2Response>[0]['stage'] = 'execute',
-): string | number {
+function refusal(body: unknown, status: number, stage: AliasV2Stage = 'admit'): string {
   const result = classify(stage, response(body, status));
   assert.equal(result.kind, 'refused', JSON.stringify(result));
   return (result as { code: string }).code;
+}
+
+/** A lifecycle that has passed preflight and all three gates, ready for one admission. */
+function gated(): AliasV2Lifecycle {
+  let state = startAliasV2Lifecycle({
+    requestId: REQUEST_ID,
+    planSha256: PLAN['plan_sha256'] as string,
+  });
+  state = advanceAliasV2Lifecycle(state, {
+    stage: 'preflight',
+    result: { kind: 'ok', stage: 'preflight', body: {} },
+  });
+  for (const gate of ALIAS_V2_GATE_NAMES) {
+    state = advanceAliasV2Lifecycle(state, {
+      stage: 'gate',
+      result: { kind: 'ok', stage: 'gate', body: { gate_name: gate } },
+    });
+  }
+  return state;
 }
 
 test('the approved wire identities are frozen here', () => {
@@ -254,13 +274,7 @@ test('the approved wire identities are frozen here', () => {
   ]);
 });
 
-test('a proof is accepted only when it is bound to this exact plan', () => {
-  const applied = classify('execute', response(proof()));
-  assert.deepEqual(applied, { kind: 'applied', stage: 'execute', status: 'applied' });
-  assert.deepEqual(classify('execute', response(proof({ status: 'idempotent_replay' }))), {
-    kind: 'idempotent_replay',
-    stage: 'execute',
-  });
+test('the terminal read is accepted only when it is bound to this exact plan', () => {
   assert.deepEqual(classify('read', response(proof())), {
     kind: 'applied',
     stage: 'read',
@@ -272,9 +286,48 @@ test('a proof is accepted only when it is bound to this exact plan', () => {
   });
   // The read stage returning no durable evidence is its own outcome, never a resubmission.
   assert.deepEqual(classify('read', response(null)), { kind: 'not_applied' });
+  // While the queued execution is in flight the server returns exactly the two bound keys.
+  assert.deepEqual(classify('read', response(PENDING_READ)), { kind: 'pending', stage: 'read' });
+  assert.equal(
+    refusal({ ...PENDING_READ, plan_sha256: 'f'.repeat(64) }, 200, 'read'),
+    ALIAS_V2_RESPONSE_INVALID,
+  );
+  assert.equal(
+    refusal({ status: 'pending', plan_sha256: PLAN['plan_sha256'], counts: {} }, 200, 'read'),
+    ALIAS_V2_RESPONSE_INVALID,
+  );
+  // Admission answers with the same plan-bound envelope; when it already carries the terminal
+  // proof the plan was applied by an earlier attempt of this same request.
+  assert.deepEqual(classify('admit', response(ENVELOPE)), {
+    kind: 'ok',
+    stage: 'admit',
+    body: ENVELOPE,
+  });
+  assert.deepEqual(classify('admit', response(proof())), {
+    kind: 'applied',
+    stage: 'admit',
+    status: 'applied',
+  });
+  assert.deepEqual(classify('admit', response(proof({ status: 'idempotent_replay' }))), {
+    kind: 'idempotent_replay',
+    stage: 'admit',
+  });
+  // An admit body that looks like a proof but does not survive validation is refused with the
+  // proof's own code, never treated as an admission.
+  assert.equal(
+    refusal(proof({ plan_sha256: 'f'.repeat(64) }), 200, 'admit'),
+    ALIAS_V2_RESPONSE_INVALID,
+  );
+  assert.equal(
+    refusal(proof({ counts: { action_count: 1 } }), 200, 'admit'),
+    ALIAS_V2_RESPONSE_COUNT_MISMATCH,
+  );
+});
 
+test('an invalid or diverging proof is refused rather than trusted', () => {
   const invalid = ALIAS_V2_RESPONSE_INVALID;
   const readbackMismatch = ALIAS_V2_RESPONSE_READBACK_MISMATCH;
+  const flowEntries = (): unknown[] => (proof()['readback'] as JsonObject)['flows'] as unknown[];
   const cases: Array<[unknown, string]> = [
     ['nope', invalid],
     [proof({ status: 'ok' }), invalid],
@@ -283,6 +336,15 @@ test('a proof is accepted only when it is bound to this exact plan', () => {
     [
       (() => {
         const body = proof();
+        const renamed = { ...body, status_note: body['status'] } as JsonObject;
+        delete renamed['status'];
+        return renamed;
+      })(),
+      invalid,
+    ],
+    [
+      (() => {
+        const body = proof() as JsonObject;
         delete body['audit'];
         return body;
       })(),
@@ -303,85 +365,23 @@ test('a proof is accepted only when it is bound to this exact plan', () => {
     [proof({ readback: { flows: [], processes: [] } }), invalid],
     [proof({ readback: { flows: [], processes: [], text_actions: [] } }), readbackMismatch],
     [
-      // The right number of entries, but two of them are the same row.
       proof({
         readback: {
           ...(proof()['readback'] as JsonObject),
-          flows: [
-            ((proof()['readback'] as JsonObject)['flows'] as unknown[])[0] as never,
-            ((proof()['readback'] as JsonObject)['flows'] as unknown[])[0] as never,
-          ],
-        },
-      }),
-      readbackMismatch,
-    ],
-    [
-      // A non-object entry cannot be matched to a row.
-      proof({
-        readback: {
-          ...(proof()['readback'] as JsonObject),
-          flows: [
-            null as never,
-            ((proof()['readback'] as JsonObject)['flows'] as unknown[])[1] as never,
-          ],
+          flows: [flowEntries()[0], flowEntries()[0]],
         },
       }),
       readbackMismatch,
     ],
     [
       proof({
-        readback: {
-          ...(proof()['readback'] as JsonObject),
-          processes: [],
-        },
+        readback: { ...(proof()['readback'] as JsonObject), flows: [null, flowEntries()[1]] },
       }),
       readbackMismatch,
     ],
     [
-      proof({
-        readback: {
-          ...(proof()['readback'] as JsonObject),
-          text_actions: [
-            ((proof()['readback'] as JsonObject)['text_actions'] as unknown[])[0] as never,
-          ],
-        },
-      }),
+      proof({ readback: { ...(proof()['readback'] as JsonObject), processes: [] } }),
       readbackMismatch,
-    ],
-    [
-      // Two text entries for one action: the count matches, the rows do not.
-      proof({
-        readback: {
-          ...(proof()['readback'] as JsonObject),
-          text_actions: [
-            ((proof()['readback'] as JsonObject)['text_actions'] as unknown[])[0] as never,
-            ((proof()['readback'] as JsonObject)['text_actions'] as unknown[])[0] as never,
-          ],
-        },
-      }),
-      readbackMismatch,
-    ],
-    [
-      proof({
-        readback: {
-          ...(proof()['readback'] as JsonObject),
-          text_actions: [
-            null as never,
-            ((proof()['readback'] as JsonObject)['text_actions'] as unknown[])[1] as never,
-          ],
-        },
-      }),
-      readbackMismatch,
-    ],
-    [
-      // Exactly five keys, but one of them is not one of the reviewed five.
-      (() => {
-        const body = proof();
-        const renamed = { ...body, status_note: body['status'] } as JsonObject;
-        delete renamed['status'];
-        return renamed;
-      })(),
-      invalid,
     ],
     [
       proof({
@@ -389,27 +389,6 @@ test('a proof is accepted only when it is bound to this exact plan', () => {
           ...(proof()['readback'] as JsonObject),
           flows: [
             { table: 'flows', id: 'flow-a', version: '00.00.001', desired_sha256: '0'.repeat(64) },
-          ],
-        },
-      }),
-      readbackMismatch,
-    ],
-    [
-      proof({
-        readback: {
-          ...(proof()['readback'] as JsonObject),
-          flows: [{ desired_sha256: (PLAN['actions'] as JsonObject[])[0]!['desired_sha256'] }],
-        },
-      }),
-      readbackMismatch,
-    ],
-    [
-      proof({
-        readback: {
-          ...(proof()['readback'] as JsonObject),
-          flows: [
-            ...((proof()['readback'] as JsonObject)['flows'] as unknown[]),
-            (proof()['readback'] as JsonObject)['flows']![0 as never],
           ],
         },
       }),
@@ -437,7 +416,9 @@ test('a proof is accepted only when it is bound to this exact plan', () => {
       proof({
         readback: {
           ...(proof()['readback'] as JsonObject),
-          text_actions: [{ id: 'process-a', version: '00.00.001', after_text: 'wrong' }],
+          text_actions: [
+            ((proof()['readback'] as JsonObject)['text_actions'] as unknown[])[0] as never,
+          ],
         },
       }),
       readbackMismatch,
@@ -446,200 +427,195 @@ test('a proof is accepted only when it is bound to this exact plan', () => {
       proof({
         readback: {
           ...(proof()['readback'] as JsonObject),
-          text_actions: [{ id: 'process-a', version: '00.00.001' }],
+          text_actions: [
+            ((proof()['readback'] as JsonObject)['text_actions'] as unknown[])[0] as never,
+            ((proof()['readback'] as JsonObject)['text_actions'] as unknown[])[0] as never,
+          ],
+        },
+      }),
+      readbackMismatch,
+    ],
+    [
+      proof({
+        readback: {
+          ...(proof()['readback'] as JsonObject),
+          text_actions: [
+            null as never,
+            ((proof()['readback'] as JsonObject)['text_actions'] as unknown[])[1] as never,
+          ],
+        },
+      }),
+      readbackMismatch,
+    ],
+    [
+      proof({
+        readback: {
+          ...(proof()['readback'] as JsonObject),
+          text_actions: [{ id: 'process-a', version: '00.00.001', after_text: 'wrong' }],
         },
       }),
       readbackMismatch,
     ],
   ];
   for (const [body, code] of cases) {
-    assert.equal(refusals(body, 200), code, JSON.stringify(body).slice(0, 120));
+    assert.equal(refusal(body, 200, 'read'), code, JSON.stringify(body).slice(0, 120));
   }
 });
 
 test('the status policy maps to the reviewed refusals', () => {
   assert.equal(
-    refusals({ code: 'ALIAS_V2_TEXT_RULE_VIOLATION' }, 400),
+    refusal({ code: 'ALIAS_V2_TEXT_RULE_VIOLATION' }, 400),
     'ALIAS_V2_TEXT_RULE_VIOLATION',
   );
-  assert.equal(refusals({ code: '' }, 400), 'ALIAS_V2_PREFLIGHT_INVALID_REQUEST');
-  assert.equal(refusals('nope', 400), 'ALIAS_V2_PREFLIGHT_INVALID_REQUEST');
-  assert.equal(refusals({}, 413), 'ALIAS_V2_PREFLIGHT_REQUEST_TOO_LARGE');
-  assert.equal(refusals({ code: 'ALIAS_V2_REPLAY_CONFLICT' }, 409), 'ALIAS_V2_REPLAY_CONFLICT');
-  assert.equal(refusals({}, 409), 'ALIAS_V2_DRIFT_OR_REPLAY');
-  assert.equal(refusals({}, 418), ALIAS_V2_RESPONSE_STATUS_UNEXPECTED);
-  const unknown = classify('execute', { kind: 'unknown', reason: 'timeout' });
-  assert.deepEqual(unknown, {
+  assert.equal(refusal({ code: '' }, 400), 'ALIAS_V2_PREFLIGHT_INVALID_REQUEST');
+  assert.equal(refusal('nope', 400), 'ALIAS_V2_PREFLIGHT_INVALID_REQUEST');
+  assert.equal(refusal({}, 413), 'ALIAS_V2_PREFLIGHT_REQUEST_TOO_LARGE');
+  assert.equal(refusal({ code: 'ALIAS_V2_REPLAY_CONFLICT' }, 409), 'ALIAS_V2_REPLAY_CONFLICT');
+  assert.equal(refusal({}, 409), 'ALIAS_V2_DRIFT_OR_REPLAY');
+  assert.equal(refusal({}, 418), ALIAS_V2_RESPONSE_STATUS_UNEXPECTED);
+  assert.deepEqual(classify('admit', { kind: 'unknown', reason: 'socket hang up' }), {
     kind: 'readback_required',
     code: ALIAS_V2_STAGE_UNKNOWN,
-    reason: 'timeout',
+    reason: 'socket hang up',
   });
+  assert.deepEqual(classify('read', { kind: 'unknown', reason: 'reset' }), {
+    kind: 'readback_required',
+    code: ALIAS_V2_STAGE_UNKNOWN,
+    reason: 'reset',
+  });
+  for (const stage of ['preflight', 'gate'] as const) {
+    assert.deepEqual(classify(stage, { kind: 'unknown', reason: 'reset' }), {
+      kind: 'refused',
+      status: 0,
+      code: ALIAS_V2_STAGE_UNKNOWN,
+      reason: 'reset',
+    });
+  }
 });
 
 test('the read-only stages keep the client request and plan binding', () => {
-  const envelope = {
-    request_id: REQUEST_ID,
-    plan_sha256: PLAN['plan_sha256'],
-    preflight_token: 't',
-  };
-  for (const stage of ['preflight', 'gate', 'admit'] as const) {
-    const result = classify(stage, response(envelope));
-    assert.deepEqual(result, { kind: 'ok', stage, body: envelope });
+  for (const stage of ['preflight', 'gate'] as const) {
+    assert.deepEqual(classify(stage, response(ENVELOPE)), { kind: 'ok', stage, body: ENVELOPE });
     assert.equal(
-      refusals({ ...envelope, request_id: 'other' }, 200, stage),
+      refusal({ ...ENVELOPE, request_id: 'other' }, 200, stage),
       ALIAS_V2_RESPONSE_INVALID,
     );
     assert.equal(
-      refusals({ ...envelope, plan_sha256: 'f'.repeat(64) }, 200, stage),
+      refusal({ ...ENVELOPE, plan_sha256: 'f'.repeat(64) }, 200, stage),
       ALIAS_V2_RESPONSE_INVALID,
     );
-    assert.equal(refusals('nope', 200, stage), ALIAS_V2_RESPONSE_INVALID);
-    assert.equal(classify(stage, { kind: 'unknown', reason: 'reset' }).kind, 'refused', stage);
+    assert.equal(refusal('nope', 200, stage), ALIAS_V2_RESPONSE_INVALID);
   }
-  // Admission may already carry the applied proof: that is terminal, not an admission.
-  assert.deepEqual(classify('admit', response(proof())), {
-    kind: 'applied',
-    stage: 'admit',
-    status: 'applied',
-  });
-  assert.deepEqual(classify('admit', response(proof({ status: 'idempotent_replay' }))), {
-    kind: 'idempotent_replay',
-    stage: 'admit',
-  });
   assert.equal(
-    refusals(proof({ plan_sha256: 'a'.repeat(64) }), 200, 'admit'),
+    refusal({ ...ENVELOPE, request_id: 'other' }, 200, 'admit'),
     ALIAS_V2_RESPONSE_INVALID,
   );
+  assert.equal(refusal('nope', 200, 'admit'), ALIAS_V2_RESPONSE_INVALID);
 });
 
-test('the lifecycle executes at most once and never resubmits an unknown outcome', () => {
-  let state = startAliasV2Lifecycle({
-    requestId: REQUEST_ID,
-    planSha256: PLAN['plan_sha256'] as string,
-  });
-  assert.equal(state.phase, 'prepared');
-  assert.equal(isAliasV2Terminal(state.phase), false);
-  assert.throws(
-    () => startAliasV2Lifecycle({ requestId: '', planSha256: 'x' }),
-    (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
-  );
-  state = advanceAliasV2Lifecycle(state, {
-    stage: 'preflight',
-    result: classify(
-      'preflight',
-      response({ request_id: REQUEST_ID, plan_sha256: PLAN['plan_sha256'] }),
-    ),
-  });
-  assert.equal(state.phase, 'preflight_passed');
-  for (const gate of ALIAS_V2_GATE_NAMES) {
-    state = advanceAliasV2Lifecycle(state, {
-      stage: 'gate',
-      result: classify(
-        'gate',
-        response({ request_id: REQUEST_ID, plan_sha256: PLAN['plan_sha256'], gate_name: gate }),
-      ),
-    });
-  }
-  assert.equal(state.phase, 'gated');
-  assert.deepEqual(state.gates, [...ALIAS_V2_GATE_NAMES]);
+test('the lifecycle admits once, polls to a terminal proof, and never resubmits', () => {
+  let state = gated();
+  assert.deepEqual([state.phase, state.admit_attempts, state.polls], ['gated', 0, 0]);
   state = advanceAliasV2Lifecycle(state, {
     stage: 'admit',
-    result: classify(
-      'admit',
-      response({ request_id: REQUEST_ID, plan_sha256: PLAN['plan_sha256'] }),
-    ),
+    result: classify('admit', response(ENVELOPE)),
   });
   assert.equal(state.phase, 'admitted');
+  assert.equal(state.admit_attempts, 1);
+  // Polling observes the queued execution until the terminal proof arrives.
+  for (let poll = 0; poll < 2; poll += 1) {
+    state = advanceAliasV2Lifecycle(state, {
+      stage: 'read',
+      result: classify('read', response(PENDING_READ)),
+    });
+    assert.deepEqual([state.phase, state.polls], ['admitted', poll + 1]);
+  }
   state = advanceAliasV2Lifecycle(state, {
-    stage: 'execute',
-    result: classify('execute', response(proof())),
+    stage: 'read',
+    result: classify('read', response(proof())),
   });
-  assert.equal(state.phase, 'applied');
-  assert.equal(state.execute_attempts, 1);
-  assert.equal(state.code, null);
+  assert.deepEqual([state.phase, state.code, state.polls], ['applied', null, 3]);
   assert.equal(isAliasV2Terminal(state.phase), true);
-  // A second execution attempt is impossible by construction.
+  // No phase can reach a second admission.
   assert.throws(
     () =>
       advanceAliasV2Lifecycle(state, {
-        stage: 'execute',
-        result: classify('execute', response(proof())),
+        stage: 'admit',
+        result: classify('admit', response(ENVELOPE)),
       }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
 
-  // An unknown execution outcome suspends the lifecycle in readback, and the only stage that can
-  // follow is the read stage.
-  let unknownState = admitted();
-  unknownState = advanceAliasV2Lifecycle(unknownState, {
-    stage: 'execute',
-    result: classify('execute', { kind: 'unknown', reason: 'socket hang up' }),
+  // An admission that reports the stored proof is terminal too, and never queues a new one.
+  const appliedAtAdmit = advanceAliasV2Lifecycle(gated(), {
+    stage: 'admit',
+    result: classify('admit', response(proof())),
   });
-  assert.equal(unknownState.phase, 'readback_required');
-  assert.equal(unknownState.execute_attempts, 1);
-  assert.throws(
-    () =>
-      advanceAliasV2Lifecycle(unknownState, {
-        stage: 'execute',
-        result: classify('execute', response(proof())),
-      }),
-    (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
+  assert.deepEqual([appliedAtAdmit.phase, appliedAtAdmit.admit_attempts], ['applied', 1]);
+  const replayedAtAdmit = advanceAliasV2Lifecycle(gated(), {
+    stage: 'admit',
+    result: classify('admit', response(proof({ status: 'idempotent_replay' }))),
+  });
+  assert.deepEqual(
+    [replayedAtAdmit.phase, replayedAtAdmit.admit_attempts],
+    ['idempotent_replay', 1],
   );
+  // An unknown admission outcome suspends the lifecycle on the readback path, and the only stage
+  // that can follow is the read stage.
+  let unknown = gated();
+  unknown = advanceAliasV2Lifecycle(unknown, {
+    stage: 'admit',
+    result: classify('admit', { kind: 'unknown', reason: 'socket hang up' }),
+  });
+  assert.deepEqual([unknown.phase, unknown.admit_attempts], ['readback_required', 1]);
   assert.throws(
     () =>
-      advanceAliasV2Lifecycle(unknownState, {
-        stage: 'preflight',
-        result: classify(
-          'preflight',
-          response({ request_id: REQUEST_ID, plan_sha256: PLAN['plan_sha256'] }),
-        ),
+      advanceAliasV2Lifecycle(unknown, {
+        stage: 'admit',
+        result: classify('admit', response(ENVELOPE)),
       }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
   // A read that finds the work applied closes the request.
-  const recovered = advanceAliasV2Lifecycle(unknownState, {
+  const recovered = advanceAliasV2Lifecycle(unknown, {
     stage: 'read',
     result: classify('read', response(proof())),
   });
-  assert.equal(recovered.phase, 'applied');
-  assert.equal(recovered.readback_attempts, 1);
-  // A read that finds the stored proof of the same plan is an idempotent replay.
-  const replayedRead = advanceAliasV2Lifecycle(unknownState, {
+  assert.deepEqual([recovered.phase, recovered.read_attempts], ['applied', 1]);
+  // A read that finds the stored proof of this same request is an idempotent replay.
+  const replayedRead = advanceAliasV2Lifecycle(unknown, {
     stage: 'read',
     result: classify('read', response(proof({ status: 'idempotent_replay' }))),
   });
-  assert.equal(replayedRead.phase, 'idempotent_replay');
-
+  assert.deepEqual([replayedRead.phase, replayedRead.read_attempts], ['idempotent_replay', 1]);
   // A read that finds no durable evidence refuses the request for review: no automatic replay.
-  const notApplied = advanceAliasV2Lifecycle(unknownState, {
+  const notApplied = advanceAliasV2Lifecycle(unknown, {
     stage: 'read',
     result: classify('read', response(null)),
   });
-  assert.equal(notApplied.phase, 'refused');
-  assert.equal(notApplied.code, ALIAS_V2_EXECUTION_NOT_APPLIED);
-
+  assert.deepEqual(
+    [notApplied.phase, notApplied.code],
+    ['refused', ALIAS_V2_EXECUTION_NOT_APPLIED],
+  );
   // A read that is itself refused adopts the server's code.
-  const refusedRead = advanceAliasV2Lifecycle(unknownState, {
+  const refusedRead = advanceAliasV2Lifecycle(unknown, {
     stage: 'read',
     result: classify('read', response({ code: 'ALIAS_V2_REPLAY_CONFLICT' }, 409)),
   });
-  assert.equal(refusedRead.phase, 'refused');
-  assert.equal(refusedRead.code, 'ALIAS_V2_REPLAY_CONFLICT');
-
-  // A read that could not be dispatched stays retryable, up to the reviewed bound.
-  let retrying = advanceAliasV2Lifecycle(unknownState, {
+  assert.deepEqual([refusedRead.phase, refusedRead.code], ['refused', 'ALIAS_V2_REPLAY_CONFLICT']);
+  // A read that could not be dispatched stays on the readback path, bounded.
+  let retrying = advanceAliasV2Lifecycle(unknown, {
     stage: 'read',
     result: classify('read', { kind: 'unknown', reason: 'reset' }),
   });
-  assert.equal(retrying.phase, 'readback_required');
-  assert.equal(retrying.readback_attempts, 1);
+  assert.deepEqual([retrying.phase, retrying.read_attempts], ['readback_required', 1]);
   for (let attempt = 1; attempt < MAX_READBACK_ATTEMPTS; attempt += 1) {
     retrying = advanceAliasV2Lifecycle(retrying, {
       stage: 'read',
       result: classify('read', { kind: 'unknown', reason: 'reset' }),
     });
   }
-  assert.equal(retrying.readback_attempts, MAX_READBACK_ATTEMPTS);
+  assert.equal(retrying.read_attempts, MAX_READBACK_ATTEMPTS);
   assert.throws(
     () =>
       advanceAliasV2Lifecycle(retrying, {
@@ -648,126 +624,76 @@ test('the lifecycle executes at most once and never resubmits an unknown outcome
       }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
-
-  // Execution outcomes other than an unknown one are terminal and never re-attempted.
-  const replayedExecution = advanceAliasV2Lifecycle(admitted(), {
-    stage: 'execute',
-    result: classify('execute', response(proof({ status: 'idempotent_replay' }))),
-  });
-  assert.deepEqual(
-    [replayedExecution.phase, replayedExecution.execute_attempts],
-    ['idempotent_replay', 1],
-  );
-  const refusedExecution = advanceAliasV2Lifecycle(admitted(), {
-    stage: 'execute',
-    result: classify('execute', response({ code: 'ALIAS_V2_DERIVE_MISMATCH' }, 409)),
-  });
-  assert.deepEqual(
-    [refusedExecution.phase, refusedExecution.code],
-    ['refused', 'ALIAS_V2_DERIVE_MISMATCH'],
-  );
-  assert.throws(
-    () =>
-      advanceAliasV2Lifecycle(admitted(), {
-        stage: 'execute',
-        result: { kind: 'not_applied' },
-      }),
-    (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
-  );
-  // Execution before admission is refused.
-  assert.throws(
-    () =>
-      advanceAliasV2Lifecycle(
-        startAliasV2Lifecycle({ requestId: REQUEST_ID, planSha256: PLAN['plan_sha256'] as string }),
-        { stage: 'execute', result: classify('execute', response(proof())) },
-      ),
-    (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
-  );
-
-  // The happy path with a previously applied plan: admission reports the stored proof.
-  const replayed = advanceAliasV2Lifecycle(admittedBeforeExecution(), {
-    stage: 'admit',
-    result: classify('admit', response(proof({ status: 'idempotent_replay' }))),
-  });
-  assert.equal(replayed.phase, 'idempotent_replay');
-  assert.equal(replayed.execute_attempts, 0);
-  // Admission reporting the applied proof is terminal too, and still never executes.
-  const appliedAtAdmit = advanceAliasV2Lifecycle(admittedBeforeExecution(), {
-    stage: 'admit',
-    result: classify('admit', response(proof())),
-  });
-  assert.deepEqual([appliedAtAdmit.phase, appliedAtAdmit.execute_attempts], ['applied', 0]);
 });
 
-test('stage order, gate order and unsupported results are all refused', () => {
+test('stage order, gate order, polling bounds and unsupported results are all refused', () => {
+  const started = startAliasV2Lifecycle({
+    requestId: REQUEST_ID,
+    planSha256: PLAN['plan_sha256'] as string,
+  });
   assert.throws(
-    () =>
-      advanceAliasV2Lifecycle(
-        startAliasV2Lifecycle({ requestId: REQUEST_ID, planSha256: 'a'.repeat(64) }),
-        {
-          stage: 'gate',
-          result: classify(
-            'gate',
-            response({
-              request_id: REQUEST_ID,
-              plan_sha256: 'a'.repeat(64),
-              gate_name: 'primary_support_plan',
-            }),
-          ),
-        },
-      ),
+    () => startAliasV2Lifecycle({ requestId: '', planSha256: 'x' }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
-  // A gate acknowledged out of order, or twice, is refused.
-  const gated = advanceAliasV2Lifecycle(
-    advanceAliasV2Lifecycle(
-      startAliasV2Lifecycle({ requestId: REQUEST_ID, planSha256: 'a'.repeat(64) }),
-      { stage: 'preflight', result: { kind: 'ok', stage: 'preflight', body: {} } },
-    ),
-    {
-      stage: 'gate',
-      result: { kind: 'ok', stage: 'gate', body: { gate_name: 'primary_support_plan' } },
-    },
-  );
-  assert.deepEqual([gated.gates, gated.phase], [['primary_support_plan'], 'preflight_passed']);
+  assert.equal(isAliasV2Terminal('prepared'), false);
+  // A gate before preflight, and an admission before the gates.
   assert.throws(
     () =>
-      advanceAliasV2Lifecycle(gated, {
-        stage: 'gate',
-        result: { kind: 'ok', stage: 'gate', body: { gate_name: 'derivative_quiescence' } },
-      }),
-    (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
-  );
-  assert.throws(
-    () =>
-      advanceAliasV2Lifecycle(gated, {
+      advanceAliasV2Lifecycle(started, {
         stage: 'gate',
         result: { kind: 'ok', stage: 'gate', body: { gate_name: 'primary_support_plan' } },
       }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
+  assert.throws(
+    () =>
+      advanceAliasV2Lifecycle(started, {
+        stage: 'admit',
+        result: classify('admit', response(ENVELOPE)),
+      }),
+    (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
+  );
+  // A gate acknowledged out of order, or twice, is refused.
+  const partial = advanceAliasV2Lifecycle(
+    advanceAliasV2Lifecycle(started, {
+      stage: 'preflight',
+      result: { kind: 'ok', stage: 'preflight', body: {} },
+    }),
+    {
+      stage: 'gate',
+      result: { kind: 'ok', stage: 'gate', body: { gate_name: 'primary_support_plan' } },
+    },
+  );
+  assert.deepEqual([partial.gates, partial.phase], [['primary_support_plan'], 'preflight_passed']);
+  for (const body of [{ gate_name: 'derivative_quiescence' }, {}]) {
+    assert.throws(
+      () =>
+        advanceAliasV2Lifecycle(partial, {
+          stage: 'gate',
+          result: { kind: 'ok', stage: 'gate', body },
+        }),
+      (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
+    );
+  }
   // A gate result that is not an acknowledgement cannot advance or gate the plan.
   assert.throws(
     () =>
-      advanceAliasV2Lifecycle(gated, {
+      advanceAliasV2Lifecycle(partial, {
         stage: 'gate',
-        result: { kind: 'readback_required', code: 'ALIAS_V2_STAGE_UNKNOWN', reason: 'reset' },
+        result: { kind: 'readback_required', code: ALIAS_V2_STAGE_UNKNOWN, reason: 'reset' },
       }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
   // Refusals at each stage stop the lifecycle with the server's code.
-  const preflightRefused = advanceAliasV2Lifecycle(
-    startAliasV2Lifecycle({ requestId: REQUEST_ID, planSha256: 'a'.repeat(64) }),
-    {
-      stage: 'preflight',
-      result: classify('preflight', response({ code: 'ALIAS_V2_PREFLIGHT_INVALID_REQUEST' }, 400)),
-    },
-  );
+  const preflightRefused = advanceAliasV2Lifecycle(started, {
+    stage: 'preflight',
+    result: classify('preflight', response({ code: 'ALIAS_V2_PREFLIGHT_INVALID_REQUEST' }, 400)),
+  });
   assert.deepEqual(
     [preflightRefused.phase, preflightRefused.code],
     ['refused', 'ALIAS_V2_PREFLIGHT_INVALID_REQUEST'],
   );
-  const admitRefused = advanceAliasV2Lifecycle(admittedBeforeExecution(), {
+  const admitRefused = advanceAliasV2Lifecycle(gated(), {
     stage: 'admit',
     result: classify('admit', response({ code: 'ALIAS_V2_COUNT_MISMATCH' }, 409)),
   });
@@ -775,65 +701,46 @@ test('stage order, gate order and unsupported results are all refused', () => {
   // Unsupported result kinds at a stage are refused rather than ignored.
   assert.throws(
     () =>
-      advanceAliasV2Lifecycle(
-        startAliasV2Lifecycle({ requestId: REQUEST_ID, planSha256: 'a'.repeat(64) }),
-        { stage: 'preflight', result: { kind: 'applied', stage: 'preflight', status: 'applied' } },
-      ),
+      advanceAliasV2Lifecycle(started, {
+        stage: 'preflight',
+        result: { kind: 'applied', stage: 'preflight', status: 'applied' },
+      }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
   assert.throws(
     () =>
-      advanceAliasV2Lifecycle(admittedBeforeExecution(), {
+      advanceAliasV2Lifecycle(gated(), {
         stage: 'admit',
-        result: { kind: 'not_applied' },
+        result: { kind: 'pending', stage: 'admit' },
       }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
+  // A read before any admission is refused, and polling is bounded.
   assert.throws(
     () =>
-      advanceAliasV2Lifecycle(admittedBeforeExecution(), {
-        stage: 'execute',
-        result: { kind: 'ok', stage: 'execute', body: {} },
+      advanceAliasV2Lifecycle(started, {
+        stage: 'read',
+        result: classify('read', response(proof())),
       }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
-  // A read before any unknown outcome is refused.
+  let polling = advanceAliasV2Lifecycle(gated(), {
+    stage: 'admit',
+    result: classify('admit', response(ENVELOPE)),
+  });
+  for (let poll = 0; poll < MAX_POLL_ATTEMPTS; poll += 1) {
+    polling = advanceAliasV2Lifecycle(polling, {
+      stage: 'read',
+      result: classify('read', response(PENDING_READ)),
+    });
+  }
+  assert.equal(polling.polls, MAX_POLL_ATTEMPTS);
   assert.throws(
     () =>
-      advanceAliasV2Lifecycle(
-        startAliasV2Lifecycle({ requestId: REQUEST_ID, planSha256: 'a'.repeat(64) }),
-        {
-          stage: 'read',
-          result: classify('read', response(proof())),
-        },
-      ),
+      advanceAliasV2Lifecycle(polling, {
+        stage: 'read',
+        result: classify('read', response(PENDING_READ)),
+      }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
 });
-
-/** A lifecycle that has passed the gates and been admitted, ready for one execution. */
-function admitted(): AliasV2Lifecycle {
-  return advanceAliasV2Lifecycle(admittedBeforeExecution(), {
-    stage: 'admit',
-    result: { kind: 'ok', stage: 'admit', body: {} },
-  });
-}
-
-/** A lifecycle that has passed preflight and all three gates. */
-function admittedBeforeExecution(): AliasV2Lifecycle {
-  let state = startAliasV2Lifecycle({
-    requestId: REQUEST_ID,
-    planSha256: PLAN['plan_sha256'] as string,
-  });
-  state = advanceAliasV2Lifecycle(state, {
-    stage: 'preflight',
-    result: { kind: 'ok', stage: 'preflight', body: {} },
-  });
-  for (const gate of ALIAS_V2_GATE_NAMES) {
-    state = advanceAliasV2Lifecycle(state, {
-      stage: 'gate',
-      result: { kind: 'ok', stage: 'gate', body: { gate_name: gate } },
-    });
-  }
-  return state;
-}

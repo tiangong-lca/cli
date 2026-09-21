@@ -310,7 +310,12 @@ import {
 import { runDatasetMaintenancePlan } from './lib/dataset-maintenance-plan.js';
 import { runDatasetMaintenanceApply } from './lib/dataset-maintenance-apply.js';
 import { freezeDatasetMaintenanceProtected } from './lib/dataset-maintenance-protected-freeze.js';
-import { runDatasetMaintenanceProtected } from './lib/dataset-maintenance-protected-run.js';
+import {
+  type DatasetMaintenanceProtectedReport,
+  type RunDatasetMaintenanceProtectedOptions,
+} from './lib/dataset-maintenance-protected-run.js';
+import { runDatasetMaintenanceProtectedDispatch } from './lib/dataset-maintenance-protected-dispatch.js';
+import type { AliasV2ProtectedReport } from './lib/dataset-alias-v2-protected.js';
 import { sealDatasetMaintenanceProtectedApproval } from './lib/dataset-maintenance-protected-seal.js';
 import { runDatasetMaintenanceVerify } from './lib/dataset-maintenance-verify.js';
 import { runFlowIdentityPlanFromFiles } from './lib/dataset-maintenance-flow-identity-command.js';
@@ -516,7 +521,9 @@ export type CliDeps = {
   runDatasetMaintenancePlanImpl?: typeof runDatasetMaintenancePlan;
   runDatasetMaintenanceApplyImpl?: typeof runDatasetMaintenanceApply;
   freezeDatasetMaintenanceProtectedImpl?: typeof freezeDatasetMaintenanceProtected;
-  runDatasetMaintenanceProtectedImpl?: typeof runDatasetMaintenanceProtected;
+  runDatasetMaintenanceProtectedImpl?: (
+    options: RunDatasetMaintenanceProtectedOptions,
+  ) => Promise<DatasetMaintenanceProtectedReport | AliasV2ProtectedReport>;
   sealDatasetMaintenanceProtectedApprovalImpl?: typeof sealDatasetMaintenanceProtectedApproval;
   runDatasetMaintenanceVerifyImpl?: typeof runDatasetMaintenanceVerify;
   runFlowIdentityPlanFromFilesImpl?: typeof runFlowIdentityPlanFromFiles;
@@ -7372,7 +7379,7 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
     const datasetMaintenanceProtectedFreezeImpl =
       deps.freezeDatasetMaintenanceProtectedImpl ?? freezeDatasetMaintenanceProtected;
     const datasetMaintenanceProtectedImpl =
-      deps.runDatasetMaintenanceProtectedImpl ?? runDatasetMaintenanceProtected;
+      deps.runDatasetMaintenanceProtectedImpl ?? runDatasetMaintenanceProtectedDispatch;
     const datasetMaintenanceProtectedApprovalSealImpl =
       deps.sealDatasetMaintenanceProtectedApprovalImpl ?? sealDatasetMaintenanceProtectedApproval;
     const datasetMaintenanceVerifyImpl =

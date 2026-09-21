@@ -2,18 +2,22 @@
 //
 // The module is the CLI entry's decision layer, and it is deliberately pure: it names the
 // approved endpoints, validates a dispatch outcome against the plan it was built from, and
-// advances a lifecycle state machine that can never re-execute. Nothing here opens a connection
+// advances a lifecycle state machine that can never re-admit. Nothing here opens a connection
 // or writes anything; the caller performs the dispatch and hands the outcome back in.
 //
-// The two safety rules that matter most live here:
+// The channel is the real protected one, versioned rather than replaced: the CLI prepares,
+// passes the three gates and *admits*; the server-side queue then calls the private executor
+// under its service-only ACL and the CLI only ever polls the read stage afterwards. There is no
+// CLI-side execution stage and no second admission POST — the same shape the v1 capability has.
+//
+// The safety rules that matter most live here:
 //
 //   - every accepted proof is plan-bound: the applied plan digest, the derived counts, the audit
 //     identities and the readback hash of every single action must equal what this plan built.
 //     The frozen v1 constants (`2 / 52 / 59`) are not consulted on this path at all;
-//   - an unknown outcome is terminal for execution. The only stage the lifecycle accepts after
-//     an unknown execute outcome is the read stage, and a read that finds no durable evidence
-//     ends in an explicit refusal for review rather than an automatic resubmission. Nothing in
-//     this module can ever issue a second execution attempt.
+//   - an unknown admission outcome is terminal for admission. The only stage the lifecycle
+//     accepts afterwards is the read stage, and a read that finds no durable evidence ends in an
+//     explicit refusal for review rather than an automatic resubmission.
 
 import { CliError } from './errors.js';
 import {
@@ -32,7 +36,10 @@ export const ALIAS_V2_ENDPOINTS = {
   read: 'cmd_dataset_alias_execution_read_v2',
 } as const;
 
-/** Approved private executors: never granted, reached only from the protected lifecycle. */
+/**
+ * Approved private executors. The CLI never calls these: the server-side queue reaches them
+ * through the protected admission callback under its service-only ACL and nonce.
+ */
 export const ALIAS_V2_PRIVATE_EXECUTORS = {
   plan: 'private.cmd_dataset_alias_plan_v2_guarded',
   batch: 'private.cmd_dataset_alias_batch_v2_guarded',
@@ -64,6 +71,8 @@ export const ALIAS_V2_AUDIT_KEYS = ['plan_summary_id', 'batch_summary_ids'] as c
 export const ALIAS_V2_READBACK_KEYS = ['flows', 'processes', 'text_actions'] as const;
 export const ALIAS_V2_STATUS_APPLIED = 'applied';
 export const ALIAS_V2_STATUS_REPLAY = 'idempotent_replay';
+/** The in-flight read: the only two keys the server returns before a terminal proof exists. */
+export const ALIAS_V2_STATUS_PENDING = 'pending';
 
 export const ALIAS_V2_LIFECYCLE_REFUSED = 'ALIAS_V2_LIFECYCLE_REFUSED';
 export const ALIAS_V2_STAGE_UNKNOWN = 'ALIAS_V2_STAGE_UNKNOWN';
@@ -73,6 +82,7 @@ export const ALIAS_V2_RESPONSE_READBACK_MISMATCH = 'ALIAS_V2_RESPONSE_READBACK_M
 export const ALIAS_V2_RESPONSE_STATUS_UNEXPECTED = 'ALIAS_V2_RESPONSE_STATUS_UNEXPECTED';
 export const ALIAS_V2_REQUEST_TOO_LARGE = ALIAS_V2_PREFLIGHT_REQUEST_TOO_LARGE;
 export const ALIAS_V2_EXECUTION_NOT_APPLIED = 'ALIAS_V2_EXECUTION_NOT_APPLIED';
+export const ALIAS_V2_POLL_EXHAUSTED = 'ALIAS_V2_POLL_EXHAUSTED';
 
 /** Server-side refusals the CLI passes through verbatim rather than reinterpreting. */
 export const ALIAS_V2_SERVER_REFUSAL_CODES = [
@@ -87,19 +97,22 @@ export const ALIAS_V2_SERVER_REFUSAL_CODES = [
   ALIAS_V2_PREFLIGHT_INVALID_REQUEST,
 ] as const;
 
+/** Bounded polling: an observed read is cheap, but it is still bounded and never unbounded. */
 export const MAX_READBACK_ATTEMPTS = 3;
+export const MAX_POLL_ATTEMPTS = 600;
 
-export type AliasV2Stage = 'preflight' | 'gate' | 'admit' | 'execute' | 'read';
+export type AliasV2Stage = 'preflight' | 'gate' | 'admit' | 'read';
 
 export type AliasV2DispatchOutcome =
   { kind: 'response'; status: number; body: unknown } | { kind: 'unknown'; reason: string };
 
 export type AliasV2StepResult =
   | { kind: 'ok'; stage: AliasV2Stage; body: JsonObject }
+  | { kind: 'pending'; stage: AliasV2Stage }
   | { kind: 'applied'; stage: AliasV2Stage; status: string }
   | { kind: 'idempotent_replay'; stage: AliasV2Stage }
   | { kind: 'not_applied' }
-  | { kind: 'refused'; status: number; code: string }
+  | { kind: 'refused'; status: number; code: string; reason?: string }
   | { kind: 'readback_required'; code: string; reason: string };
 
 export type AliasV2PlanBinding = {
@@ -127,8 +140,9 @@ export type AliasV2Lifecycle = {
   request_id: string;
   plan_sha256: string;
   gates: string[];
-  execute_attempts: number;
-  readback_attempts: number;
+  admit_attempts: number;
+  read_attempts: number;
+  polls: number;
   code: string | null;
 };
 
@@ -140,8 +154,8 @@ function isJsonObject(value: unknown): value is JsonObject {
 function refused(code: string, status: number, message: string): never {
   throw new CliError(message, { code, exitCode: 2, details: { status } });
 }
-function resultRefused(status: number, code: string): AliasV2StepResult {
-  return { kind: 'refused', status, code };
+function resultRefused(status: number, code: string, reason?: string): AliasV2StepResult {
+  return { kind: 'refused', status, code, ...(reason === undefined ? {} : { reason }) };
 }
 function nonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value !== '';
@@ -150,27 +164,23 @@ function serverCode(body: unknown, fallback: string): string {
   const code = isJsonObject(body) ? body['code'] : null;
   return nonEmptyString(code) ? code : fallback;
 }
+function hasExactKeys(value: JsonObject, keys: readonly string[]): boolean {
+  return (
+    Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key))
+  );
+}
 
 /**
- * Validates a server proof against the plan it claims to have applied. Every field the plan can
- * predict must match exactly; anything else is refused as an invalid response rather than
- * accepted as evidence.
+ * Validates a terminal server proof against the plan it claims to have applied. Every field the
+ * plan can predict must match exactly; anything else is refused as an invalid response rather
+ * than accepted as evidence.
  */
 function validateProof(
   body: unknown,
   binding: AliasV2PlanBinding,
 ): { status: string } | { code: string } {
-  if (!isJsonObject(body)) {
+  if (!isJsonObject(body) || !hasExactKeys(body, ALIAS_V2_RESPONSE_KEYS)) {
     return { code: ALIAS_V2_RESPONSE_INVALID };
-  }
-  const keys = Object.keys(body);
-  if (keys.length !== ALIAS_V2_RESPONSE_KEYS.length) {
-    return { code: ALIAS_V2_RESPONSE_INVALID };
-  }
-  for (const key of ALIAS_V2_RESPONSE_KEYS) {
-    if (!Object.hasOwn(body, key)) {
-      return { code: ALIAS_V2_RESPONSE_INVALID };
-    }
   }
   const status = body['status'];
   if (status !== ALIAS_V2_STATUS_APPLIED && status !== ALIAS_V2_STATUS_REPLAY) {
@@ -223,8 +233,8 @@ function validateProof(
     return { code: ALIAS_V2_RESPONSE_INVALID };
   }
   const expected = {
-    flows: actions.filter((action) => (action as JsonObject)['table'] === 'flows'),
-    processes: actions.filter((action) => (action as JsonObject)['table'] === 'processes'),
+    flows: actions.filter((action) => action['table'] === 'flows'),
+    processes: actions.filter((action) => action['table'] === 'processes'),
   };
   for (const table of ['flows', 'processes'] as const) {
     const entries = readback[table] as unknown[];
@@ -265,7 +275,7 @@ function validateProof(
   if (textByKey.size !== textActions.length) {
     return { code: ALIAS_V2_RESPONSE_READBACK_MISMATCH };
   }
-  for (const action of textActions as JsonObject[]) {
+  for (const action of textActions) {
     const entry = textByKey.get(`${String(action['id'])}@${String(action['version'])}`);
     if (!isJsonObject(entry) || entry['after_text'] !== action['after_text']) {
       return { code: ALIAS_V2_RESPONSE_READBACK_MISMATCH };
@@ -274,40 +284,60 @@ function validateProof(
   return { status };
 }
 
+function terminalResult(stage: AliasV2Stage, status: string): AliasV2StepResult {
+  return status === ALIAS_V2_STATUS_REPLAY
+    ? { kind: 'idempotent_replay', stage }
+    : { kind: 'applied', stage, status };
+}
+
 /**
  * Classifies one dispatch outcome. A response is validated against the plan; an unknown outcome
- * is retryable evidence-free for the read-only stages and terminal for execution.
+ * is retryable evidence-free for the read-only stages and terminal for admission.
  */
 export function classifyAliasV2Response(input: AliasV2ClassificationInput): AliasV2StepResult {
   const { stage, outcome } = input;
   if (outcome.kind === 'unknown') {
-    if (stage === 'execute' || stage === 'read') {
-      // Execution and readback are the two stages where an unknown outcome exists: both stay in
-      // the readback phase, where the only possible next step is another read.
+    if (stage === 'admit' || stage === 'read') {
+      // Admission and readback are the two stages where an unknown outcome exists: both stay on
+      // the readback path, where the only possible next step is another read.
       return { kind: 'readback_required', code: ALIAS_V2_STAGE_UNKNOWN, reason: outcome.reason };
     }
-    return resultRefused(0, ALIAS_V2_STAGE_UNKNOWN);
+    return resultRefused(0, ALIAS_V2_STAGE_UNKNOWN, outcome.reason);
   }
   const { status, body } = outcome;
   if (status === 200) {
-    if (stage === 'preflight' || stage === 'gate' || stage === 'admit') {
+    if (stage === 'preflight' || stage === 'gate') {
       if (!isJsonObject(body)) {
         return resultRefused(status, ALIAS_V2_RESPONSE_INVALID);
       }
-      // Admission may already carry the executed proof (the plan was applied by an earlier
-      // attempt of this same request); that is a terminal success, not an admission to execute.
-      if (
-        stage === 'admit' &&
-        Object.keys(body).length === ALIAS_V2_RESPONSE_KEYS.length &&
-        ALIAS_V2_RESPONSE_KEYS.every((key) => Object.hasOwn(body, key))
-      ) {
-        const proof = validateProof(body, input);
-        if ('code' in proof) {
-          return resultRefused(status, proof.code);
+      // The preflight answer is the identity-bound token; a gate receipt acknowledges one gate
+      // name and, when it carries the binding keys at all, must carry them correctly.
+      if (stage === 'preflight') {
+        if (
+          body['request_id'] !== input.request_id ||
+          body['plan_sha256'] !== input.plan['plan_sha256']
+        ) {
+          return resultRefused(status, ALIAS_V2_RESPONSE_INVALID);
         }
-        return proof.status === ALIAS_V2_STATUS_REPLAY
-          ? { kind: 'idempotent_replay', stage }
-          : { kind: 'applied', stage, status: proof.status };
+      } else if (
+        (Object.hasOwn(body, 'request_id') && body['request_id'] !== input.request_id) ||
+        (Object.hasOwn(body, 'plan_sha256') && body['plan_sha256'] !== input.plan['plan_sha256'])
+      ) {
+        return resultRefused(status, ALIAS_V2_RESPONSE_INVALID);
+      }
+      return { kind: 'ok', stage, body };
+    }
+    if (stage === 'admit') {
+      if (!isJsonObject(body)) {
+        return resultRefused(status, ALIAS_V2_RESPONSE_INVALID);
+      }
+      // Admission may already carry the terminal proof (an earlier attempt of this same request
+      // was applied); that is a terminal success, not an admission to queue again.
+      if (hasExactKeys(body, ALIAS_V2_RESPONSE_KEYS)) {
+        const proof = validateProof(body, input);
+        return 'code' in proof
+          ? resultRefused(status, proof.code)
+          : terminalResult(stage, proof.status);
       }
       if (
         body['request_id'] !== input.request_id ||
@@ -317,18 +347,24 @@ export function classifyAliasV2Response(input: AliasV2ClassificationInput): Alia
       }
       return { kind: 'ok', stage, body };
     }
-    if (stage === 'read' && body === null) {
+    if (body === null) {
       // The read stage returns no durable evidence for this request id: the mutation never
-      // committed, and the CLI must not turn that into a second attempt.
+      // committed, and the CLI must not turn that into a second admission.
       return { kind: 'not_applied' };
     }
-    const proof = validateProof(body, input);
-    if ('code' in proof) {
-      return resultRefused(status, proof.code);
+    if (
+      isJsonObject(body) &&
+      hasExactKeys(body, ['status', 'plan_sha256']) &&
+      body['status'] === ALIAS_V2_STATUS_PENDING
+    ) {
+      return body['plan_sha256'] === input.plan['plan_sha256']
+        ? { kind: 'pending', stage }
+        : resultRefused(status, ALIAS_V2_RESPONSE_INVALID);
     }
-    return proof.status === ALIAS_V2_STATUS_REPLAY
-      ? { kind: 'idempotent_replay', stage }
-      : { kind: 'applied', stage, status: proof.status };
+    const proof = validateProof(body, input);
+    return 'code' in proof
+      ? resultRefused(status, proof.code)
+      : terminalResult(stage, proof.status);
   }
   if (status === 400) {
     return resultRefused(status, serverCode(body, ALIAS_V2_PREFLIGHT_INVALID_REQUEST));
@@ -359,16 +395,17 @@ export function startAliasV2Lifecycle(input: {
     request_id: input.requestId,
     plan_sha256: input.planSha256,
     gates: [],
-    execute_attempts: 0,
-    readback_attempts: 0,
+    admit_attempts: 0,
+    read_attempts: 0,
+    polls: 0,
     code: null,
   };
 }
 
 /**
  * Advances the lifecycle by one stage result. Every illegal transition — a stage out of order, a
- * gate acknowledged twice or out of order, a second execution attempt, an automatic resubmission
- * after an unknown outcome — is refused here rather than left to the caller.
+ * gate acknowledged twice or out of order, a second admission attempt, an automatic
+ * resubmission after an unknown outcome — is refused here rather than left to the caller.
  */
 export function advanceAliasV2Lifecycle(
   state: AliasV2Lifecycle,
@@ -376,74 +413,77 @@ export function advanceAliasV2Lifecycle(
 ): AliasV2Lifecycle {
   const { stage, result } = step;
   if (stage === 'read') {
-    if (state.phase !== 'readback_required') {
+    const observing = state.phase === 'admitted' || state.phase === 'readback_required';
+    if (!observing) {
       refused(
         ALIAS_V2_LIFECYCLE_REFUSED,
         2,
-        'Alias v2 read stage is only valid after an unknown outcome.',
+        `Alias v2 read stage is not valid in phase ${state.phase}.`,
       );
     }
-    if (state.readback_attempts >= MAX_READBACK_ATTEMPTS) {
-      refused(ALIAS_V2_LIFECYCLE_REFUSED, 2, 'Alias v2 readback attempts are exhausted.');
+    const readback = state.phase === 'readback_required';
+    if (
+      (readback && state.read_attempts >= MAX_READBACK_ATTEMPTS) ||
+      (!readback && state.polls >= MAX_POLL_ATTEMPTS)
+    ) {
+      refused(ALIAS_V2_LIFECYCLE_REFUSED, 2, 'Alias v2 read stage is exhausted.');
     }
-    const readbackAttempts = state.readback_attempts + 1;
+    const observed = readback
+      ? { ...state, read_attempts: state.read_attempts + 1 }
+      : { ...state, polls: state.polls + 1 };
     if (result.kind === 'applied') {
-      return { ...state, phase: 'applied', readback_attempts: readbackAttempts, code: null };
+      return { ...observed, phase: 'applied', code: null };
     }
     if (result.kind === 'idempotent_replay') {
-      return {
-        ...state,
-        phase: 'idempotent_replay',
-        readback_attempts: readbackAttempts,
-        code: null,
-      };
+      return { ...observed, phase: 'idempotent_replay', code: null };
     }
     if (result.kind === 'not_applied') {
-      return {
-        ...state,
-        phase: 'refused',
-        readback_attempts: readbackAttempts,
-        code: ALIAS_V2_EXECUTION_NOT_APPLIED,
-      };
+      return { ...observed, phase: 'refused', code: ALIAS_V2_EXECUTION_NOT_APPLIED };
     }
     if (result.kind === 'refused') {
-      return { ...state, phase: 'refused', readback_attempts: readbackAttempts, code: result.code };
+      return { ...observed, phase: 'refused', code: result.code };
     }
-    // A read that could not be dispatched stays in the readback phase; the caller may retry the
-    // read (bounded above) but never the execution.
-    return { ...state, readback_attempts: readbackAttempts };
+    if (result.kind === 'pending') {
+      // In flight: the same phase, one poll counted, and only another read may follow.
+      return observed;
+    }
+    // A read that could not be dispatched stays on the readback path; the caller may retry the
+    // read (bounded above) but never the admission.
+    return observed;
   }
-  if (stage === 'execute') {
-    // Checked first: whatever the phase, an execution attempt that already happened is final.
-    if (state.execute_attempts !== 0) {
-      refused(ALIAS_V2_LIFECYCLE_REFUSED, 2, 'Alias v2 execution is never attempted twice.');
+  if (stage === 'admit') {
+    // Checked first: whatever the phase, an admission attempt that already happened is final.
+    if (state.admit_attempts !== 0) {
+      refused(ALIAS_V2_LIFECYCLE_REFUSED, 2, 'Alias v2 admission is never attempted twice.');
     }
-    if (state.phase !== 'admitted') {
+    if (state.phase !== 'gated') {
       refused(
         ALIAS_V2_LIFECYCLE_REFUSED,
         2,
-        `Alias v2 execution is only valid after admission, not in phase ${state.phase}.`,
+        `Alias v2 admission is only valid after the gates, not in phase ${state.phase}.`,
       );
     }
-    const executed = { ...state, execute_attempts: 1 };
+    const admitted = { ...state, admit_attempts: 1 };
+    if (result.kind === 'ok') {
+      return { ...admitted, phase: 'admitted', code: null };
+    }
     if (result.kind === 'applied') {
-      return { ...executed, phase: 'applied', code: null };
+      return { ...admitted, phase: 'applied', code: null };
     }
     if (result.kind === 'idempotent_replay') {
-      return { ...executed, phase: 'idempotent_replay', code: null };
+      return { ...admitted, phase: 'idempotent_replay', code: null };
     }
     if (result.kind === 'readback_required') {
-      return { ...executed, phase: 'readback_required', code: result.code };
+      return { ...admitted, phase: 'readback_required', code: result.code };
     }
     if (result.kind === 'refused') {
-      return { ...executed, phase: 'refused', code: result.code };
+      return { ...admitted, phase: 'refused', code: result.code };
     }
-    refused(ALIAS_V2_LIFECYCLE_REFUSED, 2, 'Alias v2 execution cannot accept this result.');
+    refused(ALIAS_V2_LIFECYCLE_REFUSED, 2, 'Alias v2 admission cannot accept this result.');
   }
-  const expectedPhase: Record<'preflight' | 'gate' | 'admit', AliasV2Phase> = {
+  const expectedPhase: Record<'preflight' | 'gate', AliasV2Phase> = {
     preflight: 'prepared',
     gate: 'preflight_passed',
-    admit: 'gated',
   };
   if (state.phase !== expectedPhase[stage]) {
     refused(
@@ -455,33 +495,20 @@ export function advanceAliasV2Lifecycle(
   if (result.kind === 'refused') {
     return { ...state, phase: 'refused', code: result.code };
   }
-  if (result.kind === 'applied' && stage === 'admit') {
-    // Admission reported the plan already applied: terminal, and no execution may follow.
-    return { ...state, phase: 'applied', code: null };
-  }
-  if (result.kind === 'idempotent_replay' && stage === 'admit') {
-    return { ...state, phase: 'idempotent_replay', code: null };
-  }
   if (stage === 'preflight') {
     if (result.kind !== 'ok') {
       refused(ALIAS_V2_LIFECYCLE_REFUSED, 2, 'Alias v2 preflight cannot accept this result.');
     }
     return { ...state, phase: 'preflight_passed' };
   }
-  if (stage === 'gate') {
-    const gate = result.kind === 'ok' ? result.body['gate_name'] : null;
-    if (gate !== ALIAS_V2_GATE_NAMES[state.gates.length]) {
-      refused(ALIAS_V2_LIFECYCLE_REFUSED, 2, 'Alias v2 gates must be acknowledged once, in order.');
-    }
-    const gates = [...state.gates, gate as string];
-    return gates.length === ALIAS_V2_GATE_NAMES.length
-      ? { ...state, gates, phase: 'gated' }
-      : { ...state, gates };
+  const gate = result.kind === 'ok' ? result.body['gate_name'] : null;
+  if (gate !== ALIAS_V2_GATE_NAMES[state.gates.length]) {
+    refused(ALIAS_V2_LIFECYCLE_REFUSED, 2, 'Alias v2 gates must be acknowledged once, in order.');
   }
-  if (result.kind !== 'ok') {
-    refused(ALIAS_V2_LIFECYCLE_REFUSED, 2, `Alias v2 ${stage} cannot accept this result.`);
-  }
-  return { ...state, phase: 'admitted' };
+  const gates = [...state.gates, gate as string];
+  return gates.length === ALIAS_V2_GATE_NAMES.length
+    ? { ...state, gates, phase: 'gated' }
+    : { ...state, gates };
 }
 
 /** True when the lifecycle is in a terminal phase that publishes nothing further. */

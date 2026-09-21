@@ -70,8 +70,9 @@ test('data api manifest freezes the exact database contract and complete CLI inv
     'sources',
     'unitgroups',
   ]);
-  assert.equal(Object.keys(DATA_API_RPC_TARGETS).length, 16);
-  assert.equal(Object.keys(DATA_API_RPC_REPLAY_CLASSIFICATION).length, 16);
+  // Sixteen v1 entries plus the four approved versioned (v2) protected lifecycle endpoints.
+  assert.equal(Object.keys(DATA_API_RPC_TARGETS).length, 20);
+  assert.equal(Object.keys(DATA_API_RPC_REPLAY_CLASSIFICATION).length, 20);
   assert.deepEqual(
     Object.keys(DATA_API_RPC_REPLAY_CLASSIFICATION).sort(),
     Object.keys(DATA_API_RPC_TARGETS).sort(),

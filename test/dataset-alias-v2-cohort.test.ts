@@ -283,20 +283,21 @@ test('the cohort plan is admissible through the protected request and lifecycle'
       })),
     },
   };
+  // The read stage resolves the queued execution to its terminal proof.
   const classified = classifyAliasV2Response({
-    stage: 'execute',
+    stage: 'read',
     outcome: { kind: 'response', status: 200, body: proof },
     ...binding,
   });
-  assert.deepEqual(classified, { kind: 'applied', stage: 'execute', status: 'applied' });
-  state = advanceAliasV2Lifecycle(state, { stage: 'execute', result: classified });
-  assert.deepEqual([state.phase, state.execute_attempts], ['applied', 1]);
+  assert.deepEqual(classified, { kind: 'applied', stage: 'read', status: 'applied' });
+  state = advanceAliasV2Lifecycle(state, { stage: 'read', result: classified });
+  assert.deepEqual([state.phase, state.admit_attempts], ['applied', 1]);
   assert.throws(
     () =>
       advanceAliasV2Lifecycle(state, {
-        stage: 'execute',
+        stage: 'admit',
         result: classifyAliasV2Response({
-          stage: 'execute',
+          stage: 'admit',
           outcome: { kind: 'response', status: 200, body: proof },
           ...binding,
         }),

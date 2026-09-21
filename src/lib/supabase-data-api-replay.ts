@@ -14,6 +14,24 @@ export const DATA_API_RPC_REPLAY_CLASSIFICATION = {
     operation: 'read',
     authRefreshReplay: 'once-after-401-403',
   },
+  // Versioned (v2) protected lifecycle: the same classifications as their v1 counterparts,
+  // because the review forbids an authentication retry from ever replaying an admission.
+  cmd_dataset_alias_execution_admit_v2_guarded: {
+    operation: 'mutation',
+    authRefreshReplay: 'never',
+  },
+  cmd_dataset_alias_execution_gate_v2_guarded: {
+    operation: 'mutation',
+    authRefreshReplay: 'never',
+  },
+  cmd_dataset_alias_execution_preflight_v2_guarded: {
+    operation: 'mutation',
+    authRefreshReplay: 'never',
+  },
+  cmd_dataset_alias_execution_read_v2: {
+    operation: 'read',
+    authRefreshReplay: 'once-after-401-403',
+  },
   cmd_dataset_delete: { operation: 'mutation', authRefreshReplay: 'never' },
   cmd_dataset_derivative_rebuild_plan_guarded: {
     operation: 'mutation',

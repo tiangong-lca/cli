@@ -598,6 +598,70 @@ export async function readMaintenanceAliasExecution(options: {
   });
 }
 
+// Versioned (v2) protected lifecycle calls: the same transport, the same request bodies, the
+// versioned function names the wire agreement fixes. The private v2 executors are absent by
+// design — the server-side admission callback reaches them, never this client.
+
+export async function preflightMaintenanceAliasExecutionV2(options: {
+  context: DatasetMaintenanceRemoteContext;
+  request: JsonObject;
+}): Promise<JsonObject> {
+  return invokeMaintenanceRpc({
+    context: options.context,
+    rpc: 'cmd_dataset_alias_execution_preflight_v2_guarded',
+    body: { p_request: options.request },
+    minimumTimeoutMs: 90_000,
+    allowDomainFailure: true,
+  });
+}
+
+export async function admitMaintenanceAliasExecutionV2(options: {
+  context: DatasetMaintenanceRemoteContext;
+  request: JsonObject;
+}): Promise<JsonObject> {
+  return invokeMaintenanceRpc({
+    context: options.context,
+    rpc: 'cmd_dataset_alias_execution_admit_v2_guarded',
+    body: { p_request: options.request },
+    minimumTimeoutMs: 90_000,
+    allowDomainFailure: true,
+  });
+}
+
+export async function captureMaintenanceAliasExecutionGateV2(options: {
+  context: DatasetMaintenanceRemoteContext;
+  requestId: string;
+  preflightToken: string;
+  gateName: 'primary_support_plan' | 'execution_unused' | 'derivative_quiescence';
+}): Promise<JsonObject> {
+  return invokeMaintenanceRpc({
+    context: options.context,
+    rpc: 'cmd_dataset_alias_execution_gate_v2_guarded',
+    body: {
+      p_request_id: options.requestId,
+      p_preflight_token: options.preflightToken,
+      p_gate_name: options.gateName,
+    },
+    minimumTimeoutMs: 90_000,
+    allowDomainFailure: true,
+  });
+}
+
+export async function readMaintenanceAliasExecutionV2(options: {
+  context: DatasetMaintenanceRemoteContext;
+  requestId: string;
+}): Promise<JsonObject> {
+  // The read stage answers with the stored evidence, or with the bare success envelope when it
+  // holds no durable evidence for this client request id; the caller reads that envelope.
+  return invokeMaintenanceRpc({
+    context: options.context,
+    rpc: 'cmd_dataset_alias_execution_read_v2',
+    body: { p_request_id: options.requestId },
+    minimumTimeoutMs: 90_000,
+    allowDomainFailure: true,
+  });
+}
+
 function derivativeSelectForTable(table: 'flows' | 'processes'): string {
   void table;
   return 'id,version,user_id,state_code,modified_at,json,json_ordered,extracted_md,embedding_ft,embedding_ft_at';
