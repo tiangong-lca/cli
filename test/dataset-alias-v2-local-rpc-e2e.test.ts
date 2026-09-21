@@ -216,13 +216,22 @@ function assertPristineSeed(adapter: LocalAdapter): void {
   );
 }
 
+/** True when the marker offers a scenario whose name normalises to the wanted one. */
+function scenarioOffered(name: string): boolean {
+  const normalize = (value: string): string => value.toLowerCase().replaceAll(/[-_ ]/gu, '');
+  return READY !== null && READY.scenarios.some((entry) => normalize(entry) === normalize(name));
+}
+
 /**
  * The campaign is a coordinated one-shot against a shared stack: it runs only with BOTH the owner's
  * ready marker and an explicit opt-in, so a routine test run can never write to a local stack just
- * because the marker happens to exist.
+ * because the marker happens to exist. Each scenario also needs its own pristine seed, which only the
+ * database owner prepares (the marker's `scenarios` list is the offer).
  */
 const ENABLED = process.env['TIANGONG_LCA_ALIAS_V2_LOCAL_E2E'] === '1';
 const e2eTest = READY === null || !ENABLED ? test.skip : test;
+const lostReplyTest =
+  READY === null || !ENABLED || !scenarioOffered('lost-admit-reply') ? test.skip : test;
 
 e2eTest(
   'the local-RPC campaign: not admitted, pending, applied, fresh status, no replay',
@@ -386,6 +395,68 @@ e2eTest(
             },
             rpc_calls: 'see the numbered *-wire-request.json / *-function-reply.json files',
             retained_files_sha256: retained,
+          },
+          null,
+          1,
+        )}\n`,
+        { mode: 0o600 },
+      );
+    }
+  },
+);
+
+lostReplyTest(
+  'the lost admission reply recovers by reading, with exactly one admission posted',
+  async (t) => {
+    assert.ok(READY);
+    const outDir = mkdtempSync(path.join(os.tmpdir(), 'alias-v2-lost-reply-'));
+    t.after(() => rmSync(outDir, { recursive: true, force: true }));
+    const adapter = localAdapter();
+    assertPristineSeed(adapter);
+    assertTransportStubInstalled(adapter);
+    let noncePersisted = false;
+    const report = await runCli({
+      adapter,
+      outDir,
+      commit: true,
+      statusOnly: false,
+      waitSeconds: 60,
+      dropAdmitReply: true,
+      onRead: (readIndex) => {
+        if (readIndex === 1) {
+          if (!noncePersisted) {
+            noncePersisted = true;
+            persistDispatchedNonce(adapter);
+          }
+          // The server's one-shot attempt is already consumed and dispatched; only the reply was
+          // lost. The completion contract drives the same execution to its terminal state while the
+          // CLI keeps observing.
+          completeSeededExecution(adapter);
+        }
+      },
+    });
+    assert.equal(noncePersisted, true);
+    assert.equal(report.admission_attempts, 1);
+    assert.equal(admitRpcCalls(adapter), 1, 'the lost reply must never become a second admission');
+    assert.deepEqual([report.status, report.phase], ['passed', 'applied']);
+    // The run's own report is retained even in the default (no evidence directory) case: the caller
+    // may set TIANGONG_LCA_ALIAS_V2_EVIDENCE_DIR to keep the full packet.
+    if (EVIDENCE_DIR !== null) {
+      const target = path.join(EVIDENCE_DIR, 'runs', 'lost-admit-reply');
+      cpSync(outDir, target, { recursive: true });
+      writeFileSync(
+        path.join(EVIDENCE_DIR, 'lost-admit-reply-summary.json'),
+        `${JSON.stringify(
+          {
+            schema: 'cli358-local-rpc-lost-reply.v1',
+            ran_at_utc: new Date().toISOString(),
+            request_id: READY.request_id,
+            report: {
+              status: report.status,
+              phase: report.phase,
+              admission_attempts: report.admission_attempts,
+            },
+            admit_rpc_calls: admitRpcCalls(adapter),
           },
           null,
           1,
