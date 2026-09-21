@@ -25,15 +25,17 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 6b8460e19c2bdbe39a5c927bd4e4c880aa42c455
-lastReviewedNote: 'Reviewed for CLI #358: the shared synthetic cohort now carries matching embedded dataset versions for ordinary Database triggers and the source-proven 128 Time versus 146 non-Time reference-output mix. Two focused RED/GREEN regressions and the full local coverage gate pass; the runtime, v1 policy, package identity and release controls are unchanged by this fixture correction.'
+lastReviewedAt: 2026-09-22
+lastReviewedCommit: 53a53b82686eefc53c04f7a6e8e0b975db099eed
+lastReviewedNote: 'Reviewed for CLI #362: the version-only 0.1.21 release preparation for merged source PRs #360 and #361 changes only package identity and the live CLI-version fixtures; the pre-mutation npm/tag absence, RED/GREEN fixture evidence, unchanged package/Docpact/pre-push gates, the held merge/publication for the Database #674/#680 capability, and the unchanged post-merge tag, Trusted Publishing/provenance, consumer and workspace-integration path are recorded in the runbook.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
   - ./release-setup.md
   - ./agents/repo-validation.md
 ---
+
+Review note, 2026-09-22: Issue #362 is the dedicated 0.1.21 release preparation for merged source PRs #360 (CLI #358 Time alias, main merge `e69592e32c98d6b73c3f08c8db35b3ebd73538bb`) and #361 (CLI #359 Length*time, main merge `53a53b82686eefc53c04f7a6e8e0b975db099eed`). It changes only `package.json` identity and the live CLI-version fixtures (three in `test/cli.test.ts`, one in `test/dataset-maintenance-flow-identity-coverage-cli-remote.test.ts`, one in `test/dataset-alias-v2-protected-cli.test.ts`, one in `test/dataset-length-time-cli.test.ts`, plus the explicit-parameter constant in `test/dataset-alias-v2-public-stages.test.ts`), and keeps the sole lock, dependencies, runtime files, strict exports, workflows and release automation byte-unchanged. The source is merged but publication has not happened: npm latest is 0.1.20 (published and integrated), no `cli-v0.1.21` tag exists locally or on `origin`, and `scripts/ci/release-version.cjs assert-unpublished --version 0.1.21` passes before any mutation while `next-version --part patch` resolves 0.1.21 from published 0.1.20. The six genuinely bound fixtures were RED against the bumped identity (actual 0.1.21 against the stale 0.1.20 expectation, and `Toolchain evidence does not bind the running published CLI version.` for the two protected toolchain fixtures) and GREEN afterwards; the seventh supplies the expected version explicitly, stayed GREEN, and was advanced so no stale previous-version fixture remains. Merge and publication are held until the Database #674/#680 capability and current-closure guards are promoted to qualified main and canonically deployed. Before merge this preparation requires the unchanged package/Docpact/pre-push gates with exact 100% coverage, the pack dry-run and the exact-head four-platform matrix; after merge it requires the automatic `cli-v0.1.21` tag, native pnpm Trusted Publishing with cryptographic provenance, registry integrity and `gitHead` binding, fresh credential-free consumers, and exact release-merge workspace integration. Local publication and manual tag creation remain forbidden, and publishing this software does not publish any dataset.
 
 Review note, 2026-09-22: CLI #359 adds no release surface. The closed Length*time profile is a source capability that reuses the reviewed protected lifecycle and the existing tag/Trusted-Publishing route; it adds no dependency, lock, workflow, tag rule or publication change, and it must not be slipped into a version-only release. Its own release still requires the unchanged package/Docpact/pre-push gates with exact 100% coverage, the four-platform tag workflow, native pnpm Trusted Publishing with provenance, and exact workspace integration.
 

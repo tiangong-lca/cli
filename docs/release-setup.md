@@ -24,15 +24,17 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 6b8460e19c2bdbe39a5c927bd4e4c880aa42c455
-lastReviewedNote: 'Reviewed for CLI #358: the shared synthetic cohort now carries matching embedded dataset versions for ordinary Database triggers and the source-proven 128 Time versus 146 non-Time reference-output mix. Two focused RED/GREEN regressions and the full local coverage gate pass; the runtime, v1 policy, package identity and release controls are unchanged by this fixture correction.'
+lastReviewedAt: 2026-09-22
+lastReviewedCommit: 53a53b82686eefc53c04f7a6e8e0b975db099eed
+lastReviewedNote: 'Reviewed for CLI #362: the 0.1.21 version-only preparation for merged source PRs #360 and #361 adds no secret, environment, runner, dependency, lockfile change, Trusted Publisher setting, workflow filename, tag rule, credential, or alternate publication path, records honestly that npm latest is 0.1.20 and no cli-v0.1.21 tag exists, and keeps the merge-triggered four-platform tag plus native pnpm OIDC Trusted Publishing as the only route, held for the Database #674/#680 capability.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
   - ./release-runbook.md
   - ./agents/repo-validation.md
 ---
+
+Review note, 2026-09-22: Issue #362 is the 0.1.21 version-only preparation for merged source PRs #360 and #361. It adds no secret, environment, runner, dependency, lockfile change, Trusted Publisher setting, workflow filename, tag rule, credential, or alternate publication path, and it records honestly that publication has not occurred: npm latest is 0.1.20 and no `cli-v0.1.21` tag exists. The merge-triggered four-platform tag workflow, native pnpm OIDC Trusted Publishing and provenance verification remain the only publication route, and merge/publication stays held until Database #674/#680 reach qualified main and production deployment.
 
 Review note, 2026-09-22: CLI #359 adds no secret, environment, runner, dependency, lockfile change, Trusted Publisher setting, workflow filename, tag rule, credential, or alternate publication path. The Length*time profile is source only and reuses the existing release setup unchanged.
 

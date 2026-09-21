@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 83189e2
-lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: 新增一个自包含的精确十进制模块（归一化 + bigint 乘法 + 渲染），不改 v1 alias 架构、导出、依赖或写路径。'
+lastReviewedAt: 2026-09-22
+lastReviewedCommit: 53a53b82686eefc53c04f7a6e8e0b975db099eed
+lastReviewedNote: 'Reviewed for CLI #362: the version-only 0.1.21 release preparation for merged source PRs #360 and #361 changes package identity and the live CLI-version fixtures only; runtime modules, public exports, the sole lock, dependencies, command families, ledger/transport design and ownership boundaries remain exactly as reviewed for #358 and #359.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -40,6 +40,8 @@ related:
   - ../../README.md
   - ../../DEV_CN.md
 ---
+
+Review note, 2026-09-22: Issue #362 prepares package 0.1.21 for merged source PRs #360 and #361 without changing architecture. Package identity and the live CLI-version fixtures follow the package file; runtime modules, public exports, the sole lock, dependencies, command families, ledger/transport design and ownership boundaries remain exactly as reviewed for #358 and #359.
 
 Review note, 2026-09-22: CLI #359 adds a second protected profile to the same architecture, not a new pipeline. `src/lib/dataset-length-time-plan.ts` owns the closed `dataset-length-time-plan.v1` document (13 Process actions x the two absolute amount leaves of 39 selected occurrences, fixed factor 1000, read-only flows as `{id, version, sha256}` evidence, anchored source-comment parsing and the shared source-comment vectors), `src/lib/dataset-length-time-public.ts` owns the `plan --length-time-input` stage, and the existing `dataset-alias-v2-{public,protected,status}.ts` owners keep the freeze, seal, preflight/gate/admit/read transport and the strict terminal-proof adapter. The plan's own `schema_version` is the only selector: `protectedPlanProfile`, `assertProtectedPlanDocument` and `protectedTargetSnapshots` dispatch on it, each profile keeps its own predicate, and the freeze envelope, approval/identity, request key sets, gates, window and one-admission policy are unchanged. The shared canonical unit-group reader now also refuses a repeated unit internal id or an ambiguous selected reference.
 

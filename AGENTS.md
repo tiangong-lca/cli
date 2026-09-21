@@ -37,9 +37,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 75c51bf43f6c73e6a82fd241642b8703f7472f8a
-lastReviewedNote: 'Reviewed for CLI #358: the read stage now binds the ACTUAL versioned status envelope (`src/lib/dataset-alias-v2-status.ts`), authorises `applied` only through the genuinely observed terminal proof (per-row ledger audits, fresh current-row hashes and functional-unit texts, one scientific batch), treats the server read-only conflicts as polls and the not-found answer as no admission, and a gated real-local-RPC end-to-end driver exercises the real command against the database owner interop stack. V1 bytes and behaviour are unchanged.'
+lastReviewedAt: 2026-09-22
+lastReviewedCommit: 53a53b82686eefc53c04f7a6e8e0b975db099eed
+lastReviewedNote: 'Reviewed for CLI #362: the release-only 0.1.21 preparation for merged source PRs #360 and #361 changes package identity and the live version fixtures only, without changing CLI-owned policy, commands, authorization, or release semantics; publication has not occurred (npm latest 0.1.20, no cli-v0.1.21 tag) and merge/publication stays held for the Database #674/#680 capability.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -50,6 +50,8 @@ related:
   - docs/release-runbook.md
   - docs/release-setup.md
 ---
+
+Review note, 2026-09-22: Issue #362 is the version-only 0.1.21 release preparation for merged source PRs #360 (CLI #358) and #361 (CLI #359) on `codex/issue-362-cli021` (base main merge `53a53b8`). Only package identity and the live CLI-version fixtures change; dependencies, the sole lock, runtime, public exports, authorization, workflows and release automation are unchanged. The source capabilities are merged while publication has not occurred (npm latest 0.1.20, no `cli-v0.1.21` tag), and merge/publication stays held until the Database #674/#680 capability and current-closure guards reach qualified main and production deployment; local publication or manual tag creation remains forbidden.
 
 Review note, 2026-09-22: CLI #359 adds the closed **Length\*time** correction profile (`dataset-length-time-plan.v1`) as a second user of the versioned protected lifecycle. `plan --length-time-input` builds the plan from the reviewed planning input: 13 owner-draft Process actions whose 39 selected occurrences move their two absolute amount leaves by the fixed factor 1000 (`kmy` to `m*a`, both leaves byte-equal before), with the 13 read-only Product flows carried as `{id, version, sha256}` evidence and no flow, text or no-op action anywhere. The profile is selected by the plan document's own `schema_version` alone — the Time plan keeps its reviewed predicate, the Length plan gets its own, and neither is widened — and the shared freeze/approval/request/admit/read envelopes, the three gates, the 180-second window and the one-admission policy are unchanged; the freeze stays one 13-key envelope and carries the wire's fixed `{flowproperty, unitgroup}` target projection for a Length plan. The source number is read only from the anchored declaration the audited corpus uses (`Source EcoSpold1 exchange number: <N>.`, one declaration, suffix preserved and never scanned), the uncertainty pair is optional and preserved byte-for-byte (13 of 39 occurrences declare no distribution, 35 declare no standard deviation), and the reviewed unit-group factors are compared as exact decimals (`1.0`, `1000.0`). A checked-in synthetic cohort fixture reproduces those real shapes and both halves read one shared source-comment vector list. Coverage stays 100% across `src/**`; production use still requires the matching database capability and a coordinated release, and nothing is deployed or executed. The CLI half passed root's real-corpus plan oracle and the database owner's joint executor run against the same emitted document.
 

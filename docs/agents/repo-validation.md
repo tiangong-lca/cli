@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 6b8460e19c2bdbe39a5c927bd4e4c880aa42c455
-lastReviewedNote: 'Reviewed for CLI #358: the shared synthetic cohort now carries matching embedded dataset versions for ordinary Database triggers and the source-proven 128 Time versus 146 non-Time reference-output mix. Two focused RED/GREEN regressions and the full local coverage gate pass; the runtime, v1 policy, package identity and release controls are unchanged by this fixture correction.'
+lastReviewedAt: 2026-09-22
+lastReviewedCommit: 53a53b82686eefc53c04f7a6e8e0b975db099eed
+lastReviewedNote: 'Reviewed for CLI #362: the release-only 0.1.21 preparation for merged source PRs #360 and #361 proved six live CLI-version fixtures RED against the bumped identity and GREEN afterwards, then re-ran the unchanged gate set on the release head: pre-mutation npm/tag absence, focused tests, test:package, the full pre-push gate with exact 100% coverage, the pack dry-run and Docpact. Publication has not occurred and stays held for the Database #674/#680 capability.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -43,6 +43,8 @@ related:
   - ../release-runbook.md
   - ../release-setup.md
 ---
+
+Review note, 2026-09-22: Issue #362 is the release-only 0.1.21 preparation for merged source PRs #360 and #361. Six live CLI-version fixtures were proven RED against the bumped package identity and GREEN after the update — three `cliVersion` expectations in `test/cli.test.ts` (the third re-proved directly after the earlier assertion in its own test had aborted), one in `test/dataset-maintenance-flow-identity-coverage-cli-remote.test.ts`, and the protected toolchain-evidence fixtures in `test/dataset-alias-v2-protected-cli.test.ts` and `test/dataset-length-time-cli.test.ts`, which refused with `Toolchain evidence does not bind the running published CLI version.` — plus one constant in `test/dataset-alias-v2-public-stages.test.ts` that supplies the expected version explicitly and therefore stayed green, advanced with the others so no stale previous-version fixture remains. The gate set is unchanged and was re-run on the release head: pre-mutation npm/tag absence via `release-version.cjs`, focused tests, `test:package`, the full pre-push gate with exact 100% coverage, the pack dry-run and Docpact; after a separately authorized merge it requires the automatic tag plus the four-platform matrix with Trusted Publishing/provenance, registry integrity, fresh public consumers and exact workspace integration, and merge/publication stays held until Database #674/#680 reach qualified main and production deployment.
 
 Review note, 2026-09-22: CLI #359 adds a second protected profile to the same architecture, not a new pipeline. `src/lib/dataset-length-time-plan.ts` owns the closed `dataset-length-time-plan.v1` document (13 Process actions x the two absolute amount leaves of 39 selected occurrences, fixed factor 1000, read-only flows as `{id, version, sha256}` evidence, anchored source-comment parsing and the shared source-comment vectors), `src/lib/dataset-length-time-public.ts` owns the `plan --length-time-input` stage, and the existing `dataset-alias-v2-{public,protected,status}.ts` owners keep the freeze, seal, preflight/gate/admit/read transport and the strict terminal-proof adapter. The plan's own `schema_version` is the only selector: `protectedPlanProfile`, `assertProtectedPlanDocument` and `protectedTargetSnapshots` dispatch on it, each profile keeps its own predicate, and the freeze envelope, approval/identity, request key sets, gates, window and one-admission policy are unchanged. The shared canonical unit-group reader now also refuses a repeated unit internal id or an ambiguous selected reference.
 
