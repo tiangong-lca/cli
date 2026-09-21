@@ -562,3 +562,61 @@ test('the plan builder refuses every remaining shape it must', () => {
     'foreign source alias',
   );
 });
+
+test('the dispatch probe refuses a freeze file that is not an object', async () => {
+  const sealed = sealedAliasV2Execution();
+  try {
+    const arrayFreeze = path.join(sealed.directory, 'freeze-array.json');
+    writeFileSync(arrayFreeze, '[]\n', { mode: 0o600 });
+    await assert.rejects(
+      () =>
+        runDatasetMaintenanceProtectedDispatch({
+          planPath: sealed.planPath,
+          freezePath: arrayFreeze,
+          approvalPath: sealed.approvalPath,
+          outDir: sealed.directory,
+          commit: false,
+          statusOnly: true,
+          env: buildSupabaseTestEnv({
+            TIANGONG_LCA_API_BASE_URL: `https://${ALIAS_V2_TEST_PROJECT_REF}.supabase.co/functions/v1`,
+          }),
+          fetchImpl: (async () => {
+            throw new Error('no endpoint is contacted for an unusable freeze');
+          }) as unknown as FetchLike,
+        }),
+      (error: unknown) =>
+        (error as { code?: string }).code === 'DATASET_MAINTENANCE_PROTECTED_FREEZE_INVALID',
+    );
+  } finally {
+    rmSync(sealed.directory, { recursive: true, force: true });
+  }
+});
+
+test('the bounded quantity helpers refuse what the reviewed bounds exclude', async () => {
+  const {
+    BOUNDED_INPUT_LENGTH,
+    BOUNDED_OUTPUT_LENGTH,
+    canonicalDecimalText,
+    isBoundedDecimalValue,
+    isBoundedFactorValue,
+    multiplyBoundedCanonicalDecimal,
+    multiplyBoundedExactDecimal,
+    normalizeBoundedDecimalText,
+  } = await import('../src/lib/dataset-alias-exponent-decimal.js');
+  // Plain quantities render exactly; exponent quantities normalise without exponents.
+  assert.equal(normalizeBoundedDecimalText('0.0002'), '0.0002');
+  assert.equal(canonicalDecimalText('0'), '0');
+  assert.equal(canonicalDecimalText('1.0E+3'), '1000');
+  assert.equal(isBoundedDecimalValue('0.0002'), true);
+  assert.equal(isBoundedFactorValue('1'), true);
+  // The length and exponent bounds are the reviewed ones.
+  assert.equal(isBoundedDecimalValue('9'.repeat(BOUNDED_INPUT_LENGTH + 1)), false);
+  assert.equal(isBoundedDecimalValue('1E31'), false);
+  // A product whose rendering would exceed the output bound is refused by both renderings.
+  const value = `1.${'1'.repeat(58)}E-30`;
+  const factor = `0.${'9'.repeat(62)}`;
+  assert.equal(multiplyBoundedExactDecimal(value, factor), null);
+  assert.equal(multiplyBoundedCanonicalDecimal(value, factor), null);
+  const product = multiplyBoundedExactDecimal('1', factor);
+  assert.equal(product !== null && product.length <= BOUNDED_OUTPUT_LENGTH, true);
+});

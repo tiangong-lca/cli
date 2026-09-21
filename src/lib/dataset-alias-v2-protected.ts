@@ -1254,7 +1254,9 @@ export async function runAliasV2Protected(
       );
       if (gateRaw.kind !== 'response' || gateRaw.status !== 200) {
         return finish(
-          gateRaw.kind === 'refusal' ? gateRaw.code : `ALIAS_V2_GATE_UNKNOWN_${gate}`,
+          gateRaw.kind === 'refusal'
+            ? gateRaw.code
+            : `ALIAS_V2_GATE_HTTP_${gateRaw.kind === 'response' ? gateRaw.status : 0}_${gate}`,
           'failed',
         );
       }
