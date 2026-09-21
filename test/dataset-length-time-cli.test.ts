@@ -138,7 +138,7 @@ async function buildLengthChain(): Promise<LengthChain> {
   );
 
   const toolchainPath = path.join(directory, 'toolchain.json');
-  writeFileSync(toolchainPath, canonical(protectedToolchainEvidence('0.1.20')), { mode: 0o600 });
+  writeFileSync(toolchainPath, canonical(protectedToolchainEvidence('0.1.21')), { mode: 0o600 });
   const baselinesPath = path.join(directory, 'baselines.json');
   writeFileSync(
     baselinesPath,

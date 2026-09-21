@@ -34,7 +34,7 @@ import {
 } from './helpers/supabase-auth.js';
 import type { FetchLike } from '../src/lib/http.js';
 
-const CLI_VERSION = '0.1.20';
+const CLI_VERSION = '0.1.21';
 const CONTEXT_MISMATCH = 'DATASET_MAINTENANCE_PROTECTED_CONTEXT_MISMATCH';
 const PUBLIC_INVALID = 'ALIAS_V2_PUBLIC_ARTIFACT_INVALID';
 const SEAL_MISMATCH = 'ALIAS_V2_PUBLIC_SEAL_MISMATCH';
