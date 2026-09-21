@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 'd603d53ac6d54dd0ea6ce65f8c1ebf4f6e345311'
-lastReviewedNote: 'Reviewed the combined CLI #354 support-metadata repair and concurrent CLI #350 Process review-array adoption at main d603d53. Reviewed for CLI #354 at head a1295ac: 新增 support 元数据修复测试文件（匿名化 fixture、真实 RED、guard/refusal/ledger/no-replay/普通拒绝全覆盖），exact 100% coverage 与完整 pre-push/四平台门禁仍为必需，且该能力不属于 0.1.19 版本发布。 Reviewed for CLI #350 after 0.1.19 main integration: Process review-array coverage includes singleton, ordered multi-review, empty rejection, indexed later-member failure, placeholder repair, exact spec convergence, and the unchanged package/coverage/pre-push/four-platform gates.'
+lastReviewedCommit: 8cb5a100d59463c08e009089da8ce9707fe98aef
+lastReviewedNote: 'Reviewed for CLI #356: release-only 0.1.20 re-runs the unchanged pre-mutation npm/tag absence proof, package, coverage, pre-push, pack and four-platform gates, with the four version fixtures proven RED before the bump.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -186,6 +186,8 @@ Review note, 2026-07-23: Issue #194 adds focused proof for ordered contract bind
 Review note, 2026-07-23: Issue #196 keeps the validation contract unchanged for the dedicated 0.0.30 release. The manually dispatched Windows gate is required to prove durable attempt/outcome ledger writes no longer fail on read-only-descriptor `fsync`; all execution-contract recovery/no-replay tests, all four live CLI-version fixtures, exact 100% coverage, dry-run package inspection, Docpact, tag/publish workflows, and exact npm provenance remain required.
 
 Review note, 2026-07-23: Issue #198 adds a regression proving SDK validation cannot mutate the execution-contract input payload, its desired SHA, or the eventual dispatch target, and releases the repair as 0.0.31. Focused execution-contract coverage, all four live CLI-version fixtures, exact 100% coverage, Docpact, the full pre-push gate, the four-platform quality gate, package inspection, and exact npm provenance remain required.
+
+Review note, 2026-09-21: Issue #356 is the release-only 0.1.20 preparation for merged source PR #355. The four live CLI-version fixtures were proven RED against the bumped package identity (three focused failures reporting `cliVersion: '0.1.20'` against the stale `0.1.19` expectation) and GREEN after the fixture update; the gate set is unchanged and was re-run on the release head: pre-mutation npm/tag absence via `release-version.cjs`, focused tests, `test:package`, the full pre-push gate with exact 100% coverage, the pack dry-run, Docpact, and — after merge — the automatic tag plus the four-platform matrix with Trusted Publishing/provenance, registry integrity, fresh public consumers and exact workspace integration.
 
 Review note, 2026-09-21: CLI #354 adds `test/dataset-save-draft-support-metadata-repair.test.ts` on anonymized fixtures derived from the reviewed Unit Group / Flow Property row shape. It proves one guarded dispatch per admitted row carrying the complete before image with `ruleVerification: true` and policy `support-reference-metadata.v1`, the same admission in a dry-run with zero dispatch/no ledger directory, refusal of science, reference-identity/version/URI, language-structure, unreviewed-description, empty/trivial/no-op and not-fully-valid sides with no attempt and no dispatch, owner/state/stale-before drift, a retained attempt resolved by exact readback that returns the original admission, a tampered policy-to-table admission rejected by the ledger binding, and the untouched ordinary `reference_only_type` policy for non-contract runs, insert actions and invalid candidates. Exact 100% coverage, the full pre-push gate and the four-platform quality gate remain required, and this source capability is not part of the version-only 0.1.19 release.
 

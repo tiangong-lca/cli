@@ -26,14 +26,16 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 'd603d53ac6d54dd0ea6ce65f8c1ebf4f6e345311'
-lastReviewedNote: 'Reviewed the combined CLI #354 support-metadata repair and concurrent CLI #350 Process review-array adoption at main d603d53. Reviewed for CLI #354 at head a1295ac: 该 support 元数据修复仅为 source 能力，明确不得混入 version-only 0.1.19 发布，需单独的 release-prep PR、四平台 tag、Trusted Publishing/provenance 与 workspace 集成。 Reviewed for CLI #350 after 0.1.19 main integration: spec 0.2.2 review-array support is a source change with no further version claim; SDK publication and any later CLI release remain separate under the existing four-platform, Trusted Publishing, provenance and root-handoff process.'
+lastReviewedCommit: 8cb5a100d59463c08e009089da8ce9707fe98aef
+lastReviewedNote: 'Reviewed for CLI #356: 0.1.20 is the separate version-only preparation for merged source PR #355 and follows the existing four-platform tag, Trusted Publishing, provenance and root handoff steps; local publication and manual tags remain forbidden.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
   - ./release-setup.md
   - ./agents/repo-validation.md
 ---
+
+Review note, 2026-09-21: Issue #356 is the dedicated 0.1.20 release preparation for merged source PR #355 (main merge `8cb5a100d59463c08e009089da8ce9707fe98aef`), which carries the bounded existing-draft support metadata repair of #354 and the already-merged Process review-array adoption of #350 / PR #353 as existing source. It changes only `package.json` identity and the four live CLI-version fixtures (three in `test/cli.test.ts`, one in `test/dataset-maintenance-flow-identity-coverage-cli-remote.test.ts`), and keeps the sole lock, dependencies, runtime files, strict exports, workflows and release automation byte-unchanged. The source is merged but publication has not happened: npm latest is 0.1.19 (published and integrated), no `cli-v0.1.20` tag exists locally or on `origin`, and `scripts/ci/release-version.cjs assert-unpublished --version 0.1.20` passes before any mutation while `next-version --part patch` resolves 0.1.20 from published 0.1.19. The four fixtures were genuinely RED against the bumped identity (actual 0.1.20 against the stale 0.1.19 expectation) and GREEN afterwards. Before merge this preparation requires the unchanged package/Docpact/pre-push gates with exact 100% coverage, the pack dry-run and the exact-head four-platform matrix; after merge it requires the automatic `cli-v0.1.20` tag, native pnpm Trusted Publishing with cryptographic provenance, registry integrity and `gitHead` binding, fresh credential-free consumers, and exact release-merge workspace integration. Local publication and manual tag creation remain forbidden, and publishing this software does not publish any dataset.
 
 Review note, 2026-09-21: CLI #354 adds the bounded existing-draft support metadata repair in source only. It must not be slipped into the version-only 0.1.19 release: npm 0.1.19 and `cli-v0.1.19` belong to the merged #349 foundation, while this capability needs its own separate release-prep PR, four-platform tag, Trusted Publishing/provenance verification and exact workspace integration before any consumer may rely on it. It adds no dependency, lock, workflow, tag rule or publication change.
 
