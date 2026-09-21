@@ -24,7 +24,8 @@ import {
   buildAliasV2CohortInput,
 } from './fixtures/alias-v2-cohort.js';
 import { deriveAliasV2Sets } from '../src/lib/dataset-alias-v2-public.js';
-import { aliasV2DerivativeTargets } from './helpers/alias-v2-artifacts.js';
+import { aliasV2DerivativeTargets, sealAliasV2Fixture } from './helpers/alias-v2-artifacts.js';
+import { aliasV2StatusEnvelope } from './helpers/alias-v2-status.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -244,8 +245,16 @@ test('the 87 source-proven functional units are corrected and the 41 correct one
 });
 
 test('the cohort plan resolves to its terminal proof through the protected lifecycle', () => {
-  const requestId = '9f1c6f0e-6a2b-4a3f-9f0d-3b0d5a7c1e42';
-  const binding = { plan: PLAN, request_id: requestId };
+  // The same freeze/approval/identity chain the public stages build, so the actual read envelope can
+  // be bound to a genuine identity of this exact plan.
+  const sealed = sealAliasV2Fixture(PLAN);
+  const fixture = { plan: PLAN, identity: sealed.identity };
+  const requestId = sealed.identity.request_id;
+  const binding = {
+    plan: PLAN,
+    request_id: requestId,
+    identity: sealed.identity,
+  };
   let state = startAliasV2Lifecycle({ requestId, planSha256: PLAN['plan_sha256'] as string });
   state = advanceAliasV2Lifecycle(state, {
     stage: 'preflight',
@@ -262,34 +271,9 @@ test('the cohort plan resolves to its terminal proof through the protected lifec
     result: { kind: 'ok', stage: 'admit', body: {} },
   });
   assert.equal(state.phase, 'admitted');
-  const proof = {
-    status: 'applied',
-    plan_sha256: PLAN['plan_sha256'],
-    counts: PLAN['expected'],
-    audit: { plan_summary_id: 'audit-plan-1', batch_summary_ids: ['b-flows', 'b-processes'] },
-    readback: {
-      flows: ACTIONS.filter((action) => action['table'] === 'flows').map((action) => ({
-        table: 'flows',
-        id: action['id'],
-        version: action['version'],
-        desired_sha256: action['desired_sha256'],
-      })),
-      processes: ACTIONS.filter((action) => action['table'] === 'processes').map((action) => ({
-        table: 'processes',
-        id: action['id'],
-        version: action['version'],
-        desired_sha256: action['desired_sha256'],
-      })),
-      text_actions: (PLAN['text_actions'] as JsonObject[]).map((action) => ({
-        id: action['id'],
-        version: action['version'],
-        after_text: action['after_text'],
-      })),
-    },
-  };
   const classified = classifyAliasV2Response({
     stage: 'read',
-    outcome: { kind: 'response', status: 200, body: proof },
+    outcome: { kind: 'response', status: 200, body: aliasV2StatusEnvelope(fixture) },
     ...binding,
   });
   assert.deepEqual(classified, { kind: 'applied', stage: 'read', status: 'applied' });
@@ -303,6 +287,14 @@ test('the cohort plan resolves to its terminal proof through the protected lifec
       }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
+  // The 387-action cohort's own proof carries one scientific batch, not a per-table split.
+  assert.equal(
+    ((aliasV2StatusEnvelope(fixture)['terminal_proof'] as JsonObject)['audit'] as JsonObject)[
+      'batch_count'
+    ],
+    (PLAN['expected'] as JsonObject)['batch_count'],
+  );
+  assert.equal(ACTIONS.length, COHORT_COUNTS.action_count);
 });
 
 test('the cohort fixture is anonymized and deterministic', () => {

@@ -105,6 +105,68 @@ function writeCanonical(filePath: string, value: unknown): string {
 }
 
 /**
+ * The sealed artefacts of one plan, exactly the way the public stages build them: the freeze with
+ * its eight sets, the approval request and the sealed approval — everything the identity needs.
+ */
+export function sealAliasV2Fixture(plan: JsonObject): {
+  freeze: ReturnType<typeof buildAliasV2Freeze>['value'];
+  freezeFileSha256: string;
+  approvalFileSha256: string;
+  approveExecution: string;
+  identity: AliasV2ExecutionIdentity;
+} {
+  const freezeArtifact = buildAliasV2Freeze({
+    plan,
+    planFileSha256: createHash('sha256')
+      .update(`${stableJsonText(plan)}\n`)
+      .digest('hex'),
+    projectRef: ALIAS_V2_TEST_PROJECT_REF,
+    account: ALIAS_V2_TEST_ACCOUNT,
+    sets: aliasV2Sets(plan['plan_sha256']),
+    derivativeTargets: aliasV2DerivativeTargets(plan, ALIAS_V2_TEST_ACCOUNT.user_id),
+  });
+  const freezeFileSha256 = createHash('sha256')
+    .update(`${stableJsonText(freezeArtifact.value)}\n`)
+    .digest('hex');
+  const requestArtifact = buildAliasV2ApprovalRequest({
+    freeze: freezeArtifact.value,
+    freezeFileSha256,
+    approvedAtUtc: ALIAS_V2_TEST_APPROVED_AT,
+  });
+  const requestFileSha256 = createHash('sha256')
+    .update(`${stableJsonText(requestArtifact.value)}\n`)
+    .digest('hex');
+  const approvalArtifact = sealAliasV2Approval({
+    request: requestArtifact.value,
+    requestFileSha256,
+    humanApprovalText: requestArtifact.value.approval_text,
+    approvals: {
+      plan: requestArtifact.value.plan_sha256,
+      freeze: requestArtifact.value.freeze_sha256,
+      request: requestFileSha256,
+      text: requestArtifact.value.approval_text_sha256,
+    },
+    confirm: ALIAS_V2_TEST_ACCOUNT.email,
+    approvedAtUtc: ALIAS_V2_TEST_APPROVED_AT,
+  });
+  const approvalFileSha256 = createHash('sha256')
+    .update(`${stableJsonText(approvalArtifact.value)}\n`)
+    .digest('hex');
+  return {
+    freeze: freezeArtifact.value,
+    freezeFileSha256,
+    approvalFileSha256,
+    approveExecution: approvalArtifact.value.approval_identity_sha256,
+    identity: buildAliasV2ExecutionIdentity({
+      freeze: freezeArtifact.value,
+      approval: approvalArtifact.value,
+      freezeFileSha256,
+      approvalFileSha256,
+    }),
+  };
+}
+
+/**
  * Seals one complete execution on disk and returns the paths, the artefacts and the identity the
  * run derives from them.
  */
@@ -115,19 +177,12 @@ export function sealedAliasV2Execution(): SealedAliasV2Execution {
   const planPath = path.join(directory, ALIAS_V2_PROTECTED_ARTIFACTS.plan_file);
   const planFileSha256 = writeCanonical(planPath, plan);
 
-  const freezeArtifact = buildAliasV2Freeze({
-    plan,
-    planFileSha256,
-    projectRef: ALIAS_V2_TEST_PROJECT_REF,
-    account: ALIAS_V2_TEST_ACCOUNT,
-    sets: aliasV2Sets(plan['plan_sha256']),
-    derivativeTargets: aliasV2DerivativeTargets(plan, ALIAS_V2_TEST_ACCOUNT.user_id),
-  });
+  const sealed = sealAliasV2Fixture(plan);
   const freezePath = path.join(directory, ALIAS_V2_PROTECTED_ARTIFACTS.freeze);
-  const freezeFileSha256 = writeCanonical(freezePath, freezeArtifact.value);
+  const freezeFileSha256 = writeCanonical(freezePath, sealed.freeze);
 
   const requestArtifact = buildAliasV2ApprovalRequest({
-    freeze: freezeArtifact.value,
+    freeze: sealed.freeze,
     freezeFileSha256,
     approvedAtUtc: ALIAS_V2_TEST_APPROVED_AT,
   });
@@ -153,18 +208,19 @@ export function sealedAliasV2Execution(): SealedAliasV2Execution {
   const approvalFileSha256 = writeCanonical(approvalPath, approvalArtifact.value);
 
   const identity = buildAliasV2ExecutionIdentity({
-    freeze: freezeArtifact.value,
+    freeze: sealed.freeze,
     approval: approvalArtifact.value,
     freezeFileSha256,
     approvalFileSha256,
   });
+  void planFileSha256;
   return {
     directory,
     planPath,
     freezePath,
     approvalPath,
     plan,
-    freeze: freezeArtifact.value,
+    freeze: sealed.freeze,
     freezeFileSha256,
     approvalFileSha256,
     approveExecution: approvalArtifact.value.approval_identity_sha256,

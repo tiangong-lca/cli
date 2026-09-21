@@ -39,12 +39,14 @@ import {
   ALIAS_V2_STAGE_UNKNOWN,
   MAX_READBACK_ATTEMPTS,
   advanceAliasV2Lifecycle,
+  classifyAliasV2ReadRefusal,
   classifyAliasV2Response,
   isAliasV2Terminal,
   startAliasV2Lifecycle,
   type AliasV2Lifecycle,
   type AliasV2StepResult,
 } from './dataset-alias-v2-lifecycle.js';
+import type { AliasV2ObservedServerIdentities } from './dataset-alias-v2-status.js';
 import {
   ALIAS_V2_CLOCK_SKEW_MS,
   ALIAS_V2_GATES,
@@ -1165,6 +1167,19 @@ export async function runAliasV2Protected(
     }
   }
 
+  // The stored server identities this run may hold a read to: whatever this invocation observed
+  // itself, or whatever the durable marker recorded before the single admission was posted. A read
+  // must never be accepted for a different preflight/admission/gate set than this execution's.
+  const observedIdentities: AliasV2ObservedServerIdentities = {};
+  if (markerState.state === 'present') {
+    const marker = markerState.marker;
+    observedIdentities.preflight_proof_sha256 = marker.preflight_proof_sha256;
+    observedIdentities.gate_receipt_sha256 = marker.gate_receipt_sha256;
+    observedIdentities.gate_expected_sha256 = Object.fromEntries(
+      Object.entries(marker.gate_results).map(([gate, result]) => [gate, result.expected_sha256]),
+    );
+  }
+
   let state: AliasV2Lifecycle = startAliasV2Lifecycle({
     requestId: identity.request_id,
     planSha256: identity.plan_sha256,
@@ -1327,6 +1342,14 @@ export async function runAliasV2Protected(
       receiptShas[gate] = gateProof.receipt_sha256;
     }
 
+    // The identities this run observed itself: the read stage must see the same preflight, gate
+    // expectations and gate receipts back from the stored execution.
+    observedIdentities.preflight_proof_sha256 = preflight.preflight_proof_sha256;
+    observedIdentities.gate_receipt_sha256 = receiptShas;
+    observedIdentities.gate_expected_sha256 = Object.fromEntries(
+      Object.entries(gateResults).map(([gate, result]) => [gate, result.expected_sha256]),
+    );
+
     // The submission marker is written before the admission: it is the durable proof that the
     // single POST was issued, and it never stores the raw token.
     writePrivateImmutableJson(markerPath, {
@@ -1371,7 +1394,9 @@ export async function runAliasV2Protected(
       return finish(`ALIAS_V2_ADMIT_HTTP_${admissionRaw.status}`, 'failed');
     } else {
       try {
-        parseAliasV2AdmissionProof(admissionRaw.raw, identity, preflight);
+        const admissionProof = parseAliasV2AdmissionProof(admissionRaw.raw, identity, preflight);
+        observedIdentities.admission_request_sha256 = admissionProof.admission_request_sha256;
+        observedIdentities.gate_results_sha256 = admissionProof.gate_results_sha256;
         observe('admit', { kind: 'ok', stage: 'admit', body: {} });
       } catch (error) {
         observe('admit', {
@@ -1393,21 +1418,26 @@ export async function runAliasV2Protected(
     if (readOutcome.kind === 'unknown') {
       return finish(readOutcome.reason, 'indeterminate');
     }
-    if (readOutcome.kind === 'refusal') {
-      return finish(readOutcome.code, 'failed');
-    }
-    const classified = classifyAliasV2Response({
-      stage: 'read',
-      outcome: { kind: 'response', status: readOutcome.status, body: readOutcome.body },
-      plan,
-      request_id: identity.request_id,
-    });
+    const classified =
+      readOutcome.kind === 'refusal'
+        ? classifyAliasV2ReadRefusal(readOutcome)
+        : classifyAliasV2Response({
+            stage: 'read',
+            outcome: { kind: 'response', status: readOutcome.status, body: readOutcome.body },
+            plan,
+            request_id: identity.request_id,
+            identity,
+            observed: observedIdentities,
+          });
     if (classified.kind === 'not_applied') {
       return finish(null, 'not_admitted');
     }
     if (classified.kind === 'applied' || classified.kind === 'idempotent_replay') {
       state = { ...state, phase: classified.kind === 'applied' ? 'applied' : 'idempotent_replay' };
       return finish(null, 'passed');
+    }
+    if (classified.kind === 'indeterminate') {
+      return finish(classified.code, 'indeterminate');
     }
     if (classified.kind === 'refused') {
       return finish(classified.code, 'failed');
@@ -1434,18 +1464,24 @@ export async function runAliasV2Protected(
         reason: readOutcome.reason,
       };
     } else if (readOutcome.kind === 'refusal') {
-      classified = { kind: 'refused', status: readOutcome.status, code: readOutcome.code };
+      classified = classifyAliasV2ReadRefusal(readOutcome);
     } else {
       classified = classifyAliasV2Response({
         stage: 'read',
         outcome: { kind: 'response', status: readOutcome.status, body: readOutcome.body },
         plan,
         request_id: identity.request_id,
+        identity,
+        observed: observedIdentities,
       });
     }
     observe('read', classified);
     if (classified.kind === 'applied' || classified.kind === 'idempotent_replay') {
       return finish(null, 'passed');
+    }
+    if (classified.kind === 'indeterminate') {
+      // The server reports a terminal state it cannot resolve: publish it and stop observing.
+      return finish(classified.code, 'indeterminate');
     }
     if (classified.kind === 'not_applied') {
       // The read lifecycle records this exact refusal as it observes the result, so the run ends

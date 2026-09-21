@@ -40,6 +40,7 @@ import {
 } from './helpers/alias-v2-artifacts.js';
 import { buildAliasV2Plan, type AliasV2Row } from '../src/lib/dataset-alias-v2-plan.js';
 import { buildAliasV2CohortInput } from './fixtures/alias-v2-cohort.js';
+import { aliasV2StatusEnvelope, aliasV2TerminalProof } from './helpers/alias-v2-status.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,
@@ -93,7 +94,7 @@ function preflightProof(sealed: SealedAliasV2Execution): JsonObject {
     gate_expectations_sha256: sha256Json({ gates: identity.plan_sha256 }),
     preflight_request_sha256: sha256Json({ request: identity.plan_sha256 }),
     preflight_token: 'preflight-token-abcdefghij',
-    preflight_proof_sha256: sha256Json({ proof: identity.plan_sha256 }),
+    preflight_proof_sha256: sha256Json({ preflight: identity.request_id }),
     simulation: {
       plan_rows: identity.expected['action_count'],
       plan_exchanges: identity.expected['exchange_count'],
@@ -118,7 +119,7 @@ function gateProof(preflight: JsonObject, gate: string): JsonObject {
     observed_sha256: expected,
     status: 'passed',
     captured_at: iso(10_000),
-    receipt_sha256: sha256Json({ gate, plan: preflight['plan_sha256'] }),
+    receipt_sha256: sha256Json({ gate }),
   };
 }
 
@@ -130,8 +131,8 @@ function admissionProof(preflight: JsonObject, sealed: SealedAliasV2Execution): 
     request_id: preflight['request_id'],
     plan_sha256: sealed.identity.plan_sha256,
     preflight_proof_sha256: preflight['preflight_proof_sha256'],
-    admission_request_sha256: sha256Json({ admit: sealed.identity.plan_sha256 }),
-    gate_results_sha256: sha256Json({ gates: sealed.identity.plan_sha256 }),
+    admission_request_sha256: sha256Json({ admit: sealed.identity.request_id }),
+    gate_results_sha256: sha256Json({ gates: sealed.identity.request_id }),
     status: 'dispatched',
     attempt_count: 1,
     dispatch_count: 1,
@@ -141,37 +142,19 @@ function admissionProof(preflight: JsonObject, sealed: SealedAliasV2Execution): 
   };
 }
 
-function terminalProof(sealed: SealedAliasV2Execution): JsonObject {
-  const actions = sealed.plan['actions'] as JsonObject[];
-  return {
-    status: 'applied',
-    plan_sha256: sealed.identity.plan_sha256,
-    counts: sealed.identity.expected,
-    audit: { plan_summary_id: 'audit-plan-1', batch_summary_ids: ['b-flows', 'b-processes'] },
-    readback: {
-      flows: actions
-        .filter((action) => action['table'] === 'flows')
-        .map((action) => ({
-          table: 'flows',
-          id: action['id'],
-          version: action['version'],
-          desired_sha256: action['desired_sha256'],
-        })),
-      processes: actions
-        .filter((action) => action['table'] === 'processes')
-        .map((action) => ({
-          table: 'processes',
-          id: action['id'],
-          version: action['version'],
-          desired_sha256: action['desired_sha256'],
-        })),
-      text_actions: (sealed.plan['text_actions'] as JsonObject[]).map((action) => ({
-        id: action['id'],
-        version: action['version'],
-        after_text: action['after_text'],
-      })),
-    },
-  };
+/** The actual versioned status envelope of this execution, as the read command returns it. */
+function readEnvelope(sealed: SealedAliasV2Execution, overrides: JsonObject = {}): JsonObject {
+  return aliasV2StatusEnvelope(sealed, overrides);
+}
+
+/** The actual status envelope carrying the given (possibly mutated) terminal proof. */
+function readEnvelopeWithProof(
+  sealed: SealedAliasV2Execution,
+  proofOverrides: JsonObject = {},
+): JsonObject {
+  return aliasV2StatusEnvelope(sealed, {
+    terminal_proof: { ...aliasV2TerminalProof(sealed), ...proofOverrides },
+  });
 }
 
 type Call = { url: string; body: JsonObject; raw: string };
@@ -218,11 +201,7 @@ function scriptedFetch(
     }
     if (url.includes('cmd_dataset_alias_execution_read_v2')) {
       if (options.neverTerminal) {
-        return jsonResponse({
-          ok: true,
-          status: 'pending',
-          plan_sha256: sealed.identity.plan_sha256,
-        });
+        return jsonResponse(readEnvelope(sealed, { status: 'pending' }));
       }
       const value = options.reads?.[Math.min(readIndex, (options.reads ?? []).length - 1)];
       readIndex += 1;
@@ -252,7 +231,7 @@ function runOptions(
     env: buildSupabaseTestEnv({
       TIANGONG_LCA_API_BASE_URL: `https://${ALIAS_V2_TEST_PROJECT_REF}.supabase.co/functions/v1`,
     }),
-    fetchImpl: scriptedFetch(sealed, { reads: [terminalProof(sealed)] }),
+    fetchImpl: scriptedFetch(sealed, { reads: [readEnvelope(sealed)] }),
     now: new Date(START),
     sleep: async () => {},
     ...overrides,
@@ -570,10 +549,7 @@ test(
       runOptions(sealed, {
         fetchImpl: scriptedFetch(sealed, {
           calls,
-          reads: [
-            { status: 'pending', plan_sha256: sealed.identity.plan_sha256 },
-            terminalProof(sealed),
-          ],
+          reads: [readEnvelope(sealed, { status: 'pending' }), readEnvelope(sealed)],
         }),
       }),
     );
@@ -665,10 +641,7 @@ test(
         fetchImpl: scriptedFetch(sealed, {
           calls,
           admit: 'unknown',
-          reads: [
-            { status: 'pending', plan_sha256: sealed.identity.plan_sha256 },
-            terminalProof(sealed),
-          ],
+          reads: [readEnvelope(sealed, { status: 'pending' }), readEnvelope(sealed)],
         }),
       }),
     );
@@ -686,7 +659,7 @@ test(
         statusOnly: true,
         approveExecution: undefined,
         confirm: undefined,
-        fetchImpl: scriptedFetch(sealed, { calls: resumedCalls, reads: [terminalProof(sealed)] }),
+        fetchImpl: scriptedFetch(sealed, { calls: resumedCalls, reads: [readEnvelope(sealed)] }),
       }),
     );
     assert.deepEqual([resumed.status, resumed.mode], ['passed', 'status_only']);
@@ -712,7 +685,7 @@ test(
         statusOnly: true,
         approveExecution: undefined,
         confirm: undefined,
-        fetchImpl: scriptedFetch(sealed, { calls: corruptCalls, reads: [terminalProof(sealed)] }),
+        fetchImpl: scriptedFetch(sealed, { calls: corruptCalls, reads: [readEnvelope(sealed)] }),
       }),
     );
     assert.deepEqual([observed.status, observed.phase], ['passed', 'applied']);
@@ -764,7 +737,7 @@ test(
           runOptions(sealed, {
             fetchImpl: scriptedFetch(sealed, {
               calls: foreignCalls,
-              reads: [terminalProof(sealed)],
+              reads: [readEnvelope(sealed)],
             }),
           }),
         ),
@@ -810,7 +783,7 @@ test(
           approveExecution: undefined,
           confirm: undefined,
           outDir: otherDir,
-          fetchImpl: scriptedFetch(sealed, { reads: [terminalProof(sealed)] }),
+          fetchImpl: scriptedFetch(sealed, { reads: [readEnvelope(sealed)] }),
         }),
       );
       assert.deepEqual([applied.status, applied.phase], ['passed', 'applied']);
@@ -940,7 +913,7 @@ test(
         admits += 1;
         return jsonResponse({ message: 'service unavailable' }, 503);
       },
-      { reads: [terminalProof(sealed)] },
+      { reads: [readEnvelope(sealed)] },
     );
     const failed = await runAliasV2Protected(
       runOptions(sealed, { waitSeconds: 0, fetchImpl: unavailable }),
@@ -971,7 +944,7 @@ test(
                 attempt_count: 2,
               });
             },
-            { reads: [terminalProof(sealed)] },
+            { reads: [readEnvelope(sealed)] },
           ),
         }),
       );
@@ -996,39 +969,38 @@ test(
         'failed',
         'ALIAS_V2_REPLAY_CONFLICT',
       ],
-      [
-        'an applied proof',
-        () => jsonResponse({ ok: true, ...terminalProof(sealed) }),
-        'passed',
-        null,
-      ],
+      ['an applied proof', () => jsonResponse(readEnvelope(sealed)), 'passed', null],
       [
         'an idempotent replay proof',
-        () => jsonResponse({ ok: true, ...terminalProof(sealed), status: 'idempotent_replay' }),
+        () => jsonResponse(readEnvelopeWithProof(sealed, { status: 'idempotent_replay' })),
         'passed',
         null,
       ],
       [
         'a proof that is not this plan',
         () =>
-          jsonResponse({
-            ok: true,
-            ...terminalProof(sealed),
-            counts: { ...(sealed.identity.expected as JsonObject), action_count: 1 },
-          }),
+          jsonResponse(
+            aliasV2StatusEnvelope(sealed, {
+              terminal_proof: {
+                ...aliasV2TerminalProof(sealed),
+                counts: { ...(sealed.identity.expected as JsonObject), action_count: 1 },
+              },
+            }),
+          ),
         'failed',
         'ALIAS_V2_RESPONSE_COUNT_MISMATCH',
       ],
       [
         'an in-flight read',
-        () =>
-          jsonResponse({
-            ok: true,
-            status: 'pending',
-            plan_sha256: sealed.identity.plan_sha256,
-          }),
+        () => jsonResponse(readEnvelope(sealed, { status: 'pending' })),
         'indeterminate',
         'ALIAS_V2_STAGE_UNKNOWN',
+      ],
+      [
+        'a terminal indeterminate execution',
+        () => jsonResponse(readEnvelope(sealed, { status: 'indeterminate' })),
+        'indeterminate',
+        'ALIAS_V2_FIXTURE_INDETERMINATE',
       ],
     ];
     for (const [label, answer, status, code] of cases) {
@@ -1071,9 +1043,7 @@ test(
           statusOnly: true,
           waitSeconds: undefined,
           pollMs: undefined,
-          fetchImpl: stageFetch(sealed, 'read', async () =>
-            jsonResponse({ ok: true, ...terminalProof(sealed) }),
-          ),
+          fetchImpl: stageFetch(sealed, 'read', async () => jsonResponse(readEnvelope(sealed))),
         }),
       );
       assert.deepEqual([report.status, report.polls, report.read_attempts], ['passed', 0, 0]);

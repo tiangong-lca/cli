@@ -23,6 +23,7 @@ import {
   sealedAliasV2Execution,
   type SealedAliasV2Execution,
 } from './helpers/alias-v2-artifacts.js';
+import { aliasV2StatusEnvelope } from './helpers/alias-v2-status.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,
@@ -84,7 +85,7 @@ function preflightProof(sealed: SealedAliasV2Execution, overrides: JsonObject = 
     gate_expectations_sha256: sha256Json({ gates: identity.plan_sha256 }),
     preflight_request_sha256: sha256Json({ request: identity.plan_sha256 }),
     preflight_token: 'preflight-token-abcdefghij',
-    preflight_proof_sha256: sha256Json({ proof: identity.plan_sha256 }),
+    preflight_proof_sha256: sha256Json({ preflight: identity.request_id }),
     simulation: {
       plan_rows: identity.expected['action_count'],
       plan_exchanges: identity.expected['exchange_count'],
@@ -123,8 +124,8 @@ function admissionProof(preflight: JsonObject, sealed: SealedAliasV2Execution): 
     request_id: preflight['request_id'],
     plan_sha256: sealed.identity.plan_sha256,
     preflight_proof_sha256: preflight['preflight_proof_sha256'],
-    admission_request_sha256: sha256Json({ admit: sealed.identity.plan_sha256 }),
-    gate_results_sha256: sha256Json({ gates: sealed.identity.plan_sha256 }),
+    admission_request_sha256: sha256Json({ admit: sealed.identity.request_id }),
+    gate_results_sha256: sha256Json({ gates: sealed.identity.request_id }),
     status: 'dispatched',
     attempt_count: 1,
     dispatch_count: 1,
@@ -132,6 +133,11 @@ function admissionProof(preflight: JsonObject, sealed: SealedAliasV2Execution): 
     attempt_consumed: true,
     retry_allowed: false,
   };
+}
+
+/** The actual versioned status envelope of this execution. */
+function readEnvelope(sealed: SealedAliasV2Execution, overrides: JsonObject = {}): JsonObject {
+  return aliasV2StatusEnvelope(sealed, overrides);
 }
 
 /** A transport whose answer per stage is scripted, with the read stage repeating its last answer. */
@@ -145,9 +151,7 @@ function transport(
       { kind: 'ok', body: gateProof(preflightProof(sealed), 'primary_support_plan') },
     ],
     admit: script.admit ?? [{ kind: 'ok', body: admissionProof(preflightProof(sealed), sealed) }],
-    read: script.read ?? [
-      { kind: 'ok', body: { status: 'pending', plan_sha256: sealed.identity.plan_sha256 } },
-    ],
+    read: script.read ?? [{ kind: 'ok', body: readEnvelope(sealed, { status: 'pending' }) }],
   } as Record<Stage, Answer[]>;
   const seen: Record<Stage, number> = { preflight: 0, gate: 0, admit: 0, read: 0 };
   return (async (input: string, init?: RequestInit) => {
@@ -183,8 +187,8 @@ function transport(
       return jsonResponse(answer.body ?? { ok: true }, answer.status);
     }
     const body = answer.body;
-    // The gate stage answers for the gate the request asked for, with that gate's expectation,
-    // so a scripted receipt is valid whichever gate is being captured.
+    // The gate stage answers for the gate the request asked for, with that gate's own expectation
+    // and receipt, so a scripted receipt is valid whichever gate is being captured.
     if (stage === 'gate' && typeof init?.body === 'string') {
       const asked = String((JSON.parse(init.body) as JsonObject)['p_gate_name']);
       const expectations = preflightProof(sealed)['gate_expectations'] as JsonObject;
@@ -194,6 +198,7 @@ function transport(
         gate: asked,
         expected_sha256: expected,
         observed_sha256: expected,
+        receipt_sha256: sha256Json({ gate: asked }),
       });
     }
     return jsonResponse({ ok: true, ...body }, answer.status ?? 200);
@@ -313,9 +318,7 @@ test(
           }
           return transport(sealed, {
             admit: [{ kind: 'transport', reason: 'socket hang up' }],
-            read: [
-              { kind: 'ok', body: { status: 'pending', plan_sha256: sealed.identity.plan_sha256 } },
-            ],
+            read: [{ kind: 'ok', body: readEnvelope(sealed, { status: 'pending' }) }],
           })(input, init);
         }) as FetchLike,
         { outDir: mkdtempSync(path.join(os.tmpdir(), 'alias-v2-admit-unknown-')), waitSeconds: 2 },
@@ -390,6 +393,28 @@ test(
     );
     assert.equal(inconclusive.status, 'indeterminate');
     assert.equal(inconclusive.admission_attempts, 1);
+    // A read that reports the server's own terminal unknown state is published as indeterminate
+    // immediately: no further polling, and never another admission.
+    let resolvedReads = 0;
+    const resolved = await runAliasV2Protected(
+      runOptions(
+        sealed,
+        (async (input: string, init?: RequestInit) => {
+          if (String(input).includes('cmd_dataset_alias_execution_read_v2')) {
+            resolvedReads += 1;
+          }
+          return transport(sealed, {
+            read: [{ kind: 'ok', body: readEnvelope(sealed, { status: 'indeterminate' }) }],
+          })(input, init);
+        }) as FetchLike,
+        { outDir: mkdtempSync(path.join(os.tmpdir(), 'alias-v2-read-indeterminate-')) },
+      ),
+    );
+    assert.deepEqual(
+      [resolved.status, resolved.code, resolved.admission_attempts],
+      ['indeterminate', 'ALIAS_V2_FIXTURE_INDETERMINATE', 1],
+    );
+    assert.equal(resolvedReads, 1);
     // A readback that keeps reporting no durable evidence while the admission is unknown is
     // bounded: the run refuses for review rather than polling forever.
     const neverSettles = await runAliasV2Protected(

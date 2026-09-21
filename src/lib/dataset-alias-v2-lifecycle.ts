@@ -21,10 +21,22 @@
 
 import { CliError } from './errors.js';
 import {
-  ALIAS_V2_COUNT_KEYS,
   ALIAS_V2_PREFLIGHT_INVALID_REQUEST,
   ALIAS_V2_PREFLIGHT_REQUEST_TOO_LARGE,
 } from './dataset-alias-v2-execution-request.js';
+import {
+  ALIAS_V2_GATE_NAMES,
+  ALIAS_V2_REQUEST_NOT_FOUND_CODE,
+  ALIAS_V2_READ_LOCK_BUSY_CODE,
+  ALIAS_V2_READ_STATE_CHANGED_CODE,
+  ALIAS_V2_RESPONSE_INVALID,
+  classifyAliasV2ReadEnvelope,
+  type AliasV2ObservedServerIdentities,
+} from './dataset-alias-v2-status.js';
+import {
+  ALIAS_V2_PROTOCOL,
+  type AliasV2ExecutionIdentity,
+} from './dataset-alias-v2-protected-contract.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -47,11 +59,7 @@ export const ALIAS_V2_PRIVATE_EXECUTORS = {
 } as const;
 
 /** Gate names and window are unchanged from v1; only the identities are version-separated. */
-export const ALIAS_V2_GATE_NAMES = [
-  'primary_support_plan',
-  'execution_unused',
-  'derivative_quiescence',
-] as const;
+export { ALIAS_V2_GATE_NAMES };
 
 export const ALIAS_V2_GATE_WINDOW_SECONDS = 180;
 
@@ -60,29 +68,31 @@ export const ALIAS_V2_AUDIT_COMMANDS = [
   'cmd_dataset_alias_batch_v2_guarded',
 ] as const;
 
-export const ALIAS_V2_RESPONSE_KEYS = [
-  'status',
-  'plan_sha256',
-  'counts',
-  'audit',
-  'readback',
-] as const;
-export const ALIAS_V2_AUDIT_KEYS = ['plan_summary_id', 'batch_summary_ids'] as const;
-export const ALIAS_V2_READBACK_KEYS = ['flows', 'processes', 'text_actions'] as const;
-export const ALIAS_V2_STATUS_APPLIED = 'applied';
-export const ALIAS_V2_STATUS_REPLAY = 'idempotent_replay';
-/** The in-flight read: the only two keys the server returns before a terminal proof exists. */
-export const ALIAS_V2_STATUS_PENDING = 'pending';
+export {
+  ALIAS_V2_RESPONSE_INVALID,
+  ALIAS_V2_RESPONSE_COUNT_MISMATCH,
+  ALIAS_V2_RESPONSE_READBACK_MISMATCH,
+  ALIAS_V2_STATUS_PENDING,
+  ALIAS_V2_STATUS_APPLIED,
+  ALIAS_V2_STATUS_REPLAY,
+} from './dataset-alias-v2-status.js';
 
 export const ALIAS_V2_LIFECYCLE_REFUSED = 'ALIAS_V2_LIFECYCLE_REFUSED';
 export const ALIAS_V2_STAGE_UNKNOWN = 'ALIAS_V2_STAGE_UNKNOWN';
-export const ALIAS_V2_RESPONSE_INVALID = 'ALIAS_V2_RESPONSE_INVALID';
-export const ALIAS_V2_RESPONSE_COUNT_MISMATCH = 'ALIAS_V2_RESPONSE_COUNT_MISMATCH';
-export const ALIAS_V2_RESPONSE_READBACK_MISMATCH = 'ALIAS_V2_RESPONSE_READBACK_MISMATCH';
 export const ALIAS_V2_RESPONSE_STATUS_UNEXPECTED = 'ALIAS_V2_RESPONSE_STATUS_UNEXPECTED';
 export const ALIAS_V2_REQUEST_TOO_LARGE = ALIAS_V2_PREFLIGHT_REQUEST_TOO_LARGE;
 export const ALIAS_V2_EXECUTION_NOT_APPLIED = 'ALIAS_V2_EXECUTION_NOT_APPLIED';
 export const ALIAS_V2_POLL_EXHAUSTED = 'ALIAS_V2_POLL_EXHAUSTED';
+
+/**
+ * The read-stage refusals that are a read-only retry rather than an outcome: the server recorded an
+ * in-flight state change or held its bounded status lock, and the only permitted next step is another
+ * read of the same request id.
+ */
+export const ALIAS_V2_READ_RETRY_CODES = [
+  ALIAS_V2_READ_STATE_CHANGED_CODE,
+  ALIAS_V2_READ_LOCK_BUSY_CODE,
+] as const;
 
 /** Server-side refusals the CLI passes through verbatim rather than reinterpreting. */
 export const ALIAS_V2_SERVER_REFUSAL_CODES = [
@@ -111,6 +121,7 @@ export type AliasV2StepResult =
   | { kind: 'pending'; stage: AliasV2Stage }
   | { kind: 'applied'; stage: AliasV2Stage; status: string }
   | { kind: 'idempotent_replay'; stage: AliasV2Stage }
+  | { kind: 'indeterminate'; stage: AliasV2Stage; code: string }
   | { kind: 'not_applied' }
   | { kind: 'refused'; status: number; code: string; reason?: string }
   | { kind: 'readback_required'; code: string; reason: string };
@@ -118,6 +129,14 @@ export type AliasV2StepResult =
 export type AliasV2PlanBinding = {
   plan: JsonObject;
   request_id: string;
+  /**
+   * The sealed identity this request was frozen and approved with. The read stage requires it: only the
+   * actual versioned status envelope, bound to this exact actor, project, environment, freeze and
+   * approval, can become terminal evidence.
+   */
+  identity?: AliasV2ExecutionIdentity;
+  /** The server identities this run itself observed, when it observed them. */
+  observed?: AliasV2ObservedServerIdentities;
 };
 
 export type AliasV2ClassificationInput = AliasV2PlanBinding & {
@@ -132,6 +151,7 @@ export type AliasV2Phase =
   | 'admitted'
   | 'applied'
   | 'idempotent_replay'
+  | 'indeterminate'
   | 'readback_required'
   | 'refused';
 
@@ -164,131 +184,61 @@ function serverCode(body: unknown, fallback: string): string {
   const code = isJsonObject(body) ? body['code'] : null;
   return nonEmptyString(code) ? code : fallback;
 }
-function hasExactKeys(value: JsonObject, keys: readonly string[]): boolean {
-  return (
-    Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key))
-  );
+
+/**
+ * Classifies one read-stage body. The actual versioned status envelope is bound and classified by the
+ * status adapter; its refusal codes are passed through unchanged.
+ */
+function classifyReadBody(body: unknown, input: AliasV2ClassificationInput): AliasV2StepResult {
+  if (body === null) {
+    // No durable evidence at all for this request id: the mutation never committed, and the CLI must
+    // not turn that into a second admission.
+    return { kind: 'not_applied' };
+  }
+  if (input.identity === undefined) {
+    // Without the sealed identity the envelope cannot be bound to this execution: refuse it.
+    return resultRefused(200, ALIAS_V2_RESPONSE_INVALID);
+  }
+  const classified = classifyAliasV2ReadEnvelope(body, {
+    plan: input.plan,
+    request_id: input.request_id,
+    identity: input.identity,
+    ...(input.observed === undefined ? {} : { observed: input.observed }),
+  });
+  if (classified.kind === 'invalid' || classified.kind === 'failed') {
+    return resultRefused(200, classified.code);
+  }
+  if (classified.kind === 'pending') {
+    return { kind: 'pending', stage: 'read' };
+  }
+  if (classified.kind === 'applied') {
+    return { kind: 'applied', stage: 'read', status: classified.status };
+  }
+  if (classified.kind === 'idempotent_replay') {
+    return { kind: 'idempotent_replay', stage: 'read' };
+  }
+  if (classified.kind === 'indeterminate') {
+    return { kind: 'indeterminate', stage: 'read', code: classified.code };
+  }
+  return { kind: 'not_applied' };
 }
 
 /**
- * Validates a terminal server proof against the plan it claims to have applied. Every field the
- * plan can predict must match exactly; anything else is refused as an invalid response rather
- * than accepted as evidence.
+ * Classifies a read-stage refusal. The server's read-only conflicts mean "read again" and nothing else,
+ * the not-found answer proves no admission exists for this request id, and every other coded refusal is
+ * passed through as the server sent it.
  */
-function validateProof(
-  body: unknown,
-  binding: AliasV2PlanBinding,
-): { status: string } | { code: string } {
-  if (!isJsonObject(body) || !hasExactKeys(body, ALIAS_V2_RESPONSE_KEYS)) {
-    return { code: ALIAS_V2_RESPONSE_INVALID };
+export function classifyAliasV2ReadRefusal(refusal: {
+  status: number;
+  code: string;
+}): AliasV2StepResult {
+  if (refusal.code === ALIAS_V2_REQUEST_NOT_FOUND_CODE) {
+    return { kind: 'not_applied' };
   }
-  const status = body['status'];
-  if (status !== ALIAS_V2_STATUS_APPLIED && status !== ALIAS_V2_STATUS_REPLAY) {
-    return { code: ALIAS_V2_RESPONSE_INVALID };
+  if ((ALIAS_V2_READ_RETRY_CODES as readonly string[]).includes(refusal.code)) {
+    return { kind: 'pending', stage: 'read' };
   }
-  if (body['plan_sha256'] !== binding.plan['plan_sha256']) {
-    return { code: ALIAS_V2_RESPONSE_INVALID };
-  }
-  // The proof's count block is the plan's own expected counts, key for key.
-  const counts = body['counts'];
-  const planCounts = binding.plan['expected'];
-  if (
-    !isJsonObject(counts) ||
-    !isJsonObject(planCounts) ||
-    Object.keys(counts).length !== ALIAS_V2_COUNT_KEYS.length
-  ) {
-    return { code: ALIAS_V2_RESPONSE_COUNT_MISMATCH };
-  }
-  for (const key of ALIAS_V2_COUNT_KEYS) {
-    if (counts[key] !== planCounts[key]) {
-      return { code: ALIAS_V2_RESPONSE_COUNT_MISMATCH };
-    }
-  }
-  const audit = body['audit'];
-  if (
-    !isJsonObject(audit) ||
-    Object.keys(audit).length !== ALIAS_V2_AUDIT_KEYS.length ||
-    !nonEmptyString(audit['plan_summary_id']) ||
-    !Array.isArray(audit['batch_summary_ids'])
-  ) {
-    return { code: ALIAS_V2_RESPONSE_INVALID };
-  }
-  const batchIds = audit['batch_summary_ids'] as unknown[];
-  // One audit batch per table that carries actions; never a fixed v1 constant.
-  const actions = binding.plan['actions'] as JsonObject[];
-  const textActions = binding.plan['text_actions'] as JsonObject[];
-  const expectedBatches = new Set(actions.map((action) => action['table'])).size;
-  if (
-    batchIds.length !== expectedBatches ||
-    !batchIds.every(nonEmptyString) ||
-    new Set(batchIds).size !== batchIds.length
-  ) {
-    return { code: ALIAS_V2_RESPONSE_INVALID };
-  }
-  const readback = body['readback'];
-  if (
-    !isJsonObject(readback) ||
-    Object.keys(readback).length !== ALIAS_V2_READBACK_KEYS.length ||
-    ALIAS_V2_READBACK_KEYS.some((key) => !Array.isArray(readback[key]))
-  ) {
-    return { code: ALIAS_V2_RESPONSE_INVALID };
-  }
-  const expected = {
-    flows: actions.filter((action) => action['table'] === 'flows'),
-    processes: actions.filter((action) => action['table'] === 'processes'),
-  };
-  for (const table of ['flows', 'processes'] as const) {
-    const entries = readback[table] as unknown[];
-    const rows = expected[table] as JsonObject[];
-    if (entries.length !== rows.length) {
-      return { code: ALIAS_V2_RESPONSE_READBACK_MISMATCH };
-    }
-    const byKey = new Map(
-      entries.map((entry) => [
-        isJsonObject(entry) ? `${String(entry['id'])}@${String(entry['version'])}` : '',
-        entry,
-      ]),
-    );
-    if (byKey.size !== rows.length) {
-      return { code: ALIAS_V2_RESPONSE_READBACK_MISMATCH };
-    }
-    for (const row of rows) {
-      const entry = byKey.get(`${String(row['id'])}@${String(row['version'])}`);
-      if (
-        !isJsonObject(entry) ||
-        entry['desired_sha256'] !== row['desired_sha256'] ||
-        entry['table'] !== table
-      ) {
-        return { code: ALIAS_V2_RESPONSE_READBACK_MISMATCH };
-      }
-    }
-  }
-  const textEntries = readback['text_actions'] as unknown[];
-  if (textEntries.length !== textActions.length) {
-    return { code: ALIAS_V2_RESPONSE_READBACK_MISMATCH };
-  }
-  const textByKey = new Map(
-    textEntries.map((entry) => [
-      isJsonObject(entry) ? `${String(entry['id'])}@${String(entry['version'])}` : '',
-      entry,
-    ]),
-  );
-  if (textByKey.size !== textActions.length) {
-    return { code: ALIAS_V2_RESPONSE_READBACK_MISMATCH };
-  }
-  for (const action of textActions) {
-    const entry = textByKey.get(`${String(action['id'])}@${String(action['version'])}`);
-    if (!isJsonObject(entry) || entry['after_text'] !== action['after_text']) {
-      return { code: ALIAS_V2_RESPONSE_READBACK_MISMATCH };
-    }
-  }
-  return { status };
-}
-
-function terminalResult(stage: AliasV2Stage, status: string): AliasV2StepResult {
-  return status === ALIAS_V2_STATUS_REPLAY
-    ? { kind: 'idempotent_replay', stage }
-    : { kind: 'applied', stage, status };
+  return resultRefused(refusal.status, refusal.code);
 }
 
 /**
@@ -332,15 +282,11 @@ export function classifyAliasV2Response(input: AliasV2ClassificationInput): Alia
       if (!isJsonObject(body)) {
         return resultRefused(status, ALIAS_V2_RESPONSE_INVALID);
       }
-      // Admission may already carry the terminal proof (an earlier attempt of this same request
-      // was applied); that is a terminal success, not an admission to queue again.
-      if (hasExactKeys(body, ALIAS_V2_RESPONSE_KEYS)) {
-        const proof = validateProof(body, input);
-        return 'code' in proof
-          ? resultRefused(status, proof.code)
-          : terminalResult(stage, proof.status);
-      }
+      // The admission reply is the versioned consumption proof of this exact request. A status
+      // envelope is not admissible here: only the read stage may authorise a terminal state.
       if (
+        body['schema_version'] !== ALIAS_V2_PROTOCOL.admit_response_schema ||
+        body['command'] !== ALIAS_V2_PROTOCOL.admit_command ||
         body['request_id'] !== input.request_id ||
         body['plan_sha256'] !== input.plan['plan_sha256']
       ) {
@@ -348,24 +294,7 @@ export function classifyAliasV2Response(input: AliasV2ClassificationInput): Alia
       }
       return { kind: 'ok', stage, body };
     }
-    if (body === null) {
-      // The read stage returns no durable evidence for this request id: the mutation never
-      // committed, and the CLI must not turn that into a second admission.
-      return { kind: 'not_applied' };
-    }
-    if (
-      isJsonObject(body) &&
-      hasExactKeys(body, ['status', 'plan_sha256']) &&
-      body['status'] === ALIAS_V2_STATUS_PENDING
-    ) {
-      return body['plan_sha256'] === input.plan['plan_sha256']
-        ? { kind: 'pending', stage }
-        : resultRefused(status, ALIAS_V2_RESPONSE_INVALID);
-    }
-    const proof = validateProof(body, input);
-    return 'code' in proof
-      ? resultRefused(status, proof.code)
-      : terminalResult(stage, proof.status);
+    return classifyReadBody(body, input);
   }
   if (status === 400) {
     return resultRefused(status, serverCode(body, ALIAS_V2_PREFLIGHT_INVALID_REQUEST));
@@ -440,6 +369,10 @@ export function advanceAliasV2Lifecycle(
     }
     if (result.kind === 'not_applied') {
       return { ...observed, phase: 'refused', code: ALIAS_V2_EXECUTION_NOT_APPLIED };
+    }
+    if (result.kind === 'indeterminate') {
+      // The server itself reports a terminal state it cannot resolve: stop observing and publish it.
+      return { ...observed, phase: 'indeterminate', code: result.code };
     }
     if (result.kind === 'refused') {
       return { ...observed, phase: 'refused', code: result.code };
@@ -517,6 +450,7 @@ export function isAliasV2Terminal(phase: AliasV2Phase): boolean {
   return (
     phase === 'applied' ||
     phase === 'idempotent_replay' ||
+    phase === 'indeterminate' ||
     phase === 'refused' ||
     phase === 'readback_required'
   );

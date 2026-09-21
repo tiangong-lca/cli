@@ -26,13 +26,35 @@ import {
   startAliasV2Lifecycle,
   type AliasV2DispatchOutcome,
   type AliasV2Lifecycle,
+  type AliasV2PlanBinding,
   type AliasV2Stage,
   type AliasV2StepResult,
 } from '../src/lib/dataset-alias-v2-lifecycle.js';
+import {
+  buildAliasV2ApprovalRequest,
+  buildAliasV2Freeze,
+  sealAliasV2Approval,
+} from '../src/lib/dataset-alias-v2-protected.js';
+import {
+  ALIAS_V2_PROTOCOL,
+  buildAliasV2ExecutionIdentity,
+} from '../src/lib/dataset-alias-v2-protected-contract.js';
+import { sha256Json } from '../src/lib/dataset-maintenance-contract.js';
+import {
+  ALIAS_V2_TEST_ACCOUNT,
+  ALIAS_V2_TEST_APPROVED_AT,
+  ALIAS_V2_TEST_PROJECT_REF,
+  aliasV2Sets,
+} from './helpers/alias-v2-artifacts.js';
+import {
+  aliasV2NotAdmittedEnvelope,
+  aliasV2StatusEnvelope,
+  aliasV2TerminalProof,
+  type AliasV2StatusFixture,
+} from './helpers/alias-v2-status.js';
 
 type JsonObject = Record<string, unknown>;
 
-const REQUEST_ID = '9f1c6f0e-6a2b-4a3f-9f0d-3b0d5a7c1e42';
 const TARGET_FP = 'da11d28f-4db8-51eb-b3a9-8784b26771e6';
 const SOURCE_FP = 'bd69e542-6a50-524c-8d04-195b1ec23150';
 
@@ -265,54 +287,101 @@ const withEvidence = (value: AliasV2PlanInput): AliasV2PlanInput => ({
 });
 const built = buildAliasV2Plan(withEvidence(planInput()));
 const PLAN = built.plan;
-const BINDING = { plan: PLAN, request_id: REQUEST_ID };
 
-/** The terminal proof the server is expected to return for this plan, before any case mutates it. */
-function proof(overrides: JsonObject = {}): JsonObject {
-  const actions = PLAN['actions'] as JsonObject[];
-  const textActions = PLAN['text_actions'] as JsonObject[];
-  return {
-    status: 'applied',
-    plan_sha256: PLAN['plan_sha256'],
-    counts: PLAN['expected'],
-    audit: {
-      plan_summary_id: 'audit-plan-summary-1',
-      batch_summary_ids: ['audit-batch-flows-1', 'audit-batch-processes-1'],
+/**
+ * The sealed execution of this exact plan: the freeze, the approval and the identity derived by the
+ * same real builders the public stages use, so the read envelope can be bound to a genuine identity.
+ */
+function sealedFixture(): AliasV2StatusFixture {
+  const freeze = buildAliasV2Freeze({
+    plan: PLAN,
+    planFileSha256: sha256Json(PLAN),
+    projectRef: ALIAS_V2_TEST_PROJECT_REF,
+    account: ALIAS_V2_TEST_ACCOUNT,
+    sets: aliasV2Sets(PLAN['plan_sha256']),
+    derivativeTargets: (PLAN['actions'] as JsonObject[]).map((action) => ({
+      table: action['table'],
+      id: action['id'],
+      version: action['version'],
+      user_id: ALIAS_V2_TEST_ACCOUNT.user_id,
+      state_code: 0,
+      baseline_snapshot_sha256: sha256Json({ baseline: action['id'] }),
+    })),
+  });
+  const freezeFileSha256 = sha256Json(freeze.value);
+  const request = buildAliasV2ApprovalRequest({
+    freeze: freeze.value,
+    freezeFileSha256,
+    approvedAtUtc: ALIAS_V2_TEST_APPROVED_AT,
+  });
+  const approval = sealAliasV2Approval({
+    request: request.value,
+    requestFileSha256: sha256Json(request.value),
+    humanApprovalText: request.value.approval_text,
+    approvals: {
+      plan: request.value.plan_sha256,
+      freeze: request.value.freeze_sha256,
+      request: sha256Json(request.value),
+      text: request.value.approval_text_sha256,
     },
-    readback: {
-      flows: actions
-        .filter((action) => action['table'] === 'flows')
-        .map((action) => ({
-          table: 'flows',
-          id: action['id'],
-          version: action['version'],
-          desired_sha256: action['desired_sha256'],
-        })),
-      processes: actions
-        .filter((action) => action['table'] === 'processes')
-        .map((action) => ({
-          table: 'processes',
-          id: action['id'],
-          version: action['version'],
-          desired_sha256: action['desired_sha256'],
-        })),
-      text_actions: textActions.map((action) => ({
-        id: action['id'],
-        version: action['version'],
-        after_text: action['after_text'],
-      })),
-    },
-    ...overrides,
-  };
+    confirm: ALIAS_V2_TEST_ACCOUNT.email,
+    approvedAtUtc: ALIAS_V2_TEST_APPROVED_AT,
+  });
+  const identity = buildAliasV2ExecutionIdentity({
+    freeze: freeze.value,
+    approval: approval.value,
+    freezeFileSha256,
+    approvalFileSha256: sha256Json(approval.value),
+  });
+  return { plan: PLAN, identity };
 }
 
-const ENVELOPE = { request_id: REQUEST_ID, plan_sha256: PLAN['plan_sha256'] };
-const PENDING_READ = { status: 'pending', plan_sha256: PLAN['plan_sha256'] };
+const FIXTURE = sealedFixture();
+const REQUEST_ID = FIXTURE.identity.request_id;
+const BINDING: AliasV2PlanBinding = {
+  plan: PLAN,
+  request_id: REQUEST_ID,
+  identity: FIXTURE.identity,
+  observed: {
+    preflight_proof_sha256: sha256Json({ preflight: REQUEST_ID }),
+    admission_request_sha256: sha256Json({ admit: REQUEST_ID }),
+    gate_results_sha256: sha256Json({ gates: REQUEST_ID }),
+    gate_expected_sha256: Object.fromEntries(
+      ALIAS_V2_GATE_NAMES.map((gate) => [gate, sha256Json({ gate, plan: PLAN['plan_sha256'] })]),
+    ),
+    gate_receipt_sha256: Object.fromEntries(
+      ALIAS_V2_GATE_NAMES.map((gate) => [gate, sha256Json({ gate })]),
+    ),
+  },
+};
+
+/** The actual terminal proof of this execution, before any case mutates it. */
+function proof(): JsonObject {
+  return aliasV2TerminalProof(FIXTURE);
+}
+
+/** The actual read envelope of this execution; `overrides` replaces top-level fields. */
+function statusEnvelope(overrides: JsonObject = {}): JsonObject {
+  return aliasV2StatusEnvelope(FIXTURE, overrides);
+}
+
+/** The actual passed envelope carrying the given terminal proof. */
+function envelopeWithProof(value: JsonObject, overrides: JsonObject = {}): JsonObject {
+  return aliasV2StatusEnvelope(FIXTURE, { terminal_proof: value, ...overrides });
+}
+
+/** The real admission reply body: the versioned consumption proof of this exact request. */
+const ENVELOPE = {
+  schema_version: ALIAS_V2_PROTOCOL.admit_response_schema,
+  command: ALIAS_V2_PROTOCOL.admit_command,
+  request_id: REQUEST_ID,
+  plan_sha256: PLAN['plan_sha256'],
+};
 
 function classify(
   stage: AliasV2Stage,
   outcome: AliasV2DispatchOutcome,
-  binding = BINDING,
+  binding: AliasV2PlanBinding = BINDING,
 ): AliasV2StepResult {
   return classifyAliasV2Response({ stage, outcome, ...binding });
 }
@@ -371,190 +440,246 @@ test('the approved wire identities are frozen here', () => {
 });
 
 test('the terminal read is accepted only when it is bound to this exact plan', () => {
-  assert.deepEqual(classify('read', response(proof())), {
+  assert.deepEqual(classify('read', response(statusEnvelope())), {
     kind: 'applied',
     stage: 'read',
     status: 'applied',
   });
-  assert.deepEqual(classify('read', response(proof({ status: 'idempotent_replay' }))), {
+  const replayed = envelopeWithProof({ ...proof(), status: 'idempotent_replay' });
+  assert.deepEqual(classify('read', response(replayed)), {
     kind: 'idempotent_replay',
     stage: 'read',
   });
-  // The read stage returning no durable evidence is its own outcome, never a resubmission.
+  // The read stage returning no durable evidence at all is its own outcome, never a resubmission.
   assert.deepEqual(classify('read', response(null)), { kind: 'not_applied' });
-  // While the queued execution is in flight the server returns exactly the two bound keys.
-  assert.deepEqual(classify('read', response(PENDING_READ)), { kind: 'pending', stage: 'read' });
+  // While the queued execution is in flight the server returns the bound in-flight envelope.
+  assert.deepEqual(classify('read', response(statusEnvelope({ status: 'pending' }))), {
+    kind: 'pending',
+    stage: 'read',
+  });
+  // A terminal server state the server itself cannot resolve is published, not polled away.
+  assert.deepEqual(classify('read', response(statusEnvelope({ status: 'indeterminate' }))), {
+    kind: 'indeterminate',
+    stage: 'read',
+    code: 'ALIAS_V2_FIXTURE_INDETERMINATE',
+  });
+  assert.deepEqual(classify('read', response(statusEnvelope({ status: 'failed' }))), {
+    kind: 'refused',
+    status: 200,
+    code: 'ALIAS_V2_FIXTURE_FAILED',
+  });
+  // The not-admitted answer proves no admission exists for this request id.
+  assert.deepEqual(classify('read', response(aliasV2NotAdmittedEnvelope(FIXTURE))), {
+    kind: 'not_applied',
+  });
+  // The old bare shapes are not the actual answer any more and are refused.
+  assert.equal(refusal(proof(), 200, 'read'), ALIAS_V2_RESPONSE_INVALID);
   assert.equal(
-    refusal({ ...PENDING_READ, plan_sha256: 'f'.repeat(64) }, 200, 'read'),
+    refusal({ status: 'pending', plan_sha256: PLAN['plan_sha256'] }, 200, 'read'),
     ALIAS_V2_RESPONSE_INVALID,
   );
   assert.equal(
-    refusal({ status: 'pending', plan_sha256: PLAN['plan_sha256'], counts: {} }, 200, 'read'),
+    refusal(statusEnvelope({ plan_sha256: 'f'.repeat(64) }), 200, 'read'),
     ALIAS_V2_RESPONSE_INVALID,
   );
-  // Admission answers with the same plan-bound envelope; when it already carries the terminal
-  // proof the plan was applied by an earlier attempt of this same request.
+  // Without the sealed identity the envelope cannot be bound, so it is refused.
+  const noIdentity = classify('read', response(statusEnvelope()), {
+    plan: PLAN,
+    request_id: REQUEST_ID,
+  });
+  assert.deepEqual(noIdentity, { kind: 'refused', status: 200, code: ALIAS_V2_RESPONSE_INVALID });
+  // Admission answers with the plan-bound consumption proof; a terminal proof only ever arrives
+  // through the read stage, so an admission reply shaped like one is refused.
   assert.deepEqual(classify('admit', response(ENVELOPE)), {
     kind: 'ok',
     stage: 'admit',
     body: ENVELOPE,
   });
-  assert.deepEqual(classify('admit', response(proof())), {
-    kind: 'applied',
-    stage: 'admit',
-    status: 'applied',
-  });
-  assert.deepEqual(classify('admit', response(proof({ status: 'idempotent_replay' }))), {
-    kind: 'idempotent_replay',
-    stage: 'admit',
-  });
-  // An admit body that looks like a proof but does not survive validation is refused with the
-  // proof's own code, never treated as an admission.
-  assert.equal(
-    refusal(proof({ plan_sha256: 'f'.repeat(64) }), 200, 'admit'),
-    ALIAS_V2_RESPONSE_INVALID,
-  );
-  assert.equal(
-    refusal(proof({ counts: { action_count: 1 } }), 200, 'admit'),
-    ALIAS_V2_RESPONSE_COUNT_MISMATCH,
-  );
+  assert.equal(refusal(proof(), 200, 'admit'), ALIAS_V2_RESPONSE_INVALID);
+  assert.equal(refusal(statusEnvelope(), 200, 'admit'), ALIAS_V2_RESPONSE_INVALID);
+  assert.equal(refusal(ENVELOPE, 200, 'read'), ALIAS_V2_RESPONSE_INVALID);
 });
 
-test('an invalid or diverging proof is refused rather than trusted', () => {
+test('an invalid or diverging terminal proof is refused rather than trusted', () => {
   const invalid = ALIAS_V2_RESPONSE_INVALID;
+  const countMismatch = ALIAS_V2_RESPONSE_COUNT_MISMATCH;
   const readbackMismatch = ALIAS_V2_RESPONSE_READBACK_MISMATCH;
-  const flowEntries = (): unknown[] => (proof()['readback'] as JsonObject)['flows'] as unknown[];
+  const auditOf = (value: JsonObject): JsonObject => value['audit'] as JsonObject;
+  const rowsOf = (value: JsonObject): JsonObject[] =>
+    (value['readback'] as JsonObject)['rows'] as JsonObject[];
   const cases: Array<[unknown, string]> = [
     ['nope', invalid],
-    [proof({ status: 'ok' }), invalid],
-    [proof({ plan_sha256: 'f'.repeat(64) }), invalid],
-    [proof({ extra: 1 }), invalid],
+    [envelopeWithProof({ ...proof(), status: 'ok' }), invalid],
+    [envelopeWithProof({ ...proof(), plan_sha256: 'f'.repeat(64) }), invalid],
+    [envelopeWithProof({ ...proof(), extra: 1 }), invalid],
     [
       (() => {
         const body = proof();
         const renamed = { ...body, status_note: body['status'] } as JsonObject;
         delete renamed['status'];
-        return renamed;
+        return envelopeWithProof(renamed);
       })(),
       invalid,
     ],
     [
       (() => {
-        const body = proof() as JsonObject;
+        const body = proof();
         delete body['audit'];
-        return body;
+        return envelopeWithProof(body);
       })(),
       invalid,
     ],
-    [proof({ counts: undefined }), ALIAS_V2_RESPONSE_COUNT_MISMATCH],
+    [envelopeWithProof({ ...proof(), counts: undefined }), countMismatch],
     [
-      proof({ counts: { ...(PLAN['expected'] as JsonObject), action_count: 999 } }),
-      ALIAS_V2_RESPONSE_COUNT_MISMATCH,
+      envelopeWithProof({
+        ...proof(),
+        counts: { ...(PLAN['expected'] as JsonObject), action_count: 999 },
+      }),
+      countMismatch,
     ],
-    [proof({ counts: { action_count: 2 } }), ALIAS_V2_RESPONSE_COUNT_MISMATCH],
-    [proof({ audit: {} }), invalid],
-    [proof({ audit: { plan_summary_id: '', batch_summary_ids: ['a', 'b'] } }), invalid],
-    [proof({ audit: { plan_summary_id: 'p', batch_summary_ids: ['a'] } }), invalid],
-    [proof({ audit: { plan_summary_id: 'p', batch_summary_ids: ['a', 'a'] } }), invalid],
-    [proof({ audit: { plan_summary_id: 'p', batch_summary_ids: ['a', 4] } }), invalid],
-    [proof({ readback: null }), invalid],
-    [proof({ readback: { flows: [], processes: [] } }), invalid],
-    [proof({ readback: { flows: [], processes: [], text_actions: [] } }), readbackMismatch],
+    [envelopeWithProof({ ...proof(), counts: { action_count: 2 } }), countMismatch],
+    // The batch count is the plan's one scientific batch, never the two tables or eight chunks.
     [
-      proof({
-        readback: {
-          ...(proof()['readback'] as JsonObject),
-          flows: [flowEntries()[0], flowEntries()[0]],
+      envelopeWithProof({
+        ...proof(),
+        audit: { ...auditOf(proof()), batch_count: 2 },
+      }),
+      countMismatch,
+    ],
+    [
+      envelopeWithProof({
+        ...proof(),
+        audit: { ...auditOf(proof()), batch_count: 8 },
+      }),
+      countMismatch,
+    ],
+    [
+      envelopeWithProof({
+        ...proof(),
+        audit: { ...auditOf(proof()), row_audit_count: 1 },
+      }),
+      countMismatch,
+    ],
+    [envelopeWithProof({ ...proof(), audit: {} }), invalid],
+    [
+      envelopeWithProof({
+        ...proof(),
+        audit: { ...auditOf(proof()), plan_summary_audit_id: 0 },
+      }),
+      invalid,
+    ],
+    [
+      envelopeWithProof({
+        ...proof(),
+        audit: { ...auditOf(proof()), row_audits: [rowsOf(proof())[0]] },
+      }),
+      readbackMismatch,
+    ],
+    [
+      envelopeWithProof({
+        ...proof(),
+        audit: {
+          ...auditOf(proof()),
+          row_audits: [null, ...(auditOf(proof())['row_audits'] as unknown[]).slice(1)],
         },
       }),
-      readbackMismatch,
+      invalid,
     ],
     [
-      proof({
-        readback: { ...(proof()['readback'] as JsonObject), flows: [null, flowEntries()[1]] },
-      }),
-      readbackMismatch,
-    ],
-    [
-      proof({ readback: { ...(proof()['readback'] as JsonObject), processes: [] } }),
-      readbackMismatch,
-    ],
-    [
-      proof({
-        readback: {
-          ...(proof()['readback'] as JsonObject),
-          flows: [
-            { table: 'flows', id: 'flow-a', version: '00.00.001', desired_sha256: '0'.repeat(64) },
+      envelopeWithProof({
+        ...proof(),
+        audit: {
+          ...auditOf(proof()),
+          row_audits: [
+            { ...(auditOf(proof())['row_audits'] as JsonObject[])[0], audit_id: -1 },
+            ...(auditOf(proof())['row_audits'] as unknown[]).slice(1),
           ],
         },
       }),
       readbackMismatch,
     ],
     [
-      proof({
-        readback: {
-          ...(proof()['readback'] as JsonObject),
-          processes: [
+      envelopeWithProof({
+        ...proof(),
+        audit: {
+          ...auditOf(proof()),
+          row_audits: [
             {
-              table: 'flows',
-              id: 'process-a',
-              version: '00.00.001',
-              desired_sha256: (
-                (proof()['readback'] as JsonObject)['processes'] as JsonObject[]
-              )[0]!['desired_sha256'],
+              ...(auditOf(proof())['row_audits'] as JsonObject[])[0],
+              after_sha256: '0'.repeat(64),
             },
+            ...(auditOf(proof())['row_audits'] as unknown[]).slice(1),
+          ],
+        },
+      }),
+      readbackMismatch,
+    ],
+    [envelopeWithProof({ ...proof(), readback: null }), invalid],
+    [
+      envelopeWithProof({
+        ...proof(),
+        readback: { ...(proof()['readback'] as JsonObject), row_count: 1 },
+      }),
+      countMismatch,
+    ],
+    [
+      envelopeWithProof({
+        ...proof(),
+        readback: { ...(proof()['readback'] as JsonObject), rows: [] },
+      }),
+      readbackMismatch,
+    ],
+    [
+      envelopeWithProof({
+        ...proof(),
+        readback: {
+          ...(proof()['readback'] as JsonObject),
+          rows: [null, ...rowsOf(proof()).slice(1)],
+        },
+      }),
+      invalid,
+    ],
+    [
+      envelopeWithProof({
+        ...proof(),
+        readback: {
+          ...(proof()['readback'] as JsonObject),
+          rows: [
+            { ...rowsOf(proof())[0], observed_sha256: '0'.repeat(64) },
+            ...rowsOf(proof()).slice(1),
           ],
         },
       }),
       readbackMismatch,
     ],
     [
-      proof({
+      envelopeWithProof({
+        ...proof(),
         readback: {
           ...(proof()['readback'] as JsonObject),
-          text_actions: [
-            ((proof()['readback'] as JsonObject)['text_actions'] as unknown[])[0] as never,
-          ],
+          rows: [rowsOf(proof())[0], rowsOf(proof())[0]],
         },
       }),
       readbackMismatch,
     ],
     [
-      proof({
+      envelopeWithProof({
+        ...proof(),
         readback: {
           ...(proof()['readback'] as JsonObject),
-          text_actions: [
-            ((proof()['readback'] as JsonObject)['text_actions'] as unknown[])[0] as never,
-            ((proof()['readback'] as JsonObject)['text_actions'] as unknown[])[0] as never,
-          ],
-        },
-      }),
-      readbackMismatch,
-    ],
-    [
-      proof({
-        readback: {
-          ...(proof()['readback'] as JsonObject),
-          text_actions: [
-            null as never,
-            ((proof()['readback'] as JsonObject)['text_actions'] as unknown[])[1] as never,
-          ],
-        },
-      }),
-      readbackMismatch,
-    ],
-    [
-      proof({
-        readback: {
-          ...(proof()['readback'] as JsonObject),
-          text_actions: [{ id: 'process-a', version: '00.00.001', after_text: 'wrong' }],
+          rows: (() => {
+            const rows = structuredClone(rowsOf(proof()));
+            const processRow = rows.findIndex((row) => row['table'] === 'processes');
+            rows[processRow]!['functional_unit_text'] = 'wrong text';
+            return rows;
+          })(),
         },
       }),
       readbackMismatch,
     ],
   ];
   for (const [body, code] of cases) {
-    assert.equal(refusal(body, 200, 'read'), code, JSON.stringify(body).slice(0, 120));
+    assert.equal(refusal(body, 200, 'read'), code, JSON.stringify(body).slice(0, 200));
   }
 });
 
@@ -622,13 +747,13 @@ test('the lifecycle admits once, polls to a terminal proof, and never resubmits'
   for (let poll = 0; poll < 2; poll += 1) {
     state = advanceAliasV2Lifecycle(state, {
       stage: 'read',
-      result: classify('read', response(PENDING_READ)),
+      result: classify('read', response(statusEnvelope({ status: 'pending' }))),
     });
     assert.deepEqual([state.phase, state.polls], ['admitted', poll + 1]);
   }
   state = advanceAliasV2Lifecycle(state, {
     stage: 'read',
-    result: classify('read', response(proof())),
+    result: classify('read', response(statusEnvelope())),
   });
   assert.deepEqual([state.phase, state.code, state.polls], ['applied', null, 3]);
   assert.equal(isAliasV2Terminal(state.phase), true);
@@ -642,15 +767,15 @@ test('the lifecycle admits once, polls to a terminal proof, and never resubmits'
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
 
-  // An admission that reports the stored proof is terminal too, and never queues a new one.
+  // An admission result that already carries a terminal state is final: it never queues a new one.
   const appliedAtAdmit = advanceAliasV2Lifecycle(gated(), {
     stage: 'admit',
-    result: classify('admit', response(proof())),
+    result: { kind: 'applied', stage: 'admit', status: 'applied' },
   });
   assert.deepEqual([appliedAtAdmit.phase, appliedAtAdmit.admit_attempts], ['applied', 1]);
   const replayedAtAdmit = advanceAliasV2Lifecycle(gated(), {
     stage: 'admit',
-    result: classify('admit', response(proof({ status: 'idempotent_replay' }))),
+    result: { kind: 'idempotent_replay', stage: 'admit' },
   });
   assert.deepEqual(
     [replayedAtAdmit.phase, replayedAtAdmit.admit_attempts],
@@ -675,13 +800,16 @@ test('the lifecycle admits once, polls to a terminal proof, and never resubmits'
   // A read that finds the work applied closes the request.
   const recovered = advanceAliasV2Lifecycle(unknown, {
     stage: 'read',
-    result: classify('read', response(proof())),
+    result: classify('read', response(statusEnvelope())),
   });
   assert.deepEqual([recovered.phase, recovered.read_attempts], ['applied', 1]);
   // A read that finds the stored proof of this same request is an idempotent replay.
   const replayedRead = advanceAliasV2Lifecycle(unknown, {
     stage: 'read',
-    result: classify('read', response(proof({ status: 'idempotent_replay' }))),
+    result: classify(
+      'read',
+      response(envelopeWithProof({ ...proof(), status: 'idempotent_replay' })),
+    ),
   });
   assert.deepEqual([replayedRead.phase, replayedRead.read_attempts], ['idempotent_replay', 1]);
   // A read that finds no durable evidence refuses the request for review: no automatic replay.
@@ -693,6 +821,17 @@ test('the lifecycle admits once, polls to a terminal proof, and never resubmits'
     [notApplied.phase, notApplied.code],
     ['refused', ALIAS_V2_EXECUTION_NOT_APPLIED],
   );
+  // A read that the server itself resolves as terminal unknown is published as indeterminate, and
+  // the lifecycle stops observing.
+  const resolvedUnknown = advanceAliasV2Lifecycle(unknown, {
+    stage: 'read',
+    result: classify('read', response(statusEnvelope({ status: 'indeterminate' }))),
+  });
+  assert.deepEqual(
+    [resolvedUnknown.phase, resolvedUnknown.code],
+    ['indeterminate', 'ALIAS_V2_FIXTURE_INDETERMINATE'],
+  );
+  assert.equal(isAliasV2Terminal(resolvedUnknown.phase), true);
   // A read that is itself refused adopts the server's code.
   const refusedRead = advanceAliasV2Lifecycle(unknown, {
     stage: 'read',
@@ -716,7 +855,7 @@ test('the lifecycle admits once, polls to a terminal proof, and never resubmits'
     () =>
       advanceAliasV2Lifecycle(retrying, {
         stage: 'read',
-        result: classify('read', response(proof())),
+        result: classify('read', response(statusEnvelope())),
       }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
@@ -816,7 +955,7 @@ test('stage order, gate order, polling bounds and unsupported results are all re
     () =>
       advanceAliasV2Lifecycle(started, {
         stage: 'read',
-        result: classify('read', response(proof())),
+        result: classify('read', response(statusEnvelope())),
       }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );
@@ -827,7 +966,7 @@ test('stage order, gate order, polling bounds and unsupported results are all re
   for (let poll = 0; poll < MAX_POLL_ATTEMPTS; poll += 1) {
     polling = advanceAliasV2Lifecycle(polling, {
       stage: 'read',
-      result: classify('read', response(PENDING_READ)),
+      result: classify('read', response(statusEnvelope({ status: 'pending' }))),
     });
   }
   assert.equal(polling.polls, MAX_POLL_ATTEMPTS);
@@ -835,7 +974,7 @@ test('stage order, gate order, polling bounds and unsupported results are all re
     () =>
       advanceAliasV2Lifecycle(polling, {
         stage: 'read',
-        result: classify('read', response(PENDING_READ)),
+        result: classify('read', response(statusEnvelope({ status: 'pending' }))),
       }),
     (error: unknown) => (error as { code?: string }).code === ALIAS_V2_LIFECYCLE_REFUSED,
   );

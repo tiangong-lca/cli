@@ -16,7 +16,12 @@ import {
   type JsonObject,
 } from '../src/lib/dataset-maintenance-contract.js';
 import { ALIAS_V2_PROTECTED_ARTIFACTS } from '../src/lib/dataset-alias-v2-protected.js';
-import { ALIAS_V2_PROTOCOL } from '../src/lib/dataset-alias-v2-protected-contract.js';
+import {
+  ALIAS_V2_PROTOCOL,
+  buildAliasV2ExecutionIdentity,
+} from '../src/lib/dataset-alias-v2-protected-contract.js';
+import { parseAliasV2Approval, parseAliasV2Freeze } from '../src/lib/dataset-alias-v2-protected.js';
+import { aliasV2StatusEnvelope } from './helpers/alias-v2-status.js';
 import { buildAliasV2CohortInput } from './fixtures/alias-v2-cohort.js';
 import {
   ALIAS_V2_TEST_ACCOUNT,
@@ -210,35 +215,17 @@ function protectedFetch(
   const plan = JSON.parse(readFileSync(chain.planPath, 'utf8')) as JsonObject;
   const freeze = JSON.parse(readFileSync(chain.freezePath, 'utf8')) as JsonObject;
   const approval = JSON.parse(readFileSync(chain.approvalPath, 'utf8')) as JsonObject;
-  const actions = plan['actions'] as JsonObject[];
-  const terminal: JsonObject = {
-    status: 'applied',
-    plan_sha256: plan['plan_sha256'],
-    counts: plan['expected'],
-    audit: { plan_summary_id: 'audit-plan-1', batch_summary_ids: ['b-flows', 'b-processes'] },
-    readback: {
-      flows: actions
-        .filter((action) => action['table'] === 'flows')
-        .map((action) => ({
-          table: 'flows',
-          id: action['id'],
-          version: action['version'],
-          desired_sha256: action['desired_sha256'],
-        })),
-      processes: actions
-        .filter((action) => action['table'] === 'processes')
-        .map((action) => ({
-          table: 'processes',
-          id: action['id'],
-          version: action['version'],
-          desired_sha256: action['desired_sha256'],
-        })),
-      text_actions: (plan['text_actions'] as JsonObject[]).map((action) => ({
-        id: action['id'],
-        version: action['version'],
-        after_text: action['after_text'],
-      })),
-    },
+  // The sealed identity of this exact chain, exactly the way the run derives it from the artefacts.
+  const fixture = {
+    plan,
+    identity: buildAliasV2ExecutionIdentity({
+      freeze: parseAliasV2Freeze(freeze),
+      approval: parseAliasV2Approval(approval),
+      freezeFileSha256: chain.freezeFileSha256,
+      approvalFileSha256: createHash('sha256')
+        .update(readFileSync(chain.approvalPath))
+        .digest('hex'),
+    }),
   };
   let preflightBody: JsonObject = {};
   let readIndex = 0;
@@ -280,7 +267,7 @@ function protectedFetch(
         gate_expectations_sha256: sha256Json({ gates: plan['plan_sha256'] }),
         preflight_request_sha256: sha256Json({ request: plan['plan_sha256'] }),
         preflight_token: 'preflight-token-abcdefghij',
-        preflight_proof_sha256: sha256Json({ proof: plan['plan_sha256'] }),
+        preflight_proof_sha256: sha256Json({ preflight: String(request['request_id']) }),
         simulation: {
           plan_rows: (plan['expected'] as JsonObject)['action_count'],
           plan_exchanges: (plan['expected'] as JsonObject)['exchange_count'],
@@ -320,8 +307,8 @@ function protectedFetch(
         request_id: preflightBody['request_id'],
         plan_sha256: plan['plan_sha256'],
         preflight_proof_sha256: preflightBody['preflight_proof_sha256'],
-        admission_request_sha256: sha256Json({ admit: plan['plan_sha256'] }),
-        gate_results_sha256: sha256Json({ gates: plan['plan_sha256'] }),
+        admission_request_sha256: sha256Json({ admit: String(preflightBody['request_id']) }),
+        gate_results_sha256: sha256Json({ gates: String(preflightBody['request_id']) }),
         status: 'dispatched',
         attempt_count: 1,
         dispatch_count: 1,
@@ -333,7 +320,9 @@ function protectedFetch(
     if (url.includes('cmd_dataset_alias_execution_read_v2')) {
       const value = options.reads?.[Math.min(readIndex, (options.reads ?? []).length - 1)];
       readIndex += 1;
-      return value === null ? jsonResponse({ ok: true }) : jsonResponse({ ok: true, ...terminal });
+      return value === null
+        ? jsonResponse({ ok: true })
+        : jsonResponse(aliasV2StatusEnvelope(fixture));
     }
     throw new Error(`Unexpected request: ${url}`);
   }) as FetchLike;
