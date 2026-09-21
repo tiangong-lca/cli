@@ -38,6 +38,8 @@ import {
   sealedAliasV2Execution,
   type SealedAliasV2Execution,
 } from './helpers/alias-v2-artifacts.js';
+import { buildAliasV2Plan, type AliasV2Row } from '../src/lib/dataset-alias-v2-plan.js';
+import { buildAliasV2CohortInput } from './fixtures/alias-v2-cohort.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,
@@ -508,7 +510,7 @@ test(
     const calls: Call[] = [];
     // Tampered content with the original digest: the content identity is recomputed and fails.
     const contentTampered = JSON.parse(readFileSync(sealed.freezePath, 'utf8')) as JsonObject;
-    contentTampered['expected_closure'] = { roots: 99, references: 99 };
+    (contentTampered['expected'] as JsonObject)['text_action_count'] = 0;
     writeFileSync(tampered, `${stableJsonText(contentTampered)}\n`, { mode: 0o600 });
     await assert.rejects(() =>
       runAliasV2Protected(
@@ -519,7 +521,7 @@ test(
     // A forged self-hash on tampered content is refused as well: even a self-consistent freeze
     // no longer matches the bytes the approval was sealed against.
     const forged = JSON.parse(readFileSync(sealed.freezePath, 'utf8')) as JsonObject;
-    forged['expected_closure'] = { roots: 99, references: 99 };
+    (forged['expected'] as JsonObject)['text_action_count'] = 0;
     forged['freeze_sha256'] = sha256Json({ ...forged, freeze_sha256: undefined });
     writeFileSync(tampered, `${stableJsonText(forged)}\n`, { mode: 0o600 });
     await assert.rejects(() =>
@@ -1124,5 +1126,42 @@ test(
     assert.equal(protectedInternals.parseMaybeJson(undefined), null);
     assert.equal(protectedInternals.parseMaybeJson('   '), null);
     assert.deepEqual(protectedInternals.parseMaybeJson('{"a":1}'), { a: 1 });
+  }),
+);
+
+test(
+  'a source flow property that changed after the freeze cannot ride the old seal',
+  withSealed(async (sealed) => {
+    // The live source row moving is exactly what the content evidence exists to catch: a name-only
+    // change keeps the identity and the unit-group pointer but produces a different binding, so a
+    // plan re-derived from the changed row cannot ride a seal that was frozen for the old content.
+    const sourceInput = buildAliasV2CohortInput();
+    const renamed = JSON.parse(JSON.stringify(sourceInput.source_flow_property)) as AliasV2Row;
+    const information = (renamed.json['flowPropertyDataSet'] as JsonObject)[
+      'flowPropertiesInformation'
+    ] as JsonObject;
+    information['dataSetInformation'] = {
+      'common:name': { '#text': 'Amount in hour', '@xml:lang': 'en' },
+    };
+    const replanned = buildAliasV2Plan({ ...sourceInput, source_flow_property: renamed }).plan;
+    const digest = (plan: JsonObject): unknown =>
+      ((plan['source_evidence'] as JsonObject)['source_flowproperty'] as JsonObject)['sha256'];
+    assert.notEqual(digest(replanned), digest(sealed.plan));
+    assert.notEqual(replanned['plan_sha256'], sealed.plan['plan_sha256']);
+    const replannedPath = path.join(sealed.directory, 'replanned-source-plan.json');
+    writeFileSync(replannedPath, `${stableJsonText(replanned)}\n`, { mode: 0o600 });
+    const calls: Call[] = [];
+    await assert.rejects(
+      () =>
+        runAliasV2Protected(
+          runOptions(sealed, {
+            planPath: replannedPath,
+            fetchImpl: scriptedFetch(sealed, { calls }),
+          }),
+        ),
+      (error: unknown) =>
+        (error as { code?: string }).code === 'ALIAS_V2_PROTECTED_ARTIFACT_INVALID',
+    );
+    assert.deepEqual(calls, [], 'stale source evidence never reaches the network');
   }),
 );

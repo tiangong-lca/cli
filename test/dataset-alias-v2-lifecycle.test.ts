@@ -39,6 +39,24 @@ const SOURCE_FP = 'bd69e542-6a50-524c-8d04-195b1ec23150';
 function planInput(): AliasV2PlanInput {
   return {
     actor_id: 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7',
+    source_flow_property: {
+      id: SOURCE_FP,
+      version: '00.00.001',
+      json: {
+        flowPropertyDataSet: {
+          flowPropertiesInformation: {
+            dataSetInformation: { 'common:name': { '#text': 'Amount in hr', '@xml:lang': 'en' } },
+            quantitativeReference: {
+              referenceToReferenceUnitGroup: {
+                '@type': 'unit group data set',
+                '@refObjectId': '49ce0c2f-2241-54e3-8e75-e75ffbdaecfb',
+                '@version': '01.00.000',
+              },
+            },
+          },
+        },
+      },
+    },
     flows: [
       {
         id: 'flow-a',

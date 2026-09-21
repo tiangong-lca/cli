@@ -226,6 +226,28 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
   return {
     actor_id: 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7',
     source_alias: { id: SOURCE_FP, version: '00.00.001' },
+    // The complete locked SOURCE flow property: the reviewed alias identity, its own payload, and
+    // its current declaration of the (year-based) source unit group the before amounts are read in.
+    source_flow_property: {
+      id: SOURCE_FP,
+      version: '00.00.001',
+      json: {
+        flowPropertyDataSet: {
+          flowPropertiesInformation: {
+            dataSetInformation: {
+              'common:name': { '#text': 'Amount in hr', '@xml:lang': 'en' },
+            },
+            quantitativeReference: {
+              referenceToReferenceUnitGroup: {
+                '@type': 'unit group data set',
+                '@refObjectId': TARGET_UG,
+                '@version': '01.00.000',
+              },
+            },
+          },
+        },
+      },
+    },
     flows,
     processes,
     target_flow_property: {
@@ -299,6 +321,7 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
         target_flow_property: {} as never,
         target_unit_group: {} as never,
         declared_source_unit_group: {} as never,
+        source_flow_property: {} as never,
         source_evidence: {
           sha256: sha256Json(REVIEWED_SOURCE_EVIDENCE),
           cohort_sha256: '',

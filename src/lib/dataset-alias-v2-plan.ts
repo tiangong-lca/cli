@@ -18,6 +18,11 @@
 //     suffix preserved, other forms fail closed and create no text action;
 //   - counts are derived here and cross-checked against the frozen cohort counts.
 //
+// The reviewed SOURCE flow property is a required, fully content-bound input: its identity must be
+// exactly the source alias and its own unit-group pointer must be the currently declared source
+// unit group, while its full payload digest travels in `source_evidence` and therefore through
+// every plan/freeze/approval/support binding the capability derives.
+//
 // Local, deterministic and network-free: the caller supplies the frozen evidence and the
 // reviewed target snapshots.
 
@@ -34,6 +39,7 @@ export const ALIAS_V2_FACTOR = '0.00011415525114155251';
 export const ALIAS_V2_PLAN_INVALID = 'ALIAS_V2_PLAN_INVALID';
 export const ALIAS_V2_REFERENCE_SHAPE_INVALID = 'ALIAS_V2_REFERENCE_SHAPE_INVALID';
 export const ALIAS_V2_TARGET_SHAPE_INVALID = 'ALIAS_V2_TARGET_SHAPE_INVALID';
+export const ALIAS_V2_SOURCE_SHAPE_INVALID = 'ALIAS_V2_SOURCE_SHAPE_INVALID';
 export const ALIAS_V2_UNCERTAINTY_UNSUPPORTED = 'ALIAS_V2_UNCERTAINTY_UNSUPPORTED';
 export const ALIAS_V2_TEXT_RULE_VIOLATION = 'ALIAS_V2_TEXT_RULE_VIOLATION';
 export const ALIAS_V2_COUNT_MISMATCH = 'ALIAS_V2_COUNT_MISMATCH';
@@ -52,10 +58,12 @@ export const ALIAS_V2_EXCHANGE_KEYS = [
   'uncertaintyDistributionType',
 ] as const;
 
-// The approved anchored form: the quantity token, exactly one space, the unit token 'a', then a
-// non-empty suffix whose whitespace is preserved byte-for-byte. No variant A fallback and no
-// arbitrary numeric or unit prefix is accepted.
-const FUNCTIONAL_UNIT_RULE = /^(1|1\.0) a(\s.*)$/u;
+// The approved anchored form, literally equal on both sides of the wire (shared vectors):
+// the quantity token `1` or `1.0`, exactly one ASCII space, the unit token `a`, then a suffix that
+// begins with one ASCII space, contains at least one non-space/non-tab character and carries no
+// CR/LF. The whole suffix is preserved byte-for-byte. No variant A fallback, no arbitrary numeric
+// or unit prefix, no whitespace-only or multiline suffix, no glued separator.
+const FUNCTIONAL_UNIT_RULE = /^(1|1\.0) a( [^\r\n]*[^ \t\r\n][^\r\n]*)$/u;
 
 export type AliasV2Row = { id: string; version: string; json: JsonObject };
 
@@ -91,6 +99,15 @@ export type AliasV2SourceEvidence = {
 export type AliasV2PlanInput = {
   actor_id: string;
   source_alias: AliasV2SourceAlias;
+  /**
+   * The complete locked SOURCE flow property row. Its identity must be exactly `source_alias`, and
+   * its own `referenceToReferenceUnitGroup` must be the currently declared source unit group the
+   * plan reads the before amounts in. Its full payload digest is the freshness evidence: the
+   * identity tuple alone does not move when the row's name (or any other content) changes, so the
+   * digest is recorded in `source_evidence` and carried by the plan/freeze/approval/support
+   * bindings. A missing, malformed or mismatched row is refused before a plan exists.
+   */
+  source_flow_property: AliasV2Row;
   flows: AliasV2Row[];
   processes: AliasV2ProcessRow[];
   target_flow_property: AliasV2Row;
@@ -171,6 +188,76 @@ export function flowPropertyInformation(payload: JsonObject): JsonObject | null 
   const root = payload['flowPropertyDataSet'];
   const information = isJsonObject(root) ? root['flowPropertiesInformation'] : null;
   return isJsonObject(information) ? information : null;
+}
+
+/**
+ * Proves the reviewed source flow property row and derives the content evidence it contributes.
+ *
+ * The row is required, must be exactly the reviewed source alias identity, and must currently
+ * declare the same unit group whose base unit the before amounts are read in. The returned digest
+ * is over the complete canonical payload, so a name-only change between evidence capture and
+ * execution produces a different binding instead of sliding through under an unchanged identity.
+ */
+export function assertAliasV2SourceFlowProperty(input: AliasV2PlanInput): {
+  id: string;
+  version: string;
+  sha256: string;
+} {
+  const row = input.source_flow_property;
+  if (!isJsonObject(row)) {
+    fail(
+      ALIAS_V2_SOURCE_SHAPE_INVALID,
+      'Alias v2 plan requires the complete locked source flow property row.',
+      { id: null },
+    );
+  }
+  if (typeof row.id !== 'string' || typeof row.version !== 'string') {
+    fail(
+      ALIAS_V2_SOURCE_SHAPE_INVALID,
+      'Alias v2 plan requires the complete locked source flow property row.',
+      { id: row.id },
+    );
+  }
+  if (row.id === '' || !isJsonObject(row.json)) {
+    fail(
+      ALIAS_V2_SOURCE_SHAPE_INVALID,
+      'Alias v2 plan source flow property must be a named row with its payload.',
+      { id: row.id },
+    );
+  }
+  // Both ends are pinned: this row must be the reviewed alias identity, not a neighbour.
+  if (row.id !== input.source_alias.id || row.version !== input.source_alias.version) {
+    fail(
+      ALIAS_V2_SOURCE_SHAPE_INVALID,
+      'Alias v2 source flow property must be exactly the reviewed source alias identity.',
+      { id: row.id, version: row.version },
+    );
+  }
+  const information = flowPropertyInformation(row.json);
+  if (information === null) {
+    fail(
+      ALIAS_V2_SOURCE_SHAPE_INVALID,
+      'Alias v2 source flow property must carry its flowPropertiesInformation node.',
+      { id: row.id },
+    );
+  }
+  const quantitativeReference = information['quantitativeReference'];
+  const declaredUnitGroup = isJsonObject(quantitativeReference)
+    ? quantitativeReference['referenceToReferenceUnitGroup']
+    : null;
+  const declaredId = isJsonObject(declaredUnitGroup) ? declaredUnitGroup['@refObjectId'] : null;
+  const declaredVersion = isJsonObject(declaredUnitGroup) ? declaredUnitGroup['@version'] : null;
+  if (
+    declaredId !== input.declared_source_unit_group.id ||
+    (declaredVersion !== undefined && declaredVersion !== input.declared_source_unit_group.version)
+  ) {
+    fail(
+      ALIAS_V2_SOURCE_SHAPE_INVALID,
+      'Alias v2 source flow property must currently declare the locked source unit group.',
+      { id: row.id, declared: declaredId ?? null, version: declaredVersion ?? null },
+    );
+  }
+  return { id: row.id, version: row.version, sha256: sha256Json(row.json) };
 }
 
 /**
@@ -439,6 +526,7 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
   if (input.source_alias.id === input.target_flow_property.id) {
     invalid('Alias v2 plan source and target flow properties must differ.');
   }
+  const sourceFlowProperty = assertAliasV2SourceFlowProperty(input);
   assertAliasV2TargetUnitGroup(input.target_unit_group);
   const target = input.target_flow_property;
   // The reference is a projection of the locked target snapshot at its real schema paths, not a
@@ -809,6 +897,10 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
         version: input.declared_source_unit_group.version,
         sha256: sha256Json(input.declared_source_unit_group.json),
       },
+      // The complete locked source flow property: identity plus the digest of its full payload.
+      // This is the freshness evidence for the reviewed alias, and it travels in every binding the
+      // plan, freeze, approval and support-snapshot sets derive.
+      source_flowproperty: sourceFlowProperty,
       // The ORIGINAL physical unit of the before amounts, proven by the content-bound evidence
       // above. Provenance only: it is not a current pointer, it is not written to any row, and
       // the current declaration is never read as proof that the amounts are already in it.

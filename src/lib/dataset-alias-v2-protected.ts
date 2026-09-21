@@ -397,6 +397,33 @@ export function assertAliasV2PlanDocument(value: unknown): JsonObject {
     );
   }
   expectedOf(value['expected'], 'plan.expected');
+  // The reviewed source flow property evidence is part of the plan artefact contract: the run
+  // refuses a plan whose evidence does not carry the complete locked source row identity and its
+  // full payload digest, because that is the binding the freeze, approval and support sets carry.
+  const sourceEvidence = value['source_evidence'];
+  if (!isJsonObject(sourceEvidence)) {
+    fail(
+      'Alias v2 plan artefact must carry its source evidence.',
+      'ALIAS_V2_PROTECTED_ARTIFACT_INVALID',
+      2,
+    );
+  }
+  const sourceFlowProperty = sourceEvidence['source_flowproperty'];
+  if (!isJsonObject(sourceFlowProperty)) {
+    fail(
+      'Alias v2 plan artefact must bind the complete locked source flow property.',
+      'ALIAS_V2_PROTECTED_ARTIFACT_INVALID',
+      2,
+    );
+  }
+  exactKeys(
+    sourceFlowProperty,
+    ['id', 'version', 'sha256'],
+    'plan.source_evidence.source_flowproperty',
+  );
+  token(sourceFlowProperty['id'], 'plan.source_evidence.source_flowproperty.id');
+  token(sourceFlowProperty['version'], 'plan.source_evidence.source_flowproperty.version');
+  hash(sourceFlowProperty['sha256'], 'plan.source_evidence.source_flowproperty.sha256');
   if (!isJsonObject(value['target_snapshots']) || !isJsonObject(value['source_evidence'])) {
     fail(
       'Alias v2 plan artefact must carry its target snapshots and source evidence.',

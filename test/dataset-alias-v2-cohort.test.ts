@@ -23,6 +23,8 @@ import {
   COHORT_TEXT_ACTION_COUNT,
   buildAliasV2CohortInput,
 } from './fixtures/alias-v2-cohort.js';
+import { deriveAliasV2Sets } from '../src/lib/dataset-alias-v2-public.js';
+import { aliasV2DerivativeTargets } from './helpers/alias-v2-artifacts.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -166,6 +168,14 @@ test('the 87 source-proven functional units are corrected and the 41 correct one
       String(action['after_text']),
     );
     assert.match(String(action['source_exchange_number']), /^[0-9]+$/u);
+    // Every one of the reviewed texts passes the shared grammar's own properties — one ASCII space
+    // after the unit token, at least one non-space/non-tab character and no CR/LF — and its suffix
+    // survives byte-for-byte: none of the 87 needs a refusal or a rewrite beyond the unit token.
+    const before = String(action['before_text']);
+    const after = String(action['after_text']);
+    const suffix = before.slice(before.indexOf(' a') + 2);
+    assert.match(suffix, /^ [^\r\n]*[^ \t\r\n][^\r\n]*$/u, before);
+    assert.equal(after.slice(after.indexOf('hr') + 2), suffix, before);
   }
   // Processes with the already-correct form keep their text byte-for-byte.
   const unitText = (payload: JsonObject): string =>
@@ -419,4 +429,28 @@ test('every reference in the cohort carries the real five-key shape, projected f
       (error: unknown) => (error as { code?: string }).code === ALIAS_V2_TARGET_SHAPE_INVALID,
     );
   }
+});
+
+test('the cohort plan carries the complete locked source flow property evidence', () => {
+  const input = buildAliasV2CohortInput();
+  const evidence = PLAN['source_evidence'] as JsonObject;
+  assert.deepEqual(evidence['source_flowproperty'], {
+    id: input.source_flow_property.id,
+    version: input.source_flow_property.version,
+    sha256: sha256Json(input.source_flow_property.json),
+  });
+  // The support-snapshot set binds the source row's complete content digest, the currently
+  // declared source unit group and the locked target snapshots — one definition, pinned here.
+  assert.equal(
+    deriveAliasV2Sets({
+      plan: PLAN,
+      derivativeTargets: aliasV2DerivativeTargets(PLAN, input.actor_id),
+      toolchainEvidenceSha256: 'a'.repeat(64),
+    })['support_snapshot_set_sha256'],
+    sha256Json({
+      source_flowproperty: evidence['source_flowproperty'],
+      declared_source_unitgroup: evidence['declared_source_unitgroup'],
+      target_snapshots: PLAN['target_snapshots'],
+    }),
+  );
 });

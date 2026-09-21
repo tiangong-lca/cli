@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { cwd } from 'node:process';
 import test from 'node:test';
 import { isJsonObject, sha256Json } from '../src/lib/dataset-maintenance-contract.js';
 import {
   ALIAS_V2_BATCH_SCHEMA,
+  type AliasV2Row,
   ALIAS_V2_EXCHANGE_KEYS,
   ALIAS_V2_FACTOR,
   ALIAS_V2_PLAN_SCHEMA,
   ALIAS_V2_REFERENCE_SHAPE_INVALID,
+  ALIAS_V2_SOURCE_SHAPE_INVALID,
   ALIAS_V2_TARGET_SHAPE_INVALID,
   aliasV2CohortSha256,
   aliasV2TargetFlowPropertyReference,
@@ -14,6 +20,8 @@ import {
   buildAliasV2Plan,
   type AliasV2PlanInput,
 } from '../src/lib/dataset-alias-v2-plan.js';
+import { deriveAliasV2Sets } from '../src/lib/dataset-alias-v2-public.js';
+import { aliasV2DerivativeTargets } from './helpers/alias-v2-artifacts.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -94,9 +102,36 @@ function process(id: string, exchanges: JsonObject[], unitText = '1 kg Product')
   };
 }
 
+/**
+ * The complete locked source flow property row: the reviewed source alias identity whose own
+ * payload declares the (year-based) source unit group the before amounts are read in.
+ */
+function sourceFlowProperty(overrides: JsonObject = {}): AliasV2Row {
+  return {
+    id: SOURCE_FP,
+    version: '00.00.001',
+    json: {
+      flowPropertyDataSet: {
+        flowPropertiesInformation: {
+          dataSetInformation: { 'common:name': { '#text': 'Amount in hr', '@xml:lang': 'en' } },
+          quantitativeReference: {
+            referenceToReferenceUnitGroup: {
+              '@type': 'unit group data set',
+              '@refObjectId': TARGET_UG,
+              '@version': '01.00.000',
+            },
+          },
+        },
+      },
+      ...overrides,
+    },
+  };
+}
+
 function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
   const base: AliasV2PlanInput = {
     actor_id: 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7',
+    source_flow_property: sourceFlowProperty(),
     flows: [
       { id: 'flow-a', version: '00.00.001', json: flow('flow-a') },
       { id: 'flow-b', version: '00.00.001', json: flow('flow-b') },
@@ -1318,4 +1353,251 @@ test('malformed amounts, incomplete occurrence sets and stale evidence fail clos
   );
   // The derived counts are compared with the frozen ones, never asserted by the caller.
   rejects({ expected_counts: { action_count: 999 } }, 'ALIAS_V2_COUNT_MISMATCH');
+});
+
+test('the shared functional-unit text vectors are accepted and refused exactly', () => {
+  // The reviewed grammar lives in one shared vector list, consumed byte-identically here and by
+  // the storage-side owner: this test reads that file (digest pinned) instead of re-stating the
+  // pattern, so the two sides cannot drift into "equivalent on this cohort only".
+  const raw = readFileSync(path.join(cwd(), 'test/fixtures/alias-v2-fu-text-vectors.json'));
+  assert.equal(
+    createHash('sha256').update(raw).digest('hex'),
+    '055344d0d27cb1fa6873d49440ce18fc8f98fd1b412958fc1770b78add7f9d31',
+    'the shared functional-unit vector list must stay byte-identical',
+  );
+  const vectors = JSON.parse(raw.toString('utf8')) as {
+    regex_source: string;
+    accepted: Array<{ input: string; after: string }>;
+    refused: Array<{ input: string; reason: string }>;
+  };
+  assert.equal(vectors.regex_source, '^(1|1\\.0) a( [^\\r\\n]*[^ \\t\\r\\n][^\\r\\n]*)$');
+  const violation = 'ALIAS_V2_TEXT_RULE_VIOLATION';
+  // One reviewed process whose functional unit is the vector under test. The reference exchange is
+  // the produced output at quantity 1.0 carrying its own original source number, and the alias
+  // occurrence is a separate exponent-valued input — the two id namespaces stay apart.
+  const build = (unitText: string): JsonObject =>
+    buildAliasV2Plan(
+      input({
+        processes: [
+          {
+            id: 'process-b',
+            version: '00.00.001',
+            exchange_indexes: [1],
+            functional_unit: { source_exchange_number: '730045' },
+            json: process(
+              'process-b',
+              [
+                exchange(
+                  '1',
+                  {
+                    exchangeDirection: 'Output',
+                    meanAmount: '1.0',
+                    resultingAmount: '1.0',
+                    generalComment: {
+                      '#text': 'Source EcoSpold1 exchange number: 730045.',
+                      '@xml:lang': 'en',
+                    },
+                  },
+                  false,
+                ),
+                exchange('2', {
+                  exchangeDirection: 'Input',
+                  meanAmount: '1.03E-4',
+                  resultingAmount: '1.03E-4',
+                  generalComment: {
+                    '#text': 'Source EcoSpold1 exchange number: 730046.',
+                    '@xml:lang': 'en',
+                  },
+                }),
+              ],
+              unitText,
+            ),
+          },
+        ],
+      }),
+    ).plan;
+
+  for (const vector of vectors.accepted) {
+    const plan = build(vector.input);
+    const actions = plan['text_actions'] as JsonObject[];
+    assert.equal(actions.length, 1, JSON.stringify(vector.input));
+    assert.equal(actions[0]?.['before_text'], vector.input);
+    assert.equal(actions[0]?.['after_text'], vector.after);
+    // Independent transform: only the quantity token and the unit token move, and the suffix after
+    // the separator space survives byte-for-byte.
+    const separator = vector.input.indexOf(' a');
+    assert.equal(
+      vector.after,
+      `${vector.input.slice(0, separator)} hr${vector.input.slice(separator + 2)}`,
+    );
+    const suffix = vector.after.slice(vector.after.indexOf('hr') + 2);
+    assert.match(suffix, /^ [^\r\n]*[^ \t\r\n][^\r\n]*$/u);
+    assert.equal(suffix, vector.input.slice(separator + 2));
+  }
+
+  for (const vector of vectors.refused) {
+    assert.throws(
+      () => build(vector.input),
+      (error: unknown) => (error as { code?: string }).code === violation,
+      `${JSON.stringify(vector.input)} (${vector.reason}) must be refused`,
+    );
+  }
+
+  // The one refusal path that is not about the prefix: a process that carries no source proof for
+  // a reviewed incorrect prefix must never be left silently in place either.
+  assert.throws(
+    () =>
+      buildAliasV2Plan(
+        input({
+          processes: [
+            {
+              id: 'process-b',
+              version: '00.00.001',
+              exchange_indexes: [1],
+              json: process('process-b', [exchange('1', {}, false), exchange('2')], '1.0 a x'),
+            },
+          ],
+        }),
+      ),
+    (error: unknown) => (error as { code?: string }).code === violation,
+  );
+});
+
+test('the reviewed source flow property is a required, content-bound input', () => {
+  const sourceShape = ALIAS_V2_SOURCE_SHAPE_INVALID;
+  const reviewed = sourceFlowProperty();
+  // Missing, non-object and payload-less rows never reach a plan.
+  rejects({ source_flow_property: undefined as unknown as AliasV2Row }, sourceShape);
+  rejects({ source_flow_property: 'nope' as unknown as AliasV2Row }, sourceShape);
+  rejects(
+    {
+      source_flow_property: {
+        id: 42,
+        version: '00.00.001',
+        json: reviewed.json,
+      } as unknown as AliasV2Row,
+    },
+    sourceShape,
+  );
+  rejects(
+    { source_flow_property: { id: '', version: '00.00.001', json: reviewed.json } },
+    sourceShape,
+  );
+  rejects(
+    { source_flow_property: { ...reviewed, json: 'nope' as unknown as JsonObject } },
+    sourceShape,
+  );
+  // The identity must be exactly the reviewed source alias.
+  rejects(
+    { source_flow_property: { ...reviewed, id: 'beefbeef-0000-4000-8000-000000000001' } },
+    sourceShape,
+  );
+  rejects({ source_flow_property: { ...reviewed, version: '00.00.002' } }, sourceShape);
+  // The row must carry its information node and currently declare the locked source unit group.
+  rejects(
+    { source_flow_property: { ...reviewed, json: { flowPropertyDataSet: {} } } },
+    sourceShape,
+  );
+  const withDeclared = (reference: unknown): AliasV2Row => {
+    const row = JSON.parse(JSON.stringify(reviewed)) as AliasV2Row;
+    ((row.json['flowPropertyDataSet'] as JsonObject)['flowPropertiesInformation'] as JsonObject)[
+      'quantitativeReference'
+    ] = { referenceToReferenceUnitGroup: reference };
+    return row;
+  };
+  rejects(
+    {
+      source_flow_property: withDeclared({
+        '@refObjectId': 'aeddc8ee-da6f-5181-9a99-73466e198b86',
+      }),
+    },
+    sourceShape,
+  );
+  rejects(
+    {
+      source_flow_property: withDeclared({
+        '@refObjectId': TARGET_UG,
+        '@version': '01.00.001',
+      }),
+    },
+    sourceShape,
+  );
+  rejects({ source_flow_property: withDeclared(null) }, sourceShape);
+  // A quantitative reference that is not an object at all is the same refusal.
+  rejects(
+    {
+      source_flow_property: {
+        ...reviewed,
+        json: {
+          flowPropertyDataSet: {
+            flowPropertiesInformation: { quantitativeReference: 'nope' },
+          },
+        },
+      },
+    },
+    sourceShape,
+  );
+
+  // The reviewed row itself is accepted, and its complete payload digest — not just its identity —
+  // is what the plan records.
+  const plan = buildAliasV2Plan(input()).plan;
+  const evidence = plan['source_evidence'] as JsonObject;
+  assert.deepEqual(evidence['source_flowproperty'], {
+    id: SOURCE_FP,
+    version: '00.00.001',
+    sha256: sha256Json(reviewed.json),
+  });
+  // The source alias identity digest is unchanged by this addition: it stays the tuple digest.
+  assert.deepEqual(plan['source_alias'], {
+    id: SOURCE_FP,
+    version: '00.00.001',
+    sha256: sha256Json({ id: SOURCE_FP, version: '00.00.001' }),
+  });
+});
+
+test('a name-only change to the source flow property is a new binding, never a silent reuse', () => {
+  const reviewed = sourceFlowProperty();
+  const renamed = JSON.parse(JSON.stringify(reviewed)) as AliasV2Row;
+  const information = (renamed.json['flowPropertyDataSet'] as JsonObject)[
+    'flowPropertiesInformation'
+  ] as JsonObject;
+  // Only the name moves: identical identity, identical unit-group pointer, no scientific change.
+  information['dataSetInformation'] = {
+    'common:name': { '#text': 'Amount in hour', '@xml:lang': 'en' },
+  };
+  const before = buildAliasV2Plan(input()).plan;
+  const after = buildAliasV2Plan(input({ source_flow_property: renamed })).plan;
+  const evidenceOf = (plan: JsonObject): JsonObject => plan['source_evidence'] as JsonObject;
+  const digestOf = (plan: JsonObject): unknown =>
+    (evidenceOf(plan)['source_flowproperty'] as JsonObject)['sha256'];
+  assert.equal(digestOf(before), sha256Json(reviewed.json));
+  assert.equal(digestOf(after), sha256Json(renamed.json));
+  assert.notEqual(
+    digestOf(before),
+    digestOf(after),
+    'the content evidence must move with the name',
+  );
+  assert.equal(evidenceOf(before)['cohort_sha256'], evidenceOf(after)['cohort_sha256']);
+  // The plan-bound digests move with it, so an earlier freeze/approval chain cannot bind the
+  // renamed plan: the plan file digest, the plan digest and the support-snapshot set all differ.
+  assert.notEqual(before['plan_sha256'], after['plan_sha256']);
+  assert.equal(after['plan_sha256'], sha256Json({ ...after, plan_sha256: undefined }));
+  const setsBefore = deriveAliasV2Sets({
+    plan: before,
+    derivativeTargets: aliasV2DerivativeTargets(before, 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7'),
+    toolchainEvidenceSha256: 'a'.repeat(64),
+  });
+  const setsAfter = deriveAliasV2Sets({
+    plan: after,
+    derivativeTargets: aliasV2DerivativeTargets(after, 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7'),
+    toolchainEvidenceSha256: 'a'.repeat(64),
+  });
+  assert.notEqual(
+    setsBefore['support_snapshot_set_sha256'],
+    setsAfter['support_snapshot_set_sha256'],
+  );
+  assert.deepEqual(
+    setsBefore['alias_plan_request_sha256'],
+    sha256Json({ ...before, plan_sha256: undefined }),
+  );
 });

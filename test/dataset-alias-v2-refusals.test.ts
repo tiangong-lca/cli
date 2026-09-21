@@ -679,6 +679,37 @@ test('the plan document, the canonical bytes and the artefact bindings are prove
       ['expected key set', { ...plan, expected: { action_count: 1 } }],
       ['missing snapshots', { ...plan, target_snapshots: 'nope' }],
       ['missing evidence', { ...plan, source_evidence: 'nope' }],
+      ['missing source flow property', { ...plan, source_evidence: {} }],
+      [
+        'malformed source flow property',
+        {
+          ...plan,
+          source_evidence: {
+            ...(plan['source_evidence'] as JsonObject),
+            source_flowproperty: 'nope',
+          },
+        },
+      ],
+      [
+        'source flow property key set',
+        {
+          ...plan,
+          source_evidence: {
+            ...(plan['source_evidence'] as JsonObject),
+            source_flowproperty: { id: 'x', version: '00.00.001' },
+          },
+        },
+      ],
+      [
+        'source flow property digest',
+        {
+          ...plan,
+          source_evidence: {
+            ...(plan['source_evidence'] as JsonObject),
+            source_flowproperty: { id: 'x', version: '00.00.001', sha256: 'not-a-hash' },
+          },
+        },
+      ],
     ];
     for (const [label, value] of planCases) {
       rejects(() => assertAliasV2PlanDocument(value), ARTIFACT_INVALID, label);

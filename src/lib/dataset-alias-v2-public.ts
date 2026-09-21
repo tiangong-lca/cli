@@ -130,7 +130,16 @@ export function deriveAliasV2Sets(options: {
         .filter((action) => action['table'] === 'processes')
         .map((action) => (action['mutation'] as JsonObject)['exchanges']),
     ),
-    support_snapshot_set_sha256: sha256Json(options.plan['target_snapshots']),
+    // The frozen support snapshots the plan binds: the complete locked SOURCE flow property (its
+    // identity and full payload digest), the currently declared source unit group and the locked
+    // target snapshots. A name-only change to the source row changes this set.
+    support_snapshot_set_sha256: sha256Json({
+      source_flowproperty: (options.plan['source_evidence'] as JsonObject)['source_flowproperty'],
+      declared_source_unitgroup: (options.plan['source_evidence'] as JsonObject)[
+        'declared_source_unitgroup'
+      ],
+      target_snapshots: options.plan['target_snapshots'],
+    }),
     derivative_baseline_set_sha256: sha256Json(
       options.derivativeTargets
         .map((target) => String(target['baseline_snapshot_sha256']))
