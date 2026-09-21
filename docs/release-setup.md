@@ -24,9 +24,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 381769dad8be142c9f2395a790053ea37b2fe860
-lastReviewedNote: 'Reviewed for CLI #346: the SDK 0.3.0-backed CLI 0.1.18 release needs no new secret, Trusted Publisher setup, workflow, tag rule, or alternate publication path.'
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: e623af9
+lastReviewedNote: 'Reviewed for CLI #283 at head f75eda4 (second atomic stage): the metadata repair admission and retained-attempt precedence add no dependency, version, credential, provenance or publication step.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -224,3 +224,5 @@ The repository now includes a local pre-push gate that runs `scripts/docpact-gat
 ## Runner allocation
 
 All CI jobs use GitHub-hosted runners. The quality matrix covers Linux x64, Linux ARM64, Windows x64 and macOS Apple Silicon. Issue #298 reverses the CodeBuild routing after the benchmark showed limited total-wait benefit; no AWS runner is required. Existing-tag recovery continues through workflow_dispatch and the direct canonical gate from the tagged checkout.
+
+Review note, 2026-09-21: independently reviewed CLI #283 annual-volume commit d45ffb6. Existing values and language order are preserved; unknown annual evidence remains [] and an authoring gap, never a reference-flow/default-unit quantity. The separate schema, content and multilingual layers retain their own results. This document requires no additional annual-volume or release-policy change.

@@ -19,6 +19,10 @@ import {
   collectProcessRequiredFieldIssues,
 } from './process-required-fields.js';
 import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
+import {
+  buildDatasetValidationLayers,
+  type DatasetValidationLayers,
+} from './dataset-validation-layers.js';
 
 type DatasetValidateType = 'auto' | DatasetKind;
 
@@ -37,6 +41,8 @@ export type DatasetValidateRowReport = {
   validator: string | null;
   issue_count: number;
   issues: DatasetValidateIssue[];
+  payload_sha256?: string;
+  validation_layers?: DatasetValidationLayers;
 };
 
 export type DatasetValidateReport = {
@@ -275,14 +281,29 @@ function validateRow(
   }
 
   const { validator, schema, createEntity } = schemaForKind(kind, schemas);
-  const outcome = validateSchemaWithDeepFallback(schema, row.payload, createEntity);
+  const outcome = validateSchemaWithDeepFallback(
+    schema,
+    structuredClone(row.payload),
+    createEntity,
+  );
   const requiredFieldIssues =
     kind === 'process' ? collectProcessRequiredFieldIssues(row.payload) : [];
   const placeholderIssues =
     kind === 'process'
       ? collectProcessPlaceholderIssues(row.payload)
       : collectImportContentIssues(row.payload);
-  if (outcome.success && requiredFieldIssues.length === 0 && placeholderIssues.length === 0) {
+  const { additional_multilingual_issues, ...evidence } = buildDatasetValidationLayers(
+    row.payload,
+    outcome,
+    requiredFieldIssues,
+    placeholderIssues,
+  );
+  if (
+    outcome.success &&
+    requiredFieldIssues.length === 0 &&
+    placeholderIssues.length === 0 &&
+    additional_multilingual_issues.length === 0
+  ) {
     return {
       index: row.index,
       id: row.id,
@@ -292,6 +313,7 @@ function validateRow(
       validator,
       issue_count: 0,
       issues: [],
+      ...evidence,
     };
   }
 
@@ -303,6 +325,7 @@ function validateRow(
     })),
     ...requiredFieldIssues,
     ...placeholderIssues,
+    ...additional_multilingual_issues,
   ];
 
   return {
@@ -314,6 +337,7 @@ function validateRow(
     validator,
     issue_count: issues.length,
     issues,
+    ...evidence,
   };
 }
 

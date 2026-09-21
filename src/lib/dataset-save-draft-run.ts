@@ -8,6 +8,13 @@ import { createBatchContract, runBoundedBatch, type BatchJsonValue } from '../ba
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
 import { collectImportContentIssues } from './dataset-validate.js';
 import {
+  DRAFT_REPAIR_ADMISSION_SCHEMA,
+  DRAFT_REPAIR_POLICY,
+  evaluateProcessMetadataRepairAdmission,
+  isProcessMetadataRepairCandidate,
+  type DraftRepairAdmission,
+} from './dataset-draft-repair-admission.js';
+import {
   createDatasetRecord,
   saveDraftDatasetRecord,
   type DatasetCommandTable,
@@ -21,10 +28,7 @@ import {
   type SdkValidationFactory,
   validateSchemaWithDeepFallback,
 } from './tidas-sdk-validation.js';
-import {
-  collectProcessPlaceholderIssues,
-  collectProcessRequiredFieldIssues,
-} from './process-required-fields.js';
+import { validateProcessPayload } from './process-payload-validation.js';
 import { buildDatasetCommandTransport } from './dataset-command.js';
 import {
   createSupabaseDataClient,
@@ -47,6 +51,10 @@ import {
   stableJsonText,
 } from './dataset-maintenance-contract.js';
 import { resolveFlowIdentityApprovalClaimRoot } from './dataset-maintenance-flow-identity-approval-claim.js';
+import {
+  buildDatasetValidationLayers,
+  type DatasetValidationLayers,
+} from './dataset-validation-layers.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -71,7 +79,10 @@ type DatasetSaveDraftValidationIssue = {
   code: string;
 };
 
-type DatasetSaveDraftValidationResult =
+type DatasetSaveDraftValidationResult = {
+  payload_sha256?: string;
+  validation_layers?: DatasetValidationLayers;
+} & (
   | {
       ok: true;
       validator: string;
@@ -83,7 +94,8 @@ type DatasetSaveDraftValidationResult =
       validator: string;
       issue_count: number;
       issues: DatasetSaveDraftValidationIssue[];
-    };
+    }
+);
 
 function normalizeValidationIssue(issue: {
   path?: Array<string | number>;
@@ -116,6 +128,8 @@ export type DatasetSaveDraftRowReport = {
     | 'remote_reference_unresolved'
     | 'recovered_exact_readback'
     | 'blocked_dependency'
+    | 'retained_outcome'
+    | 'retained_attempt'
     | null;
   validation: DatasetSaveDraftValidationResult | null;
   visible_row?: VisibleDatasetRow | null;
@@ -125,6 +139,7 @@ export type DatasetSaveDraftRowReport = {
   attempt_consumed?: boolean;
   replayed?: false;
   readback?: 'desired_exact' | 'not_desired' | 'not_performed';
+  draft_repair_admission?: DraftRepairAdmission;
 };
 
 export type DatasetSaveDraftReport = {
@@ -222,9 +237,41 @@ type DatasetSaveDraftLedgerEvent = {
   outcome: 'executed' | 'unknown' | null;
   recovered: boolean;
   recorded_at_utc: string;
+  // Optional and hash-bound: a first attempt of an admitted metadata repair carries the verified
+  // admission so a later recovery can return the original evidence instead of re-inventing it.
+  draft_repair_admission?: DraftRepairAdmission;
   previous_event_sha256: string | null;
   event_sha256: string;
 };
+
+const DRAFT_REPAIR_ADMISSION_KEYS = [
+  'before_sha256',
+  'changed_paths',
+  'desired_sha256',
+  'policy',
+  'publication_ready',
+  'schema',
+  'status',
+].join(',');
+
+function isLedgerRepairAdmission(value: unknown): value is DraftRepairAdmission {
+  if (!isRecord(value) || !Array.isArray(value.changed_paths)) {
+    return false;
+  }
+  return (
+    Object.keys(value).sort().join(',') === DRAFT_REPAIR_ADMISSION_KEYS &&
+    value.schema === DRAFT_REPAIR_ADMISSION_SCHEMA &&
+    value.status === 'admitted' &&
+    value.policy === DRAFT_REPAIR_POLICY &&
+    value.publication_ready === false &&
+    typeof value.before_sha256 === 'string' &&
+    SHA256_PATTERN.test(value.before_sha256) &&
+    typeof value.desired_sha256 === 'string' &&
+    SHA256_PATTERN.test(value.desired_sha256) &&
+    value.changed_paths.length > 0 &&
+    value.changed_paths.every((path) => typeof path === 'string' && path.length > 0)
+  );
+}
 
 type ExecutionLedgerState = {
   events: Map<string, DatasetSaveDraftLedgerEvent[]>;
@@ -521,6 +568,8 @@ function parseLedgerEvent(value: unknown, index: number): DatasetSaveDraftLedger
     typeof event.recovered !== 'boolean' ||
     !trimToken(event.recorded_at_utc) ||
     !(event.previous_event_sha256 === null || SHA256_PATTERN.test(event.previous_event_sha256)) ||
+    (event.draft_repair_admission !== undefined &&
+      !isLedgerRepairAdmission(event.draft_repair_admission)) ||
     !SHA256_PATTERN.test(event.event_sha256)
   ) {
     executionContractError(`Execution ledger event ${index} has an invalid shape.`);
@@ -552,6 +601,9 @@ function loadExecutionLedger(
         event.desired_sha256 !== action.desired_sha256 ||
         event.action_binding_sha256 !== executionActionBindingSha256(action) ||
         event.operation !== action.expected_operation ||
+        (event.draft_repair_admission !== undefined &&
+          (event.draft_repair_admission.before_sha256 !== action.before_sha256 ||
+            event.draft_repair_admission.desired_sha256 !== action.desired_sha256)) ||
         event.previous_event_sha256 !== (previous?.event_sha256 ?? null) ||
         event.event_sha256 !== sha256Json(eventWithoutSha(event))
       ) {
@@ -588,6 +640,7 @@ function appendExecutionEvent(options: {
   outcome: 'executed' | 'unknown' | null;
   recovered: boolean;
   recordedAtUtc: string;
+  draftRepairAdmission?: DraftRepairAdmission;
 }): DatasetSaveDraftLedgerEvent {
   const actionEvents = options.ledger.events.get(
     options.action.action_id,
@@ -604,6 +657,9 @@ function appendExecutionEvent(options: {
     outcome: options.outcome,
     recovered: options.recovered,
     recorded_at_utc: options.recordedAtUtc,
+    ...(options.draftRepairAdmission
+      ? { draft_repair_admission: options.draftRepairAdmission }
+      : {}),
     previous_event_sha256: actionEvents.at(-1)?.event_sha256 ?? null,
   };
   const event: DatasetSaveDraftLedgerEvent = { ...core, event_sha256: sha256Json(core) };
@@ -799,22 +855,22 @@ function validatePayload(
   config: DatasetTypeConfig,
 ): DatasetSaveDraftValidationResult {
   const { schema, createEntity } = schemaForConfig(config);
+  if (type === 'process') return validateProcessPayload(payload, schema, createEntity);
   // SDK schema/entity validation may apply defaults by mutating its input. Keep validation
   // isolated so execution-contract hashing, dispatch, and readback all use the exact input.
   const validationPayload = structuredClone(payload);
   const outcome = validateSchemaWithDeepFallback(schema, validationPayload, createEntity);
-  const processIssues =
-    type === 'process'
-      ? [
-          ...collectProcessRequiredFieldIssues(validationPayload),
-          ...collectProcessPlaceholderIssues(validationPayload),
-        ]
-      : [];
-  const importIssues = type === 'process' ? [] : collectImportContentIssues(validationPayload);
+  const contentIssues = collectImportContentIssues(payload);
+  const { additional_multilingual_issues, ...evidence } = buildDatasetValidationLayers(
+    payload,
+    outcome,
+    [],
+    contentIssues,
+  );
   const issues: DatasetSaveDraftValidationIssue[] = [
     ...outcome.issues.map(normalizeValidationIssue),
-    ...processIssues,
-    ...importIssues,
+    ...contentIssues,
+    ...additional_multilingual_issues,
   ];
 
   if (outcome.success && issues.length === 0) {
@@ -823,6 +879,7 @@ function validatePayload(
       validator: `@tiangong-lca/tidas-sdk/${String(config.schemaName)}+tiangong/import-content`,
       issue_count: 0,
       issues: [],
+      ...evidence,
     };
   }
 
@@ -831,6 +888,7 @@ function validatePayload(
     validator: `@tiangong-lca/tidas-sdk/${String(config.schemaName)}+tiangong/import-content`,
     issue_count: issues.length,
     issues,
+    ...evidence,
   };
 }
 
@@ -1306,11 +1364,13 @@ function exactDesiredReadback(options: {
 function contractRowReport(options: {
   row: PreparedDatasetRow;
   action: DatasetSaveDraftExecutionAction;
-  status: 'executed' | 'failed' | 'unknown' | 'blocked';
+  status: 'executed' | 'failed' | 'unknown' | 'blocked' | 'prepared';
   operation: DatasetSaveDraftRowReport['operation'];
   attemptConsumed: boolean;
   readback: DatasetSaveDraftRowReport['readback'];
   error?: { message: string; details?: unknown };
+  visibleRow?: VisibleDatasetRow | null;
+  draftRepairAdmission?: DraftRepairAdmission;
 }): DatasetSaveDraftRowReport {
   return {
     index: options.row.index,
@@ -1326,6 +1386,10 @@ function contractRowReport(options: {
     attempt_consumed: options.attemptConsumed,
     replayed: false,
     readback: options.readback,
+    ...(options.visibleRow !== undefined ? { visible_row: options.visibleRow } : {}),
+    ...(options.draftRepairAdmission
+      ? { draft_repair_admission: options.draftRepairAdmission }
+      : {}),
     ...(options.error ? { error: options.error } : {}),
   };
 }
@@ -1341,6 +1405,7 @@ async function finalizeAttemptedAction(options: {
   restBaseUrl: string;
   now: () => string;
   recovered: boolean;
+  draftRepairAdmission?: DraftRepairAdmission;
 }): Promise<DatasetSaveDraftRowReport> {
   const desiredExact = await readbackIsDesiredExact(options);
   appendExecutionEvent({
@@ -1363,6 +1428,7 @@ async function finalizeAttemptedAction(options: {
         : options.action.expected_operation,
     attemptConsumed: true,
     readback: desiredExact ? 'desired_exact' : 'not_desired',
+    ...(options.draftRepairAdmission ? { draftRepairAdmission: options.draftRepairAdmission } : {}),
     ...(desiredExact
       ? {}
       : {
@@ -1437,6 +1503,42 @@ function assertParallelSuffixTargetsAreUnique(
   }
 }
 
+function executionReferenceTargetKey(reference: {
+  table: string | null;
+  id: string | null;
+  version: string | null;
+}): string {
+  return JSON.stringify([reference.table, reference.id, reference.version]);
+}
+
+/**
+ * Dataset identities that this action may legitimately still be missing because earlier actions of
+ * the same contract insert them. The walk follows only declared earlier dependencies, which the
+ * contract parser already restricts to unique, acyclic, backward references.
+ */
+function dryRunPendingInsertTargets(
+  contract: DatasetSaveDraftExecutionContract,
+  action: DatasetSaveDraftExecutionAction,
+): Set<string> {
+  const byId = new Map(contract.actions.map((entry) => [entry.action_id, entry] as const));
+  const targets = new Set<string>();
+  const pending = [...action.dependency_action_ids];
+  while (pending.length > 0) {
+    const dependency = byId.get(pending.pop() as string) as DatasetSaveDraftExecutionAction;
+    if (dependency.expected_operation === 'insert') {
+      targets.add(
+        executionReferenceTargetKey({
+          table: dependency.table,
+          id: dependency.id,
+          version: dependency.version,
+        }),
+      );
+    }
+    pending.push(...dependency.dependency_action_ids);
+  }
+  return targets;
+}
+
 function executionBatchActionContent(action: DatasetSaveDraftExecutionAction): BatchJsonValue {
   return {
     action_id: action.action_id,
@@ -1485,10 +1587,14 @@ async function runExecutionContractBatch(options: {
   timeoutMs: number;
   now: () => string;
   maxParallel: number;
+  mode: 'commit' | 'dry_run';
 }): Promise<DatasetSaveDraftReport> {
   const contractSha256 = sha256Json(options.contract);
   const ledgerRoot = executionLedgerRoot(options.env, options.contract);
-  const ledger = loadExecutionLedger(ledgerRoot, options.contract);
+  // Both modes read attempt state read-only (`loadExecutionLedger` only computes paths and reads
+  // existing JSONL files; it never creates a directory or event). A dry-run must see a retained
+  // attempt or outcome and report it as retained rather than re-authorize it as prepared.
+  const ledger: ExecutionLedgerState = loadExecutionLedger(ledgerRoot, options.contract);
   const actor = decodeExecutionActor(options.commandTransport.accessToken);
   if (
     projectRefFromApiBaseUrl(options.runtime.apiBaseUrl) !== options.contract.project_ref ||
@@ -1497,7 +1603,9 @@ async function runExecutionContractBatch(options: {
   ) {
     executionContractError('Owner session or project does not match the execution contract.');
   }
-  options.files.execution_ledger = ledgerRoot;
+  if (options.mode === 'commit') {
+    options.files.execution_ledger = ledgerRoot;
+  }
   const serialPrefixLength = executionSerialPrefixLength(options.contract);
   if (options.maxParallel > 1) {
     assertParallelSuffixTargetsAreUnique(options.contract, serialPrefixLength);
@@ -1516,18 +1624,35 @@ async function runExecutionContractBatch(options: {
       statuses.set(action.action_id, report.status);
     };
     const preparedFailure = buildPreparedFailure(row, options.allowReferenceOnlySupport);
-    if (preparedFailure) {
-      const report = {
-        ...preparedFailure,
-        action_id: action.action_id,
-        desired_sha256: action.desired_sha256,
-        attempt_consumed: false,
-        replayed: false as const,
-        readback: 'not_performed' as const,
-      };
-      storeReport(report);
-      return;
+    if (options.mode === 'dry_run') {
+      // Retained evidence is read-only in a preflight: an action that already owns an attempt or
+      // outcome is never re-authorized as prepared, and it is never reported as executed either.
+      const retainedOutcome = ledger.outcomes.get(action.action_id);
+      const retainedAttempt = ledger.attempts.get(action.action_id);
+      if (retainedOutcome || retainedAttempt) {
+        storeReport(
+          contractRowReport({
+            row,
+            action,
+            status: 'blocked',
+            operation: retainedOutcome ? 'retained_outcome' : 'retained_attempt',
+            attemptConsumed: true,
+            readback: 'not_performed',
+            error: {
+              message: retainedOutcome
+                ? 'Terminal attempt evidence already exists for this action; a dry-run preflight cannot re-authorize it.'
+                : 'An unresolved attempt already exists for this action; it must be resolved by readback before any new plan.',
+              details: { retained: retainedOutcome ? 'outcome' : 'attempt' },
+            },
+          }),
+        );
+        return;
+      }
     }
+
+    // Recovery returns the admission bound to the original attempt; it is never re-derived from a
+    // fresh read that may already hold the desired content.
+    const recoveredAdmission = ledger.attempts.get(action.action_id)?.draft_repair_admission;
 
     const priorOutcome = ledger.outcomes.get(action.action_id);
     if (priorOutcome) {
@@ -1547,6 +1672,7 @@ async function runExecutionContractBatch(options: {
         operation: action.expected_operation,
         attemptConsumed: true,
         readback: desiredStillExact ? 'desired_exact' : 'not_desired',
+        ...(recoveredAdmission ? { draftRepairAdmission: recoveredAdmission } : {}),
         ...(status === 'unknown'
           ? {
               error: {
@@ -1574,14 +1700,44 @@ async function runExecutionContractBatch(options: {
         restBaseUrl: options.dataClient.restBaseUrl,
         now: options.now,
         recovered: true,
+        ...(recoveredAdmission ? { draftRepairAdmission: recoveredAdmission } : {}),
       });
       storeReport(report);
       return;
     }
 
-    const blockingDependencies = action.dependency_action_ids.filter(
-      (dependency) => statuses.get(dependency) !== 'executed',
+    // Validation and policy classification come after every retained-attempt decision above: an
+    // already consumed attempt must never be reported as an unconsumed preparation failure.
+    const repairCandidate = Boolean(
+      preparedFailure &&
+      isProcessMetadataRepairCandidate({
+        operation: action.expected_operation,
+        table: action.table,
+        validation: row.validation,
+      }),
     );
+    if (preparedFailure && !repairCandidate) {
+      const report = {
+        ...preparedFailure,
+        action_id: action.action_id,
+        desired_sha256: action.desired_sha256,
+        attempt_consumed: false,
+        replayed: false as const,
+        readback: 'not_performed' as const,
+      };
+      storeReport(report);
+      return;
+    }
+
+    const blockingDependencies = action.dependency_action_ids.filter((dependency) => {
+      const dependencyStatus = statuses.get(dependency);
+      // A commit still requires each dependency to be a terminal success. A dry run cannot execute
+      // anything, so an action prepared earlier in this same preflight satisfies its dependents;
+      // failed, blocked or retained dependencies keep blocking their descendants.
+      return options.mode === 'dry_run'
+        ? dependencyStatus !== 'prepared'
+        : dependencyStatus !== 'executed';
+    });
     if (blockingDependencies.length > 0) {
       const report = contractRowReport({
         row,
@@ -1591,7 +1747,10 @@ async function runExecutionContractBatch(options: {
         attemptConsumed: false,
         readback: 'not_performed',
         error: {
-          message: 'Action dependencies are not terminal successes; no request was emitted.',
+          message:
+            options.mode === 'dry_run'
+              ? 'Action dependencies are not prepared in this preflight; no request was emitted.'
+              : 'Action dependencies are not terminal successes; no request was emitted.',
           details: { dependency_action_ids: blockingDependencies },
         },
       });
@@ -1601,6 +1760,7 @@ async function runExecutionContractBatch(options: {
 
     let beforeRows: ExecutionDatasetRow[];
     let transportFailed = false;
+    let beforeImage: JsonObject | null = null;
     try {
       beforeRows = await exactExecutionRows({
         client: options.dataClient.client,
@@ -1610,6 +1770,7 @@ async function runExecutionContractBatch(options: {
         version: action.version,
       });
       const before = beforeRows[0];
+      beforeImage = beforeRows.length === 1 ? (before as ExecutionDatasetRow).json_ordered : null;
       const observedOperation = beforeRows.length === 0 ? 'insert' : 'save_draft';
       const beforeExact = Boolean(
         beforeRows.length === 1 &&
@@ -1640,6 +1801,33 @@ async function runExecutionContractBatch(options: {
           payload: row.payload,
         });
         if (unresolvedReferences.length > 0) {
+          if (options.mode === 'dry_run') {
+            // A preflight never invents remote rows. When every still-missing reference is a
+            // dataset an earlier action of this contract inserts, the action is honestly blocked
+            // on that dependency instead of being failed or faked as prepared.
+            const pendingInsertTargets = dryRunPendingInsertTargets(options.contract, action);
+            const pendingReferences = unresolvedReferences.filter((reference) =>
+              pendingInsertTargets.has(executionReferenceTargetKey(reference)),
+            );
+            if (pendingReferences.length === unresolvedReferences.length) {
+              storeReport(
+                contractRowReport({
+                  row,
+                  action,
+                  status: 'blocked',
+                  operation: 'blocked_dependency',
+                  attemptConsumed: false,
+                  readback: 'not_performed',
+                  error: {
+                    message:
+                      'A referenced dataset is created by an earlier action of this contract; the preflight cannot prove it before that action executes.',
+                    details: { references: pendingReferences },
+                  },
+                }),
+              );
+              return;
+            }
+          }
           throw new CliError('Flow execution action has unresolved remote references.', {
             code: 'DATASET_SAVE_DRAFT_REMOTE_REFERENCE_UNRESOLVED',
             exitCode: 1,
@@ -1666,6 +1854,69 @@ async function runExecutionContractBatch(options: {
       return;
     }
 
+    // The bounded Process metadata repair decides only here, against the complete before image
+    // this run just read and proved owner/state-0/before-hash for.
+    let draftRepairAdmission: DraftRepairAdmission | undefined;
+    if (repairCandidate) {
+      const outcome = evaluateProcessMetadataRepairAdmission({
+        before: beforeImage,
+        candidate: row.payload,
+        // The stored draft is verified with the same real validator the candidate uses, on a
+        // clone, so a before with any other error is refused and its exact bytes cannot change.
+        beforeValidation: validatePayload(
+          structuredClone(beforeImage as JsonObject),
+          'process',
+          DATASET_CONFIGS.process,
+        ),
+        beforeSha256: sha256Json(beforeImage as JsonObject),
+        desiredSha256: action.desired_sha256,
+      });
+      if (outcome.status !== 'admitted') {
+        storeReport(
+          contractRowReport({
+            row,
+            action,
+            status: 'failed',
+            operation: action.expected_operation,
+            attemptConsumed: false,
+            readback: 'not_performed',
+            error: {
+              message: outcome.message,
+              details: { code: outcome.code, ...outcome.details },
+            },
+          }),
+        );
+        return;
+      }
+      draftRepairAdmission = outcome.admission;
+    }
+
+    if (options.mode === 'dry_run') {
+      // Preflight evidence only: this run verified the exact contract, owner, draft state and
+      // before/content binding. Nothing is dispatched, no attempt is consumed, and the row can
+      // never read back as executed.
+      storeReport(
+        contractRowReport({
+          row,
+          action,
+          status: 'prepared',
+          operation: 'would_sync',
+          attemptConsumed: false,
+          readback: 'not_performed',
+          ...(draftRepairAdmission ? { draftRepairAdmission } : {}),
+          visibleRow: beforeRows.length
+            ? {
+                id: beforeRows[0]!.id,
+                version: beforeRows[0]!.version,
+                user_id: beforeRows[0]!.user_id,
+                state_code: beforeRows[0]!.state_code,
+              }
+            : null,
+        }),
+      );
+      return;
+    }
+
     try {
       const beforeDispatch = () => {
         appendExecutionEvent({
@@ -1677,6 +1928,7 @@ async function runExecutionContractBatch(options: {
           outcome: null,
           recovered: false,
           recordedAtUtc: options.now(),
+          ...(draftRepairAdmission ? { draftRepairAdmission } : {}),
         });
       };
       if (action.expected_operation === 'insert') {
@@ -1689,13 +1941,19 @@ async function runExecutionContractBatch(options: {
           beforeDispatch,
         });
       } else {
+        // The before-state check above proved one exact owner state-0 row whose stored
+        // json_ordered matched this action's before hash in this run; that same object is the
+        // transport's complete before image. A guard conflict is terminal: no fallback, no retry.
         await saveDraftDatasetRecord({
           transport: options.commandTransport,
           table: action.table,
           id: action.id,
           version: action.version,
           payload: row.payload,
-          extraData: { ruleVerification: true },
+          expectedJsonOrdered: beforeImage as JsonObject,
+          // Only the bounded metadata repair writes without the platform rule-verification flag;
+          // it is exactly the case whose authoring evidence gap the admission records.
+          extraData: { ruleVerification: draftRepairAdmission === undefined },
           beforeDispatch,
         });
       }
@@ -1717,65 +1975,74 @@ async function runExecutionContractBatch(options: {
       restBaseUrl: options.dataClient.restBaseUrl,
       now: options.now,
       recovered: transportFailed,
+      ...(draftRepairAdmission ? { draftRepairAdmission } : {}),
     });
     storeReport(report);
   };
 
-  for (let index = 0; index < serialPrefixLength; index += 1) {
-    await executeAction(index);
-  }
+  if (options.mode === 'dry_run') {
+    // A preflight stays serial in contract order: it dispatches nothing, takes no scheduler
+    // claim or run lock, and keeps dependency-bearing actions deferred.
+    for (let index = 0; index < options.contract.actions.length; index += 1) {
+      await executeAction(index);
+    }
+  } else {
+    for (let index = 0; index < serialPrefixLength; index += 1) {
+      await executeAction(index);
+    }
 
-  const parallelIndexes = options.contract.actions
-    .slice(serialPrefixLength)
-    .map((_action, suffixIndex) => serialPrefixLength + suffixIndex);
-  const parallelBatch = await runBoundedBatch({
-    contract: createBatchContract({
-      identity: {
-        schema: 'dataset-save-draft.parallel-suffix.v1',
-        execution_id: options.contract.execution_id,
-        contract_sha256: contractSha256,
-      },
-      content: parallelIndexes.map((index) =>
+    const parallelIndexes = options.contract.actions
+      .slice(serialPrefixLength)
+      .map((_action, suffixIndex) => serialPrefixLength + suffixIndex);
+    const parallelBatch = await runBoundedBatch({
+      contract: createBatchContract({
+        identity: {
+          schema: 'dataset-save-draft.parallel-suffix.v1',
+          execution_id: options.contract.execution_id,
+          contract_sha256: contractSha256,
+        },
+        content: parallelIndexes.map((index) =>
+          executionBatchActionContent(
+            options.contract.actions[index] as DatasetSaveDraftExecutionAction,
+          ),
+        ),
+        policy: {
+          max_parallel: options.maxParallel,
+          serial_prefix_actions: serialPrefixLength,
+          mutation_retry: 'none',
+          fatal_stop: true,
+        },
+      }),
+      items: parallelIndexes,
+      getItemIdentity: (index) =>
+        (options.contract.actions[index] as DatasetSaveDraftExecutionAction).action_id,
+      projectItemContent: (index) =>
         executionBatchActionContent(
           options.contract.actions[index] as DatasetSaveDraftExecutionAction,
         ),
-      ),
-      policy: {
-        max_parallel: options.maxParallel,
-        serial_prefix_actions: serialPrefixLength,
-        mutation_retry: 'none',
-        fatal_stop: true,
+      projectItemPolicy: (index) => {
+        const action = options.contract.actions[index] as DatasetSaveDraftExecutionAction;
+        return {
+          contract_sha256: contractSha256,
+          target_mode: 'owner_draft',
+          expected_operation: action.expected_operation,
+        };
       },
-    }),
-    items: parallelIndexes,
-    getItemIdentity: (index) =>
-      (options.contract.actions[index] as DatasetSaveDraftExecutionAction).action_id,
-    projectItemContent: (index) =>
-      executionBatchActionContent(
-        options.contract.actions[index] as DatasetSaveDraftExecutionAction,
-      ),
-    projectItemPolicy: (index) => {
-      const action = options.contract.actions[index] as DatasetSaveDraftExecutionAction;
-      return {
-        contract_sha256: contractSha256,
-        target_mode: 'owner_draft',
-        expected_operation: action.expected_operation,
-      };
-    },
-    getExclusiveKey: ({ item: index }) => {
-      const action = options.contract.actions[index] as DatasetSaveDraftExecutionAction;
-      return JSON.stringify([action.table, action.id, action.version]);
-    },
-    mode: 'mutation',
-    maxConcurrency: options.maxParallel,
-    execute: async ({ item: index }) => executeAction(index),
-    shouldStop: ({ last_result: lastResult }) => lastResult.status === 'failed',
-  });
-  const fatalWorkerResult = parallelBatch.results_completion_order.find(
-    (result) => result.status === 'failed',
-  );
-  if (fatalWorkerResult?.status === 'failed') {
-    throw fatalWorkerResult.error;
+      getExclusiveKey: ({ item: index }) => {
+        const action = options.contract.actions[index] as DatasetSaveDraftExecutionAction;
+        return JSON.stringify([action.table, action.id, action.version]);
+      },
+      mode: 'mutation',
+      maxConcurrency: options.maxParallel,
+      execute: async ({ item: index }) => executeAction(index),
+      shouldStop: ({ last_result: lastResult }) => lastResult.status === 'failed',
+    });
+    const fatalWorkerResult = parallelBatch.results_completion_order.find(
+      (result) => result.status === 'failed',
+    );
+    if (fatalWorkerResult?.status === 'failed') {
+      throw fatalWorkerResult.error;
+    }
   }
 
   const completedReports = reports as DatasetSaveDraftRowReport[];
@@ -1793,8 +2060,8 @@ async function runExecutionContractBatch(options: {
     input_path: options.inputPath,
     requested_type: options.requestedType,
     out_dir: options.outDir,
-    commit: true,
-    mode: 'commit',
+    commit: options.mode === 'commit',
+    mode: options.mode,
     status:
       unknown > 0
         ? 'completed_with_unknowns'
@@ -1803,7 +2070,7 @@ async function runExecutionContractBatch(options: {
           : 'completed',
     counts: {
       selected: options.preparedRows.length,
-      prepared: 0,
+      prepared: completedReports.filter((row) => row.status === 'prepared').length,
       executed: completedReports.filter((row) => row.status === 'executed').length,
       failed,
       unknown,
@@ -1852,8 +2119,8 @@ export async function runDatasetSaveDraft(
       )
     : null;
 
-  if (executionContract && !commit) {
-    executionContractError('Execution contract mode requires --commit.');
+  if (executionContract && !commit && maxParallel !== 1) {
+    executionContractError('--max-parallel greater than 1 requires --commit.');
   }
   if (!executionContract && maxParallel !== 1) {
     executionContractError('--max-parallel greater than 1 requires --execution-contract.');
@@ -1862,8 +2129,11 @@ export async function runDatasetSaveDraft(
     bindExecutionContractRows(executionContract, preparedRows);
   }
 
-  if (commit && (!options.env || !options.fetchImpl)) {
-    throw new CliError('Dataset save-draft commit requires env and fetch runtime bindings.', {
+  // An execution contract always needs real auth and REST bindings: a commit dispatches guarded
+  // owner writes, and a dry-run preflights the exact owner/draft/before state against the platform.
+  const needsRuntime = commit || Boolean(executionContract);
+  if (needsRuntime && (!options.env || !options.fetchImpl)) {
+    throw new CliError('Dataset save-draft execution requires env and fetch runtime bindings.', {
       code: 'DATASET_SAVE_DRAFT_RUNTIME_REQUIRED',
       exitCode: 2,
     });
@@ -1872,7 +2142,7 @@ export async function runDatasetSaveDraft(
   writeJsonLinesArtifact(files.selected_rows, preparedRows.map(selectedRow));
 
   const runtime =
-    commit && options.env && options.fetchImpl
+    needsRuntime && options.env && options.fetchImpl
       ? createSupabaseDataRuntime({
           runtime: requireSupabaseRestRuntime(options.env),
           fetchImpl: options.fetchImpl,
@@ -1911,6 +2181,7 @@ export async function runDatasetSaveDraft(
       timeoutMs,
       now: () => now.toISOString(),
       maxParallel,
+      mode: commit ? 'commit' : 'dry_run',
     });
   }
 

@@ -25,9 +25,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: e83f2010c27b2e1d2e54d00e9a13488c780a02f4
-lastReviewedNote: 'Reviewed for CLI #346: 0.1.18 is the separate version-only release of merged SDK 0.3.0 adoption and follows existing four-platform tag, Trusted Publishing, provenance and root handoff steps.'
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: e623af9
+lastReviewedNote: 'Reviewed for CLI #283 at head f75eda4 (second atomic stage): the metadata repair admission and retained-attempt precedence add no dependency, version, tag, provenance or publication step.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -323,3 +323,5 @@ Use only that task's successful preflight continuation to complete delivery. Do 
 ## Local Docpact Push Gate
 
 The repository now includes a local pre-push gate that runs `scripts/docpact-gate.sh` and then `pnpm prepush:gate`. It is the ordinary local validation path for source pushes. Only verified pure branch deletions skip both local gates, as defined in the validation guide; tag and release qualification are unchanged. For a detected CLI version change, the merge-triggered tag workflow additionally calls the reusable four-platform pnpm matrix and makes tag creation depend on its success; the publish workflow retains its independent tag-bound release gate.
+
+Review note, 2026-09-21: independently reviewed CLI #283 annual-volume commit d45ffb6. Existing values and language order are preserved; unknown annual evidence remains [] and an authoring gap, never a reference-flow/default-unit quantity. The separate schema, content and multilingual layers retain their own results. This document requires no additional annual-volume or release-policy change.

@@ -22,9 +22,9 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: fb2958157960a65c40d816042b3f1c5a0fcdee7e
-lastReviewedNote: 'Reviewed for CLI #340: SDK 0.2.2 and released spec 0.2.1 public definitions replace the W8 candidate; dataset context-pack rulesets now project CLI policy and no longer read the SDK mixed asset.'
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: e623af9
+lastReviewedNote: 'Reviewed for CLI #283 at head f75eda4 (second atomic stage): the narrow existing-Process metadata repair admission, the retained-attempt precedence over validation classification and their tests change no development, gate, release or maintenance step described here.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -883,3 +883,5 @@ tiangong-lca-cli/
 ## 详细说明
 
 - [docs/IMPLEMENTATION_GUIDE_CN.md](./docs/IMPLEMENTATION_GUIDE_CN.md)
+
+Review note, 2026-09-21: independently reviewed CLI #283 annual-volume commit d45ffb6. Existing values and language order are preserved; unknown annual evidence remains [] and an authoring gap, never a reference-flow/default-unit quantity. The separate schema, content and multilingual layers retain their own results. This document requires no additional annual-volume or release-policy change.

@@ -98,7 +98,7 @@ function annualSupplyFrom(row: unknown) {
     .annualSupplyOrProductionVolume;
 }
 
-test('runProcessRequiredFieldsComplete uses an annual sentinel when source evidence is missing', async () => {
+test('runProcessRequiredFieldsComplete keeps an unknown annual volume as a blocked evidence gap', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-process-required-fields-'));
   const inputPath = path.join(dir, 'processes.jsonl');
   const outPath = path.join(dir, 'completed.jsonl');
@@ -134,30 +134,44 @@ test('runProcessRequiredFieldsComplete uses an annual sentinel when source evide
       now: new Date('2026-05-23T00:00:00.000Z'),
     });
 
-    assert.equal(report.status, 'completed');
+    assert.equal(report.status, 'completed_with_blockers');
     assert.deepEqual(report.counts, {
       total: 2,
       processes: 1,
-      completed: 1,
+      completed: 0,
       existing: 0,
-      blocked: 0,
+      blocked: 1,
       skipped: 1,
     });
     assert.equal(existsSync(report.files.output_rows), true);
     assert.deepEqual(readJson(report.files.report ?? ''), report);
-    assert.equal(report.rows[0]?.status, 'completed');
-    assert.deepEqual(report.rows[0]?.issues, []);
-    const completedRows = readJsonl(report.files.output_rows) as unknown[];
+    assert.equal(report.rows[0]?.status, 'blocked');
     assert.equal(
-      annualSupplyFrom(completedRows[0])[0]?.['#text'],
-      __testInternals.ANNUAL_SUPPLY_MISSING_DATA_SENTINEL_TEXT,
+      report.rows[0]?.issues.some(
+        (issue) => issue.code === 'annual_supply_or_production_volume_missing',
+      ),
+      true,
+    );
+    const completedRows = readJsonl(report.files.output_rows) as unknown[];
+    assert.deepEqual(
+      annualSupplyFrom(completedRows[0]),
+      [],
+      'the 3.6 reference amount is not annual-volume evidence',
+    );
+    assert.equal(
+      annualSupplyFrom(completedRows[0]).some(
+        (item) => item['#text'] === __testInternals.ANNUAL_SUPPLY_MISSING_DATA_SENTINEL_TEXT,
+      ),
+      false,
+      'the historical sentinel must never be written as annual-volume evidence',
     );
     const evidenceRows = readJsonl(report.files.evidence ?? '') as Array<{
       source: string;
-      reference_exchange_internal_id: string;
+      reference_exchange_internal_id: string | null;
     }>;
     assert.equal(evidenceRows.length, 1);
-    assert.equal(evidenceRows[0]?.source, 'missing_data_sentinel');
+    assert.equal(evidenceRows[0]?.source, 'unknown_preserved');
+    assert.equal(evidenceRows[0]?.reference_exchange_internal_id, null);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -227,13 +241,28 @@ test('runProcessRequiredFieldsComplete keeps existing valid values and blocks mi
     rawInput: [existing, sentinel],
   });
 
-  assert.equal(report.status, 'completed');
+  assert.equal(report.status, 'completed_with_blockers');
   assert.equal(report.counts.existing, 1);
-  assert.equal(report.counts.completed, 1);
-  assert.equal(report.counts.blocked, 0);
+  assert.equal(report.counts.completed, 0);
+  assert.equal(report.counts.blocked, 1);
   assert.equal(report.rows[0]?.status, 'existing');
-  assert.equal(report.rows[1]?.status, 'completed');
-  assert.equal(report.rows[1]?.completions.at(-1)?.source, 'missing_data_sentinel');
+  assert.equal(report.rows[1]?.status, 'blocked');
+  assert.equal(report.rows[1]?.completions.at(-1)?.source, 'unknown_preserved');
+
+  const outputRows = readJsonl(report.files.output_rows) as unknown[];
+  assert.deepEqual(
+    annualSupplyFrom(outputRows[0]),
+    [
+      { '@xml:lang': 'en', '#text': '99 kg/year' },
+      { '@xml:lang': 'zh', '#text': '99 kg/年' },
+    ],
+    'a real bilingual value keeps its exact content and order',
+  );
+  assert.deepEqual(
+    annualSupplyFrom(outputRows[1]),
+    [],
+    'a row without source-evidence volume stays unknown instead of completing',
+  );
 });
 
 test('runProcessRequiredFieldsComplete repairs UI-roundtripped annual reference-flow text', async () => {
@@ -283,9 +312,20 @@ test('runProcessRequiredFieldsComplete repairs UI-roundtripped annual reference-
     ],
   });
 
-  assert.equal(report.status, 'completed');
-  assert.equal(report.rows[0]?.status, 'completed');
-  assert.equal(report.rows[0]?.completions.at(-1)?.source, 'missing_data_sentinel');
+  assert.equal(report.status, 'completed_with_blockers');
+  assert.equal(report.rows[0]?.status, 'blocked');
+  assert.equal(
+    report.rows[0]?.issues.some(
+      (issue) => issue.code === 'annual_supply_or_production_volume_not_annualized',
+    ),
+    true,
+    'a UI-roundtripped reference-flow description is not annual-volume evidence',
+  );
+  assert.equal(
+    report.rows[0]?.completions.some((item) => item.amount === '9999'),
+    false,
+    'no sentinel amount may be written for a present-but-not-annualized value',
+  );
 });
 
 test('runProcessRequiredFieldsComplete repairs missing validation and compliance structures', async () => {
@@ -371,9 +411,14 @@ test('runProcessRequiredFieldsComplete validates required output flags and block
     rawInput: [row],
   });
 
-  assert.equal(report.status, 'completed');
-  assert.equal(report.rows[0]?.status, 'completed');
-  assert.equal(report.rows[0]?.completions.at(-1)?.source, 'missing_data_sentinel');
+  assert.equal(report.status, 'completed_with_blockers');
+  assert.equal(report.rows[0]?.status, 'blocked');
+  assert.equal(report.rows[0]?.completions.at(-1)?.source, 'unknown_preserved');
+  assert.deepEqual(
+    annualSupplyFrom((readJsonl(report.files.output_rows) as unknown[])[0]),
+    [],
+    'a 4.2 kg resulting amount is a reference amount, not annual-volume evidence',
+  );
 });
 
 test('process required field issue collector detects missing and invalid annual volumes', () => {
@@ -433,7 +478,7 @@ test('process required field issue collector detects missing and invalid annual 
         },
       },
     }).map((issue) => issue.code),
-    [],
+    ['process_data_sources_treatment_missing'],
   );
   assert.deepEqual(
     collectProcessRequiredFieldIssues({
@@ -484,7 +529,7 @@ test('process required field issue collector detects missing and invalid annual 
         },
       },
     }).map((issue) => issue.code),
-    [],
+    ['annual_supply_or_production_volume_missing'],
   );
   assert.deepEqual(
     collectProcessRequiredFieldIssues({
@@ -784,10 +829,9 @@ test('process required field internals cover evidence normalization and helper f
     { '@xml:lang': 'zh', '#text': '5 kg/年' },
   ]);
   assert.equal(
-    __testInternals.normalizeAnnualSupplyEvidenceValue(6, { defaultUnit: 'MWh' })?.value[0]?.[
-      '#text'
-    ],
-    '6 MWh/year',
+    __testInternals.normalizeAnnualSupplyEvidenceValue(6, { defaultUnit: 'MWh' }),
+    null,
+    'a bare amount plus a default unit is not annual-volume evidence',
   );
   assert.equal(
     __testInternals.normalizeAnnualSupplyEvidenceValue('bad', { defaultUnit: 'kg' }),
@@ -825,8 +869,9 @@ test('process required field internals cover evidence normalization and helper f
     __testInternals.normalizeAnnualSupplyEvidenceValue(
       { amount: '10', referenceUnit: 'kg' },
       { defaultUnit: 'unit' },
-    )?.value[0]?.['#text'],
-    '10 kg/year',
+    ),
+    null,
+    'a reference amount plus a reference unit is not annual-volume evidence',
   );
   assert.equal(__testInternals.normalizeAnnualSupplyEvidenceValue({}, { defaultUnit: 'kg' }), null);
 
@@ -1227,7 +1272,7 @@ test('process required field internals cover exchange, unit, and row wrapper fal
     '14 kg/year',
   );
 
-  const sentinelWithoutReferenceExchange = __testInternals.completeProcessRow(
+  const unknownWithoutReferenceExchange = __testInternals.completeProcessRow(
     {
       index: 0,
       id: 'proc-no-exchange',
@@ -1244,9 +1289,9 @@ test('process required field internals cover exchange, unit, and row wrapper fal
     },
     { defaultUnit: 'unit' },
   );
-  assert.equal(sentinelWithoutReferenceExchange.report.status, 'completed');
+  assert.equal(unknownWithoutReferenceExchange.report.status, 'blocked');
   assert.equal(
-    sentinelWithoutReferenceExchange.report.completions.at(-1)?.source,
-    'missing_data_sentinel',
+    unknownWithoutReferenceExchange.report.completions.at(-1)?.source,
+    'unknown_preserved',
   );
 });

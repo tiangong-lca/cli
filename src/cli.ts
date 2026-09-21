@@ -1578,9 +1578,12 @@ Options:
   --commit         Execute remote save-draft writes
   --dry-run        Validate and plan without remote writes (default)
   --execution-contract <file>
-                   Execute a content-bound ordered owner-draft batch with append-only attempt/readback evidence (requires --commit)
+                   Run a content-bound ordered owner-draft batch. With --commit: dispatch guarded writes
+                   with append-only attempt/readback evidence. Without --commit: preflight the exact
+                   owner/state/before/content contract state, block the report on any failure, dispatch
+                   nothing and create no attempt or ledger
   --max-parallel <1-8>
-                   Keep the dependency prefix serial, then run only the target-unique suffix with this concurrency (default: 1)
+                   Keep the dependency prefix serial, then run only the target-unique suffix with this concurrency (requires --commit; default: 1)
   --allow-account-local-support
                    Explicitly permit account-local Unit Group / Flow Property rows in the execution contract
   --json           Print compact JSON
@@ -1596,6 +1599,7 @@ Outputs written under --out-dir:
 Contract:
   This generic dataset path writes only mutable rows such as contact/source/flow/process. Unit group and flow property rows are reference-only; select existing database rows and rewrite references instead of creating My Data support rows.
   Process and lifecyclemodel imports may still use their dedicated save-draft commands when the workflow needs their specialized reports.
+  With an execution contract, each save_draft action sends the complete before image read fresh in this run; a bounded existing-Process owner draft whose only authoring gap is the unknown annual volume may repair the reviewed reference short descriptions with ruleVerification=false and a recorded draft_repair_admission (bound into the first attempt event, so recovery returns the original admission), never reporting the row as ready; the platform rejects a stale or changed before content and the CLI never falls back to an unguarded save or retries it. A contract dry-run reports preflight evidence only, treats an action prepared earlier in the same preflight as a satisfied dependency, reports an already consumed attempt as retained, and can never close an import.
 `.trim();
 }
 
@@ -1642,6 +1646,10 @@ Outputs written under --out-dir:
   - outputs/validation-report.json
   - outputs/valid-rows.jsonl
   - outputs/invalid-rows.jsonl
+
+Recognized rows retain payload_sha256 and separate schema, authoring_evidence,
+content and multilingual validation_layers. A schema-valid unknown annual volume
+remains an evidence gap and does not establish write or publication readiness.
 `.trim();
 }
 
@@ -2724,15 +2732,17 @@ Options:
   --input <file>        Process rows JSON/JSONL file
   --out <file>          Output JSONL with required fields completed
   --out-dir <dir>       Optional artifact directory for report and evidence
-  --flows <file>        Optional flow rows JSON/JSONL used to infer reference-flow units
-  --default-unit <unit> Unit suffix to use when it cannot be inferred (default: unit)
+  --flows <file>        Optional legacy flow context; never annual-volume evidence
+  --default-unit <unit> Recorded legacy context only; never supplies missing annual units
   --json                Print compact JSON
   -h, --help
 
 Annual supply / production volume policy:
-  1. keep an existing valid annualized annualSupplyOrProductionVolume, for example "3.6 MJ/year";
+  1. keep an existing valid annualized annualSupplyOrProductionVolume, for example "3.6 MJ/year", with its exact content and language order;
   2. use an explicit value from row-level authoring evidence or evidenceManifest field bindings;
-  3. otherwise write "9999 missing-data-sentinel/year", an intentionally non-physical searchable sentinel for later database-side curation.
+  3. otherwise keep the field unknown as the supported empty array "[]" and report a row-level evidence gap.
+     A quantitative reference amount, a reference/default unit, or a legacy tiangongfoundry:unresolvedTrace is never annual-volume evidence, so no quantity is ever fabricated. The historical "9999 missing-data-sentinel/year" value is recognized only to normalize rows written by earlier rounds and is never written again.
+     The report then reads "completed_with_blockers" and downstream schema, authoring, curation and write gates remain the blocking owners.
 
 Outputs:
   - completed rows at --out
