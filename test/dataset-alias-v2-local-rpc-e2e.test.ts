@@ -19,7 +19,16 @@
 // the reviewed named arguments, and no reply is reshaped.
 
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -42,6 +51,12 @@ const READY_PATH =
   process.env['TIANGONG_LCA_ALIAS_V2_INTEROP_READY'] ?? '/tmp/db673-cli-interop-ready.json';
 const READY: AliasV2InteropReady | null = readAliasV2InteropReady(READY_PATH);
 const ARTIFACTS = READY?.artifacts_dir ?? '';
+/**
+ * Opt-in qualification evidence retention: the unmodified RPC wire requests/replies, every executed
+ * script and its output, and copies of the run directories are retained here. Routine runs (no
+ * variable) keep their ordinary cleanup.
+ */
+const EVIDENCE_DIR = process.env['TIANGONG_LCA_ALIAS_V2_EVIDENCE_DIR'] ?? null;
 
 /** The sealed artefact paths: the marker's own map first, the canonical file names otherwise. */
 const ARTIFACT_PATHS = {
@@ -59,6 +74,7 @@ function localAdapter() {
     ...(READY.sql_user === undefined ? {} : { sqlUser: READY.sql_user }),
     ...(READY.sql_database === undefined ? {} : { sqlDatabase: READY.sql_database }),
     ...(READY.rpc_aliases === undefined ? {} : { rpcAliases: READY.rpc_aliases }),
+    ...(EVIDENCE_DIR === null ? {} : { evidenceDir: EVIDENCE_DIR }),
     projectRef: READY.project_ref,
   });
 }
@@ -130,12 +146,13 @@ function persistDispatchedNonce(adapter: LocalAdapter): void {
       [
         `select count(*)::int from pg_class as c`,
         `join pg_namespace as n on n.oid = c.relnamespace`,
-        `where n.nspname = 'private' and c.relname = 'db673_net_hold';`,
+        `where n.nspname = 'scratch_673' and c.relname = 'net_hold';`,
       ].join('\n'),
     ) === '1';
+  // The marker's own hold-based nonce query.
   const holdSelect = [
     `(select convert_from(held.body, 'UTF8')::jsonb->>'p_nonce'`,
-    `from private.db673_net_hold as held`,
+    `from scratch_673.net_hold as held`,
     `where convert_from(held.body, 'UTF8')::jsonb->>'p_request_id' = '${READY.request_id}'`,
     `order by held.id desc limit 1)`,
   ].join('\n');
@@ -327,5 +344,52 @@ e2eTest(
         assert.equal(admitRpcCalls(adapter) <= 1, true, String(admitRpcCalls(adapter)));
       },
     );
+
+    if (EVIDENCE_DIR !== null) {
+      // Retain the native run directories before the routine cleanup removes them: the reports,
+      // attempt markers, gate receipts, preflight evidence, status ledgers and the sealed inputs.
+      const retained: Record<string, string> = {};
+      for (const [label, dir] of [
+        ['campaign', campaignDir],
+        ['fresh-status', freshStatusDir],
+        ['no-replay', replayDir],
+      ] as const) {
+        const target = path.join(EVIDENCE_DIR, 'runs', label);
+        mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
+        cpSync(dir, target, { recursive: true });
+        for (const file of readdirSync(target).sort()) {
+          const bytes = readFileSync(path.join(target, file));
+          retained[`runs/${label}/${file}`] = createHash('sha256').update(bytes).digest('hex');
+        }
+      }
+      for (const file of readdirSync(EVIDENCE_DIR).sort()) {
+        if (retained[file] !== undefined) {
+          continue;
+        }
+        const bytes = readFileSync(path.join(EVIDENCE_DIR, file));
+        retained[file] = createHash('sha256').update(bytes).digest('hex');
+      }
+      writeFileSync(
+        path.join(EVIDENCE_DIR, 'campaign-summary.json'),
+        `${JSON.stringify(
+          {
+            schema: 'cli358-local-rpc-campaign.v1',
+            ran_at_utc: new Date().toISOString(),
+            marker: {
+              path: READY_PATH,
+              container: READY.container,
+              request_id: READY.request_id,
+              plan_sha256: READY.plan_sha256 ?? null,
+              scenarios: READY.scenarios,
+            },
+            rpc_calls: 'see the numbered *-wire-request.json / *-function-reply.json files',
+            retained_files_sha256: retained,
+          },
+          null,
+          1,
+        )}\n`,
+        { mode: 0o600 },
+      );
+    }
   },
 );

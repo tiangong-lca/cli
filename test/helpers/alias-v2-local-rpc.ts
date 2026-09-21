@@ -8,7 +8,8 @@
 // argument key set it does not know, and it never reshapes a server reply.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import type { ResponseLike } from '../../src/lib/http.js';
 import type { FetchLike } from '../../src/lib/http.js';
 import { ALIAS_V2_GATE_NAMES } from '../../src/lib/dataset-alias-v2-status.js';
@@ -42,6 +43,7 @@ export type AliasV2InteropReady = {
   complete_script?: string;
   /** The lifecycle stages the database owner has prepared on this stack. */
   scenarios: string[];
+  plan_sha256?: string;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -90,6 +92,12 @@ export type AliasV2LocalRpcOptions = {
   projectRef: string;
   /** Reviewed RPC name -> the schema-qualified function the owner installed for containment. */
   rpcAliases?: Record<string, string>;
+  /**
+   * Opt-in qualification evidence directory: every unmodified RPC request/reply, every executed SQL
+   * script and its output, and (via the campaign) the run artefacts are retained there. Absent by
+   * default, so routine runs keep their ordinary cleanup.
+   */
+  evidenceDir?: string;
 };
 
 export type AliasV2RpcCall = { name: string; args: Record<string, unknown> };
@@ -99,6 +107,8 @@ export type AliasV2LocalRpcAdapter = {
   calls: AliasV2RpcCall[];
   /** Runs one committed SQL script from the host against the same stack. */
   runSql: (sql: string, variables?: Record<string, string>) => string;
+  /** The directory every request/reply/script was retained in, when evidence retention is on. */
+  evidenceDir: string | null;
 };
 
 function jsonResponse(value: unknown, status = 200): ResponseLike {
@@ -139,7 +149,21 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
   const calls: AliasV2RpcCall[] = [];
   const sqlUser = options.sqlUser ?? 'supabase_admin';
   const sqlDatabase = options.sqlDatabase ?? 'postgres';
-  const runSql = (sql: string, variables: Record<string, string> = {}): string => {
+  // Opt-in qualification evidence: every executed script and its output, numbered in call order.
+  const evidenceDir = options.evidenceDir ?? null;
+  if (evidenceDir !== null) {
+    mkdirSync(evidenceDir, { recursive: true, mode: 0o700 });
+  }
+  let evidenceIndex = 0;
+  const retain = (label: string, text: string): void => {
+    if (evidenceDir === null) {
+      return;
+    }
+    evidenceIndex += 1;
+    const name = `${String(evidenceIndex).padStart(3, '0')}-${label}`;
+    writeFileSync(path.join(evidenceDir, name), text, { mode: 0o600 });
+  };
+  const runSql = (sql: string, variables: Record<string, string> = {}, label = 'sql'): string => {
     const variableArgs = Object.entries(variables).flatMap(([name, value]) => [
       '-v',
       `${name}=${value}`,
@@ -165,9 +189,12 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
       ],
       { input: sql, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
     );
+    retain(`${label}-script.sql`, sql);
     if (result.status !== 0) {
+      retain(`${label}-stderr.txt`, String(result.stderr));
       throw new Error(`local psql failed: ${String(result.stderr).slice(0, 500)}`);
     }
+    retain(`${label}-stdout.txt`, String(result.stdout));
     // The function's JSON is the single meaningful line; anything else is a psql artefact.
     const lines = String(result.stdout)
       .split('\n')
@@ -207,6 +234,8 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
       const encoded = Buffer.from(JSON.stringify(request), 'utf8').toString('base64');
       return runSql(
         `${asActor()}\nselect ${target}(convert_from(decode('${encoded}','base64'),'UTF8')::jsonb);`,
+        {},
+        `${name}-request`,
       );
     }
     if (name === 'cmd_dataset_alias_execution_admit_v2_guarded') {
@@ -217,6 +246,8 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
       const encoded = Buffer.from(JSON.stringify(request), 'utf8').toString('base64');
       return runSql(
         `${asActor()}\nselect ${target}(convert_from(decode('${encoded}','base64'),'UTF8')::jsonb);`,
+        {},
+        `${name}-request`,
       );
     }
     if (name === 'cmd_dataset_alias_execution_gate_v2_guarded') {
@@ -236,6 +267,8 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
       }
       return runSql(
         `${asActor()}\nselect ${target}('${requestId}'::uuid, ${sqlLiteral(token)}, ${sqlLiteral(gateName)});`,
+        {},
+        `${name}-request`,
       );
     }
     if (name === 'cmd_dataset_alias_execution_read_v2') {
@@ -247,7 +280,7 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
       ) {
         throw new Error(`read arguments must be exactly {p_request_id}`);
       }
-      return runSql(`${asActor()}\nselect ${target}('${requestId}'::uuid);`);
+      return runSql(`${asActor()}\nselect ${target}('${requestId}'::uuid);`, {}, `${name}-request`);
     }
     throw new Error(`the adapter refuses an unapproved RPC: ${name}`);
   };
@@ -264,10 +297,14 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
     if (match === null || init?.body === undefined || typeof init.body !== 'string') {
       throw new Error(`the adapter refuses an unexpected request: ${url}`);
     }
+    const name = match[1] as string;
+    // The exact wire body the CLI sent, retained before anything else touches it.
+    retain(`${name}-wire-request.json`, init.body);
     const body = JSON.parse(init.body) as Record<string, unknown>;
-    const text = rpc(match[1] as string, body);
+    const text = rpc(name, body);
+    retain(`${name}-function-reply.json`, text);
     return jsonResponse(JSON.parse(text));
   }) as FetchLike;
 
-  return { fetchImpl, calls, runSql };
+  return { fetchImpl, calls, runSql, evidenceDir };
 }
