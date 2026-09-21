@@ -1,0 +1,635 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { sha256Json } from '../src/lib/dataset-maintenance-contract.js';
+import {
+  ALIAS_V2_BATCH_SCHEMA,
+  ALIAS_V2_EXCHANGE_KEYS,
+  ALIAS_V2_FACTOR,
+  ALIAS_V2_PLAN_SCHEMA,
+  buildAliasV2Plan,
+  type AliasV2PlanInput,
+} from '../src/lib/dataset-alias-v2-plan.js';
+
+type JsonObject = Record<string, unknown>;
+
+const SOURCE_FP = 'bd69e542-6a50-524c-8d04-195b1ec23150';
+const TARGET_FP = 'da11d28f-4db8-51eb-b3a9-8784b26771e6';
+const TARGET_UG = '49ce0c2f-2241-54e3-8e75-e75ffbdaecfb';
+const SOURCE_UG = 'aeddc8ee-da6f-5181-9a99-73466e198b86';
+const SOURCE_EVIDENCE = 'e'.repeat(64);
+
+const TARGET_REFERENCE: JsonObject = {
+  '@type': 'flow property data set',
+  '@refObjectId': TARGET_FP,
+  '@version': '01.00.000',
+  '@uri': `../flowproperties/${TARGET_FP}.json`,
+  'common:shortDescription': { '#text': 'Time', '@xml:lang': 'en' },
+};
+
+function propertyEntry(overrides: JsonObject = {}): JsonObject {
+  return {
+    '@dataSetInternalID': '1',
+    meanValue: '1',
+    referenceToFlowPropertyDataSet: {
+      '@type': 'flow property data set',
+      '@refObjectId': SOURCE_FP,
+      '@version': '00.00.001',
+      '@uri': `../flowproperties/${SOURCE_FP}.json`,
+      'common:shortDescription': { '#text': 'Amount in hr', '@xml:lang': 'en' },
+    },
+    ...overrides,
+  };
+}
+
+function flow(id: string, propertyEntries: JsonObject[] = [propertyEntry()]): JsonObject {
+  return {
+    flowDataSet: {
+      flowInformation: {
+        dataSetInformation: { 'common:UUID': id },
+        quantitativeReference: { referenceToReferenceFlowProperty: '1' },
+      },
+      flowProperties: { flowProperty: propertyEntries },
+      administrativeInformation: { marker: 'unchanged' },
+    },
+  };
+}
+
+function exchange(internalId: string, overrides: JsonObject = {}): JsonObject {
+  return {
+    '@dataSetInternalID': internalId,
+    meanAmount: '1',
+    resultingAmount: '1',
+    exchangeDirection: 'Input',
+    dataDerivationTypeStatus: 'Unknown derivation',
+    uncertaintyDistributionType: 'log-normal',
+    referenceToFlowDataSet: {
+      '@type': 'flow data set',
+      '@refObjectId': 'flow-target',
+      '@version': '00.00.001',
+      'common:shortDescription': { '#text': 'Use, computer', '@xml:lang': 'en' },
+    },
+    generalComment: { '#text': 'Source EcoSpold1 exchange number: 1.', '@xml:lang': 'en' },
+    ...overrides,
+  };
+}
+
+function process(id: string, exchanges: JsonObject[], unitText = '1 kg Product'): JsonObject {
+  return {
+    processDataSet: {
+      processInformation: {
+        quantitativeReference: {
+          referenceToReferenceFlow: '1',
+          functionalUnitOrOther: { '#text': unitText, '@xml:lang': 'en' },
+        },
+        dataSetInformation: { 'common:UUID': id },
+      },
+      exchanges: { exchange: exchanges },
+      administrativeInformation: { marker: 'unchanged' },
+    },
+  };
+}
+
+function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
+  return {
+    actor_id: 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7',
+    flows: [
+      { id: 'flow-a', version: '00.00.001', json: flow('flow-a') },
+      { id: 'flow-b', version: '00.00.001', json: flow('flow-b') },
+    ],
+    processes: [
+      {
+        id: 'process-a',
+        version: '00.00.001',
+        exchange_indexes: [0],
+        json: process('process-a', [exchange('1'), exchange('2')]),
+      },
+      {
+        id: 'process-b',
+        version: '00.00.001',
+        exchange_indexes: [1],
+        functional_unit: { source_exchange_number: '887497' },
+        json: process(
+          'process-b',
+          [exchange('1'), exchange('2', { meanAmount: '2.0E-4', resultingAmount: '2.0E-4' })],
+          '1.0 a Use, computer, office use',
+        ),
+      },
+    ],
+    target_flow_property: {
+      id: TARGET_FP,
+      version: '01.00.000',
+      json: { flowPropertyDataSet: { flowPropertiesInformation: { marker: 'target' } } },
+    },
+    target_unit_group: {
+      id: TARGET_UG,
+      version: '01.00.000',
+      json: { unitGroupDataSet: { units: { unit: [{ name: 'a', meanValue: '1' }] } } },
+    },
+    source_unit_group: {
+      id: SOURCE_UG,
+      version: '00.00.001',
+      json: { unitGroupDataSet: { units: { unit: [{ name: 'hr', meanValue: '1' }] } } },
+    },
+    target_flow_property_reference: TARGET_REFERENCE,
+    source_evidence_sha256: SOURCE_EVIDENCE,
+    ...overrides,
+  };
+}
+
+function singleFlow(json: JsonObject): Partial<AliasV2PlanInput> {
+  return { flows: [{ id: 'flow-a', version: '00.00.001', json }] };
+}
+
+function singleProcess(
+  json: JsonObject,
+  extra: Partial<AliasV2PlanInput['processes'][number]> = {},
+): Partial<AliasV2PlanInput> {
+  return {
+    processes: [{ id: 'process-a', version: '00.00.001', exchange_indexes: [0], json, ...extra }],
+  };
+}
+
+function rejects(overrides: Partial<AliasV2PlanInput>, code: string): void {
+  assert.throws(
+    () => buildAliasV2Plan(input(overrides)),
+    (error: unknown) =>
+      typeof error === 'object' && error !== null && (error as { code?: string }).code === code,
+    code,
+  );
+}
+
+test('the v2 plan derives the exact action, occurrence and invariant counts', () => {
+  const { plan, batch } = buildAliasV2Plan(
+    input({
+      expected_counts: {
+        action_count: 4,
+        flowproperty_count: 0,
+        flow_count: 2,
+        process_count: 2,
+        exchange_count: 2,
+        amount_field_count: 4,
+        unrelated_exchange_count: 2,
+      },
+    }),
+  );
+  assert.equal(plan.schema_version, ALIAS_V2_PLAN_SCHEMA);
+  assert.equal(plan.target_visibility, 'owner_draft');
+  assert.deepEqual(plan.counts, {
+    action_count: 4,
+    flowproperty_count: 0,
+    flow_count: 2,
+    process_count: 2,
+    exchange_count: 2,
+    amount_field_count: 4,
+    unrelated_exchange_count: 2,
+  });
+  assert.equal(plan.plan_sha256, sha256Json({ ...plan, plan_sha256: undefined }));
+  assert.equal(batch.schema_version, ALIAS_V2_BATCH_SCHEMA);
+  assert.equal(batch.plan_sha256, plan.plan_sha256);
+  assert.equal((batch.actions as unknown[]).length, 4);
+  assert.equal((batch.counts as JsonObject).exchange_count, 2);
+
+  // Flow actions: only the property reference changes; the quantitative reference id is kept.
+  const flowAction = (batch.actions as JsonObject[])[0] as JsonObject;
+  const beforeFlow = flowAction.expected_json_ordered as JsonObject;
+  const desiredFlow = flowAction.desired_json_ordered as JsonObject;
+  assert.deepEqual(
+    (desiredFlow.flowDataSet as JsonObject).flowInformation,
+    (beforeFlow.flowDataSet as JsonObject).flowInformation,
+  );
+  assert.deepEqual(
+    ((desiredFlow.flowDataSet as JsonObject).flowProperties as JsonObject).flowProperty,
+    [{ ...propertyEntry(), referenceToFlowPropertyDataSet: TARGET_REFERENCE }],
+  );
+  assert.equal(flowAction.before_sha256, sha256Json(beforeFlow));
+  assert.notEqual(flowAction.before_sha256, flowAction.desired_sha256);
+
+  // Process actions: only the listed exchange amounts change.
+  const processAction = (batch.actions as JsonObject[])[2] as JsonObject;
+  const desiredProcess = processAction.desired_json_ordered as JsonObject;
+  const desiredExchanges = ((desiredProcess.processDataSet as JsonObject).exchanges as JsonObject)
+    .exchange as JsonObject[];
+  assert.equal(desiredExchanges[0]!.meanAmount, ALIAS_V2_FACTOR);
+  assert.equal(desiredExchanges[0]!.resultingAmount, ALIAS_V2_FACTOR);
+  assert.equal(desiredExchanges[1]!.meanAmount, '1');
+  assert.equal(desiredExchanges[1]!.resultingAmount, '1');
+  const desiredQuantitative = (
+    (desiredProcess.processDataSet as JsonObject).processInformation as JsonObject
+  ).quantitativeReference as JsonObject;
+  assert.equal(desiredQuantitative.referenceToReferenceFlow, '1');
+  assert.deepEqual(desiredQuantitative.functionalUnitOrOther, {
+    '#text': '1 kg Product',
+    '@xml:lang': 'en',
+  });
+  // The scaled process carries the exponent amount as its canonical trimmed decimal.
+  const textCaseAction = (batch.actions as JsonObject[])[3] as JsonObject;
+  const textCaseDesired = textCaseAction.desired_json_ordered as JsonObject;
+  assert.equal(
+    (
+      ((textCaseDesired.processDataSet as JsonObject).exchanges as JsonObject)
+        .exchange as JsonObject[]
+    )[1]!.meanAmount,
+    '0.000000022831050228310502',
+  );
+  assert.deepEqual(
+    (
+      ((textCaseDesired.processDataSet as JsonObject).processInformation as JsonObject)
+        .quantitativeReference as JsonObject
+    ).functionalUnitOrOther,
+    { '#text': '1.0 hr Use, computer, office use', '@xml:lang': 'en' },
+  );
+
+  // The functional-unit correction is a first-class, source-proven text action.
+  assert.deepEqual((plan.text_actions as JsonObject[])[0], {
+    table: 'processes',
+    id: 'process-b',
+    version: '00.00.001',
+    before_text: '1.0 a Use, computer, office use',
+    after_text: '1.0 hr Use, computer, office use',
+    source_exchange_number: '887497',
+  });
+  assert.equal(textCaseAction.action_id, 'process:process-b@00.00.001');
+  assert.equal(textCaseAction.quantitative_reference, '1');
+  assert.deepEqual((textCaseAction.mutation as JsonObject).exchanges, [
+    {
+      index: 1,
+      internal_id: '2',
+      flow_id: 'flow-target',
+      flow_version: '00.00.001',
+      direction: 'Input',
+      before_amount: '2.0E-4',
+      after_amount: '0.000000022831050228310502',
+      before_resulting_amount: '2.0E-4',
+      after_resulting_amount: '0.000000022831050228310502',
+    },
+  ]);
+  assert.equal(
+    ((plan.dimensions as JsonObject[])[0] as JsonObject).factor,
+    '0.00011415525114155251',
+  );
+  assert.equal((plan.source_evidence as JsonObject).exchange_count, 2);
+  assert.deepEqual((plan.target_snapshots as JsonObject).flowproperty, {
+    id: TARGET_FP,
+    version: '01.00.000',
+    sha256: sha256Json((input().target_flow_property as { json: JsonObject }).json),
+  });
+});
+
+test('each payload shape is resolved through its own accessor, never a neighbouring one', () => {
+  const invalid = 'ALIAS_V2_PLAN_INVALID';
+  // A singleton entry is the same shape as a one-element array, and a missing node is not a
+  // malformed one: both must resolve through the same accessor without borrowing another root.
+  const singleton = buildAliasV2Plan(
+    input({
+      flows: [
+        {
+          id: 'flow-a',
+          version: '00.00.001',
+          json: { flowDataSet: { flowProperties: { flowProperty: propertyEntry() } } },
+        },
+      ],
+      processes: [
+        {
+          id: 'process-a',
+          version: '00.00.001',
+          exchange_indexes: [0],
+          json: {
+            processDataSet: {
+              processInformation: { quantitativeReference: { referenceToReferenceFlow: '1' } },
+              exchanges: { exchange: exchange('1') },
+            },
+          },
+        },
+      ],
+    }),
+  );
+  assert.equal((singleton.plan.counts as JsonObject).action_count, 2);
+  // An exchange reference without object id or version stays an explicit null rather than
+  // borrowing the process or flow identity.
+  const partial = buildAliasV2Plan(
+    input({
+      processes: [
+        {
+          id: 'process-a',
+          version: '00.00.001',
+          exchange_indexes: [0, 1],
+          json: process('process-a', [
+            exchange('1', { referenceToFlowDataSet: { '@type': 'flow data set' } }),
+            exchange('2', { referenceToFlowDataSet: { '@refObjectId': 'flow-target' } }),
+          ]),
+        },
+      ],
+    }),
+  );
+  assert.deepEqual(
+    (
+      (
+        (partial.batch.actions as JsonObject[]).find(
+          (action) => action.table === 'processes',
+        ) as JsonObject
+      ).mutation as JsonObject
+    ).exchanges,
+    [
+      {
+        index: 0,
+        internal_id: '1',
+        flow_id: null,
+        flow_version: null,
+        direction: 'Input',
+        before_amount: '1',
+        after_amount: '0.00011415525114155251',
+        before_resulting_amount: '1',
+        after_resulting_amount: '0.00011415525114155251',
+      },
+      {
+        index: 1,
+        internal_id: '2',
+        flow_id: 'flow-target',
+        flow_version: null,
+        direction: 'Input',
+        before_amount: '1',
+        after_amount: '0.00011415525114155251',
+        before_resulting_amount: '1',
+        after_resulting_amount: '0.00011415525114155251',
+      },
+    ],
+  );
+  // Malformed roots on either family are refused instead of being read with the other root.
+  rejects(singleFlow({}), invalid);
+  rejects(singleFlow({ flowDataSet: [] }), invalid);
+  rejects(singleFlow({ flowDataSet: { flowProperties: null } }), invalid);
+  rejects(singleFlow({ flowDataSet: { flowProperties: 'nope' } }), invalid);
+  rejects(singleFlow({ flowDataSet: { flowProperties: { flowProperty: [1] } } }), invalid);
+  rejects(singleProcess({}), invalid);
+  rejects(singleProcess({ processDataSet: [] }), invalid);
+  rejects(singleProcess({ processDataSet: { exchanges: { exchange: [1] } } }), invalid);
+  rejects(singleProcess({ processDataSet: { exchanges: { exchange: [exchange('1')] } } }), invalid);
+  rejects(
+    singleProcess({
+      processDataSet: { processInformation: 'nope', exchanges: { exchange: [exchange('1')] } },
+    }),
+    invalid,
+  );
+  rejects(
+    singleProcess({
+      processDataSet: {
+        processInformation: { quantitativeReference: 'nope' },
+        exchanges: { exchange: [exchange('1')] },
+      },
+    }),
+    invalid,
+  );
+  rejects(
+    singleProcess({
+      processDataSet: {
+        processInformation: { quantitativeReference: { referenceToReferenceFlow: '1' } },
+        exchanges: { exchange: 'nope' },
+      },
+    }),
+    invalid,
+  );
+  // A source-proven text action needs a functional-unit text node, and that node needs a text.
+  rejects(
+    singleProcess(process('process-a', [exchange('1')], ''), {
+      functional_unit: { source_exchange_number: '1' },
+    }).processes !== undefined
+      ? {
+          processes: [
+            {
+              id: 'process-a',
+              version: '00.00.001',
+              exchange_indexes: [0],
+              functional_unit: { source_exchange_number: '1' },
+              json: {
+                processDataSet: {
+                  processInformation: { quantitativeReference: { referenceToReferenceFlow: '1' } },
+                  exchanges: { exchange: [exchange('1')] },
+                },
+              },
+            },
+          ],
+        }
+      : {},
+    'ALIAS_V2_TEXT_RULE_VIOLATION',
+  );
+  rejects(
+    {
+      processes: [
+        {
+          id: 'process-a',
+          version: '00.00.001',
+          exchange_indexes: [0],
+          functional_unit: { source_exchange_number: '1' },
+          json: {
+            processDataSet: {
+              processInformation: {
+                quantitativeReference: {
+                  referenceToReferenceFlow: '1',
+                  functionalUnitOrOther: { '@xml:lang': 'en' },
+                },
+              },
+              exchanges: { exchange: [exchange('1')] },
+            },
+          },
+        },
+      ],
+    },
+    'ALIAS_V2_TEXT_RULE_VIOLATION',
+  );
+});
+
+test('the v2 plan refuses anything outside the reviewed shape', () => {
+  const invalid = 'ALIAS_V2_PLAN_INVALID';
+  assert.throws(
+    () => buildAliasV2Plan({ ...input(), actor_id: undefined as unknown as string }),
+    invalid,
+  );
+  rejects({ flows: [] }, invalid);
+  rejects({ processes: [] }, invalid);
+  rejects({ source_evidence_sha256: 'nope' }, invalid);
+  rejects(
+    { target_flow_property_reference: { ...TARGET_REFERENCE, '@refObjectId': 'other' } },
+    invalid,
+  );
+  rejects(
+    { target_flow_property_reference: { ...TARGET_REFERENCE, '@version': '02.00.000' } },
+    invalid,
+  );
+  rejects({ target_flow_property_reference: null as unknown as JsonObject }, invalid);
+  // Duplicate rows, wrong property-entry counts and unreviewed entry values.
+  rejects({ flows: [input().flows[0]!, input().flows[0]!] }, invalid);
+  rejects(singleFlow(flow('flow-a', [propertyEntry(), propertyEntry()])), invalid);
+  rejects(singleFlow(flow('flow-a', [])), invalid);
+  rejects(singleFlow(flow('flow-a', [propertyEntry({ '@dataSetInternalID': '2' })])), invalid);
+  rejects(singleFlow(flow('flow-a', [propertyEntry({ meanValue: '2' })])), invalid);
+  rejects(singleFlow({ flowDataSet: { flowProperties: { flowProperty: 'nope' } } }), invalid);
+  rejects(singleFlow({ flowDataSet: { flowProperties: { flowProperty: [1] } } }), invalid);
+  rejects(
+    singleFlow(
+      flow('flow-a', [
+        propertyEntry({
+          referenceToFlowPropertyDataSet: { '@refObjectId': TARGET_FP, '@version': '01.00.000' },
+        }),
+      ]),
+    ),
+    invalid,
+  );
+  // Process payload shapes.
+  rejects(
+    singleProcess({ processDataSet: { processInformation: {}, administrativeInformation: {} } }),
+    invalid,
+  );
+  rejects(
+    singleProcess({
+      processDataSet: {
+        processInformation: { quantitativeReference: { referenceToReferenceFlow: '1' } },
+        exchanges: { exchange: {} },
+      },
+    }),
+    invalid,
+  );
+  for (const exchange_indexes of [[], [5], [-1], [0, 0], ['0' as unknown as number]]) {
+    rejects(
+      {
+        processes: [
+          {
+            id: 'process-a',
+            version: '00.00.001',
+            exchange_indexes,
+            json: process('process-a', [exchange('1')]),
+          },
+        ],
+      },
+      invalid,
+    );
+  }
+  rejects(singleProcess(process('process-a', [exchange('1', { meanAmount: 1 })])), invalid);
+  rejects(singleProcess(process('process-a', [exchange('1', { meanAmount: '1E-31' })])), invalid);
+  rejects(
+    singleProcess(process('process-a', [exchange('1', { meanAmount: '0', resultingAmount: '0' })])),
+    invalid,
+  );
+  rejects(
+    singleProcess({
+      processDataSet: {
+        processInformation: { quantitativeReference: { functionalUnitOrOther: { '#text': 'x' } } },
+        exchanges: { exchange: [exchange('1', { meanAmount: '2' })] },
+      },
+    }),
+    invalid,
+  );
+  rejects({ processes: [input().processes[0]!, input().processes[0]!] }, invalid);
+  // Counts are derived here; a frozen cohort mismatch is its own failure.
+  rejects({ expected_counts: { action_count: 999 } }, 'ALIAS_V2_COUNT_MISMATCH');
+});
+
+/** Every leaf path at which two JSON payloads differ, in a stable order. */
+function changedPaths(before: unknown, after: unknown, prefix = ''): string[] {
+  if (JSON.stringify(before) === JSON.stringify(after)) return [];
+  if (
+    before === null ||
+    after === null ||
+    typeof before !== 'object' ||
+    typeof after !== 'object'
+  ) {
+    return [prefix];
+  }
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  const paths: string[] = [];
+  for (const key of [...keys].sort()) {
+    paths.push(
+      ...changedPaths(
+        (before as JsonObject)[key],
+        (after as JsonObject)[key],
+        prefix === '' ? key : `${prefix}.${key}`,
+      ),
+    );
+  }
+  return paths;
+}
+
+test('each action changes exactly the reviewed paths and nothing else', () => {
+  const { batch } = buildAliasV2Plan(input());
+  const actions = batch.actions as JsonObject[];
+  // Flow: only the property entry's reference is retargeted; the quantitative reference, which
+  // carries the internal id the reviewed rule preserves, is untouched.
+  const referencePath = 'flowDataSet.flowProperties.flowProperty.0.referenceToFlowPropertyDataSet';
+  assert.deepEqual(
+    changedPaths(actions[0]!.expected_json_ordered, actions[0]!.desired_json_ordered).sort(),
+    [
+      `${referencePath}.@refObjectId`,
+      `${referencePath}.@uri`,
+      `${referencePath}.@version`,
+      `${referencePath}.common:shortDescription.#text`,
+    ],
+  );
+  // Process: exactly the two amount fields of the named occurrence.
+  assert.deepEqual(
+    changedPaths(actions[2]!.expected_json_ordered, actions[2]!.desired_json_ordered).sort(),
+    [
+      'processDataSet.exchanges.exchange.0.meanAmount',
+      'processDataSet.exchanges.exchange.0.resultingAmount',
+    ],
+  );
+  // Process with the functional-unit correction: the same two fields plus the unit text.
+  assert.deepEqual(
+    changedPaths(actions[3]!.expected_json_ordered, actions[3]!.desired_json_ordered).sort(),
+    [
+      'processDataSet.exchanges.exchange.1.meanAmount',
+      'processDataSet.exchanges.exchange.1.resultingAmount',
+      'processDataSet.processInformation.quantitativeReference.functionalUnitOrOther.#text',
+    ],
+  );
+  // The unrelated exchange of each process is byte-identical in both images, which is the
+  // invariant the whole plan is checked against.
+  const desiredExchanges = (
+    (actions[2]!.desired_json_ordered as JsonObject).processDataSet as JsonObject
+  ).exchanges as JsonObject;
+  const beforeExchanges = (
+    (actions[2]!.expected_json_ordered as JsonObject).processDataSet as JsonObject
+  ).exchanges as JsonObject;
+  assert.equal(
+    sha256Json((desiredExchanges.exchange as JsonObject[])[1]),
+    sha256Json((beforeExchanges.exchange as JsonObject[])[1]),
+  );
+});
+
+test('unreviewed exchange fields and functional-unit forms fail closed with their own codes', () => {
+  for (const field of ['standardDeviation95', 'meanValue', 'otherAbsolute']) {
+    rejects(
+      singleProcess(process('process-a', [exchange('1', { [field]: '1.32' })])),
+      'ALIAS_V2_UNCERTAINTY_UNSUPPORTED',
+    );
+  }
+  const textCase = (unitText: string, functionalUnit?: JsonObject) =>
+    singleProcess(
+      process('process-b', [exchange('1'), exchange('2', { meanAmount: '2' })], unitText),
+      functionalUnit === undefined
+        ? {}
+        : {
+            exchange_indexes: [1],
+            functional_unit: functionalUnit as { source_exchange_number: string },
+          },
+    );
+  // A source-proven action must carry exactly the reviewed incorrect prefix.
+  rejects(textCase('1.0 hr x', { source_exchange_number: '1' }), 'ALIAS_V2_TEXT_RULE_VIOLATION');
+  rejects(textCase('2.0 a x', { source_exchange_number: '1' }), 'ALIAS_V2_TEXT_RULE_VIOLATION');
+  rejects(textCase('1 a', { source_exchange_number: '1' }), 'ALIAS_V2_TEXT_RULE_VIOLATION');
+  rejects(textCase('1 kg x', { source_exchange_number: '1' }), 'ALIAS_V2_TEXT_RULE_VIOLATION');
+  rejects(textCase('1.0 a x', { source_exchange_number: ' ' }), 'ALIAS_V2_TEXT_RULE_VIOLATION');
+  // The reviewed incorrect prefix without its source proof is never left silently in place.
+  rejects(textCase('1.0 a x'), 'ALIAS_V2_TEXT_RULE_VIOLATION');
+  rejects(textCase('1 a x'), 'ALIAS_V2_TEXT_RULE_VIOLATION');
+  // The reviewed forms are accepted and produce exactly one text action each.
+  for (const [text, expectedAfter] of [
+    ['1.0 a Use, printer', '1.0 hr Use, printer'],
+    ['1 a  Use, printer', '1 hr  Use, printer'],
+  ] as const) {
+    const { plan } = buildAliasV2Plan(input(textCase(text, { source_exchange_number: '1' })));
+    assert.equal((plan.text_actions as JsonObject[]).length, 1);
+    assert.equal((plan.text_actions as JsonObject[])[0]!.after_text, expectedAfter);
+  }
+  // Neither `mean` nor `resulting` uncertainty fields are absolute amounts.
+  assert.equal(ALIAS_V2_EXCHANGE_KEYS.includes('relativeStandardDeviation95In'), true);
+  assert.equal(ALIAS_V2_EXCHANGE_KEYS.includes('uncertaintyDistributionType'), true);
+});

@@ -15,14 +15,23 @@
 //
 // Two renderings are exposed because both are needed: the exact expansion (which keeps the
 // input's fractional scale and is the arithmetic truth used for evidence) and the canonical
-// spelling (which is what a v2 desired payload carries).
+// spelling (which is what a v2 desired payload carries). Both respect the output bound.
+//
+// The grammar is the one root's cross-language review fixed for the v2 cohort, and it is
+// deliberately identical to the storage-side owner's: canonical mantissa integer
+// `0|[1-9][0-9]*` (no leading zeros), optional fractional digits, then an optional exponent
+// `[eE][+-]?[0-9]{1,2}` of magnitude at most 30. `01E0` and `1E030` are outside it on both
+// sides; `01` was already outside the frozen v1 plain grammar.
+//
+// The multiplier carries the same priors as a parsed quantity (finite ordinary string, at most
+// 64 characters, plain decimal) so a caller can never hand an unbounded factor to `BigInt`.
 
 export const BOUNDED_INPUT_LENGTH = 64;
 export const BOUNDED_EXPONENT_LIMIT = 30;
 export const BOUNDED_OUTPUT_LENGTH = 128;
 
 const PLAIN_DECIMAL = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/u;
-const EXPONENT_DECIMAL = /^(-?)(\d+)(?:\.(\d+))?[eE]([+-]?)(\d{1,2})$/u;
+const EXPONENT_DECIMAL = /^(-?)(0|[1-9]\d*)(?:\.(\d+))?[eE]([+-]?)(\d{1,2})$/u;
 
 type DecimalParts = { negative: boolean; coefficient: bigint; scale: number };
 
@@ -81,34 +90,47 @@ export function parseBoundedExponentDecimal(value: string): DecimalParts | null 
   return { negative: sign === '-', coefficient, scale };
 }
 
-/** Exact expansion: the plain-decimal spelling that keeps the input's fractional scale. */
-function renderExactDecimalText(parts: DecimalParts): string {
+/**
+ * Exact expansion: the plain-decimal spelling that keeps the input's fractional scale. Returns
+ * null when the reviewed output bound is exceeded, so a bounded helper never returns a text it
+ * claimed not to produce.
+ */
+function renderExactDecimalText(parts: DecimalParts): string | null {
   let digits = parts.coefficient.toString().padStart(parts.scale + 1, '0');
   if (parts.scale > 0) {
     const split = digits.length - parts.scale;
     digits = `${digits.slice(0, split)}.${digits.slice(split)}`;
   }
-  return `${parts.negative && parts.coefficient !== 0n ? '-' : ''}${digits}`;
+  const text = `${parts.negative && parts.coefficient !== 0n ? '-' : ''}${digits}`;
+  return text.length <= BOUNDED_OUTPUT_LENGTH ? text : null;
 }
 
 /**
  * Canonical v2 spelling: finite ordinary decimal, unnecessary trailing fractional zeros
- * trimmed, `0` for zero, never exponent notation. Returns null when the canonical text would
- * exceed the reviewed output bound.
+ * trimmed, `0` for zero, never exponent notation. Trimming only removes characters, so a
+ * canonical text is never longer than the exact expansion the output bound was applied to.
  */
 function renderCanonicalDecimalText(parts: DecimalParts): string | null {
-  let text = renderExactDecimalText(parts);
-  if (text.includes('.')) {
-    text = text.replace(/0+$/u, '').replace(/\.$/u, '');
+  const exact = renderExactDecimalText(parts);
+  if (exact === null) {
+    return null;
   }
   // A zero quantity never carries a sign here: the exact renderer already suppresses the sign
   // when the coefficient is zero, so `-0` cannot occur and `0` is the only zero spelling.
-  return text.length <= BOUNDED_OUTPUT_LENGTH ? text : null;
+  return exact.includes('.') ? exact.replace(/0+$/u, '').replace(/\.$/u, '') : exact;
+}
+
+/** The multiplier priors: a finite ordinary string of at most 64 characters, plain decimal. */
+function boundedFactorParts(factor: unknown): DecimalParts | null {
+  if (typeof factor !== 'string' || factor.length === 0 || factor.length > BOUNDED_INPUT_LENGTH) {
+    return null;
+  }
+  return plainParts(factor);
 }
 
 function boundedProduct(value: string, factor: string): DecimalParts | null {
   const left = parseBoundedExponentDecimal(value);
-  const right = plainParts(factor);
+  const right = boundedFactorParts(factor);
   if (!left || !right) {
     return null;
   }
@@ -122,6 +144,11 @@ function boundedProduct(value: string, factor: string): DecimalParts | null {
 /** True when the value is a legal v2 quantity (plain decimal or bounded exponent form). */
 export function isBoundedDecimalValue(value: string): boolean {
   return parseBoundedExponentDecimal(value) !== null;
+}
+
+/** True when the factor satisfies the same priors a v2 multiplier must satisfy. */
+export function isBoundedFactorValue(factor: string): boolean {
+  return boundedFactorParts(factor) !== null;
 }
 
 /** Exact expansion of one bounded quantity, or null when the spelling is out of bounds. */

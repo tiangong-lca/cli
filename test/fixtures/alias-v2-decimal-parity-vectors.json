@@ -1,0 +1,623 @@
+{
+  "schema": "foundry60.v2-decimal-parity-vectors.v1",
+  "factor": "0.00011415525114155251",
+  "original_exponent_shapes": 92,
+  "vectors": [
+    {
+      "input": "-0",
+      "accepted": true,
+      "desired": "0"
+    },
+    {
+      "input": "-0.0",
+      "accepted": true,
+      "desired": "0"
+    },
+    {
+      "input": "-1.5e-2",
+      "accepted": true,
+      "desired": "-0.00000171232876712328765"
+    },
+    {
+      "input": "0",
+      "accepted": true,
+      "desired": "0"
+    },
+    {
+      "input": "0.0",
+      "accepted": true,
+      "desired": "0"
+    },
+    {
+      "input": "0.0000000000000000000000000000000000000000000000000000000000001",
+      "accepted": true,
+      "desired": "0.000000000000000000000000000000000000000000000000000000000000000011415525114155251"
+    },
+    {
+      "input": "1",
+      "accepted": true,
+      "desired": "0.00011415525114155251"
+    },
+    {
+      "input": "1.0",
+      "accepted": true,
+      "desired": "0.00011415525114155251"
+    },
+    {
+      "input": "1.03E-4",
+      "accepted": true,
+      "desired": "0.00000001175799086757990853"
+    },
+    {
+      "input": "1.06E-4",
+      "accepted": true,
+      "desired": "0.00000001210045662100456606"
+    },
+    {
+      "input": "1.18E-4",
+      "accepted": true,
+      "desired": "0.00000001347031963470319618"
+    },
+    {
+      "input": "1.18E-7",
+      "accepted": true,
+      "desired": "0.00000000001347031963470319618"
+    },
+    {
+      "input": "1.28E-4",
+      "accepted": true,
+      "desired": "0.00000001461187214611872128"
+    },
+    {
+      "input": "1.35E-4",
+      "accepted": true,
+      "desired": "0.00000001541095890410958885"
+    },
+    {
+      "input": "1.383E-5",
+      "accepted": true,
+      "desired": "0.0000000015787671232876712133"
+    },
+    {
+      "input": "1.39E-4",
+      "accepted": true,
+      "desired": "0.00000001586757990867579889"
+    },
+    {
+      "input": "1.422E-4",
+      "accepted": true,
+      "desired": "0.000000016232876712328766922"
+    },
+    {
+      "input": "1.571E-4",
+      "accepted": true,
+      "desired": "0.000000017933789954337899321"
+    },
+    {
+      "input": "1.77E-4",
+      "accepted": true,
+      "desired": "0.00000002020547945205479427"
+    },
+    {
+      "input": "1.836E-5",
+      "accepted": true,
+      "desired": "0.0000000020958904109589040836"
+    },
+    {
+      "input": "1.87E-5",
+      "accepted": true,
+      "desired": "0.000000002134703196347031937"
+    },
+    {
+      "input": "1.91E-6",
+      "accepted": true,
+      "desired": "0.0000000002180365296803652941"
+    },
+    {
+      "input": "1.97E-4",
+      "accepted": true,
+      "desired": "0.00000002248858447488584447"
+    },
+    {
+      "input": "1.9E-5",
+      "accepted": true,
+      "desired": "0.00000000216894977168949769"
+    },
+    {
+      "input": "1.9e-05",
+      "accepted": true,
+      "desired": "0.00000000216894977168949769"
+    },
+    {
+      "input": "1234567890123456789012345678901234567890123456789012345678901234",
+      "accepted": true,
+      "desired": "140932407548339814349737881434973788143497378814349737881434.97372331585771479734"
+    },
+    {
+      "input": "1E+01",
+      "accepted": true,
+      "desired": "0.0011415525114155251"
+    },
+    {
+      "input": "1e-30",
+      "accepted": true,
+      "desired": "0.00000000000000000000000000000000011415525114155251"
+    },
+    {
+      "input": "1e30",
+      "accepted": true,
+      "desired": "114155251141552510000000000"
+    },
+    {
+      "input": "2.009E-5",
+      "accepted": true,
+      "desired": "0.0000000022933789954337899259"
+    },
+    {
+      "input": "2.0E-4",
+      "accepted": true,
+      "desired": "0.000000022831050228310502"
+    },
+    {
+      "input": "2.14E-4",
+      "accepted": true,
+      "desired": "0.00000002442922374429223714"
+    },
+    {
+      "input": "2.14E-5",
+      "accepted": true,
+      "desired": "0.000000002442922374429223714"
+    },
+    {
+      "input": "2.15E-4",
+      "accepted": true,
+      "desired": "0.00000002454337899543378965"
+    },
+    {
+      "input": "2.21E-5",
+      "accepted": true,
+      "desired": "0.000000002522831050228310471"
+    },
+    {
+      "input": "2.275E-4",
+      "accepted": true,
+      "desired": "0.000000025970319634703196025"
+    },
+    {
+      "input": "2.43E-6",
+      "accepted": true,
+      "desired": "0.0000000002773972602739725993"
+    },
+    {
+      "input": "2.44E-5",
+      "accepted": true,
+      "desired": "0.000000002785388127853881244"
+    },
+    {
+      "input": "2.45E-5",
+      "accepted": true,
+      "desired": "0.000000002796803652968036495"
+    },
+    {
+      "input": "2.49E-5",
+      "accepted": true,
+      "desired": "0.000000002842465753424657499"
+    },
+    {
+      "input": "2.59E-5",
+      "accepted": true,
+      "desired": "0.000000002956621004566210009"
+    },
+    {
+      "input": "2.77E-6",
+      "accepted": true,
+      "desired": "0.0000000003162100456621004527"
+    },
+    {
+      "input": "2.7e-05",
+      "accepted": true,
+      "desired": "0.00000000308219178082191777"
+    },
+    {
+      "input": "2.88E-5",
+      "accepted": true,
+      "desired": "0.000000003287671232876712288"
+    },
+    {
+      "input": "2.94E-4",
+      "accepted": true,
+      "desired": "0.00000003356164383561643794"
+    },
+    {
+      "input": "2.9999999999999997e-05",
+      "accepted": true,
+      "desired": "0.00000000342465753424657495753424657534247"
+    },
+    {
+      "input": "2e-05",
+      "accepted": true,
+      "desired": "0.0000000022831050228310502"
+    },
+    {
+      "input": "2e-06",
+      "accepted": true,
+      "desired": "0.00000000022831050228310502"
+    },
+    {
+      "input": "3.07E-5",
+      "accepted": true,
+      "desired": "0.000000003504566210045662057"
+    },
+    {
+      "input": "3.0E-6",
+      "accepted": true,
+      "desired": "0.00000000034246575342465753"
+    },
+    {
+      "input": "3.248E-5",
+      "accepted": true,
+      "desired": "0.0000000037077625570776255248"
+    },
+    {
+      "input": "3.24E-5",
+      "accepted": true,
+      "desired": "0.000000003698630136986301324"
+    },
+    {
+      "input": "3.29E-5",
+      "accepted": true,
+      "desired": "0.000000003755707762557077579"
+    },
+    {
+      "input": "3.2e-05",
+      "accepted": true,
+      "desired": "0.00000000365296803652968032"
+    },
+    {
+      "input": "3.31E-5",
+      "accepted": true,
+      "desired": "0.000000003778538812785388081"
+    },
+    {
+      "input": "3.4019E-4",
+      "accepted": true,
+      "desired": "0.0000000388344748858447483769"
+    },
+    {
+      "input": "3.51E-6",
+      "accepted": true,
+      "desired": "0.0000000004006849315068493101"
+    },
+    {
+      "input": "3.57E-4",
+      "accepted": true,
+      "desired": "0.00000004075342465753424607"
+    },
+    {
+      "input": "3.7E-5",
+      "accepted": true,
+      "desired": "0.00000000422374429223744287"
+    },
+    {
+      "input": "3.98E-5",
+      "accepted": true,
+      "desired": "0.000000004543378995433789898"
+    },
+    {
+      "input": "3.99E-6",
+      "accepted": true,
+      "desired": "0.0000000004554794520547945149"
+    },
+    {
+      "input": "4.07E-5",
+      "accepted": true,
+      "desired": "0.000000004646118721461187157"
+    },
+    {
+      "input": "4.08E-5",
+      "accepted": true,
+      "desired": "0.000000004657534246575342408"
+    },
+    {
+      "input": "4.14E-6",
+      "accepted": true,
+      "desired": "0.0000000004726027397260273914"
+    },
+    {
+      "input": "4.22E-5",
+      "accepted": true,
+      "desired": "0.000000004817351598173515922"
+    },
+    {
+      "input": "4.22E-6",
+      "accepted": true,
+      "desired": "0.0000000004817351598173515922"
+    },
+    {
+      "input": "4.23E-5",
+      "accepted": true,
+      "desired": "0.000000004828767123287671173"
+    },
+    {
+      "input": "4.341E-5",
+      "accepted": true,
+      "desired": "0.0000000049554794520547944591"
+    },
+    {
+      "input": "4.409E-5",
+      "accepted": true,
+      "desired": "0.0000000050331050228310501659"
+    },
+    {
+      "input": "4.56E-4",
+      "accepted": true,
+      "desired": "0.00000005205479452054794456"
+    },
+    {
+      "input": "4.65E-4",
+      "accepted": true,
+      "desired": "0.00000005308219178082191715"
+    },
+    {
+      "input": "4.74E-4",
+      "accepted": true,
+      "desired": "0.00000005410958904109588974"
+    },
+    {
+      "input": "4.81E-5",
+      "accepted": true,
+      "desired": "0.000000005490867579908675731"
+    },
+    {
+      "input": "4.92E-4",
+      "accepted": true,
+      "desired": "0.00000005616438356164383492"
+    },
+    {
+      "input": "4.981E-6",
+      "accepted": true,
+      "desired": "0.00000000056860730593607305231"
+    },
+    {
+      "input": "5.082E-5",
+      "accepted": true,
+      "desired": "0.0000000058013698630136985582"
+    },
+    {
+      "input": "5.19E-6",
+      "accepted": true,
+      "desired": "0.0000000005924657534246575269"
+    },
+    {
+      "input": "5.26E-5",
+      "accepted": true,
+      "desired": "0.000000006004566210045662026"
+    },
+    {
+      "input": "5.28E-5",
+      "accepted": true,
+      "desired": "0.000000006027397260273972528"
+    },
+    {
+      "input": "5.31E-5",
+      "accepted": true,
+      "desired": "0.000000006061643835616438281"
+    },
+    {
+      "input": "5.36E-5",
+      "accepted": true,
+      "desired": "0.000000006118721461187214536"
+    },
+    {
+      "input": "5.3E-5",
+      "accepted": true,
+      "desired": "0.00000000605022831050228303"
+    },
+    {
+      "input": "5.48E-5",
+      "accepted": true,
+      "desired": "0.000000006255707762557077548"
+    },
+    {
+      "input": "5.5e-05",
+      "accepted": true,
+      "desired": "0.00000000627853881278538805"
+    },
+    {
+      "input": "5.6e-05",
+      "accepted": true,
+      "desired": "0.00000000639269406392694056"
+    },
+    {
+      "input": "5.915E-4",
+      "accepted": true,
+      "desired": "0.000000067522831050228309665"
+    },
+    {
+      "input": "6.02E-4",
+      "accepted": true,
+      "desired": "0.00000006872146118721461102"
+    },
+    {
+      "input": "6.07E-4",
+      "accepted": true,
+      "desired": "0.00000006929223744292237357"
+    },
+    {
+      "input": "6.17E-4",
+      "accepted": true,
+      "desired": "0.00000007043378995433789867"
+    },
+    {
+      "input": "6.17E-5",
+      "accepted": true,
+      "desired": "0.000000007043378995433789867"
+    },
+    {
+      "input": "6.615E-5",
+      "accepted": true,
+      "desired": "0.0000000075513698630136985365"
+    },
+    {
+      "input": "7.03E-4",
+      "accepted": true,
+      "desired": "0.00000008025114155251141453"
+    },
+    {
+      "input": "7.136E-5",
+      "accepted": true,
+      "desired": "0.0000000081461187214611871136"
+    },
+    {
+      "input": "7.17E-7",
+      "accepted": true,
+      "desired": "0.00000000008184931506849314967"
+    },
+    {
+      "input": "7.56E-4",
+      "accepted": true,
+      "desired": "0.00000008630136986301369756"
+    },
+    {
+      "input": "7.5E-5",
+      "accepted": true,
+      "desired": "0.00000000856164383561643825"
+    },
+    {
+      "input": "7.71E-6",
+      "accepted": true,
+      "desired": "0.0000000008801369863013698521"
+    },
+    {
+      "input": "7.81E-6",
+      "accepted": true,
+      "desired": "0.0000000008915525114155251031"
+    },
+    {
+      "input": "8.499E-5",
+      "accepted": true,
+      "desired": "0.0000000097020547945205478249"
+    },
+    {
+      "input": "8.84E-6",
+      "accepted": true,
+      "desired": "0.0000000010091324200913241884"
+    },
+    {
+      "input": "9.1E-5",
+      "accepted": true,
+      "desired": "0.00000001038812785388127841"
+    },
+    {
+      "input": "9.423E-4",
+      "accepted": true,
+      "desired": "0.000000107568493150684930173"
+    },
+    {
+      "input": "9.45E-4",
+      "accepted": true,
+      "desired": "0.00000010787671232876712195"
+    },
+    {
+      "input": "9.582E-5",
+      "accepted": true,
+      "desired": "0.0000000109383561643835615082"
+    },
+    {
+      "input": "01E0",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "1E030",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "1e000",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "+1E-4",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": ".5E-3",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "1.E-4",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "NaN",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "Infinity",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "1e31",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "1e-31",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "1e99999999",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "1_000",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "0x10",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": " 1",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "1 ",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "1e1e1",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": "99999999999999999999999999999999999999999999999999999999999999999",
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": null,
+      "accepted": false,
+      "desired": null
+    },
+    {
+      "input": 7,
+      "accepted": false,
+      "desired": null
+    }
+  ],
+  "oracle": "Python Decimal with precision256; numeric values only; no dataset/account identifiers or source payloads"
+}
