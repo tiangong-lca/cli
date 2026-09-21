@@ -159,7 +159,7 @@ function persistDispatchedNonce(adapter: LocalAdapter): void {
   assert.notEqual(nonce, '', 'the dispatched nonce must be recoverable before the completion runs');
   adapter.runSql(
     [
-      `\\o /tmp/db674-length-time-admit-nonce.txt`,
+      `\\o ${READY.admit_nonce_path ?? '/tmp/db674-length-time-admit-nonce.txt'}`,
       `select '${nonce.replaceAll("'", "''")}';`,
       `\\o`,
     ].join('\n'),

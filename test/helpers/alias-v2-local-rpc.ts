@@ -48,6 +48,11 @@ export type AliasV2InteropReady = {
    * Defaults to the Time campaign's `scratch_673` for markers that predate the field.
    */
   net_hold_schema?: string;
+  /**
+   * Where the driver writes the recovered dispatch nonce for the owner's completion script, when the
+   * marker names a path. Defaults to the Length*time campaign's own `/tmp/db674-…` path.
+   */
+  admit_nonce_path?: string;
   plan_sha256?: string;
 };
 
