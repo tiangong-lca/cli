@@ -322,6 +322,35 @@ test('each Length stage refuses its own missing argument before any fetch', asyn
   assert.deepEqual(calls, [], 'no protected endpoint is contacted for a missing argument');
 });
 
+test('a planning input that is not an object is refused before any artefact is written', async (t) => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'length-time-shape-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  for (const [label, text] of [
+    ['an array', `${stableJsonText([1, 2, 3])}\n`],
+    ['a string', `"not a planning input"\n`],
+    ['a number', `7\n`],
+    ['null', `null\n`],
+  ] as const) {
+    const inputPath = path.join(directory, `input-${label.replace(/ /g, '-')}.json`);
+    writeFileSync(inputPath, text, { mode: 0o600 });
+    const result = await executeCli(
+      [
+        'dataset',
+        'maintenance',
+        'plan',
+        '--length-time-input',
+        inputPath,
+        '--out-dir',
+        directory,
+        '--json',
+      ],
+      cliDeps(authOnlyFetch),
+    );
+    assert.equal(result.exitCode, 2, label);
+    assert.equal(errorCode(result), 'LENGTH_TIME_PUBLIC_ARTIFACT_INVALID', label);
+  }
+});
+
 test('the Length help documents its own versioned input', async () => {
   const help = await executeCli(
     ['dataset', 'maintenance', 'plan', '--help'],

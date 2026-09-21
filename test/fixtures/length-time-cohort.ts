@@ -79,7 +79,12 @@ export function lengthTimeFlowId(index: number): string {
   return `${FLOW_PREFIX}${hex2(index + 1)}`;
 }
 
-/** The exact `m*a` / `kmy` unit group at the canonical nested path. */
+/**
+ * The exact Length*time unit group at the canonical nested path, with the four rows and the factor
+ * spellings the real snapshot carries: the reference `m*a` at `1.0`, the sibling `my` at `1.0`, the
+ * prefixed `km*a` at `1000.0`, and the source `kmy` at `1000.0` — selected by the string internal id
+ * of the reference row.
+ */
 export function lengthTimeUnitGroup(): JsonObject {
   return {
     unitGroupDataSet: {
@@ -88,8 +93,10 @@ export function lengthTimeUnitGroup(): JsonObject {
       },
       units: {
         unit: [
-          { '@dataSetInternalID': '1', name: 'm*a', meanValue: '1' },
-          { '@dataSetInternalID': '2', name: 'kmy', meanValue: '1000' },
+          { '@dataSetInternalID': '1', name: 'm*a', meanValue: '1.0' },
+          { '@dataSetInternalID': '2', name: 'my', meanValue: '1.0' },
+          { '@dataSetInternalID': '3', name: 'km*a', meanValue: '1000.0' },
+          { '@dataSetInternalID': '4', name: 'kmy', meanValue: '1000.0' },
         ],
       },
       administrativeInformation: {
@@ -174,9 +181,7 @@ function exchange(overrides: JsonObject): JsonObject {
       '@refObjectId': UNRELATED_FLOW,
       '@version': VERSION,
     },
-    relativeStandardDeviation95In: { '#text': '0.1' },
     resultingAmount: '1',
-    uncertaintyDistributionType: 'lognormal',
   };
   const merged = { ...base, ...overrides };
   // The reviewed key set is exact on both sides of the wire; a fixture that drifted would make the
@@ -189,10 +194,16 @@ function exchange(overrides: JsonObject): JsonObject {
   return merged;
 }
 
-/** One source comment spelling; the audited corpus carries both the bare and the prose form. */
-function sourceComment(sourceNumber: string, prose: boolean): JsonObject {
+/**
+ * One source comment in the shape the audited corpus actually carries: the anchored declaration
+ * label, the number, its `.` delimiter — and then, for most of the corpus, an EcoSpold metadata
+ * suffix whose own digits are NOT source ids. The plain and suffixed forms are interleaved so the
+ * fixture exercises exactly the 13-plain / 26-suffixed split of the 39 real comments.
+ */
+function sourceComment(sourceNumber: string, suffixed: boolean): JsonObject {
+  const label = `Source EcoSpold1 exchange number: ${sourceNumber}.`;
   return {
-    '#text': prose ? `Source EcoSpold1 exchange number: ${sourceNumber}` : sourceNumber,
+    '#text': suffixed ? `${label} (1,2,3,4,5,6,BU:7.8); ;` : label,
   };
 }
 
@@ -236,6 +247,10 @@ export function buildLengthTimeCohort(): LengthTimeCohortFixture {
 
   let sourceCounter = 730101;
   let literalCursor = 0;
+  // The audited split of the 39 selected comments: 13 declare only the number and its delimiter,
+  // 26 continue with EcoSpold metadata whose digits are not source ids.
+  let commentCounter = 0;
+  let selectedCounter = 0;
   const processes: LengthTimeFixtureProcess[] = [];
   for (const [processIndex, instanceCount] of LENGTH_TIME_INSTANCES_PER_PROCESS.entries()) {
     const id = lengthTimeProcessId(processIndex);
@@ -256,21 +271,35 @@ export function buildLengthTimeCohort(): LengthTimeCohortFixture {
       const internalId = String(offset + 1);
       const sourceNumber = String(sourceCounter);
       sourceCounter += 1;
+      // The audited uncertainty carrier: the first 13 occurrences declare no distribution and no
+      // standard deviation, the next 22 declare `log-normal` without one, and the last 4 declare
+      // `log-normal` with one. Presence and absence are part of the fixture because the correction
+      // must preserve them exactly.
+      const uncertainty =
+        selectedCounter < 13
+          ? {}
+          : selectedCounter < 35
+            ? { uncertaintyDistributionType: 'log-normal' }
+            : {
+                uncertaintyDistributionType: 'log-normal',
+                relativeStandardDeviation95In: { '#text': '0.1' },
+              };
       const entry = exchange({
         '@dataSetInternalID': internalId,
         dataDerivationTypeStatus: 'Measured',
         exchangeDirection: isReference ? 'Output' : 'Input',
-        generalComment: sourceComment(sourceNumber, offset % 2 === 0),
+        generalComment: sourceComment(sourceNumber, commentCounter >= 13),
         meanAmount: before,
         referenceToFlowDataSet: {
           '@refObjectId': lengthTimeFlowId(flowIndex),
           '@version': VERSION,
         },
-        relativeStandardDeviation95In: { '#text': isReference ? '0.1' : '0.2' },
         resultingAmount: before,
-        uncertaintyDistributionType: 'lognormal',
+        ...uncertainty,
       });
       exchanges.push(entry);
+      commentCounter += 1;
+      selectedCounter += 1;
       instances.push({
         index: offset,
         internal_id: internalId,
@@ -319,6 +348,41 @@ export function buildLengthTimeCohort(): LengthTimeCohortFixture {
     });
   }
 
+  // The fixture must reproduce the real 13-plain / 26-metadata split, or the tests would keep
+  // passing on a shape the audited corpus does not have.
+  const selectedComments = processes.flatMap((process) =>
+    process.instances.map(
+      (instance) =>
+        (
+          ((process.json['processDataSet'] as JsonObject)['exchanges'] as JsonObject)[
+            'exchange'
+          ] as JsonObject[]
+        )[instance.index] as JsonObject,
+    ),
+  );
+  const suffixed = selectedComments.filter((exchange) =>
+    String((exchange['generalComment'] as JsonObject)['#text']).includes('(1,2,3,4,5,6,BU:7.8)'),
+  ).length;
+  if (selectedComments.length - suffixed !== 13 || suffixed !== 26) {
+    throw new Error('Length*time fixture must carry 13 plain and 26 metadata source comments.');
+  }
+  // The real uncertainty carrier: 13 without a distribution, 22 log-normal without a standard
+  // deviation, 4 log-normal with one.
+  const distributions = selectedComments.map((exchange) =>
+    Object.hasOwn(exchange, 'uncertaintyDistributionType')
+      ? String(exchange['uncertaintyDistributionType'])
+      : null,
+  );
+  const deviations = selectedComments.map((exchange) =>
+    Object.hasOwn(exchange, 'relativeStandardDeviation95In'),
+  );
+  if (
+    distributions.filter((value) => value === null).length !== 13 ||
+    distributions.filter((value) => value === 'log-normal').length !== 26 ||
+    deviations.filter(Boolean).length !== 4
+  ) {
+    throw new Error('Length*time fixture must carry the reviewed 13/22/4 uncertainty split.');
+  }
   return {
     actor_id: LENGTH_TIME_FIXTURE_ACTOR,
     flows,

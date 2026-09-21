@@ -159,6 +159,8 @@ test('the Length plan predicate refuses every widened or malformed document', ()
     ['a foreign visibility', (plan) => (plan['target_visibility'] = 'public')],
     ['a non-uuid actor', (plan) => (plan['actor_id'] = 'actor')],
     ['a malformed plan digest', (plan) => (plan['plan_sha256'] = 'nope')],
+    ['a missing expected block', (plan) => delete plan['expected']],
+    ['a null expected block', (plan) => (plan['expected'] = null)],
     ['a missing count key', (plan) => delete (plan['expected'] as JsonObject)['audit_count']],
     ['a quoted count', (plan) => ((plan['expected'] as JsonObject)['audit_count'] = '15')],
     ['a negative count', (plan) => ((plan['expected'] as JsonObject)['audit_count'] = -1)],

@@ -18,13 +18,18 @@
 
 import { CliError } from './errors.js';
 import { isJsonObject, sha256Json, type JsonObject } from './dataset-maintenance-contract.js';
-import { multiplyBoundedCanonicalDecimal } from './dataset-alias-exponent-decimal.js';
+import {
+  canonicalDecimalText,
+  multiplyBoundedCanonicalDecimal,
+} from './dataset-alias-exponent-decimal.js';
 import { isProductFlowPayload, readCanonicalUnitGroupRows } from './dataset-alias-v2-plan.js';
 
 export const LENGTH_TIME_PLAN_SCHEMA = 'dataset-length-time-plan.v1';
 
 /** The reviewed constant: `kmy` is 1000 `m*a`, so the correction multiplies by exactly this. */
 export const LENGTH_TIME_FACTOR = '1000';
+/** The reviewed reference factor: the unit the amounts are being moved onto. */
+export const LENGTH_TIME_REFERENCE_FACTOR = '1';
 export const LENGTH_TIME_SOURCE_UNIT = 'kmy';
 export const LENGTH_TIME_REFERENCE_UNIT = 'm*a';
 
@@ -37,20 +42,36 @@ export const LENGTH_TIME_DERIVE_MISMATCH = 'LENGTH_TIME_DERIVE_MISMATCH';
 export const LENGTH_TIME_UNCERTAINTY_UNSUPPORTED = 'LENGTH_TIME_UNCERTAINTY_UNSUPPORTED';
 
 /**
- * The reviewed exchange key set: exactly what every selected occurrence of the audited cohort
- * carries. Both amount leaves are absolute; the relative uncertainty field is the only uncertainty
- * shape this profile admits.
+ * The keys every selected occurrence of the audited cohort must carry: identity, derivation status,
+ * direction, the source declaration, both absolute amount leaves and the flow reference.
  */
-export const LENGTH_TIME_EXCHANGE_KEYS = [
+export const LENGTH_TIME_REQUIRED_EXCHANGE_KEYS = [
   '@dataSetInternalID',
   'dataDerivationTypeStatus',
   'exchangeDirection',
   'generalComment',
   'meanAmount',
   'referenceToFlowDataSet',
-  'relativeStandardDeviation95In',
   'resultingAmount',
+] as const;
+
+/**
+ * The reviewed uncertainty keys, which the audited cohort carries **unevenly**: of the 39 selected
+ * occurrences, 13 declare no distribution at all and no standard deviation, 22 declare `log-normal`
+ * without a standard deviation, and 4 declare `log-normal` with one. Presence, absence and value
+ * are therefore preserved byte-for-byte and are never interpreted, invented or defaulted — a missing
+ * standard deviation is a source-authoring gap in the input, not a quantity this correction may
+ * fabricate, and it does not block a pure x1000 rescale.
+ */
+export const LENGTH_TIME_OPTIONAL_EXCHANGE_KEYS = [
+  'relativeStandardDeviation95In',
   'uncertaintyDistributionType',
+] as const;
+
+/** The complete reviewed exchange key set: everything required, plus the optional uncertainty pair. */
+export const LENGTH_TIME_EXCHANGE_KEYS = [
+  ...LENGTH_TIME_REQUIRED_EXCHANGE_KEYS,
+  ...LENGTH_TIME_OPTIONAL_EXCHANGE_KEYS,
 ] as const;
 
 /**
@@ -99,9 +120,17 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const VERSION = /^[0-9]{2}\.[0-9]{2}\.[0-9]{3}$/u;
 const INTERNAL_ID = /^[0-9]{1,12}$/u;
 const TIMESTAMP = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T/u;
-/** The anchored source-number forms the audited corpus actually carries. */
-const BARE_SOURCE_NUMBER = /^([0-9]{1,12})$/u;
-const PROSE_SOURCE_NUMBER = /^Source EcoSpold1 exchange number:\s*([0-9]{1,12})$/u;
+/**
+ * The reviewed source-number declaration, exactly as the audited corpus spells it: the anchored
+ * label, optional spaces, the bounded numeric token, then its `.` delimiter. Everything after the
+ * delimiter is suffix metadata — preserved byte-for-byte, never scanned for a number — because the
+ * real comments carry EcoSpold tuples such as `(1,2,3,4,5,6,BU:7.8); ;` whose digits are not source
+ * ids, and the label word `EcoSpold1` carries one itself.
+ */
+const SOURCE_NUMBER_DECLARATION =
+  /^Source EcoSpold1 exchange number:[ \t]*([0-9]{1,12})\.[\s\S]*$/u;
+/** A second declaration anywhere in the comment makes the source id ambiguous. */
+const SOURCE_NUMBER_LABEL = /Source EcoSpold1 exchange number:/gu;
 
 export type LengthTimeRow = { id: string; version: string; json: JsonObject };
 export type LengthTimeProcessRow = LengthTimeRow & { modified_at: string };
@@ -146,6 +175,26 @@ export type LengthTimeInstance = {
   after_literal: string;
 };
 
+/** The reviewed factor leaf, as the locked row spells it. */
+function readFactorText(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
+/**
+ * Whether a locked unit row declares the reviewed factor. The real canonical table spells the
+ * factors `1.0` and `1000.0` while the reviewed constants are `1` and `1000`, so the comparison is
+ * exact-decimal numeric equivalence — the module's own bounded decimal normaliser, no float path and
+ * no enumeration of "extra accepted spellings": any value-equal spelling with trailing fractional
+ * zeros is accepted, and a malformed, out-of-bounds or merely-near value is refused.
+ */
+function equalsReviewedFactor(value: unknown, reviewed: string): boolean {
+  const text = readFactorText(value);
+  if (text === null) {
+    return false;
+  }
+  return canonicalDecimalText(text) === reviewed;
+}
+
 function invalid(message: string, details?: JsonObject): never {
   throw new CliError(message, {
     code: LENGTH_TIME_PLAN_INVALID,
@@ -182,6 +231,26 @@ function exchangeEntries(payload: JsonObject): JsonObject[] | null {
   return isJsonObject(value) ? [value] : null;
 }
 
+/**
+ * The functional-unit text a selected process's own before image carries. This profile never
+ * rewrites it — `1 kmy` stays correct because 1 kmy is 1000 m*a — but the text must be a present,
+ * non-empty string: the terminal readback compares the server's observation against it, and two
+ * absent values must never be able to satisfy that comparison.
+ */
+function functionalUnitText(payload: JsonObject): string | null {
+  // Only ever called on a payload whose exchange array has already resolved, so the
+  // `processDataSet` root is a proven object here.
+  const information = (payload['processDataSet'] as JsonObject)['processInformation'];
+  const quantitativeReference = isJsonObject(information)
+    ? information['quantitativeReference']
+    : null;
+  const functionalUnit = isJsonObject(quantitativeReference)
+    ? quantitativeReference['functionalUnitOrOther']
+    : null;
+  const text = isJsonObject(functionalUnit) ? functionalUnit['#text'] : null;
+  return typeof text === 'string' && text !== '' ? text : null;
+}
+
 function referenceIdentity(value: unknown): { id: string | null; version: string | null } {
   return isJsonObject(value)
     ? {
@@ -192,17 +261,24 @@ function referenceIdentity(value: unknown): { id: string | null; version: string
 }
 
 /**
- * The EcoSpold source number a selected exchange's own stored comment proves. Only the two anchored
- * forms the audited corpus carries are accepted — the bare number and the reviewed prose form — so a
- * comment with no number, with several, or with an unfamiliar spelling fails closed instead of being
- * read as whichever digits happen to appear.
+ * The EcoSpold source number a selected exchange's own stored comment proves, derived from the
+ * anchored declaration the audited corpus uses and from nothing else. The label must be at the
+ * start of the comment, its number must be the token directly followed by the `.` delimiter, and
+ * the suffix is left alone: a bare number, a missing delimiter, a foreign label, or a comment that
+ * declares its source twice all fail closed rather than being read as whichever digits happen to
+ * appear. The shared vectors in `test/fixtures/length-time-source-comment-vectors.json` fix this
+ * grammar for both halves of the wire.
  */
 export function lengthTimeSourceExchangeNumber(comment: unknown): string | null {
   const text = isJsonObject(comment) ? comment['#text'] : null;
   if (typeof text !== 'string') {
     return null;
   }
-  return BARE_SOURCE_NUMBER.exec(text)?.[1] ?? PROSE_SOURCE_NUMBER.exec(text)?.[1] ?? null;
+  const declared = text.match(SOURCE_NUMBER_LABEL)?.length ?? 0;
+  if (declared !== 1) {
+    return null;
+  }
+  return SOURCE_NUMBER_DECLARATION.exec(text)?.[1] ?? null;
 }
 
 /**
@@ -210,21 +286,11 @@ export function lengthTimeSourceExchangeNumber(comment: unknown): string | null 
  * a reference unit `m*a` at factor 1 named by the string selector, and a `kmy` row at factor 1000.
  */
 export function assertLengthTimeTargetUnitGroup(row: LengthTimeRow): void {
-  const { table, baseReference } = readCanonicalUnitGroupRows(
+  const { table, selected: base } = readCanonicalUnitGroupRows(
     row,
     'Length*time target unit group',
     LENGTH_TIME_TARGET_SHAPE_INVALID,
   );
-  const factorOf = (unit: JsonObject): string | null =>
-    typeof unit['meanValue'] === 'string' ? unit['meanValue'] : null;
-  const base = table.find((unit) => unit['@dataSetInternalID'] === baseReference);
-  if (base === undefined) {
-    fail(
-      LENGTH_TIME_TARGET_SHAPE_INVALID,
-      'Length*time target unit group must carry the referenced base unit.',
-      { id: row.id, reference: baseReference },
-    );
-  }
   if (base['name'] !== LENGTH_TIME_REFERENCE_UNIT) {
     fail(
       LENGTH_TIME_TARGET_SHAPE_INVALID,
@@ -232,35 +298,49 @@ export function assertLengthTimeTargetUnitGroup(row: LengthTimeRow): void {
       { id: row.id, name: base['name'] ?? null },
     );
   }
-  if (factorOf(base) !== '1' && factorOf(base) !== '1.0') {
+  if (!equalsReviewedFactor(base['meanValue'], LENGTH_TIME_REFERENCE_FACTOR)) {
     fail(
       LENGTH_TIME_TARGET_SHAPE_INVALID,
       'Length*time target unit group must carry the reference unit at factor 1.',
-      { id: row.id, factor: factorOf(base) },
+      { id: row.id, factor: readFactorText(base['meanValue']) },
     );
   }
   const kiloMetreYear = table.find((unit) => unit['name'] === LENGTH_TIME_SOURCE_UNIT);
-  if (kiloMetreYear === undefined || factorOf(kiloMetreYear) !== LENGTH_TIME_FACTOR) {
+  if (
+    kiloMetreYear === undefined ||
+    !equalsReviewedFactor(kiloMetreYear['meanValue'], LENGTH_TIME_FACTOR)
+  ) {
     fail(
       LENGTH_TIME_TARGET_SHAPE_INVALID,
       'Length*time target unit group must carry the reviewed kmy factor.',
       {
         id: row.id,
-        factor: kiloMetreYear === undefined ? null : factorOf(kiloMetreYear),
+        factor: kiloMetreYear === undefined ? null : readFactorText(kiloMetreYear['meanValue']),
       },
     );
   }
 }
 
 /**
+ * The normal reference kind a canonical flow property writes when it points at its unit group.
+ */
+export const LENGTH_TIME_UNIT_GROUP_REFERENCE_KIND = 'unit group data set';
+
+/**
  * Validates the canonical Length*time property: its plural information node must point at the
- * locked unit group, and it must carry the language-tagged name the plan's target binding rides on.
+ * locked unit group **at that exact version and kind**, and it must carry the language-tagged name
+ * the plan's target binding rides on.
+ *
+ * The version is required to be present and exactly equal, not merely absent-tolerant: a property
+ * whose pointer names a different version is a different (or stale) scientific reference, and
+ * hashing a mismatched pointer would let a frozen digest stand in for the real parent binding.
  */
 export function assertLengthTimeTargetFlowProperty(
   row: LengthTimeRow,
   unitGroup: LengthTimeRow,
 ): void {
-  const root = isJsonObject(row.json) ? row.json['flowPropertyDataSet'] : null;
+  // Callers reach this only with a row whose payload was already proven an object.
+  const root = (row.json as JsonObject)['flowPropertyDataSet'];
   const information = isJsonObject(root) ? root['flowPropertiesInformation'] : null;
   if (!isJsonObject(information)) {
     fail(
@@ -273,16 +353,25 @@ export function assertLengthTimeTargetFlowProperty(
   const declared = isJsonObject(quantitativeReference)
     ? quantitativeReference['referenceToReferenceUnitGroup']
     : null;
-  const declaredId = isJsonObject(declared) ? declared['@refObjectId'] : null;
-  const declaredVersion = isJsonObject(declared) ? declared['@version'] : null;
+  if (!isJsonObject(declared)) {
+    fail(
+      LENGTH_TIME_TARGET_SHAPE_INVALID,
+      'Length*time target flow property must carry its unit-group reference.',
+      { id: row.id },
+    );
+  }
+  const declaredId = declared['@refObjectId'];
+  const declaredVersion = declared['@version'];
+  const declaredKind = declared['@type'];
   if (
     declaredId !== unitGroup.id ||
-    (declaredVersion !== undefined && declaredVersion !== unitGroup.version)
+    declaredVersion !== unitGroup.version ||
+    declaredKind !== LENGTH_TIME_UNIT_GROUP_REFERENCE_KIND
   ) {
     fail(
       LENGTH_TIME_TARGET_SHAPE_INVALID,
-      'Length*time target flow property must reference the locked target unit group.',
-      { id: row.id, declared: declaredId ?? null, version: declaredVersion ?? null },
+      'Length*time target flow property must reference the locked target unit group at its exact version and kind.',
+      { id: row.id, declared: declaredId, version: declaredVersion, kind: declaredKind },
     );
   }
 }
@@ -376,7 +465,7 @@ function lengthTimeInstanceOf(
       );
     }
   }
-  for (const key of LENGTH_TIME_EXCHANGE_KEYS) {
+  for (const key of LENGTH_TIME_REQUIRED_EXCHANGE_KEYS) {
     if (!Object.hasOwn(exchange, key)) {
       fail(
         LENGTH_TIME_PLAN_INVALID,
@@ -385,6 +474,9 @@ function lengthTimeInstanceOf(
       );
     }
   }
+  // The optional uncertainty keys are neither required nor read: whatever the occurrence declares —
+  // nothing, a distribution without a deviation, or both — survives untouched in the desired image,
+  // because the whole payload is copied and only the two amount leaves move.
   const internalId = exchange['@dataSetInternalID'];
   if (typeof internalId !== 'string' || !INTERNAL_ID.test(internalId)) {
     fail(LENGTH_TIME_PLAN_INVALID, 'Length*time exchange must carry its internal id.', details);
@@ -523,7 +615,7 @@ export function buildLengthTimePlan(input: LengthTimePlanInput): LengthTimePlanR
       fail(
         LENGTH_TIME_SOURCE_SHAPE_INVALID,
         'Length*time read-only flow must resolve to the locked canonical property.',
-        { id: row.id, declared: declared.id ?? null, version: declared.version ?? null },
+        { id: row.id, declared: declared.id, version: declared.version },
       );
     }
     flowSnapshots.push({ id: row.id, version: row.version, sha256: sha256Json(row.json) });
@@ -557,6 +649,13 @@ export function buildLengthTimePlan(input: LengthTimePlanInput): LengthTimePlanR
     const instances = lengthTimeInstances(process as LengthTimeProcessRow, claimedFlows);
     if (instances.length === 0) {
       invalid('Length*time process carries no claimed occurrence to correct.', { id: row.id });
+    }
+    if (functionalUnitText(row.json) === null) {
+      fail(
+        LENGTH_TIME_PLAN_INVALID,
+        'Length*time process must carry its functional-unit text so the readback can observe it.',
+        { id: row.id },
+      );
     }
     const desired = clone(row.json);
     const desiredExchanges = exchangeEntries(desired) as JsonObject[];
@@ -608,7 +707,7 @@ export function buildLengthTimePlan(input: LengthTimePlanInput): LengthTimePlanR
       },
     );
   }
-  const cohortSha256 = sha256Json(lengthTimeEvidenceTuples(input));
+  const cohortSha256 = lengthTimeCohortSha256(input);
   if (cohortSha256 !== evidence.cohort_sha256 || exchangeCount !== evidence.instance_count) {
     fail(
       LENGTH_TIME_EVIDENCE_MISMATCH,

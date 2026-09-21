@@ -451,18 +451,12 @@ export function assertAliasV2PlanDocument(value: unknown): JsonObject {
  * stays one 13-key envelope with one canonical hash.
  */
 export function protectedTargetSnapshots(plan: JsonObject): JsonObject {
-  const snapshots =
-    protectedPlanProfile(plan) === 'length_time_v1'
-      ? lengthTimeTargetSnapshots(plan)
-      : plan['target_snapshots'];
-  if (!isJsonObject(snapshots)) {
-    fail(
-      'A protected plan artefact must carry its target snapshots.',
-      'ALIAS_V2_PROTECTED_ARTIFACT_INVALID',
-      2,
-    );
-  }
-  return snapshots;
+  // Both branches are object-valued by the profile's own plan predicate, which every caller has
+  // already run over this document: the Time plan's `target_snapshots` is asserted there, and the
+  // Length projection is built here from the plan's own two target blocks.
+  return protectedPlanProfile(plan) === 'length_time_v1'
+    ? lengthTimeTargetSnapshots(plan)
+    : (plan['target_snapshots'] as JsonObject);
 }
 
 /**

@@ -1,0 +1,59 @@
+{
+  "schema_version": "length-time-source-comment-vectors.v1",
+  "note": "Shared source-number grammar vectors for the Length*time profile. Both halves (CLI producer and database executor) read this list: the source id is the numeric token that directly follows the anchored label and its '.' delimiter, and nothing else in the comment may be read as one. The suffix after the delimiter is preserved byte-for-byte and may contain further numbers (EcoSpold metadata), including inside the label word 'EcoSpold1' itself.",
+  "label": "Source EcoSpold1 exchange number:",
+  "accepted": [
+    { "text": "Source EcoSpold1 exchange number: 730045.", "number": "730045" },
+    { "text": "Source EcoSpold1 exchange number: 730046. ", "number": "730046" },
+    {
+      "text": "Source EcoSpold1 exchange number: 730045. (1,2,3,4,5,6,BU:7.8); ;",
+      "number": "730045"
+    },
+    {
+      "text": "Source EcoSpold1 exchange number: 730101. (1,2,3,4,5,6,BU:7.8); ;\n(1,2,3,4,5,6,BU:7.8); ;",
+      "number": "730101"
+    },
+    {
+      "text": "Source EcoSpold1 exchange number: 730999. (1,2,3,4,5,6,BU:7.8); ; Source EcoSpold1 exchange number is unchanged.",
+      "number": "730999"
+    },
+    { "text": "Source EcoSpold1 exchange number: 1.", "number": "1" },
+    { "text": "Source EcoSpold1 exchange number:   730045.  x", "number": "730045" }
+  ],
+  "refused": [
+    { "text": "730045", "why": "a bare number carries no anchored source declaration" },
+    {
+      "text": "Source EcoSpold1 exchange number: 730045",
+      "why": "the numeric token must be closed by its period delimiter"
+    },
+    {
+      "text": "Source EcoSpold1 exchange number: .",
+      "why": "the delimiter alone declares no number"
+    },
+    {
+      "text": "Source EcoSpold1 exchange number: 730045 and 730999.",
+      "why": "two numbers before the delimiter are ambiguous"
+    },
+    {
+      "text": "Source EcoSpold1 exchange number: 730045. Source EcoSpold1 exchange number: 730046.",
+      "why": "a repeated source declaration is ambiguous"
+    },
+    {
+      "text": "see Source EcoSpold1 exchange number: 730045.",
+      "why": "the label must be anchored at the start of the comment"
+    },
+    {
+      "text": "Source EcoSpold1 exchange number 730045.",
+      "why": "the label must carry its colon"
+    },
+    {
+      "text": "Source EcoSpold2 exchange number: 730045.",
+      "why": "a foreign label is not this corpus's declaration"
+    },
+    { "text": "", "why": "an empty comment declares nothing" },
+    {
+      "text": "Source EcoSpold1 exchange number: 7300450000000000.",
+      "why": "the numeric token is bounded"
+    }
+  ]
+}

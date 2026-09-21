@@ -336,12 +336,17 @@ export function validateAliasV2TerminalProof(
     }
     if (entry['table'] === 'processes') {
       // A process carrying a text action must show the approved post text; every other process must
-      // still show the functional-unit text of its own before image.
+      // still show the functional-unit text of its own before image. The observation must be a real
+      // string: an absent or null field is not an observation of anything, and the plan's own value
+      // may never stand in for one.
       const expectedText =
         typeof action['after_text'] === 'string'
           ? action['after_text']
           : beforeTextOfProcess(action);
-      if ((entry['functional_unit_text'] ?? null) !== expectedText) {
+      if (
+        typeof entry['functional_unit_text'] !== 'string' ||
+        entry['functional_unit_text'] !== expectedText
+      ) {
         return { code: ALIAS_V2_RESPONSE_READBACK_MISMATCH };
       }
     }

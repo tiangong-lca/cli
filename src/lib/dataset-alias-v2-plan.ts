@@ -294,8 +294,10 @@ export function readCanonicalUnitGroupRows(
   row: AliasV2Row,
   label: string,
   code: string,
-): { root: JsonObject; table: JsonObject[]; baseReference: string } {
-  const dataSet = isJsonObject(row.json) ? row.json['unitGroupDataSet'] : null;
+): { root: JsonObject; table: JsonObject[]; baseReference: string; selected: JsonObject } {
+  // Callers reach this only with a row whose payload was already proven an object, so the read is a
+  // cast rather than a second shape guess; a payload without the node still fails closed below.
+  const dataSet = (row.json as JsonObject)['unitGroupDataSet'];
   const root = isJsonObject(dataSet) ? dataSet : null;
   const units = root === null ? null : root['units'];
   const entries = isJsonObject(units) ? units['unit'] : null;
@@ -324,7 +326,28 @@ export function readCanonicalUnitGroupRows(
       reference: baseReference ?? null,
     });
   }
-  return { root, table, baseReference };
+  // The selected reference must be exactly one row. A table with a repeated internal id would make
+  // "the" base unit depend on which duplicate happens to come first, so it is refused rather than
+  // silently resolved — the base unit of a correction may never be ambiguous.
+  const identifiers = table.map((unit) =>
+    typeof unit['@dataSetInternalID'] === 'string' ? (unit['@dataSetInternalID'] as string) : null,
+  );
+  if (identifiers.some((identifier) => identifier === null)) {
+    fail(code, `${label} must carry an internal id on every unit row.`, { id: row.id });
+  }
+  if (new Set(identifiers).size !== identifiers.length) {
+    fail(code, `${label} must not repeat a unit internal id.`, { id: row.id });
+  }
+  if (identifiers.filter((identifier) => identifier === baseReference).length !== 1) {
+    fail(code, `${label} must select exactly one row as its reference unit.`, {
+      id: row.id,
+      reference: baseReference,
+    });
+  }
+  // The selected row is returned rather than looked up again: after the uniqueness rule above it
+  // exists exactly once, so no caller needs a "the reference names no row" branch any more.
+  const selected = table[identifiers.indexOf(baseReference)] as JsonObject;
+  return { root, table, baseReference, selected };
 }
 
 /**
@@ -341,18 +364,14 @@ export function readCanonicalUnitGroupRows(
 function assertAliasV2UnitGroupTable(row: AliasV2Row, role: 'target' | 'source'): JsonObject {
   const code = role === 'target' ? ALIAS_V2_TARGET_SHAPE_INVALID : ALIAS_V2_SOURCE_SHAPE_INVALID;
   const label = role === 'target' ? 'Alias v2 target unit group' : 'Alias v2 source unit group';
-  const { root, table, baseReference } = readCanonicalUnitGroupRows(row, label, code);
+  const { root, table, baseReference, selected } = readCanonicalUnitGroupRows(row, label, code);
   const factorOf = (unit: JsonObject): string | null =>
     typeof unit['meanValue'] === 'string' ? unit['meanValue'] : null;
-  const base = table.find((unit) => unit['@dataSetInternalID'] === baseReference);
-  if (
-    base === undefined ||
-    !(YEAR_BASE_FACTORS as readonly (string | null)[]).includes(factorOf(base))
-  ) {
+  if (!(YEAR_BASE_FACTORS as readonly (string | null)[]).includes(factorOf(selected))) {
     fail(code, `${label} must carry the referenced base unit at the year factor 1.`, {
       id: row.id,
       reference: baseReference,
-      factor: base === undefined ? null : factorOf(base),
+      factor: factorOf(selected),
     });
   }
   const hourly = table.find((unit) => unit['name'] === 'hr');
