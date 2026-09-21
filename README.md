@@ -84,6 +84,8 @@ Review note, 2026-08-31: Issue #256 upgrades the still-0.1.5 development/runtime
 
 Review note, 2026-08-31: Issue #257 releases that merged dependency graph as `@tiangong-lca/cli@0.1.6`. Only package identity, four exact-version fixtures, and release evidence change; commands, executable/public subpaths, OAuth/session behavior, exact TIDAS/Supabase dependencies, pnpm lock, Node/TypeScript toolchain, and clean consumer contract remain unchanged.
 
+Review note, 2026-09-21: `dataset maintenance` gains the versioned (v2) Time alias path for the fixed BAFU current-owner cohort. `plan --alias-v2-input` builds a `dataset-alias-plan.v2` plan and batch, `freeze-protected` derives the versioned freeze from that plan plus the reviewed six-key derivative baselines, `seal-protected-approval` seals it byte-exactly as it always has, and `run-protected` selects the chain from the seal's schema. The versioned path keeps the real v1 protected envelope (the twelve-key preflight request, three gates inside the unchanged 180-second window, exactly one admission POST, readback-only recovery of an unknown admission) while its `expected` block is the v1 ten flat counts with v2 values plus the versioned `text_action_count`. The CLI side is implemented and locally verified; production use still requires the matching database capability and a coordinated database/CLI release, and this path is not deployed or executed.
+
 Review note, 2026-07-12: `dataset maintenance plan/apply/verify` provides current-user RLS-scoped exact-row maintenance with immutable plans, explicit approval, per-action logs, platform audit correlation, and independent readback. `merge-support-aliases` now runs only in `target_mode=owner_draft`: source/target support and all changed rows stay private `state_code=0`; publication is a separate future workflow.
 
 Review note, 2026-07-13: maintenance scans now prove exact-count pagination even when PostgREST returns fewer rows than the requested `--page-size`. An incomplete or inconsistent scan fails before artifacts, approval, or mutation; under stable filtered membership/order the proof represents a complete ordered multi-request traversal, not one transaction-level/MVCC snapshot.
@@ -664,6 +666,64 @@ tiangong-lca dataset maintenance run-protected \
 Before requesting preflight, the command validates the sealed production project, full current-user RLS before-state, support closure, and exact derivative baseline. The server then returns the three expected gate digests and a token valid for at most 180 seconds; the CLI captures and compares the live gate receipts before admission. The server-dispatched write remains fenced to the authenticated actor's exact `user_id`, `state_code=0` rows and sealed plan/closure; independent readback still uses RLS. The CLI writes an immutable local submission marker and sends at most one admission POST. A marker, admission timeout, connection loss, or ambiguous admission response permanently switches that local run to status-only recovery; status-read failures may be polled only within the configured wait window and never cause a second admission or fallback to dev or the legacy whole-plan RPC. The default status polling interval is 10 seconds.
 
 Success requires the terminal database proof and independent RLS readback to agree on the approved execution, exact row/exchange/audit closure, and exactly 50 derivative targets split into 23 flows and 27 processes. `pending`, `failed`, and `indeterminate` all return a non-zero exit status. The protected operation keeps all affected rows private to their owner, changes no `state_code`, and does not publish data.
+
+### Versioned Time alias (v2)
+
+The versioned Time alias path is the same protected chain with versioned science, for the fixed BAFU current-owner cohort whose source-proven before amounts are one-hour quantities written in years. It is selected explicitly and never inferred from a missing flag:
+
+```bash
+# 1. Versioned plan and batch from the reviewed planning input (no --scope/--operation):
+tiangong-lca dataset maintenance plan \
+  --alias-v2-input ./alias-v2/planning-input.json \
+  --out-dir ./alias-v2 \
+  --json
+
+# 2. Versioned freeze; a dataset-alias-plan.v2 plan requires its reviewed derivative baselines:
+tiangong-lca dataset maintenance freeze-protected \
+  --plan ./alias-v2/alias-v2-plan.json \
+  --toolchain-evidence ./alias-v2/toolchain-evidence.json \
+  --derivative-baselines ./alias-v2/derivative-baselines.json \
+  --expected-project-ref <production-project-ref> \
+  --confirm <current-account-email> \
+  --out-dir ./alias-v2/freeze \
+  --json
+
+# 3. Seal the human approval exactly as for v1 (still offline):
+tiangong-lca dataset maintenance seal-protected-approval \
+  --freeze ./alias-v2/freeze/protected-v2-execution-freeze.json \
+  --approval-request ./alias-v2/freeze/protected-v2-approval-request.json \
+  --human-approval ./alias-v2/freeze/protected-v2-human-approval.txt \
+  --approve-freeze-file <freeze-file-sha256> \
+  --approve-request <approval-request-sha256> \
+  --approve-text <approval-text-sha256> \
+  --confirm <current-account-email> \
+  --approved-at <approved-at-utc-from-request> \
+  --out-dir ./alias-v2/approval \
+  --json
+
+# 4. Run or recover; the seal's schema selects the versioned chain:
+tiangong-lca dataset maintenance run-protected \
+  --plan ./alias-v2/alias-v2-plan.json \
+  --freeze ./alias-v2/freeze/protected-v2-execution-freeze.json \
+  --approval ./alias-v2/approval/protected-v2-approval.json \
+  --out-dir ./alias-v2/run \
+  --commit \
+  --approve-execution <approved-execution-sha256> \
+  --confirm <current-account-email> \
+  --wait-seconds 60 \
+  --poll-ms 10000 \
+  --json
+```
+
+The stages write `alias-v2-plan.json`, `alias-v2-batch.json`, `protected-v2-execution-freeze.json`, `protected-v2-approval-request.json`/`.txt`, `protected-v2-human-approval.txt` and then `protected-v2-approval.json`, followed by the run's `protected-v2-preflight-evidence.json`, `protected-v2-gate-receipts.jsonl`, `protected-v2-submission-marker.json`, `protected-v2-status-progress.jsonl` and `protected-v2-report-<n>.json`. Before any fetch the run re-proves the whole chain locally: the plan file and content digests, the freeze's own content digest, the approval's content identity, the operator's explicit `--approve-execution` and the confirmed account email, and the fresh authenticated actor/project — a seal that does not bind this exact plan file, content, expected counts and snapshots, or that was approved by another account, never reaches the network.
+
+The preflight request keeps the real v1 twelve-key envelope (versioned schemas, `target_visibility: owner_draft`, the production environment enum, a client-generated request id) with the complete plan, freeze and approval documents nested inside it. Its `expected` block is the real v1 ten flat counts — actions, batches, exchanges, amount fields, unrelated exchanges, audits, flow properties, flows, processes and derivative targets — with the versioned v2 values plus `text_action_count`; a declared root/reference closure is deliberately not part of this contract, because primary and global closure stay proven by the preflight/gate/read sets and digests. Every derivative target is one of the plan's actual changed Flow/Process rows and the freeze refuses a target list that is not exactly that set.
+
+The versioned admission carries exactly the five reviewed keys (schema version, request id, preflight token, preflight proof digest and the three gate results) and is posted at most once for an execution; the server-side queue reaches the private executor through its service-only callback, which the CLI never calls. The three gates — primary support plan, execution unused and derivative quiescence — keep their v1 names and their 180-second window; only their versioned identities differ. An unknown admission outcome, an unreadable submission marker or a corrupt one is never read as "nothing happened": the run moves to `readback_required` and only the read stage may follow, bounded by its attempt budget. A read that finds no durable evidence for the request ends in an explicit `ALIAS_V2_EXECUTION_NOT_APPLIED` refusal for review, never in an automatic resubmission, so `--status-only` always asks the server — including from a fresh output directory that holds no local evidence.
+
+Source-unit bookkeeping is explicit in the versioned plan. `source_evidence.declared_source_unitgroup` is the unit group the source flow property declares _today_ — the same year-based "Units of time" table as the target, whose base unit `a` the before amounts are read in — while `source_evidence.original_source_unit` is the original physical unit that the content-bound campaign evidence proves. The orphan hour unit group record is historical provenance only: no row is pointed at it, it is not a write target, and the current year declaration is never read as proof that the stored amounts are already years. Before values keep their original bytes, exponent spellings included; only the desired values are canonical ordinary decimals. Flow eligibility is restricted to the reviewed `Product flow` kind, and the reviewed factor is fixed at `0.00011415525114155251`.
+
+Production use of this path still requires the matching database capability and a coordinated database/CLI release. The CLI side is implemented and locally verified; this path has not been deployed, and no business execution has been performed with it.
 
 For the derivative-only profile, use the same three commands with `--operation rebuild-derivatives`. Its scope must contain exactly one `processes` action with `action: "rebuild_derivatives"`, `target_mode: "owner_draft"`, expected current owner, expected `state_code: 0`, and the exact component set `extracted_md` plus `embedding_ft`.
 
