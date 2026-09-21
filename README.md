@@ -32,8 +32,8 @@ checkPaths:
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 8cb5a100d59463c08e009089da8ce9707fe98aef
-lastReviewedNote: 'Reviewed for CLI #356: 0.1.20 is the version-only release preparation for merged source PR #355; the package-version line separates the in-repository preparation from the actually published 0.1.19, and no cli-v0.1.20 tag exists yet.'
+lastReviewedCommit: 83189e2
+lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: the exponent math milestone is an additive library module with tests; public commands, exports, package identity and release path are unchanged.'
 ---
 
 CLI 0.1.10 is the designated C1 release for `tiangong-lca runtime describe --json` and the explicit `@tiangong-lca/cli/runtime` API for package, asset and Node content inspection. Runtime inspection loads no project `.env`, performs no authentication and downloads nothing. See [the runtime distribution contract](docs/agents/runtime-distribution-contract.md) for exact fields and trust boundaries; verify public availability and provenance before treating the candidate version as released.
@@ -83,6 +83,8 @@ Review note, 2026-08-31: Issue #252 replaces the stopped-unpublished 0.1.4 attem
 Review note, 2026-08-31: Issue #256 upgrades the still-0.1.5 development/runtime graph to Supabase JS 2.112.4, lint-staged 17.4.1, Prettier 3.9.6, and tsx 4.23.13. TIDAS SDK is pinned exactly to npm-latest 0.2.0 and every stricter validation/data workflow stays in the exact-100% gate. Node 24.19.0 deliberately keeps latest 24.x typings rather than Node 26. The formatter rewrite is a separate mechanical commit; OAuth, public exports, commands, tags, and publication behavior do not change. Issue #257 owns the later version-only 0.1.6 release.
 
 Review note, 2026-08-31: Issue #257 releases that merged dependency graph as `@tiangong-lca/cli@0.1.6`. Only package identity, four exact-version fixtures, and release evidence change; commands, executable/public subpaths, OAuth/session behavior, exact TIDAS/Supabase dependencies, pnpm lock, Node/TypeScript toolchain, and clean consumer contract remain unchanged.
+
+Review note, 2026-09-21: `dataset maintenance` gains the versioned (v2) Time alias path for the fixed BAFU current-owner cohort. `plan --alias-v2-input` builds a `dataset-alias-plan.v2` plan and batch, `freeze-protected` derives the versioned freeze from that plan plus the reviewed six-key derivative baselines, `seal-protected-approval` seals it byte-exactly as it always has, and `run-protected` selects the chain from the seal's schema. The versioned path keeps the real v1 protected envelope (the twelve-key preflight request, three gates inside the unchanged 180-second window, exactly one admission POST, readback-only recovery of an unknown admission) while its `expected` block is the v1 ten flat counts with v2 values plus the versioned `text_action_count`. The CLI side is implemented and locally verified; production use still requires the matching database capability and a coordinated database/CLI release, and this path is not deployed or executed.
 
 Review note, 2026-07-12: `dataset maintenance plan/apply/verify` provides current-user RLS-scoped exact-row maintenance with immutable plans, explicit approval, per-action logs, platform audit correlation, and independent readback. `merge-support-aliases` now runs only in `target_mode=owner_draft`: source/target support and all changed rows stay private `state_code=0`; publication is a separate future workflow.
 
@@ -550,6 +552,8 @@ A contract dry-run (no `--commit`) performs real authentication plus the exact o
 
 The one bounded exception is an existing owner Process draft whose only validation failure is the annual evidence gap (`annual_supply_or_production_volume_missing`) while both the stored and candidate `annualSupplyOrProductionVolume` stay the unchanged empty array `[]`. Such a candidate may change only the text of `common:shortDescription` under `...dataSourcesTreatmentAndRepresentativeness.referenceToDataSource` or `...publicationAndOwnership.common:referenceToOwnershipOfDataSet`; array lengths and order, languages, reference ids/versions/URIs and every other field must stay identical, at least one real change is required, and a missing annual field that would become `[]` is never admitted. The decision is made only after the fresh before read proved the contract's owner, state 0 and before hash, so drift, a foreign owner or a non-draft state fails first, and the stored draft itself is re-validated with the same real validator on a clone: a before with a schema, content or multilingual failure, another authoring code, or a blank/placeholder reference description is refused even when the candidate would "fix" it. An admitted row writes through the same guarded before-image transport with `ruleVerification=false` and records a content-bound `draft_repair_admission` (`dataset-draft-repair-admission.v1`, policy `process-metadata-unknown-annual.v1`, before/desired SHA-256, `changed_paths`, `publication_ready:false`); its row keeps `validation.ok=false` with the failed authoring layer, so nothing is reported ready. The admission is bound into the hashed `attempt_emitted` ledger event of that first dispatch, so after a crash between dispatch and outcome a new run returns the original admission from that attempt and resolves by exact readback only — it never re-derives the admission from a fresh read that may already hold the desired content. Legacy attempt events without the field stay valid and simply carry no admission, and any tampered, dropped or semantically drifting admission fails the ledger check instead of being trusted. Inserts, contract-less commands and every other blocker stay on the strict admission path, and a dry-run records the same admission without dispatching.
 
+Review note, 2026-09-21: CLI #358 adds the bounded exact exponent decimal module for the versioned v2 Time alias plan (mantissa up to 64 digits, exponent within +/-30, bigint normalisation, no floating point) and its anonymized real-shape RED/GREEN tests. It is additive: the frozen v1 alias grammar, profiles, constants, plan/response shape and every historical replay identity are byte-unchanged, and the tests pin that v1 still refuses exponent quantities. The v2 wire (plan/batch schema, counts, response shape) awaits the Database #673 proposal and is not decided here.
+
 Review note, 2026-09-21: Issue #356 prepares the 0.1.20 version-only release for merged source PR #355 on branch `codex/issue-356-cli-0.1.20` (base main merge `8cb5a10`). Package identity and the four live CLI-version fixtures advance; dependencies, the sole lock, runtime files, strict exports, commands and release automation stay unchanged. The source is merged but publication has not happened — npm latest is `0.1.19` and no `cli-v0.1.20` tag exists — so the package-version line above states the in-repository release preparation and the actually published version separately instead of claiming a release.
 
 Review note, 2026-09-21: CLI #354 adds the bounded existing-draft support metadata repair for Unit Group and Flow Property rows. `src/lib/dataset-draft-repair-admission.ts` now owns two policies that share one artifact and one byte-identical-everything-else walker: the released Process annual-gap policy is unchanged, while the new `support-reference-metadata.v1` policy admits only a bounded `save_draft` contract action whose fresh before image and candidate both pass all four validation layers, whose ids/versions/URIs/language structure/units/factors/reference property are unchanged, and whose only delta is the existing `common:shortDescription.#text` of the row's own ownership or source reference. The write reuses the guarded before-image transport (the deployed `api.cmd_dataset_save_draft_guarded` already accepts `unitgroups` and `flowproperties` and delegates to the single existing writer) and keeps `ruleVerification: true`. The ledger reuses the same hashed `attempt_emitted` admission binding plus a policy-to-table correlation, so a tampered or cross-policy admission is refused. Ordinary reference-only rejection, inserts, published rows, science or reference retargeting, language/shape changes and non-contract commands are untouched. No dependency, version, lock or release change; this capability is not part of the version-only 0.1.19 release and needs its own later release.
@@ -662,6 +666,64 @@ tiangong-lca dataset maintenance run-protected \
 Before requesting preflight, the command validates the sealed production project, full current-user RLS before-state, support closure, and exact derivative baseline. The server then returns the three expected gate digests and a token valid for at most 180 seconds; the CLI captures and compares the live gate receipts before admission. The server-dispatched write remains fenced to the authenticated actor's exact `user_id`, `state_code=0` rows and sealed plan/closure; independent readback still uses RLS. The CLI writes an immutable local submission marker and sends at most one admission POST. A marker, admission timeout, connection loss, or ambiguous admission response permanently switches that local run to status-only recovery; status-read failures may be polled only within the configured wait window and never cause a second admission or fallback to dev or the legacy whole-plan RPC. The default status polling interval is 10 seconds.
 
 Success requires the terminal database proof and independent RLS readback to agree on the approved execution, exact row/exchange/audit closure, and exactly 50 derivative targets split into 23 flows and 27 processes. `pending`, `failed`, and `indeterminate` all return a non-zero exit status. The protected operation keeps all affected rows private to their owner, changes no `state_code`, and does not publish data.
+
+### Versioned Time alias (v2)
+
+The versioned Time alias path is the same protected chain with versioned science, for the fixed BAFU current-owner cohort whose source-proven before amounts are one-hour quantities written in years. It is selected explicitly and never inferred from a missing flag:
+
+```bash
+# 1. Versioned plan and batch from the reviewed planning input (no --scope/--operation):
+tiangong-lca dataset maintenance plan \
+  --alias-v2-input ./alias-v2/planning-input.json \
+  --out-dir ./alias-v2 \
+  --json
+
+# 2. Versioned freeze; a dataset-alias-plan.v2 plan requires its reviewed derivative baselines:
+tiangong-lca dataset maintenance freeze-protected \
+  --plan ./alias-v2/alias-v2-plan.json \
+  --toolchain-evidence ./alias-v2/toolchain-evidence.json \
+  --derivative-baselines ./alias-v2/derivative-baselines.json \
+  --expected-project-ref <production-project-ref> \
+  --confirm <current-account-email> \
+  --out-dir ./alias-v2/freeze \
+  --json
+
+# 3. Seal the human approval exactly as for v1 (still offline):
+tiangong-lca dataset maintenance seal-protected-approval \
+  --freeze ./alias-v2/freeze/protected-v2-execution-freeze.json \
+  --approval-request ./alias-v2/freeze/protected-v2-approval-request.json \
+  --human-approval ./alias-v2/freeze/protected-v2-human-approval.txt \
+  --approve-freeze-file <freeze-file-sha256> \
+  --approve-request <approval-request-sha256> \
+  --approve-text <approval-text-sha256> \
+  --confirm <current-account-email> \
+  --approved-at <approved-at-utc-from-request> \
+  --out-dir ./alias-v2/approval \
+  --json
+
+# 4. Run or recover; the seal's schema selects the versioned chain:
+tiangong-lca dataset maintenance run-protected \
+  --plan ./alias-v2/alias-v2-plan.json \
+  --freeze ./alias-v2/freeze/protected-v2-execution-freeze.json \
+  --approval ./alias-v2/approval/protected-v2-approval.json \
+  --out-dir ./alias-v2/run \
+  --commit \
+  --approve-execution <approved-execution-sha256> \
+  --confirm <current-account-email> \
+  --wait-seconds 60 \
+  --poll-ms 10000 \
+  --json
+```
+
+The stages write `alias-v2-plan.json`, `alias-v2-batch.json`, `protected-v2-execution-freeze.json`, `protected-v2-approval-request.json`/`.txt`, `protected-v2-human-approval.txt` and then `protected-v2-approval.json`, followed by the run's `protected-v2-preflight-evidence.json`, `protected-v2-gate-receipts.jsonl`, `protected-v2-submission-marker.json`, `protected-v2-status-progress.jsonl` and `protected-v2-report-<n>.json`. Before any fetch the run re-proves the whole chain locally: the plan file and content digests, the freeze's own content digest, the approval's content identity, the operator's explicit `--approve-execution` and the confirmed account email, and the fresh authenticated actor/project — a seal that does not bind this exact plan file, content, expected counts and snapshots, or that was approved by another account, never reaches the network.
+
+The preflight request keeps the real v1 twelve-key envelope (versioned schemas, `target_visibility: owner_draft`, the production environment enum, a client-generated request id) with the complete plan, freeze and approval documents nested inside it. Its `expected` block is the real v1 ten flat counts — actions, batches, exchanges, amount fields, unrelated exchanges, audits, flow properties, flows, processes and derivative targets — with the versioned v2 values plus `text_action_count`; a declared root/reference closure is deliberately not part of this contract, because primary and global closure stay proven by the preflight/gate/read sets and digests. Every derivative target is one of the plan's actual changed Flow/Process rows and the freeze refuses a target list that is not exactly that set.
+
+The versioned admission carries exactly the five reviewed keys (schema version, request id, preflight token, preflight proof digest and the three gate results) and is posted at most once for an execution; the server-side queue reaches the private executor through its service-only callback, which the CLI never calls. The three gates — primary support plan, execution unused and derivative quiescence — keep their v1 names and their 180-second window; only their versioned identities differ. An unknown admission outcome, an unreadable submission marker or a corrupt one is never read as "nothing happened": the run moves to `readback_required` and only the read stage may follow, bounded by its attempt budget. A read that finds no durable evidence for the request ends in an explicit `ALIAS_V2_EXECUTION_NOT_APPLIED` refusal for review, never in an automatic resubmission, so `--status-only` always asks the server — including from a fresh output directory that holds no local evidence.
+
+Source-unit bookkeeping is explicit in the versioned plan. `source_evidence.declared_source_unitgroup` is the unit group the source flow property declares _today_ — the same year-based "Units of time" table as the target, whose base unit `a` the before amounts are read in — while `source_evidence.original_source_unit` is the original physical unit that the content-bound campaign evidence proves. The orphan hour unit group record is historical provenance only: no row is pointed at it, it is not a write target, and the current year declaration is never read as proof that the stored amounts are already years. Before values keep their original bytes, exponent spellings included; only the desired values are canonical ordinary decimals. Flow eligibility is restricted to the reviewed `Product flow` kind, and the reviewed factor is fixed at `0.00011415525114155251`.
+
+Production use of this path still requires the matching database capability and a coordinated database/CLI release. The CLI side is implemented and locally verified; this path has not been deployed, and no business execution has been performed with it.
 
 For the derivative-only profile, use the same three commands with `--operation rebuild-derivatives`. Its scope must contain exactly one `processes` action with `action: "rebuild_derivatives"`, `target_mode: "owner_draft"`, expected current owner, expected `state_code: 0`, and the exact component set `extracted_md` plus `embedding_ft`.
 

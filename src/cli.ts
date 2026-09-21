@@ -310,7 +310,19 @@ import {
 import { runDatasetMaintenancePlan } from './lib/dataset-maintenance-plan.js';
 import { runDatasetMaintenanceApply } from './lib/dataset-maintenance-apply.js';
 import { freezeDatasetMaintenanceProtected } from './lib/dataset-maintenance-protected-freeze.js';
-import { runDatasetMaintenanceProtected } from './lib/dataset-maintenance-protected-run.js';
+import {
+  type DatasetMaintenanceProtectedReport,
+  type RunDatasetMaintenanceProtectedOptions,
+} from './lib/dataset-maintenance-protected-run.js';
+import { runDatasetMaintenanceProtectedDispatch } from './lib/dataset-maintenance-protected-dispatch.js';
+import {
+  freezeAliasV2Protected,
+  isAliasV2FreezeFile,
+  isAliasV2PlanFile,
+  planAliasV2,
+  sealAliasV2ProtectedApproval,
+} from './lib/dataset-alias-v2-public.js';
+import type { AliasV2ProtectedReport } from './lib/dataset-alias-v2-protected.js';
 import { sealDatasetMaintenanceProtectedApproval } from './lib/dataset-maintenance-protected-seal.js';
 import { runDatasetMaintenanceVerify } from './lib/dataset-maintenance-verify.js';
 import { runFlowIdentityPlanFromFiles } from './lib/dataset-maintenance-flow-identity-command.js';
@@ -516,7 +528,9 @@ export type CliDeps = {
   runDatasetMaintenancePlanImpl?: typeof runDatasetMaintenancePlan;
   runDatasetMaintenanceApplyImpl?: typeof runDatasetMaintenanceApply;
   freezeDatasetMaintenanceProtectedImpl?: typeof freezeDatasetMaintenanceProtected;
-  runDatasetMaintenanceProtectedImpl?: typeof runDatasetMaintenanceProtected;
+  runDatasetMaintenanceProtectedImpl?: (
+    options: RunDatasetMaintenanceProtectedOptions,
+  ) => Promise<DatasetMaintenanceProtectedReport | AliasV2ProtectedReport>;
   sealDatasetMaintenanceProtectedApprovalImpl?: typeof sealDatasetMaintenanceProtectedApproval;
   runDatasetMaintenanceVerifyImpl?: typeof runDatasetMaintenanceVerify;
   runFlowIdentityPlanFromFilesImpl?: typeof runFlowIdentityPlanFromFiles;
@@ -1119,6 +1133,10 @@ Operations:
 Options:
   --scope <file>       Maintenance scope manifest
   --operation <value> Intended row-level maintenance operation
+  --alias-v2-input <file>
+                       Reviewed Time alias planning input; builds the versioned
+                       dataset-alias-plan.v2 plan and batch instead of the scope-driven plan
+                       (requires --out-dir and ignores --scope/--operation)
   --out-dir <dir>      Artifact directory
   --page-size <n>      Requested snapshot page size, 1-5000 (default: 1000); server caps are followed using exact counts
   --timeout-ms <n>     Request timeout in milliseconds
@@ -1175,6 +1193,10 @@ Required:
   --out-dir <dir>               New private immutable artifact directory
 
 Options:
+  --derivative-baselines <file> Reviewed six-key derivative baselines; required when --plan is a
+                                dataset-alias-plan.v2 (versioned Time alias) plan, whose freeze is
+                                then derived from the plan, the toolchain evidence and these
+                                baselines under the authenticated owner's own account
   --page-size <n>               Complete account scan page size, 1-5000
   --timeout-ms <n>              Positive authentication/read timeout in milliseconds
   --json                        Print compact JSON
@@ -1209,6 +1231,11 @@ Required:
 Options:
   --json                        Print compact JSON
   -h, --help
+
+Versioned selection:
+  A dataset-alias-execution-freeze.v2 freeze seals the versioned approval request the versioned
+  freeze-protected run produced; the byte-exact text, freeze-file hash, request hash and account
+  checks are the same ones v1 has always enforced.
 
 Offline safety:
   This command receives no environment or HTTP client and performs zero authentication, network,
@@ -1251,6 +1278,13 @@ Options:
   --timeout-ms <n>          Positive request timeout in milliseconds
   --json                    Print compact JSON
   -h, --help
+
+Versioned selection:
+  The seal decides the chain. A dataset-alias-execution-freeze.v2 seal runs the versioned Time
+  alias lifecycle (preflight, the three gates, one admission, then the read stage) with the same
+  180-second window, the same single-admission policy and the same durable local evidence; a v1
+  seal runs the frozen v1 chain unchanged. Unknown admission outcomes are recovered only by the
+  read stage, and the sealed plan's expected counts are checked against the server's proof.
 
 Only a terminal passed proof exits successfully. pending, failed, and indeterminate return non-zero.
 `.trim();
@@ -4597,6 +4631,7 @@ function parseDatasetMaintenancePlanFlags(args: string[]): {
   json: boolean;
   scopePath: string;
   operation: DatasetMaintenanceOperation | null;
+  aliasV2InputPath: string;
   outDir: string;
   pageSize: number | undefined;
   timeoutMs: number | undefined;
@@ -4612,6 +4647,7 @@ function parseDatasetMaintenancePlanFlags(args: string[]): {
         json: { type: 'boolean' },
         scope: { type: 'string' },
         operation: { type: 'string' },
+        'alias-v2-input': { type: 'string' },
         'out-dir': { type: 'string' },
         'page-size': { type: 'string' },
         'timeout-ms': { type: 'string' },
@@ -4651,6 +4687,7 @@ function parseDatasetMaintenancePlanFlags(args: string[]): {
     json: Boolean(values.json),
     scopePath: typeof values.scope === 'string' ? values.scope : '',
     operation: rawOperation as DatasetMaintenanceOperation | null,
+    aliasV2InputPath: typeof values['alias-v2-input'] === 'string' ? values['alias-v2-input'] : '',
     outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : '',
     pageSize: parseDatasetMaintenancePositiveInteger(values['page-size'], '--page-size'),
     timeoutMs: parseDatasetMaintenancePositiveInteger(values['timeout-ms'], '--timeout-ms'),
@@ -4758,6 +4795,7 @@ function parseDatasetMaintenanceFreezeProtectedFlags(args: string[]): {
   json: boolean;
   planPath: string;
   toolchainEvidencePath: string;
+  derivativeBaselinesPath: string;
   outDir: string;
   expectedProjectRef: string;
   confirm: string;
@@ -4775,6 +4813,7 @@ function parseDatasetMaintenanceFreezeProtectedFlags(args: string[]): {
         json: { type: 'boolean' },
         plan: { type: 'string' },
         'toolchain-evidence': { type: 'string' },
+        'derivative-baselines': { type: 'string' },
         'out-dir': { type: 'string' },
         'expected-project-ref': { type: 'string' },
         confirm: { type: 'string' },
@@ -4794,6 +4833,8 @@ function parseDatasetMaintenanceFreezeProtectedFlags(args: string[]): {
     planPath: typeof values.plan === 'string' ? values.plan : '',
     toolchainEvidencePath:
       typeof values['toolchain-evidence'] === 'string' ? values['toolchain-evidence'] : '',
+    derivativeBaselinesPath:
+      typeof values['derivative-baselines'] === 'string' ? values['derivative-baselines'] : '',
     outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : '',
     expectedProjectRef:
       typeof values['expected-project-ref'] === 'string' ? values['expected-project-ref'] : '',
@@ -7372,7 +7413,7 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
     const datasetMaintenanceProtectedFreezeImpl =
       deps.freezeDatasetMaintenanceProtectedImpl ?? freezeDatasetMaintenanceProtected;
     const datasetMaintenanceProtectedImpl =
-      deps.runDatasetMaintenanceProtectedImpl ?? runDatasetMaintenanceProtected;
+      deps.runDatasetMaintenanceProtectedImpl ?? runDatasetMaintenanceProtectedDispatch;
     const datasetMaintenanceProtectedApprovalSealImpl =
       deps.sealDatasetMaintenanceProtectedApprovalImpl ?? sealDatasetMaintenanceProtectedApproval;
     const datasetMaintenanceVerifyImpl =
@@ -8471,6 +8512,25 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
             stderr: '',
           };
         }
+        if (datasetFlags.aliasV2InputPath) {
+          // Explicit versioned selection: the reviewed alias-plan input document builds the
+          // versioned plan and batch through the same builder the protected run consumes.
+          if (!datasetFlags.outDir) {
+            throw new CliError('dataset maintenance plan requires --out-dir.', {
+              code: 'DATASET_MAINTENANCE_OUT_DIR_REQUIRED',
+              exitCode: 2,
+            });
+          }
+          const v2Plan = planAliasV2({
+            inputPath: datasetFlags.aliasV2InputPath,
+            outDir: datasetFlags.outDir,
+          });
+          return {
+            exitCode: 0,
+            stdout: stringifyJson(v2Plan, datasetFlags.json),
+            stderr: '',
+          };
+        }
         if (!datasetFlags.scopePath) {
           throw new CliError('dataset maintenance plan requires --scope.', {
             code: 'DATASET_MAINTENANCE_SCOPE_REQUIRED',
@@ -8619,6 +8679,36 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
             exitCode: 2,
           });
         }
+        if (isAliasV2PlanFile(datasetFlags.planPath)) {
+          // The versioned freeze derives every binding from the plan, the toolchain evidence and
+          // the frozen derivative baselines; the account is the authenticated owner's.
+          if (!datasetFlags.derivativeBaselinesPath) {
+            throw new CliError(
+              'dataset maintenance freeze-protected requires --derivative-baselines for a versioned plan.',
+              {
+                code: 'DATASET_MAINTENANCE_PROTECTED_BASELINES_REQUIRED',
+                exitCode: 2,
+              },
+            );
+          }
+          const v2Freeze = await freezeAliasV2Protected({
+            planPath: datasetFlags.planPath,
+            toolchainEvidencePath: datasetFlags.toolchainEvidencePath,
+            derivativeBaselinesPath: datasetFlags.derivativeBaselinesPath,
+            outDir: datasetFlags.outDir,
+            expectedProjectRef: datasetFlags.expectedProjectRef,
+            confirm: datasetFlags.confirm,
+            cliVersion: loadCliPackageVersion(import.meta.url),
+            env: deps.env,
+            fetchImpl: deps.fetchImpl,
+            ...(datasetFlags.timeoutMs === undefined ? {} : { timeoutMs: datasetFlags.timeoutMs }),
+          });
+          return {
+            exitCode: 0,
+            stdout: stringifyJson(v2Freeze, datasetFlags.json),
+            stderr: '',
+          };
+        }
         const report = await datasetMaintenanceProtectedFreezeImpl({
           planPath: datasetFlags.planPath,
           toolchainEvidencePath: datasetFlags.toolchainEvidencePath,
@@ -8720,6 +8810,24 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
             code: 'DATASET_MAINTENANCE_PROTECTED_OUT_DIR_REQUIRED',
             exitCode: 2,
           });
+        }
+        if (isAliasV2FreezeFile(datasetFlags.freezePath)) {
+          const v2Seal = sealAliasV2ProtectedApproval({
+            freezePath: datasetFlags.freezePath,
+            approvalRequestPath: datasetFlags.approvalRequestPath,
+            humanApprovalPath: datasetFlags.humanApprovalPath,
+            outDir: datasetFlags.outDir,
+            approveFreezeFile: datasetFlags.approveFreezeFile,
+            approveRequest: datasetFlags.approveRequest,
+            approveText: datasetFlags.approveText,
+            confirm: datasetFlags.confirm,
+            approvedAtUtc: datasetFlags.approvedAtUtc,
+          });
+          return {
+            exitCode: 0,
+            stdout: stringifyJson(v2Seal, datasetFlags.json),
+            stderr: '',
+          };
         }
         const report = await datasetMaintenanceProtectedApprovalSealImpl({
           freezePath: datasetFlags.freezePath,

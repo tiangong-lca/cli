@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 'd603d53ac6d54dd0ea6ce65f8c1ebf4f6e345311'
-lastReviewedNote: 'Reviewed the combined CLI #354 support-metadata repair and concurrent CLI #350 Process review-array adoption at main d603d53. Reviewed for CLI #354 at head a1295ac: 实施指南补充有界既有草稿 support 元数据修复（仅 save_draft 合同、双侧四层全通过、仅既有引用 shortDescription 文本变化、复用 guarded 传输与 ledger），不影响命令面、依赖、版本或发布路径。 Reviewed for CLI #350 after current main integration: Process review 支持单对象或非空有序数组；SDK 0.3.0 过渡兼容层逐项校验并保留索引错误路径，不改变命令顺序、账本职责或执行契约。'
+lastReviewedCommit: 83189e2
+lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: 实施指南补充 v2 有界精确指数十进制模块（无浮点、v1 不变），v2 wire 待 Database #673 提案。'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -37,6 +37,8 @@ related:
 # TianGong LCA CLI 实施指南
 
 Review note, 2026-09-20: CLI #340 将 SDK 精确锁升级至已发布 0.2.2，公共规则绑定至 spec 0.2.1。`dataset contract/context-pack` 保留显式请求的 ruleset 文件、manifest 摘要和 AI 上下文路径，但内容由 CLI profile 与已验证公共定义组合；不再读取 SDK 的旧混合规则文件。Process Version 说明采用正式规范修正后的 NN.NN 与可选 NN.NN.NNN 语义。
+
+Review note, 2026-09-21: CLI #358 新增 v2 Time alias 计划所需的**有界精确指数十进制**模块（mantissa ≤64 位、指数 ±30、bigint 归一、无浮点）及其匿名真实 shape 的 RED/GREEN 测试；纯增量，冻结的 v1 grammar/profile/常量/计划与响应形状/历史重放身份逐字节不变（测试同时钉住 v1 仍拒绝指数形态）。v2 wire（schema/计数/响应）待 Database #673 提案，不在本次决定。
 
 Review note, 2026-09-21: CLI #350 将内置 18 份 schema 同步到 `tidas-spec` 0.2.2 精确候选 `8a9470a7dd4c074ae246bb9967b3bfae3e371e32`。Process 的 `validation.review` 可为单对象或非空有序数组；在 SDK #147 正式发布前，CLI 通过现有 SDK 0.3.0 逐项校验数组成员，保持输入与顺序不变，并把错误定位恢复到对应数组索引。LCIA Method 仍只接受单对象，CLI 包版本仍为 0.1.18。
 
@@ -71,6 +73,8 @@ Review note, 2026-08-26: Issue #233 对公共 batch 做纯移动式模块化。`
 Review note, 2026-08-26: Issue #236 只更新精确 package-manager contract：manifest、engine、release verifier、静态测试和 active docs 统一到 pnpm 11.24.0。使用该版本执行 lockfile-only reconciliation 后唯一根 lock 无字节变化；Node 24.19.0、唯一 TypeScript 7.0.2 图、包版本 0.1.1、dependencies、public exports/runtime、tag 与 publication 均保持不变，且不新增 npm/Yarn 或 alternate lock。
 
 Review note, 2026-07-30: Issue #214 将 identity preflight 的远程检索参数收敛为单一 `lexical_weight`，并把 derivative snapshot/readback 依赖收敛到 `extracted_md`、`embedding_ft` 与 `embedding_ft_at`。既有 owner-draft、一次性 admission、独立 readback 与 fail-closed 规则保持不变。
+
+Review note, 2026-09-21: `dataset maintenance` 增加版本化（v2）Time alias 路径：`plan --alias-v2-input` 构建 `dataset-alias-plan.v2` plan/batch，v2 plan 的 `freeze-protected` 要求 reviewed 六键 `--derivative-baselines` 并派生版本化 freeze，`seal-protected-approval` 保持字节级离线封装，`run-protected` 由 seal schema 选择链路。v2 沿用真实 v1 protected 信封（十二键 preflight、180 秒窗口三项 gate、单次 admission POST、unknown 只能经有界 read 恢复），`expected` 为真 v1 十个 flat count 加版本化 `text_action_count` 且不再有调用方声明 closure，derivative target 必须逐行对应 plan 改动身份；源单位区分在 plan 中显式命名为 declared vs original。CLI 侧已实现并本地验证，生产仍需数据库侧能力与协同发布。
 
 Review note, 2026-07-12: `dataset maintenance plan/apply/verify` 已把 BAFU `time` / `length_time` FP alias 迁移固化为两个不可拆分的 owner-draft guarded batch。scope/plan 强制 `target_mode=owner_draft`，RPC/审计/replay/readback 强制 `target_visibility=owner_draft`；52 行、59 条 exchange、精确十进制换算、309 条无关 exchange、owner/state、payload/modified_at/hash 与目标引用 postcondition 都属于不可变计划契约。该操作不再依赖或执行 FP/UG 发布。
 
@@ -255,7 +259,7 @@ tiangong-lca
 | `tiangong-lca dataset references rewrite` | 本地 process / lifecyclemodel rows 的 flow reference rewrite、patch evidence 输出，并可选走 state-aware save-draft commit |
 | `tiangong-lca dataset save-draft` | 通用 canonical dataset dry-run/save-draft 入口；可选 `--execution-contract` 将 project/owner/state 0、输入顺序、before/desired hashes、预期 insert/update 与依赖绑定到稳定 action ledger，并以 exact owner readback 收口模糊响应且不重放 |
 | `tiangong-lca dataset maintenance clear-account` | 已实现的当前账号 draft 清理入口；先生成当前用户 RLS 可见 snapshot，默认 dry-run，只有显式 `--commit --confirm <当前账号邮箱>` 才按 `lifecyclemodels -> processes -> flows -> sources -> contacts` 顺序执行。普通 dataset rows 通过 `app_dataset_delete` / `cmd_dataset_delete` 删除，读回验证剩余行数；`unitgroups` / `flowproperties` 默认保护不删 |
-| `tiangong-lca dataset maintenance plan/apply/freeze-protected/seal-protected-approval/run-protected/verify` | 已实现的 row-level 维护入口。普通 V1 维护通过当前账号 RLS 冻结 exact draft rows 并走平台 `save_draft` / `delete`；固定 BAFU protected profile 先由 `freeze-protected` 直接读取 production owner-draft 状态并生成未批准请求，再由完全离线的 `seal-protected-approval` 记录人类逐字节批准，最后只能由服务器调度的 `run-protected` 以唯一 durable attempt/admission identity 执行和恢复。写入以 actor/user_id/state_code=0 与精确 plan/closure 栅栏保护，RLS 用于公开入口和独立读回；`rebuild-derivatives` V1 仍只允许一个 owner-draft process。所有路径共享不可变 plan、显式审批、durable proof 与独立 readback，且不发布 FP/UG |
+| `tiangong-lca dataset maintenance plan/apply/freeze-protected/seal-protected-approval/run-protected/verify` | 已实现的 row-level 维护入口；版本化（v2）Time alias 选择由 `plan --alias-v2-input`（`dataset-alias-plan.v2` plan/batch）、v2 plan 必备的 `freeze-protected --derivative-baselines`、离线 `seal-protected-approval` 与按 seal schema 分派的 `run-protected` 组成，其 `expected` 为真 v1 十个 flat count 加 `text_action_count`，无调用方声明 closure，且 derivative target 必须恰好是 plan 改动的行身份。普通 V1 维护通过当前账号 RLS 冻结 exact draft rows 并走平台 `save_draft` / `delete`；固定 BAFU protected profile 先由 `freeze-protected` 直接读取 production owner-draft 状态并生成未批准请求，再由完全离线的 `seal-protected-approval` 记录人类逐字节批准，最后只能由服务器调度的 `run-protected` 以唯一 durable attempt/admission identity 执行和恢复。写入以 actor/user_id/state_code=0 与精确 plan/closure 栅栏保护，RLS 用于公开入口和独立读回；`rebuild-derivatives` V1 仍只允许一个 owner-draft process。所有路径共享不可变 plan、显式审批、durable proof 与独立 readback，且不发布 FP/UG |
 | `tiangong-lca lifecyclemodel auto-build` | 本地 lifecyclemodel local-run intake、graph 推断、reference process 选择、`json_ordered` artifact 输出 |
 | `tiangong-lca lifecyclemodel validate-build` | 本地 lifecyclemodel build run 校验重跑、per-model 校验报告与 aggregate report 输出 |
 | `tiangong-lca lifecyclemodel publish-build` | 本地 lifecyclemodel publish handoff、publish bundle/request/intent 产出、validation 摘要复用 |

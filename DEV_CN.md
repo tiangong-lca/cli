@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 'd603d53ac6d54dd0ea6ce65f8c1ebf4f6e345311'
-lastReviewedNote: 'Reviewed the combined CLI #354 support-metadata repair and concurrent CLI #350 Process review-array adoption at main d603d53. Reviewed for CLI #354 at head a1295ac: 维护者说明补充有界既有草稿 support 元数据修复（仅合同 save_draft、双侧四层全通过、仅既有引用 shortDescription 文本变化、复用 guarded 传输与 ledger），命令面、依赖、版本与发布路径不变。 Reviewed for CLI #350 after current main integration: Process review 可为单对象或非空有序数组；SDK 0.3.0 过渡桥接保留真实问题并移除旧对象类型伪阳性，不改变既有开发、门禁、发布或维护步骤。'
+lastReviewedCommit: 83189e2
+lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: 维护者说明补充有界精确指数十进制模块（v1 不变，v2 wire 待提案），无依赖/版本/lock 变化。'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -36,7 +36,11 @@ related:
 
 当前 #274 平台合同仅支持 macOS arm64、Linux x64/arm64、Windows x64；不通过旧版安装器回退 macOS Intel。`runtime ensure/status/prune/lease-release/exec` 已由 CLI 的 manifest、完整文件清单、锁、缓存及 lease 控制；无 Node 的 POSIX/PowerShell bootstrap 已进入 `scripts/bootstrap/`，只读取相邻的产品 lock；公开 C1 和组件资格仍待完成。运行时描述/组件分发的 owner 与验证边界见 [Runtime Distribution Contract](docs/agents/runtime-distribution-contract.md)。
 
+Review note, 2026-09-21: CLI #358 新增 v2 Time alias 计划所需的**有界精确指数十进制**模块（mantissa ≤64 位、指数 ±30、bigint 归一、无浮点）及其匿名真实 shape 的 RED/GREEN 测试；纯增量，v1 grammar/profile/常量/历史重放身份逐字节不变（测试钉住 v1 仍拒绝指数形态）。v2 wire（schema/计数/响应）待 Database #673 提案，不在本次决定。
+
 Review note, 2026-09-21: CLI #354 在有界准入中新增第二条 policy。执行合同的 `save_draft` action 现在也可进入既有草稿的 Unit Group / Flow Property 元数据修复：fresh before 与 candidate 必须同时通过全部四层校验，数据集 id/version 与该行自身 ownership/source 引用的 id/version/URI、语言结构、单位/因子/引用性质完全不变，唯一允许的改动是该引用的既有 `common:shortDescription.#text`；准入后仍使用完整 before 的 guarded 传输、同一 attempt/no-replay ledger 与 exact readback，行报告 policy 为 `support-reference-metadata.v1` 且 `ruleVerification` 保持 `true`（该行是完整有效行），ledger 中的 admission 必须与其所属表的 policy 匹配。其余 support 行的 reference-only 拒绝、insert、已发布行、科学/引用改写与非合同命令完全不变。该能力仅为 source 变更，不属于 0.1.19 版本发布。
+
+Review note, 2026-09-21: `dataset maintenance` 新增版本化（v2）Time alias 路径，用于固定 BAFU 当前账号 cohort：`plan --alias-v2-input` 构建 `dataset-alias-plan.v2` plan/batch，`freeze-protected` 在 v2 plan 上要求 reviewed 六键 `--derivative-baselines` 派生版本化 freeze，`seal-protected-approval` 仍按字节级核对封装批准，`run-protected` 由 seal 的 schema 选择链路。v2 保留真实 v1 protected 信封（十二键 preflight、180 秒窗口内三项 gate、每次执行最多一次 admission POST、unknown admission 只能经 read 阶段有界恢复），`expected` 改为真 v1 十个 flat count 加版本化 `text_action_count`，不再有调用方声明的 closure。CLI 侧已实现并本地全门禁验证；生产使用仍需数据库侧对应能力与协同发布，未部署、未执行。
 
 Review note, 2026-09-18: CLI #338 将 Process/LCIA Method 的完整评审报告引用改为可选，并在已发布 SDK 尚未携带候选 schema 的短窗口内对缺失引用做一次内存兼容重试；提供的引用仍严格校验，Lifecycle Model 不变。该变更只影响 schema/validation 与测试，不改变命令、依赖、版本、认证或发布路径。
 
@@ -367,6 +371,10 @@ node ./bin/tiangong-lca.js dataset maintenance verify --plan ./dataset-maintenan
 node ./bin/tiangong-lca.js dataset maintenance freeze-protected --plan ./protected-step2/maintenance-plan.json --toolchain-evidence ./protected-step2/toolchain-evidence.json --expected-project-ref <production-ref> --confirm <current-account-email> --out-dir ./protected-step2/freeze --json
 node ./bin/tiangong-lca.js dataset maintenance seal-protected-approval --freeze ./protected-step2/freeze/protected-execution-freeze.json --approval-request ./protected-step2/freeze/protected-approval-request.json --human-approval ./protected-step2/human-approval.txt --approve-freeze-file <sha256> --approve-request <sha256> --approve-text <sha256> --confirm <current-account-email> --approved-at <approved-at-utc-from-request> --out-dir ./protected-step2/approval --json
 node ./bin/tiangong-lca.js dataset maintenance run-protected --plan ./protected-step2/maintenance-plan.json --freeze ./protected-step2/freeze/protected-execution-freeze.json --approval ./protected-step2/approval/protected-approval.json --out-dir ./protected-step2/run --status-only --json
+node ./bin/tiangong-lca.js dataset maintenance plan --alias-v2-input ./alias-v2/planning-input.json --out-dir ./alias-v2 --json
+node ./bin/tiangong-lca.js dataset maintenance freeze-protected --plan ./alias-v2/alias-v2-plan.json --toolchain-evidence ./alias-v2/toolchain-evidence.json --derivative-baselines ./alias-v2/derivative-baselines.json --expected-project-ref <production-ref> --confirm <current-account-email> --out-dir ./alias-v2/freeze --json
+node ./bin/tiangong-lca.js dataset maintenance seal-protected-approval --freeze ./alias-v2/freeze/protected-v2-execution-freeze.json --approval-request ./alias-v2/freeze/protected-v2-approval-request.json --human-approval ./alias-v2/freeze/protected-v2-human-approval.txt --approve-freeze-file <sha256> --approve-request <sha256> --approve-text <sha256> --confirm <current-account-email> --approved-at <approved-at-utc-from-request> --out-dir ./alias-v2/approval --json
+node ./bin/tiangong-lca.js dataset maintenance run-protected --plan ./alias-v2/alias-v2-plan.json --freeze ./alias-v2/freeze/protected-v2-execution-freeze.json --approval ./alias-v2/approval/protected-v2-approval.json --out-dir ./alias-v2/run --commit --approve-execution <sha256> --confirm <current-account-email> --wait-seconds 60 --poll-ms 10000 --json
 node ./bin/tiangong-lca.js lifecyclemodel auto-build --input ./examples/lifecyclemodel-auto-build.request.json --out-dir /abs/path/to/lifecyclemodel-run --json
 node ./bin/tiangong-lca.js lifecyclemodel validate-build --run-dir /abs/path/to/lifecyclemodel-run --json
 node ./bin/tiangong-lca.js lifecyclemodel publish-build --run-dir /abs/path/to/lifecyclemodel-run --json
@@ -406,6 +414,25 @@ node ./bin/tiangong-lca.js admin embedding-run --input ./jobs.json --dry-run
 `freeze-protected` 必须提供 canonical plan、已发布 DB/CLI/根仓集成 toolchain evidence、显式 production project ref、当前账号邮箱和私有输出目录。它在任何 server token 或写入之前完成完整 account census、六份 support snapshot、projected-reference closure 与稳定排序的 23-flow + 27-process derivative baseline；报告中的 preflight、gate、admission、execution、mutation 与 approval-artifact 计数必须全部为零。`seal-protected-approval` 完全离线，逐字节保存人类返回文本，并精确核对 freeze 文件字节 hash、request identity、文本 hash、账号与批准时间；它只生成 approval，不提交 execution。
 
 `run-protected` 的两种模式都必须提供 `--plan`、`--freeze`、`--approval` 与私有 `--out-dir`。首次提交还必须提供 `--commit`、精确 `--approve-execution <sha256>` 和 `--confirm <current-account-email>`；恢复使用互斥的 `--status-only`。CLI 在 preflight 前完成 production project、完整 RLS before-state、support closure 和 50-target derivative baseline 校验；服务器 preflight 再给出三项 gate 的期望摘要与最长 180 秒 token，CLI 对比 live gate receipt 后才允许 admission。服务器执行以认证 actor、精确 user_id/state_code=0 与 plan/closure 栅栏约束写入，独立读回继续使用 RLS。只允许一次 immutable marker 写入和一次 admission POST；marker、admission timeout、断网或不明确 admission 响应之后不得再次 admission，只能 status-only 查询。状态读取异常只可在配置的等待窗口内轮询，默认间隔 10 秒，不会触发 admission 重试。只有数据库终态证明与独立 RLS readback 同时确认 52 行、59 exchanges、55 audits 和 50 个 derivative targets（23 flows + 27 processes）时才返回 `passed`；`pending`、`failed`、`indeterminate` 都返回非零。该路径不发布、不改 `state_code`，也不触碰其他账号或公开数据。
+
+### 版本化 Time alias（v2）
+
+`dataset maintenance` 的版本化（v2）Time alias 路径是同一套 protected 链路加上版本化科学内容，用于固定 BAFU 当前账号 cohort（源证据证明的 before 数量是一小时量、却按年书写）。它必须显式选择，不会因为缺少某个 flag 而隐式进入：
+
+```bash
+node ./bin/tiangong-lca.js dataset maintenance plan --alias-v2-input ./alias-v2/planning-input.json --out-dir ./alias-v2 --json
+node ./bin/tiangong-lca.js dataset maintenance freeze-protected --plan ./alias-v2/alias-v2-plan.json --toolchain-evidence ./alias-v2/toolchain-evidence.json --derivative-baselines ./alias-v2/derivative-baselines.json --expected-project-ref <production-ref> --confirm <current-account-email> --out-dir ./alias-v2/freeze --json
+```
+
+`plan --alias-v2-input` 只构建 `dataset-alias-plan.v2` plan 与 batch（不使用 `--scope`/`--operation`，但必须提供 `--out-dir`）；`freeze-protected` 在 v2 plan 上必须提供 `--derivative-baselines`（reviewed 六键 baseline，逐行覆盖 plan 实际改动的 387 行 Flow/Process 身份），并写出 `alias-v2-plan.json`、`alias-v2-batch.json`、`protected-v2-execution-freeze.json`、`protected-v2-approval-request.json`/`.txt`、`protected-v2-human-approval.txt`；`seal-protected-approval` 的字节级文本、freeze 文件 hash、request identity、text hash、账号与批准时间核对与 v1 完全相同，只生成 `protected-v2-approval.json`；`run-protected` 由 seal 的 schema 决定链路——`dataset-alias-execution-freeze.v2` 走 v2，其它 seal 仍走冻结的 v1 链路，两种模式的 flag 与一次性 admission 语义不变。
+
+wire 仍是真实 v1 信封：十二键 preflight（`schema_version/request_id/environment/project_ref/actor/target_visibility/plan/freeze/approval/bindings/expected/derivative_targets`，schema 与身份版本化，`target_visibility=owner_draft`，request_id 由客户端生成并绑定 plan/freeze/approval 内容），三项 gate（`primary_support_plan`/`execution_unused`/`derivative_quiescence`）名称与 180 秒窗口不变、仅 receipt/request/audit 身份版本化，admission 仍只有五个键（schema、request_id、preflight token、preflight proof 摘要、三项 gate 结果）且每次执行最多一次 POST。CLI 不调用私有 executor，服务端队列通过 service-only 回调触达 `private.cmd_dataset_alias_execution_execute_v2`。`expected` 是真 v1 十个 flat count（action/batch/exchange/amount_field/unrelated_exchange/audit/flowproperty/flow/process/derivative_target）加版本化的 `text_action_count`；调用方声明的 root/reference closure 不再是契约的一部分，主/全局 closure 仍由 preflight/gate/read 的集合与摘要证明。每个 derivative target 都对应 plan 实际改动的一行，target 列表与改动身份集合不一致时 freeze 直接拒绝（一个占位 target 无法冻结成可执行子集）。
+
+unknown 边界：不明确的 admission 响应、不可读或损坏的本地 submission marker 都不会被当成"没有发生"；run 进入 `readback_required`，此后只允许 read 阶段且受 attempt 上限约束。read 找不到该 request 的 durable evidence 时以显式 `ALIAS_V2_EXECUTION_NOT_APPLIED` 结束供人工复核，绝不自动重投；因此 `--status-only` 即使在新输出目录也必须询问服务端，而不是凭本地状态断言未执行。
+
+源单位区分在版本化 plan 中显式命名：`source_evidence.declared_source_unitgroup` 是 source alias **当前声明**的单位组（与 target 相同的 year-based "Units of time" 表，before 数量按该表 base unit `a` 读取），`source_evidence.original_source_unit` 是内容绑定 campaign 证据所证明的**原始物理单位**；orphan hour 单位组记录只是历史凭据，没有任何行指向它、它不是写入目标，当前声明也绝不当作"数量已经是年"的证明（`dimensions[0].declared_source_unitgroup` 同样显式命名）。before 值保留原始字节（含指数写法），只有 desired 值必须渲染为 canonical 普通小数；flow 资格仅限 `Product flow`，factor 固定 `0.00011415525114155251`，FU 只修正源证据证明的 `1`/`1.0 a` 前缀。
+
+该路径的 CLI 侧已实现并在本地门禁（typecheck、lint、格式、100% 覆盖）中验证；生产使用仍需数据库侧对应能力与协同 database/CLI 发布，因此本文档不代表已部署或已执行任何业务修复，Foundry/skills 也只能调用已发布 CLI。
 
 maintenance 的 account-wide `plan`、apply preflight、`verify` 与 `clear-account` 共用 fail-closed exact-count paginator。它发送 `Prefer: count=exact`，把 `--page-size 1-5000` 当作 requested maximum；即使服务端把 5000 截成 1000，也按实际返回长度继续读取，而不是错误地跳到 offset 5000。每个表都必须证明 `Content-Range` total 恒定、range 与 body 一致、`id/version` 严格递增且无重复，汇总 proof 还必须覆盖全部预期表和 entity count。任何不完整或不一致的初始扫描都在生成快照/approval 或执行删除/更新前失败；新 plan、dry-run、approval 与 readback report 会保留相应 completeness proof。
 

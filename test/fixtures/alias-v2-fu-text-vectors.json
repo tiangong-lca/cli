@@ -1,0 +1,114 @@
+{
+  "schema": "dataset-alias-v2-fu-text-vectors.v1",
+  "note": "The reviewed functional-unit text grammar, shared verbatim with the storage-side owner. Semantics: the quantity token 1 or 1.0, exactly one ASCII space, the unit token a, then a suffix that begins with one ASCII space and contains at least one character that is neither a space nor a tab, and no CR or LF anywhere. The entire suffix is preserved byte-for-byte; only the unit token a becomes hr. Synthetic vectors only: no dataset, account or business content.",
+  "regex_source": "^(1|1\\.0) a( [^\\r\\n]*[^ \\t\\r\\n][^\\r\\n]*)$",
+  "posix_note": "The equivalent storage-side expression must keep the same three properties: one ASCII space after a, at least one non-space/non-tab character, and no CR/LF. The vectors below are the authority for equality.",
+  "accepted": [
+    {
+      "input": "1 a x",
+      "after": "1 hr x"
+    },
+    {
+      "input": "1.0 a x",
+      "after": "1.0 hr x"
+    },
+    {
+      "input": "1.0 a Use, computer, office use",
+      "after": "1.0 hr Use, computer, office use"
+    },
+    {
+      "input": "1 a  two spaces",
+      "after": "1 hr  two spaces"
+    },
+    {
+      "input": "1.0 a Tab\tinside",
+      "after": "1.0 hr Tab\tinside"
+    },
+    {
+      "input": "1.0 a 1 kg product",
+      "after": "1.0 hr 1 kg product"
+    },
+    {
+      "input": "1.0 a x ",
+      "after": "1.0 hr x "
+    },
+    {
+      "input": "1.0 a Unit äöü suffix",
+      "after": "1.0 hr Unit äöü suffix"
+    }
+  ],
+  "refused": [
+    {
+      "input": "",
+      "reason": "empty text"
+    },
+    {
+      "input": "1.0 a",
+      "reason": "no suffix at all"
+    },
+    {
+      "input": "1.0 a ",
+      "reason": "separator only"
+    },
+    {
+      "input": "1.0 a   ",
+      "reason": "whitespace-only suffix"
+    },
+    {
+      "input": "1.0 a \t ",
+      "reason": "tab-only suffix"
+    },
+    {
+      "input": "1.0 a2 x",
+      "reason": "glued separator: no space after the unit token"
+    },
+    {
+      "input": "1.0 a\tx",
+      "reason": "tab separator instead of an ASCII space"
+    },
+    {
+      "input": "1.0 a x\ny",
+      "reason": "LF inside the suffix"
+    },
+    {
+      "input": "1.0 a x\ry",
+      "reason": "CR inside the suffix"
+    },
+    {
+      "input": "1.0 a x\n",
+      "reason": "trailing LF"
+    },
+    {
+      "input": "1.0 a x\r",
+      "reason": "trailing CR"
+    },
+    {
+      "input": "1.0a x",
+      "reason": "no space between quantity and unit token"
+    },
+    {
+      "input": "2 a x",
+      "reason": "unsupported quantity"
+    },
+    {
+      "input": "1.00 a x",
+      "reason": "unsupported quantity spelling"
+    },
+    {
+      "input": "1.0 A x",
+      "reason": "uppercase unit token"
+    },
+    {
+      "input": "1.0 kg x",
+      "reason": "unsupported unit token"
+    },
+    {
+      "input": "1.0  a x",
+      "reason": "two spaces before the unit token"
+    },
+    {
+      "input": "x 1.0 a x",
+      "reason": "leading noise before the quantity"
+    }
+  ]
+}

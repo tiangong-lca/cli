@@ -1,0 +1,43 @@
+{
+  "unitGroupDataSet": {
+    "unitGroupInformation": {
+      "quantitativeReference": {
+        "referenceToReferenceUnit": "1"
+      }
+    },
+    "units": {
+      "unit": [
+        {
+          "name": "a",
+          "meanValue": "1.0",
+          "@dataSetInternalID": "1"
+        },
+        {
+          "name": "yr",
+          "meanValue": "1.0",
+          "@dataSetInternalID": "2"
+        },
+        {
+          "name": "year",
+          "meanValue": "1.0",
+          "@dataSetInternalID": "3"
+        },
+        {
+          "name": "hr",
+          "meanValue": "0.00011415525114155251",
+          "@dataSetInternalID": "4"
+        },
+        {
+          "name": "h",
+          "meanValue": "0.00011415525114155251",
+          "@dataSetInternalID": "5"
+        },
+        {
+          "name": "hour",
+          "meanValue": "0.00011415525114155251",
+          "@dataSetInternalID": "6"
+        }
+      ]
+    }
+  }
+}

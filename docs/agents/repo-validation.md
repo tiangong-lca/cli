@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 8cb5a100d59463c08e009089da8ce9707fe98aef
-lastReviewedNote: 'Reviewed for CLI #356: release-only 0.1.20 re-runs the unchanged pre-mutation npm/tag absence proof, package, coverage, pre-push, pack and four-platform gates, with the four version fixtures proven RED before the bump.'
+lastReviewedCommit: 6b8460e19c2bdbe39a5c927bd4e4c880aa42c455
+lastReviewedNote: 'Reviewed for CLI #358: the shared synthetic cohort now carries matching embedded dataset versions for ordinary Database triggers and the source-proven 128 Time versus 146 non-Time reference-output mix. Two focused RED/GREEN regressions and the full local coverage gate pass; the runtime, v1 policy, package identity and release controls are unchanged by this fixture correction.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -186,6 +186,8 @@ Review note, 2026-07-23: Issue #194 adds focused proof for ordered contract bind
 Review note, 2026-07-23: Issue #196 keeps the validation contract unchanged for the dedicated 0.0.30 release. The manually dispatched Windows gate is required to prove durable attempt/outcome ledger writes no longer fail on read-only-descriptor `fsync`; all execution-contract recovery/no-replay tests, all four live CLI-version fixtures, exact 100% coverage, dry-run package inspection, Docpact, tag/publish workflows, and exact npm provenance remain required.
 
 Review note, 2026-07-23: Issue #198 adds a regression proving SDK validation cannot mutate the execution-contract input payload, its desired SHA, or the eventual dispatch target, and releases the repair as 0.0.31. Focused execution-contract coverage, all four live CLI-version fixtures, exact 100% coverage, Docpact, the full pre-push gate, the four-platform quality gate, package inspection, and exact npm provenance remain required.
+
+Review note, 2026-09-21: CLI #358 adds the bounded exact exponent decimal module for the versioned v2 Time alias plan (mantissa up to 64 digits, exponent within +/-30, bigint normalisation, no floating point) and its anonymized real-shape RED/GREEN tests. It is additive: the frozen v1 alias grammar, profiles, constants, plan/response shape and every historical replay identity are byte-unchanged, and the tests pin that v1 still refuses exponent quantities. The v2 wire (plan/batch schema, counts, response shape) awaits the Database #673 proposal and is not decided here.
 
 Review note, 2026-09-21: Issue #356 is the release-only 0.1.20 preparation for merged source PR #355. The four live CLI-version fixtures were proven RED against the bumped package identity (three focused failures reporting `cliVersion: '0.1.20'` against the stale `0.1.19` expectation) and GREEN after the fixture update; the gate set is unchanged and was re-run on the release head: pre-mutation npm/tag absence via `release-version.cjs`, focused tests, `test:package`, the full pre-push gate with exact 100% coverage, the pack dry-run, Docpact, and — after merge — the automatic tag plus the four-platform matrix with Trusted Publishing/provenance, registry integrity, fresh public consumers and exact workspace integration.
 

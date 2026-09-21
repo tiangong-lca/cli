@@ -119,6 +119,27 @@ export const DATA_API_RPC_TARGETS = {
     targetSchema: 'api',
     signature: 'api.cmd_dataset_alias_execution_read(p_request_id uuid)',
   },
+  // Versioned (v2) protected execution lifecycle. Same capability class, same gate names and
+  // window, service-only exposure; only the versioned identities differ. The private v2
+  // executors are intentionally absent here: they are never reachable from the CLI, only from
+  // the server-side admission callback.
+  cmd_dataset_alias_execution_preflight_v2_guarded: {
+    targetSchema: 'api',
+    signature: 'api.cmd_dataset_alias_execution_preflight_v2_guarded(p_request jsonb)',
+  },
+  cmd_dataset_alias_execution_gate_v2_guarded: {
+    targetSchema: 'api',
+    signature:
+      'api.cmd_dataset_alias_execution_gate_v2_guarded(p_request_id uuid, p_preflight_token text, p_gate_name text)',
+  },
+  cmd_dataset_alias_execution_admit_v2_guarded: {
+    targetSchema: 'api',
+    signature: 'api.cmd_dataset_alias_execution_admit_v2_guarded(p_request jsonb)',
+  },
+  cmd_dataset_alias_execution_read_v2: {
+    targetSchema: 'api',
+    signature: 'api.cmd_dataset_alias_execution_read_v2(p_request_id uuid)',
+  },
   cmd_dataset_delete: {
     targetSchema: 'api',
     signature: 'api.cmd_dataset_delete(p_table text, p_id uuid, p_version text, p_audit jsonb)',
