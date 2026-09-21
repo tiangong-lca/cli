@@ -10,8 +10,13 @@ import { collectImportContentIssues } from './dataset-validate.js';
 import {
   DRAFT_REPAIR_ADMISSION_SCHEMA,
   DRAFT_REPAIR_POLICY,
+  SUPPORT_REPAIR_POLICY,
+  draftRepairPolicyForTable,
   evaluateProcessMetadataRepairAdmission,
+  evaluateSupportMetadataRepairAdmission,
   isProcessMetadataRepairCandidate,
+  isSupportMetadataRepairCandidate,
+  supportMetadataRepairType,
   type DraftRepairAdmission,
 } from './dataset-draft-repair-admission.js';
 import {
@@ -262,7 +267,7 @@ function isLedgerRepairAdmission(value: unknown): value is DraftRepairAdmission 
     Object.keys(value).sort().join(',') === DRAFT_REPAIR_ADMISSION_KEYS &&
     value.schema === DRAFT_REPAIR_ADMISSION_SCHEMA &&
     value.status === 'admitted' &&
-    value.policy === DRAFT_REPAIR_POLICY &&
+    (value.policy === DRAFT_REPAIR_POLICY || value.policy === SUPPORT_REPAIR_POLICY) &&
     value.publication_ready === false &&
     typeof value.before_sha256 === 'string' &&
     SHA256_PATTERN.test(value.before_sha256) &&
@@ -603,7 +608,8 @@ function loadExecutionLedger(
         event.operation !== action.expected_operation ||
         (event.draft_repair_admission !== undefined &&
           (event.draft_repair_admission.before_sha256 !== action.before_sha256 ||
-            event.draft_repair_admission.desired_sha256 !== action.desired_sha256)) ||
+            event.draft_repair_admission.desired_sha256 !== action.desired_sha256 ||
+            event.draft_repair_admission.policy !== draftRepairPolicyForTable(action.table))) ||
         event.previous_event_sha256 !== (previous?.event_sha256 ?? null) ||
         event.event_sha256 !== sha256Json(eventWithoutSha(event))
       ) {
@@ -1570,6 +1576,40 @@ async function renewExecutionOwnerToken(options: {
   options.commandTransport.accessToken = accessToken;
 }
 
+type ContractRepairPolicy =
+  { kind: 'process' } | { kind: 'support'; type: 'flowproperty' | 'unitgroup' };
+
+/**
+ * Both reviewed metadata repairs enter only through an explicit native save_draft contract action
+ * on an existing owner draft; the ordinary reference-only rejection is untouched for every other
+ * Unit Group / Flow Property row.
+ */
+function resolveContractRepairPolicy(
+  preparedFailure: DatasetSaveDraftRowReport | null,
+  action: DatasetSaveDraftExecutionAction,
+  row: PreparedDatasetRow,
+): ContractRepairPolicy | null {
+  if (!preparedFailure) {
+    return null;
+  }
+  const validation = row.validation;
+  if (
+    isProcessMetadataRepairCandidate({
+      operation: action.expected_operation,
+      table: action.table,
+      validation,
+    })
+  ) {
+    return { kind: 'process' };
+  }
+  const supportType = supportMetadataRepairType({
+    operation: action.expected_operation,
+    table: action.table,
+    validation,
+  });
+  return supportType ? { kind: 'support', type: supportType } : null;
+}
+
 async function runExecutionContractBatch(options: {
   contractPath: string;
   contract: DatasetSaveDraftExecutionContract;
@@ -1708,15 +1748,8 @@ async function runExecutionContractBatch(options: {
 
     // Validation and policy classification come after every retained-attempt decision above: an
     // already consumed attempt must never be reported as an unconsumed preparation failure.
-    const repairCandidate = Boolean(
-      preparedFailure &&
-      isProcessMetadataRepairCandidate({
-        operation: action.expected_operation,
-        table: action.table,
-        validation: row.validation,
-      }),
-    );
-    if (preparedFailure && !repairCandidate) {
+    const repairPolicy = resolveContractRepairPolicy(preparedFailure, action, row);
+    if (preparedFailure && !repairPolicy) {
       const report = {
         ...preparedFailure,
         action_id: action.action_id,
@@ -1854,10 +1887,10 @@ async function runExecutionContractBatch(options: {
       return;
     }
 
-    // The bounded Process metadata repair decides only here, against the complete before image
-    // this run just read and proved owner/state-0/before-hash for.
+    // The bounded metadata repairs decide only here, against the complete before image this run
+    // just read and proved owner/state-0/before-hash for.
     let draftRepairAdmission: DraftRepairAdmission | undefined;
-    if (repairCandidate) {
+    if (repairPolicy?.kind === 'process') {
       const outcome = evaluateProcessMetadataRepairAdmission({
         before: beforeImage,
         candidate: row.payload,
@@ -1868,6 +1901,40 @@ async function runExecutionContractBatch(options: {
           'process',
           DATASET_CONFIGS.process,
         ),
+        beforeSha256: sha256Json(beforeImage as JsonObject),
+        desiredSha256: action.desired_sha256,
+      });
+      if (outcome.status !== 'admitted') {
+        storeReport(
+          contractRowReport({
+            row,
+            action,
+            status: 'failed',
+            operation: action.expected_operation,
+            attemptConsumed: false,
+            readback: 'not_performed',
+            error: {
+              message: outcome.message,
+              details: { code: outcome.code, ...outcome.details },
+            },
+          }),
+        );
+        return;
+      }
+      draftRepairAdmission = outcome.admission;
+    } else if (repairPolicy?.kind === 'support') {
+      const outcome = evaluateSupportMetadataRepairAdmission({
+        table: action.table,
+        before: beforeImage,
+        candidate: row.payload,
+        // Both sides are verified with the same real validator: a support repair never launders a
+        // stored draft that fails any layer, and the candidate was already required to be fully valid.
+        beforeValidation: validatePayload(
+          structuredClone(beforeImage as JsonObject),
+          repairPolicy.type,
+          DATASET_CONFIGS[repairPolicy.type],
+        ),
+        candidateValidation: row.validation,
         beforeSha256: sha256Json(beforeImage as JsonObject),
         desiredSha256: action.desired_sha256,
       });
@@ -1951,9 +2018,10 @@ async function runExecutionContractBatch(options: {
           version: action.version,
           payload: row.payload,
           expectedJsonOrdered: beforeImage as JsonObject,
-          // Only the bounded metadata repair writes without the platform rule-verification flag;
-          // it is exactly the case whose authoring evidence gap the admission records.
-          extraData: { ruleVerification: draftRepairAdmission === undefined },
+          // Only the Process annual-gap repair writes without the platform rule-verification flag;
+          // it is exactly the case whose authoring evidence gap the admission records. A support
+          // repair is fully valid on both sides, so it keeps the ordinary flag.
+          extraData: { ruleVerification: draftRepairAdmission?.policy !== DRAFT_REPAIR_POLICY },
           beforeDispatch,
         });
       }
@@ -2366,4 +2434,8 @@ export const __testInternals = {
   unwrapPayload,
   uniqueFlowRemoteReferences,
   validatePayload,
+  draftRepairPolicyForTable,
+  evaluateSupportMetadataRepairAdmission,
+  isSupportMetadataRepairCandidate,
+  supportMetadataRepairType,
 };

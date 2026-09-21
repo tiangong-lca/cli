@@ -1,0 +1,205 @@
+[
+  {
+    "id": "4f7f16b6-d4b2-4dc8-adc0-50af1fc7abc5",
+    "version": "01.00.000",
+    "json": {
+      "flowPropertyDataSet": {
+        "@xmlns": "http://lca.jrc.it/ILCD/FlowProperty",
+        "@version": "1.1",
+        "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+        "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+        "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/FlowProperty ../../schemas/ILCD_FlowPropertyDataSet.xsd",
+        "modellingAndValidation": {
+          "complianceDeclarations": {
+            "compliance": {
+              "common:approvalOfOverallCompliance": "Not defined",
+              "common:referenceToComplianceSystem": {
+                "@uri": "../sources/75aef7e0-191c-45ef-ab2b-bab172e950ce.json",
+                "@type": "source data set",
+                "@version": "00.00.001",
+                "@refObjectId": "75aef7e0-191c-45ef-ab2b-bab172e950ce",
+                "common:shortDescription": {
+                  "#text": "External LCA source compliance context",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          }
+        },
+        "administrativeInformation": {
+          "dataEntryBy": {
+            "common:timeStamp": "2026-06-14T00:00:00Z",
+            "common:referenceToDataSetFormat": {
+              "@uri": "../sources/a7f8679b-f2b0-4294-af8d-4deed39f934d.json",
+              "@type": "source data set",
+              "@version": "00.00.001",
+              "@refObjectId": "a7f8679b-f2b0-4294-af8d-4deed39f934d",
+              "common:shortDescription": {
+                "#text": "ILCD format",
+                "@xml:lang": "en"
+              }
+            }
+          },
+          "publicationAndOwnership": {
+            "common:dataSetVersion": "01.00.000",
+            "common:permanentDataSetURI": "https://lcdn.tiangong.earth/datasetdetail/flowproperty.xhtml?uuid=4f7f16b6-d4b2-4dc8-adc0-50af1fc7abc5&version=01.00.000",
+            "common:referenceToOwnershipOfDataSet": {
+              "@uri": "../contacts/15ae1e01-bdad-4e52-a8d1-0e1041bb3a8a.json",
+              "@type": "contact data set",
+              "@version": "00.00.001",
+              "@refObjectId": "15ae1e01-bdad-4e52-a8d1-0e1041bb3a8a",
+              "common:shortDescription": {
+                "#text": "Example owner organisation",
+                "@xml:lang": "en"
+              }
+            }
+          }
+        },
+        "flowPropertiesInformation": {
+          "dataSetInformation": {
+            "common:UUID": "4f7f16b6-d4b2-4dc8-adc0-50af1fc7abc5",
+            "common:name": {
+              "#text": "Person*distance",
+              "@xml:lang": "en"
+            },
+            "classificationInformation": {
+              "common:classification": {
+                "common:class": {
+                  "#text": "Other flow properties",
+                  "@level": "0",
+                  "@classId": "4"
+                }
+              }
+            }
+          },
+          "quantitativeReference": {
+            "referenceToReferenceUnitGroup": {
+              "@uri": "../unitgroups/40e3c07c-a76c-455e-a247-743a4a3ee82c.json",
+              "@type": "unit group data set",
+              "@version": "01.00.000",
+              "@refObjectId": "40e3c07c-a76c-455e-a247-743a4a3ee82c",
+              "common:shortDescription": {
+                "#text": "Units of person*distance",
+                "@xml:lang": "en"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "99b9a84c-2670-4339-a51d-172a4d234b3e",
+    "version": "01.00.000",
+    "json": {
+      "unitGroupDataSet": {
+        "units": {
+          "unit": [
+            {
+              "name": "a",
+              "meanValue": "1.0",
+              "@dataSetInternalID": "1"
+            },
+            {
+              "name": "yr",
+              "meanValue": "1.0",
+              "@dataSetInternalID": "2"
+            },
+            {
+              "name": "year",
+              "meanValue": "1.0",
+              "@dataSetInternalID": "3"
+            },
+            {
+              "name": "hr",
+              "meanValue": "0.00011415525114155251",
+              "@dataSetInternalID": "4"
+            },
+            {
+              "name": "h",
+              "meanValue": "0.00011415525114155251",
+              "@dataSetInternalID": "5"
+            },
+            {
+              "name": "hour",
+              "meanValue": "0.00011415525114155251",
+              "@dataSetInternalID": "6"
+            }
+          ]
+        },
+        "@xmlns": "http://lca.jrc.it/ILCD/UnitGroup",
+        "@version": "1.1",
+        "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+        "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+        "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/UnitGroup ../../schemas/ILCD_UnitGroupDataSet.xsd",
+        "unitGroupInformation": {
+          "dataSetInformation": {
+            "common:UUID": "99b9a84c-2670-4339-a51d-172a4d234b3e",
+            "common:name": {
+              "#text": "Units of time",
+              "@xml:lang": "en"
+            },
+            "classificationInformation": {
+              "common:classification": {
+                "common:class": {
+                  "#text": "Other unit groups",
+                  "@level": "0",
+                  "@classId": "4"
+                }
+              }
+            }
+          },
+          "quantitativeReference": {
+            "referenceToReferenceUnit": "1"
+          }
+        },
+        "modellingAndValidation": {
+          "complianceDeclarations": {
+            "compliance": {
+              "common:approvalOfOverallCompliance": "Not defined",
+              "common:referenceToComplianceSystem": {
+                "@uri": "../sources/75aef7e0-191c-45ef-ab2b-bab172e950ce.json",
+                "@type": "source data set",
+                "@version": "00.00.001",
+                "@refObjectId": "75aef7e0-191c-45ef-ab2b-bab172e950ce",
+                "common:shortDescription": {
+                  "#text": "External LCA source compliance context",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          }
+        },
+        "administrativeInformation": {
+          "dataEntryBy": {
+            "common:timeStamp": "2026-06-14T00:00:00Z",
+            "common:referenceToDataSetFormat": {
+              "@uri": "../sources/a7f8679b-f2b0-4294-af8d-4deed39f934d.json",
+              "@type": "source data set",
+              "@version": "00.00.001",
+              "@refObjectId": "a7f8679b-f2b0-4294-af8d-4deed39f934d",
+              "common:shortDescription": {
+                "#text": "ILCD format",
+                "@xml:lang": "en"
+              }
+            }
+          },
+          "publicationAndOwnership": {
+            "common:dataSetVersion": "01.00.000",
+            "common:permanentDataSetURI": "https://lcdn.tiangong.earth/unitgroups/99b9a84c-2670-4339-a51d-172a4d234b3e?version=01.00.000",
+            "common:referenceToOwnershipOfDataSet": {
+              "@uri": "../contacts/15ae1e01-bdad-4e52-a8d1-0e1041bb3a8a.json",
+              "@type": "contact data set",
+              "@version": "00.00.001",
+              "@refObjectId": "15ae1e01-bdad-4e52-a8d1-0e1041bb3a8a",
+              "common:shortDescription": {
+                "#text": "Example owner organisation",
+                "@xml:lang": "en"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+]
