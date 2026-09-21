@@ -4,16 +4,20 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   BOUNDED_EXPONENT_LIMIT,
+  BOUNDED_INPUT_LENGTH,
+  BOUNDED_OUTPUT_LENGTH,
+  canonicalDecimalText,
   isBoundedDecimalValue,
+  multiplyBoundedCanonicalDecimal,
   multiplyBoundedExactDecimal,
   normalizeBoundedDecimalText,
   parseBoundedExponentDecimal,
 } from '../src/lib/dataset-alias-exponent-decimal.js';
 import { multiplyExactDecimal } from '../src/lib/dataset-maintenance-alias-rewrite.js';
 
-// Shapes sampled from the current source-proven alias cohort (mantissa up to three
-// decimals, exponents -3..-7) plus the boundary forms that must stay exact. Values are
-// plain decimal quantities and carry no dataset, account or person information.
+// Shapes sampled from the current source-proven alias cohort (mantissa up to three decimals,
+// exponents -3..-7) plus the boundary forms that must stay exact. Values are plain decimal
+// quantities and carry no dataset, account or person information.
 const REVIEWED_FACTOR = '0.00011415525114155251';
 
 const EXPONENT_FORMS: ReadonlyArray<readonly [string, string]> = [
@@ -32,7 +36,7 @@ const EXPONENT_FORMS: ReadonlyArray<readonly [string, string]> = [
   ['-2.5E-2', '-0.025'],
 ];
 
-/** Independent exact oracle: scaled bigint comparison without any floats. */
+/** Independent exact oracle: scaled bigint arithmetic without any floats. */
 function exactProduct(left: string, right: string): string {
   const parts = (value: string) => {
     const negative = value.startsWith('-');
@@ -52,7 +56,17 @@ function exactProduct(left: string, right: string): string {
   return `${a.negative !== b.negative && coefficient !== 0n ? '-' : ''}${digits}`;
 }
 
-test('bounded exponent quantities normalize to exact plain decimals', () => {
+/** Independent implementation of the reviewed v2 canonical text rule. */
+function canonicalTrim(value: string): string {
+  const negative = value.startsWith('-');
+  const unsigned = negative ? value.slice(1) : value;
+  const [integer, fraction = ''] = unsigned.split('.');
+  const trimmed = fraction.replace(/0+$/u, '');
+  const magnitude = trimmed ? `${integer}.${trimmed}` : integer;
+  return negative && /[1-9]/u.test(magnitude) ? `-${magnitude}` : magnitude;
+}
+
+test('bounded exponent quantities expand to exact plain decimals', () => {
   for (const [input, expected] of EXPONENT_FORMS) {
     assert.equal(normalizeBoundedDecimalText(input), expected, input);
     assert.ok(isBoundedDecimalValue(input), input);
@@ -60,7 +74,26 @@ test('bounded exponent quantities normalize to exact plain decimals', () => {
   }
 });
 
-test('bounded exponent multiplication is exact decimal multiplication, never floating point', () => {
+test('v2 desired amounts are canonical ordinary decimals and never exponent notation', () => {
+  for (const [input] of EXPONENT_FORMS) {
+    const normalized = normalizeBoundedDecimalText(input);
+    assert.ok(normalized, input);
+    const expected = canonicalTrim(exactProduct(normalized, REVIEWED_FACTOR));
+    assert.ok(expected.length <= BOUNDED_OUTPUT_LENGTH, input);
+    const actual = multiplyBoundedCanonicalDecimal(input, REVIEWED_FACTOR);
+    assert.equal(actual, expected, input);
+    assert.doesNotMatch(actual ?? '', /[eE]/u, input);
+  }
+  // The same quantity spelled `1` and `1.0` derives the same v2 desired text, and zero keeps
+  // the single canonical spelling `0`.
+  assert.equal(multiplyBoundedCanonicalDecimal('1', REVIEWED_FACTOR), '0.00011415525114155251');
+  assert.equal(multiplyBoundedCanonicalDecimal('1.0', REVIEWED_FACTOR), '0.00011415525114155251');
+  assert.equal(canonicalDecimalText('2.0E-4'), '0.0002');
+  assert.equal(canonicalDecimalText('-0.0E-4'), '0');
+  assert.equal(canonicalDecimalText('1.0E+3'), '1000');
+});
+
+test('bounded exponent multiplication stays exact decimal multiplication, never floating point', () => {
   for (const [input] of EXPONENT_FORMS) {
     const normalized = normalizeBoundedDecimalText(input);
     assert.ok(normalized, input);
@@ -76,23 +109,49 @@ test('bounded exponent multiplication is exact decimal multiplication, never flo
   );
 });
 
-test('every rendered form re-parses to the same exact quantity it was rendered from', () => {
+test('every rendered form keeps exactly the quantity it was rendered from', () => {
+  // Rendering is value-preserving: the canonical spelling of a form multiplies to the same
+  // canonical product as the form itself, and the canonical spelling is freshly parseable.
   for (let exponent = 3; exponent <= 7; exponent += 1) {
     for (const mantissa of ['1', '2.0', '9.1', '1.03', '9.423', '7.5']) {
       const value = `${mantissa}E-${exponent}`;
-      const normalized = normalizeBoundedDecimalText(value);
-      assert.ok(normalized, value);
-      const parsed = parseBoundedExponentDecimal(normalized);
-      assert.deepEqual(parsed, parseBoundedExponentDecimal(value), value);
-      const product = multiplyBoundedExactDecimal(value, REVIEWED_FACTOR);
-      assert.equal(product, exactProduct(normalized, REVIEWED_FACTOR), value);
-      assert.deepEqual(
-        parseBoundedExponentDecimal(product ?? ''),
-        parseBoundedExponentDecimal(exactProduct(normalized, REVIEWED_FACTOR)),
+      const canonical = canonicalDecimalText(value);
+      assert.ok(canonical, value);
+      assert.ok(parseBoundedExponentDecimal(canonical) !== null, canonical);
+      assert.equal(
+        multiplyBoundedCanonicalDecimal(canonical, REVIEWED_FACTOR),
+        multiplyBoundedCanonicalDecimal(value, REVIEWED_FACTOR),
+        value,
+      );
+      // The exact-expansion rendering keeps each input's own fractional scale, so it is
+      // compared through its canonical value rather than by text.
+      assert.equal(
+        canonicalTrim(multiplyBoundedExactDecimal(canonical, REVIEWED_FACTOR) ?? ''),
+        canonicalTrim(
+          multiplyBoundedExactDecimal(normalizeBoundedDecimalText(value) ?? '', REVIEWED_FACTOR) ??
+            '',
+        ),
         value,
       );
     }
   }
+});
+
+test('input, exponent and output bounds fail closed before an oversized spelling grows', () => {
+  const maxPlain = '1'.repeat(BOUNDED_INPUT_LENGTH);
+  assert.equal(parseBoundedExponentDecimal(maxPlain) !== null, true);
+  assert.equal(parseBoundedExponentDecimal('1'.repeat(BOUNDED_INPUT_LENGTH + 1)), null);
+  assert.equal(parseBoundedExponentDecimal(`${maxPlain}E-1`), null);
+  assert.equal(canonicalDecimalText(maxPlain), maxPlain);
+
+  // A product whose canonical text would exceed the reviewed output bound is refused rather
+  // than truncated.
+  const oversizeInput = '9'.repeat(BOUNDED_INPUT_LENGTH);
+  const oversizeFactor = `0.${'9'.repeat(BOUNDED_INPUT_LENGTH)}`;
+  const oversize = canonicalTrim(exactProduct(oversizeInput, oversizeFactor));
+  assert.ok(oversize.length > BOUNDED_OUTPUT_LENGTH, String(oversize.length));
+  assert.equal(multiplyBoundedCanonicalDecimal(oversizeInput, oversizeFactor), null);
+  assert.equal(multiplyBoundedExactDecimal(oversizeInput, oversizeFactor)?.length, oversize.length);
 });
 
 test('bounded exponent parsing rejects everything outside the reviewed grammar', () => {
@@ -123,9 +182,15 @@ test('bounded exponent parsing rejects everything outside the reviewed grammar',
   ]) {
     assert.equal(parseBoundedExponentDecimal(rejected), null, JSON.stringify(rejected));
     assert.equal(normalizeBoundedDecimalText(rejected), null, JSON.stringify(rejected));
+    assert.equal(canonicalDecimalText(rejected), null, JSON.stringify(rejected));
     assert.equal(isBoundedDecimalValue(rejected), false, JSON.stringify(rejected));
     assert.equal(
       multiplyBoundedExactDecimal(rejected, REVIEWED_FACTOR),
+      null,
+      JSON.stringify(rejected),
+    );
+    assert.equal(
+      multiplyBoundedCanonicalDecimal(rejected, REVIEWED_FACTOR),
       null,
       JSON.stringify(rejected),
     );
@@ -134,11 +199,10 @@ test('bounded exponent parsing rejects everything outside the reviewed grammar',
   assert.equal(normalizeBoundedDecimalText('1'), '1');
   assert.equal(normalizeBoundedDecimalText('1.0'), '1.0');
   assert.equal(normalizeBoundedDecimalText('-0.22917'), '-0.22917');
-  // A negative zero quantity renders without a sign and stays exact.
-  assert.equal(normalizeBoundedDecimalText('-0.0E-4'), '0.00000');
-  // The multiplier must itself be a plain decimal: an exponent factor is refused, so a v2
-  // plan can never smuggle an unnormalised factor into the multiplication.
+  // The multiplier must itself be a plain decimal: an exponent factor is refused, so a v2 plan
+  // can never smuggle an unnormalised factor into the multiplication.
   assert.equal(multiplyBoundedExactDecimal('1', '1E-3'), null);
+  assert.equal(multiplyBoundedCanonicalDecimal('1', '1E-3'), null);
   // Non-string input is refused rather than coerced.
   assert.equal(parseBoundedExponentDecimal(undefined as unknown as string), null);
   assert.equal(parseBoundedExponentDecimal(4 as unknown as string), null);
