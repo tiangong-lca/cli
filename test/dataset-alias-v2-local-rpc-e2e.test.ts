@@ -238,18 +238,18 @@ function completeSeededExecution(adapter: LocalAdapter): void {
 /** The seeded stack must be pristine: the cohort rows are present and nothing has been executed. */
 function assertPristineSeed(adapter: LocalAdapter): void {
   assert.ok(READY);
+  // One statement, one line: the transport returns the last result line.
   const counts = adapter.runSql(
     [
-      `select 'flows=' || count(*) from public.flows where user_id = '${READY.actor.user_id}'::uuid;`,
-      `select 'processes=' || count(*) from public.processes where user_id = '${READY.actor.user_id}'::uuid;`,
-      `select 'preflights=' || count(*) from util.dataset_alias_execution_v2_preflights;`,
-      `select 'requests=' || count(*) from util.dataset_alias_execution_v2_requests;`,
+      `select 'flows=' || (select count(*) from public.flows where user_id = '${READY.actor.user_id}'::uuid)`,
+      `  || ' processes=' || (select count(*) from public.processes where user_id = '${READY.actor.user_id}'::uuid)`,
+      `  || ' preflights=' || (select count(*) from util.dataset_alias_execution_v2_preflights)`,
+      `  || ' requests=' || (select count(*) from util.dataset_alias_execution_v2_requests);`,
     ].join('\n'),
   );
-  const lines = counts.split('\n');
-  assert.deepEqual(
-    lines,
-    ['flows=113', 'processes=274', 'preflights=0', 'requests=0'],
+  assert.equal(
+    counts,
+    'flows=113 processes=274 preflights=0 requests=0',
     'the interop stack must be seeded pristine before the one-shot campaign runs',
   );
 }
