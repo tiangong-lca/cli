@@ -42,11 +42,16 @@ export function aliasV2TerminalProof(fixture: AliasV2StatusFixture): JsonObject 
   const plan = fixture.plan;
   const actions = plan['actions'] as JsonObject[];
   const expected = plan['expected'] as JsonObject;
+  // A profile with no text action (Length*time) carries no `text_actions` block at all: every
+  // process then shows the functional-unit text of its own before image, which is what the
+  // readback comparison demands.
   const textActions = new Map(
-    (plan['text_actions'] as JsonObject[]).map((action) => [
-      `${String(action['table'])}:${String(action['id'])}@${String(action['version'])}`,
-      action['after_text'] as string,
-    ]),
+    (Array.isArray(plan['text_actions']) ? (plan['text_actions'] as JsonObject[]) : []).map(
+      (action) => [
+        `${String(action['table'])}:${String(action['id'])}@${String(action['version'])}`,
+        action['after_text'] as string,
+      ],
+    ),
   );
   let auditId = 1_000;
   return {

@@ -680,3 +680,135 @@ export function buildLengthTimePlan(input: LengthTimePlanInput): LengthTimePlanR
   plan['plan_sha256'] = sha256Json(plan);
   return { plan };
 }
+
+/**
+ * The closed profile discriminator, shared by every protected artefact reader: a plan document's
+ * own `schema_version` selects its rule set and nothing else does. There is no caller-supplied
+ * function name, path or factor anywhere in the request, and an unknown version resolves to null so
+ * every dispatch site fails closed before any state is touched.
+ */
+export type ProtectedPlanProfile = 'alias_v2' | 'length_time_v1';
+
+export function protectedPlanProfile(value: unknown): ProtectedPlanProfile | null {
+  if (!isJsonObject(value)) {
+    return null;
+  }
+  if (value['schema_version'] === 'dataset-alias-plan.v2') {
+    return 'alias_v2';
+  }
+  return value['schema_version'] === LENGTH_TIME_PLAN_SCHEMA ? 'length_time_v1' : null;
+}
+
+/**
+ * The plan document a Length*time run may bind: exactly the ten reviewed keys, the owner-draft
+ * visibility, the eleven numeric counts, the read-only flow snapshots, the canonical target pair,
+ * the five-key source evidence and at least one action. A foreign or widened document is refused
+ * before any freeze, seal or remote stage sees it.
+ */
+export function assertLengthTimePlanDocument(value: unknown): JsonObject {
+  if (protectedPlanProfile(value) !== 'length_time_v1') {
+    invalid('Length*time plan artefact must be dataset-length-time-plan.v1.');
+  }
+  const plan = value as JsonObject;
+  const keys = Object.keys(plan);
+  if (
+    keys.length !== LENGTH_TIME_PLAN_KEYS.length ||
+    !LENGTH_TIME_PLAN_KEYS.every((key) => Object.hasOwn(plan, key))
+  ) {
+    invalid('Length*time plan artefact must carry exactly its ten reviewed keys.');
+  }
+  if (plan['target_visibility'] !== 'owner_draft') {
+    invalid('Length*time plan artefact must be an owner-draft plan.');
+  }
+  if (typeof plan['actor_id'] !== 'string' || !UUID.test(plan['actor_id'])) {
+    invalid('Length*time plan artefact must carry its actor id.');
+  }
+  if (typeof plan['plan_sha256'] !== 'string' || !SHA256.test(plan['plan_sha256'])) {
+    invalid('Length*time plan artefact must carry its own digest.');
+  }
+  const expected = plan['expected'];
+  if (!isJsonObject(expected)) {
+    invalid('Length*time plan artefact must carry its expected counts.');
+  }
+  const countKeys = Object.keys(expected);
+  if (
+    countKeys.length !== LENGTH_TIME_COUNT_KEYS.length ||
+    !LENGTH_TIME_COUNT_KEYS.every((key) => Object.hasOwn(expected, key)) ||
+    LENGTH_TIME_COUNT_KEYS.some(
+      (key) => !Number.isSafeInteger(expected[key]) || (expected[key] as number) < 0,
+    )
+  ) {
+    invalid('Length*time plan artefact must carry the eleven numeric reviewed counts.');
+  }
+  const snapshots = plan['flow_snapshots'];
+  if (!Array.isArray(snapshots) || snapshots.length === 0) {
+    invalid('Length*time plan artefact must carry its read-only flow snapshots.');
+  }
+  for (const snapshot of snapshots) {
+    if (
+      !isJsonObject(snapshot) ||
+      Object.keys(snapshot).length !== 3 ||
+      typeof snapshot['id'] !== 'string' ||
+      typeof snapshot['version'] !== 'string' ||
+      typeof snapshot['sha256'] !== 'string' ||
+      !SHA256.test(snapshot['sha256'])
+    ) {
+      invalid('Length*time flow snapshots must carry exactly id, version and sha256.');
+    }
+  }
+  for (const [key, label] of [
+    ['target_flow_property', 'target flow property'],
+    ['target_unit_group', 'target unit group'],
+  ] as const) {
+    const row = plan[key];
+    if (
+      !isJsonObject(row) ||
+      Object.keys(row).length !== 3 ||
+      typeof row['id'] !== 'string' ||
+      !UUID.test(row['id']) ||
+      typeof row['version'] !== 'string' ||
+      !VERSION.test(row['version']) ||
+      typeof row['sha256'] !== 'string' ||
+      !SHA256.test(row['sha256'])
+    ) {
+      invalid(`Length*time plan artefact must bind its ${label} identity and digest.`);
+    }
+  }
+  const evidence = plan['source_evidence'];
+  if (
+    !isJsonObject(evidence) ||
+    Object.keys(evidence).length !== 5 ||
+    typeof evidence['sha256'] !== 'string' ||
+    !SHA256.test(evidence['sha256']) ||
+    typeof evidence['source_unit'] !== 'string' ||
+    typeof evidence['reference_unit'] !== 'string' ||
+    typeof evidence['factor'] !== 'string' ||
+    !Number.isSafeInteger(evidence['instance_count'])
+  ) {
+    invalid('Length*time plan artefact must bind its five-key source evidence.');
+  }
+  const actions = plan['actions'];
+  if (!Array.isArray(actions) || actions.length === 0) {
+    invalid('Length*time plan artefact must carry its actions.');
+  }
+  for (const action of actions) {
+    if (
+      !isJsonObject(action) ||
+      action['table'] !== 'processes' ||
+      typeof action['id'] !== 'string' ||
+      !UUID.test(action['id']) ||
+      typeof action['version'] !== 'string' ||
+      !VERSION.test(action['version']) ||
+      typeof action['before_sha256'] !== 'string' ||
+      !SHA256.test(action['before_sha256']) ||
+      typeof action['desired_sha256'] !== 'string' ||
+      !SHA256.test(action['desired_sha256']) ||
+      !isJsonObject(action['mutation']) ||
+      !isJsonObject(action['expected_json_ordered']) ||
+      !isJsonObject(action['desired_json_ordered'])
+    ) {
+      invalid('Length*time plan actions must be complete owner-draft process actions.');
+    }
+  }
+  return plan;
+}

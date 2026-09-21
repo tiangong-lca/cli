@@ -30,12 +30,15 @@ import { buildAliasV2Plan, type AliasV2PlanInput } from './dataset-alias-v2-plan
 import {
   ALIAS_V2_PROTECTED_ARTIFACTS,
   assertAliasV2CanonicalArtifact,
+  assertProtectedPlanDocument,
   buildAliasV2ApprovalRequest,
   buildAliasV2Freeze,
   parseAliasV2ApprovalRequest,
   parseAliasV2Freeze,
   sealAliasV2Approval,
+  type ProtectedPlanProfile,
 } from './dataset-alias-v2-protected.js';
+import { lengthTimeTargetSnapshots, protectedPlanProfile } from './dataset-length-time-plan.js';
 import { CliError } from './errors.js';
 
 type JsonValue = JsonObject;
@@ -104,7 +107,9 @@ export function planAliasV2(options: { inputPath: string; outDir: string }): {
 
 /**
  * The eight bindings the freeze carries, every one of them recomputed here from the artefacts
- * and the plan content: none of them is taken from a caller-supplied value.
+ * and the plan content: none of them is taken from a caller-supplied value. The profile is read
+ * from the plan's own closed discriminator, so each profile's support set covers exactly the
+ * frozen snapshots that plan binds.
  */
 export function deriveAliasV2Sets(options: {
   plan: JsonObject;
@@ -112,6 +117,22 @@ export function deriveAliasV2Sets(options: {
   toolchainEvidenceSha256: string;
 }): JsonObject {
   const actions = options.plan['actions'] as JsonObject[];
+  const supportSnapshots =
+    protectedPlanProfile(options.plan) === 'length_time_v1'
+      ? {
+          // The read-only flow snapshots and the two canonical targets of the Length profile.
+          flow_snapshots: options.plan['flow_snapshots'],
+          target_snapshots: lengthTimeTargetSnapshots(options.plan),
+        }
+      : {
+          source_flowproperty: (options.plan['source_evidence'] as JsonObject)[
+            'source_flowproperty'
+          ],
+          declared_source_unitgroup: (options.plan['source_evidence'] as JsonObject)[
+            'declared_source_unitgroup'
+          ],
+          target_snapshots: options.plan['target_snapshots'],
+        };
   return {
     // The plan document itself is the alias plan request of this versioned capability.
     alias_plan_request_sha256: sha256Json({ ...options.plan, plan_sha256: undefined }),
@@ -130,16 +151,11 @@ export function deriveAliasV2Sets(options: {
         .filter((action) => action['table'] === 'processes')
         .map((action) => (action['mutation'] as JsonObject)['exchanges']),
     ),
-    // The frozen support snapshots the plan binds: the complete locked SOURCE flow property (its
-    // identity and full payload digest), the currently declared source unit group and the locked
-    // target snapshots. A name-only change to the source row changes this set.
-    support_snapshot_set_sha256: sha256Json({
-      source_flowproperty: (options.plan['source_evidence'] as JsonObject)['source_flowproperty'],
-      declared_source_unitgroup: (options.plan['source_evidence'] as JsonObject)[
-        'declared_source_unitgroup'
-      ],
-      target_snapshots: options.plan['target_snapshots'],
-    }),
+    // The frozen support snapshots the plan binds: for the Time profile the complete locked SOURCE
+    // flow property (its identity and full payload digest), the currently declared source unit group
+    // and the locked target snapshots — a name-only change to the source row changes this set; for
+    // the Length profile the read-only flow snapshots and the two canonical targets.
+    support_snapshot_set_sha256: sha256Json(supportSnapshots),
     derivative_baseline_set_sha256: sha256Json(
       options.derivativeTargets
         .map((target) => String(target['baseline_snapshot_sha256']))
@@ -239,6 +255,9 @@ export async function freezeAliasV2Protected(options: {
     text: planArtifact.text,
     value: planArtifact.value,
   });
+  // The plan's own closed discriminator selects the profile for every later binding: a Length plan
+  // freezes under the Length rule set, and a foreign document is refused before any remote work.
+  const { profile } = assertProtectedPlanDocument(planArtifact.value);
   const projectRef = assertProtectedProductionProjectRef(options.expectedProjectRef);
   const accountEmail = token(options.confirm, 'confirm');
 
@@ -294,6 +313,7 @@ export async function freezeAliasV2Protected(options: {
     freeze: freezeArtifact.value,
     freezeFileSha256,
     approvedAtUtc: new Date(0).toISOString(),
+    profile,
   });
   const requestPath = path.join(outDir, ALIAS_V2_PROTECTED_ARTIFACTS.approval_request);
   writeArtifact(requestPath, approvalRequest.value);
@@ -398,6 +418,19 @@ export function isAliasV2PlanFile(planPath: string): boolean {
     return readJson(planPath, 'Alias v2 plan').value['schema_version'] === 'dataset-alias-plan.v2';
   } catch {
     return false;
+  }
+}
+
+/**
+ * The closed profile of the named plan artefact, or null when it is not a protected plan this
+ * build understands. An unreadable or foreign file stays on the legacy path, which reports its own
+ * artefact error rather than being silently reinterpreted here.
+ */
+export function protectedPlanFileProfile(planPath: string): ProtectedPlanProfile | null {
+  try {
+    return protectedPlanProfile(readJson(planPath, 'Protected plan').value);
+  } catch {
+    return null;
   }
 }
 

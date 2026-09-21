@@ -313,6 +313,7 @@ function sealedFixture(): AliasV2StatusFixture {
     freeze: freeze.value,
     freezeFileSha256,
     approvedAtUtc: ALIAS_V2_TEST_APPROVED_AT,
+    profile: 'alias_v2',
   });
   const approval = sealAliasV2Approval({
     request: request.value,

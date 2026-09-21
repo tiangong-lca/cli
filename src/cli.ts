@@ -318,10 +318,11 @@ import { runDatasetMaintenanceProtectedDispatch } from './lib/dataset-maintenanc
 import {
   freezeAliasV2Protected,
   isAliasV2FreezeFile,
-  isAliasV2PlanFile,
   planAliasV2,
+  protectedPlanFileProfile,
   sealAliasV2ProtectedApproval,
 } from './lib/dataset-alias-v2-public.js';
+import { planLengthTime } from './lib/dataset-length-time-public.js';
 import type { AliasV2ProtectedReport } from './lib/dataset-alias-v2-protected.js';
 import { sealDatasetMaintenanceProtectedApproval } from './lib/dataset-maintenance-protected-seal.js';
 import { runDatasetMaintenanceVerify } from './lib/dataset-maintenance-verify.js';
@@ -1136,6 +1137,10 @@ Options:
   --alias-v2-input <file>
                        Reviewed Time alias planning input; builds the versioned
                        dataset-alias-plan.v2 plan and batch instead of the scope-driven plan
+                       (requires --out-dir and ignores --scope/--operation)
+  --length-time-input <file>
+                       Reviewed Length*time planning input; builds the versioned
+                       dataset-length-time-plan.v1 plan instead of the scope-driven plan
                        (requires --out-dir and ignores --scope/--operation)
   --out-dir <dir>      Artifact directory
   --page-size <n>      Requested snapshot page size, 1-5000 (default: 1000); server caps are followed using exact counts
@@ -4632,6 +4637,7 @@ function parseDatasetMaintenancePlanFlags(args: string[]): {
   scopePath: string;
   operation: DatasetMaintenanceOperation | null;
   aliasV2InputPath: string;
+  lengthTimeInputPath: string;
   outDir: string;
   pageSize: number | undefined;
   timeoutMs: number | undefined;
@@ -4648,6 +4654,7 @@ function parseDatasetMaintenancePlanFlags(args: string[]): {
         scope: { type: 'string' },
         operation: { type: 'string' },
         'alias-v2-input': { type: 'string' },
+        'length-time-input': { type: 'string' },
         'out-dir': { type: 'string' },
         'page-size': { type: 'string' },
         'timeout-ms': { type: 'string' },
@@ -4688,6 +4695,8 @@ function parseDatasetMaintenancePlanFlags(args: string[]): {
     scopePath: typeof values.scope === 'string' ? values.scope : '',
     operation: rawOperation as DatasetMaintenanceOperation | null,
     aliasV2InputPath: typeof values['alias-v2-input'] === 'string' ? values['alias-v2-input'] : '',
+    lengthTimeInputPath:
+      typeof values['length-time-input'] === 'string' ? values['length-time-input'] : '',
     outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : '',
     pageSize: parseDatasetMaintenancePositiveInteger(values['page-size'], '--page-size'),
     timeoutMs: parseDatasetMaintenancePositiveInteger(values['timeout-ms'], '--timeout-ms'),
@@ -8512,6 +8521,25 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
             stderr: '',
           };
         }
+        if (datasetFlags.lengthTimeInputPath) {
+          // Explicit versioned selection: the reviewed Length*time planning input builds the
+          // versioned plan through the builder the protected run consumes.
+          if (!datasetFlags.outDir) {
+            throw new CliError('dataset maintenance plan requires --out-dir.', {
+              code: 'DATASET_MAINTENANCE_OUT_DIR_REQUIRED',
+              exitCode: 2,
+            });
+          }
+          const lengthPlan = planLengthTime({
+            inputPath: datasetFlags.lengthTimeInputPath,
+            outDir: datasetFlags.outDir,
+          });
+          return {
+            exitCode: 0,
+            stdout: stringifyJson(lengthPlan, datasetFlags.json),
+            stderr: '',
+          };
+        }
         if (datasetFlags.aliasV2InputPath) {
           // Explicit versioned selection: the reviewed alias-plan input document builds the
           // versioned plan and batch through the same builder the protected run consumes.
@@ -8679,7 +8707,7 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
             exitCode: 2,
           });
         }
-        if (isAliasV2PlanFile(datasetFlags.planPath)) {
+        if (protectedPlanFileProfile(datasetFlags.planPath) !== null) {
           // The versioned freeze derives every binding from the plan, the toolchain evidence and
           // the frozen derivative baselines; the account is the authenticated owner's.
           if (!datasetFlags.derivativeBaselinesPath) {

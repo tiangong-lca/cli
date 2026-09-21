@@ -337,9 +337,7 @@ export function buildLengthTimeCohort(): LengthTimeCohortFixture {
 }
 
 /** The complete instance tuple table the cohort derives, in the CLI's own canonical spelling. */
-export function lengthTimeCohortTuples(
-  cohort: LengthTimeCohortFixture,
-): {
+export function lengthTimeCohortTuples(cohort: LengthTimeCohortFixture): {
   process_id: string;
   version: string;
   instance: LengthTimeFixtureProcess['instances'][number];
