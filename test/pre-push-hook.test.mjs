@@ -20,6 +20,9 @@ const zero = '0'.repeat(40);
 const oid = '1'.repeat(40);
 const deletion = `(delete) ${zero} refs/heads/merged ${oid}\n`;
 const update = `refs/heads/main ${oid} refs/heads/main ${'2'.repeat(40)}\n`;
+// This is a process watchdog, not a product latency assertion. Concurrent coverage workers can
+// delay otherwise local, stubbed shell commands; preserve every gate/argument assertion below.
+const fixtureTimeoutMs = 30_000;
 
 // Only the test fixture drops inherited Git bindings. The real hook keeps the
 // caller's Git context. No external remote, package build or actual gate runs here.
@@ -77,7 +80,12 @@ function fixture(t, inheritedEnvironment = process.env) {
     helper,
     expected,
     git(args) {
-      const result = spawnSync('git', args, { cwd: repo, env, encoding: 'utf8', timeout: 5000 });
+      const result = spawnSync('git', args, {
+        cwd: repo,
+        env,
+        encoding: 'utf8',
+        timeout: fixtureTimeoutMs,
+      });
       assert.ifError(result.error);
       assert.equal(result.status, 0, result.stderr);
       return result;
@@ -89,7 +97,7 @@ function fixture(t, inheritedEnvironment = process.env) {
         env: { ...env, ...overrides },
         input,
         encoding: 'utf8',
-        timeout: 5000,
+        timeout: fixtureTimeoutMs,
       });
       assert.ifError(result.error);
       return { ...result, trace: readFileSync(join(repo, '.fixture-trace'), 'utf8') };
