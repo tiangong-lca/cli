@@ -43,6 +43,11 @@ export type AliasV2InteropReady = {
   complete_script?: string;
   /** The lifecycle stages the database owner has prepared on this stack. */
   scenarios: string[];
+  /**
+   * The schema the owner's transport stub holds captured callbacks in, when the marker names one.
+   * Defaults to the Time campaign's `scratch_673` for markers that predate the field.
+   */
+  net_hold_schema?: string;
   plan_sha256?: string;
 };
 

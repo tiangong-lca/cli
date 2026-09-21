@@ -372,7 +372,7 @@ test('the shared fixture pins the exact plan digest both halves build against', 
   const plan = build(cohortInput());
   assert.equal(
     plan['plan_sha256'],
-    '3d143fe85eb47eb095ff0ebf0f35eba59c3ef79001be44d646624ba7ba544775',
+    '1b7f7aca3e29cf52378bceebd659e4039bfe5da633f765425e58ad5fed0f2195',
   );
   const evidence = cohortInput()['source_evidence'] as JsonObject;
   assert.equal(
@@ -570,11 +570,10 @@ test('the source number comes from its anchored declaration and nothing else', (
   );
 });
 
-test('the uncertainty pair is optional and preserved exactly as the source declares it', () => {
-  // The audited corpus carries the uncertainty keys unevenly: 13 occurrences declare no distribution
-  // and no standard deviation, 22 declare `log-normal` without one, 4 declare `log-normal` with one.
-  // Every combination is accepted and copied through unchanged — the correction never invents a
-  // standard deviation, never defaults one to zero and never reinterprets the distribution.
+test('the distribution is required and the standard deviation is optional, both preserved', () => {
+  // The audited corpus carries the distribution on all 39 occurrences — 13 spelled as the literal
+  // string `undefined`, 26 as `log-normal` — and the relative standard deviation on 4 of them. Both
+  // are copied through unchanged: the correction never invents, defaults or reinterprets either.
   const cohort = buildLengthTimeCohort();
   const shapes = new Set<string>();
   for (const process of cohort.processes) {
@@ -582,11 +581,11 @@ test('the uncertainty pair is optional and preserved exactly as the source decla
     for (const instance of process.instances) {
       const exchange = entries[instance.index] as JsonObject;
       shapes.add(
-        `${String(exchange['uncertaintyDistributionType'] ?? 'none')}/${Object.hasOwn(exchange, 'relativeStandardDeviation95In') ? 'sd' : 'no-sd'}`,
+        `${String(exchange['uncertaintyDistributionType'] ?? 'MISSING')}/${Object.hasOwn(exchange, 'relativeStandardDeviation95In') ? 'sd' : 'no-sd'}`,
       );
     }
   }
-  assert.deepEqual([...shapes].sort(), ['log-normal/no-sd', 'log-normal/sd', 'none/no-sd']);
+  assert.deepEqual([...shapes].sort(), ['log-normal/no-sd', 'log-normal/sd', 'undefined/no-sd']);
 
   const plan = build(cohortInput());
   for (const action of plan['actions'] as JsonObject[]) {
@@ -612,17 +611,36 @@ test('the uncertainty pair is optional and preserved exactly as the source decla
     }
   }
 
-  // An occurrence that declares neither key is still a complete reviewed occurrence.
+  // Dropping the optional standard deviation leaves a complete reviewed occurrence; dropping the
+  // distribution does not, because every audited occurrence declares one.
   const stripped = cohortInput();
   const process = (stripped['processes'] as JsonObject[])[0] as JsonObject;
   const exchange = exchangesOf(process['json'] as JsonObject)[0] as JsonObject;
-  delete exchange['uncertaintyDistributionType'];
   delete exchange['relativeStandardDeviation95In'];
   assert.equal(typeof build(stripped)['plan_sha256'], 'string');
+  const withoutDistribution = cohortInput();
+  const otherProcess = (withoutDistribution['processes'] as JsonObject[])[0] as JsonObject;
+  delete (exchangesOf(otherProcess['json'] as JsonObject)[0] as JsonObject)[
+    'uncertaintyDistributionType'
+  ];
+  assert.equal(
+    codeOf(() => build(withoutDistribution)),
+    LENGTH_TIME_PLAN_INVALID,
+  );
+
+  // The `undefined` spelling is a value, not an absence: it survives into the desired image untouched.
+  const spelled = build(cohortInput());
+  const spellings = new Set<string>();
+  for (const action of spelled['actions'] as JsonObject[]) {
+    for (const entry of exchangesOf(action['desired_json_ordered'] as JsonObject)) {
+      spellings.add(String(entry['uncertaintyDistributionType']));
+    }
+  }
+  assert.deepEqual([...spellings].sort(), ['log-normal', 'undefined']);
 });
 
 test('unreviewed or unstable exchange keys refuse rather than being copied through', () => {
-  // A key outside the reviewed set is still refused even though two of the nine are optional.
+  // A key outside the reviewed set is still refused even though one of the nine is optional.
   for (const key of ['dataSetInternalID', 'comment', 'pedigreeUncertainty', 'other']) {
     const unreviewed = cohortInput();
     const process = (unreviewed['processes'] as JsonObject[])[0] as JsonObject;
@@ -646,11 +664,16 @@ test('unreviewed or unstable exchange keys refuse rather than being copied throu
       key,
     );
   }
-  assert.equal(LENGTH_TIME_REQUIRED_EXCHANGE_KEYS.length, 7);
-  assert.deepEqual(
-    [...LENGTH_TIME_OPTIONAL_EXCHANGE_KEYS],
-    ['relativeStandardDeviation95In', 'uncertaintyDistributionType'],
+  // The distribution is required — an occurrence without it is not the reviewed shape — and exactly
+  // one key is optional.
+  assert.equal(LENGTH_TIME_REQUIRED_EXCHANGE_KEYS.length, 8);
+  assert.equal(
+    (LENGTH_TIME_REQUIRED_EXCHANGE_KEYS as readonly string[]).includes(
+      'uncertaintyDistributionType',
+    ),
+    true,
   );
+  assert.deepEqual([...LENGTH_TIME_OPTIONAL_EXCHANGE_KEYS], ['relativeStandardDeviation95In']);
   assert.equal(LENGTH_TIME_EXCHANGE_KEYS.length, 9);
 });
 
@@ -1179,10 +1202,9 @@ test('every canonical target shape gap refuses rather than being read as a short
   }
   // The real four-row table is accepted exactly as the snapshot spells it: `1.0` and `1000.0` are
   // value-equal to the reviewed constants through the exact-decimal normaliser, not by enumeration.
-  const accepted = cohortInput();
   assert.equal(
-    build(accepted)['plan_sha256'],
-    '3d143fe85eb47eb095ff0ebf0f35eba59c3ef79001be44d646624ba7ba544775',
+    build(cohortInput())['plan_sha256'],
+    '1b7f7aca3e29cf52378bceebd659e4039bfe5da633f765425e58ad5fed0f2195',
   );
 });
 

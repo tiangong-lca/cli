@@ -271,13 +271,13 @@ export function buildLengthTimeCohort(): LengthTimeCohortFixture {
       const internalId = String(offset + 1);
       const sourceNumber = String(sourceCounter);
       sourceCounter += 1;
-      // The audited uncertainty carrier: the first 13 occurrences declare no distribution and no
-      // standard deviation, the next 22 declare `log-normal` without one, and the last 4 declare
-      // `log-normal` with one. Presence and absence are part of the fixture because the correction
-      // must preserve them exactly.
+      // The audited uncertainty carrier: every occurrence declares a distribution — the first 13 the
+      // literal string `undefined`, the remaining 26 `log-normal` — and only the last 4 also declare
+      // a standard deviation. Values are part of the fixture because the correction must preserve
+      // them exactly, including the `undefined` spelling.
       const uncertainty =
         selectedCounter < 13
-          ? {}
+          ? { uncertaintyDistributionType: 'undefined' }
           : selectedCounter < 35
             ? { uncertaintyDistributionType: 'log-normal' }
             : {
@@ -320,6 +320,9 @@ export function buildLengthTimeCohort(): LengthTimeCohortFixture {
           meanAmount: '42',
           referenceToFlowDataSet: { '@refObjectId': UNRELATED_FLOW, '@version': VERSION },
           resultingAmount: '42',
+          // The unrelated exchanges carry the reviewed carrier too: the field is on every real
+          // exchange, and this one is outside the correction set rather than outside the shape.
+          uncertaintyDistributionType: 'undefined',
         }),
       );
     }
@@ -366,8 +369,8 @@ export function buildLengthTimeCohort(): LengthTimeCohortFixture {
   if (selectedComments.length - suffixed !== 13 || suffixed !== 26) {
     throw new Error('Length*time fixture must carry 13 plain and 26 metadata source comments.');
   }
-  // The real uncertainty carrier: 13 without a distribution, 22 log-normal without a standard
-  // deviation, 4 log-normal with one.
+  // The real uncertainty carrier: the distribution key is on every occurrence (13 spelled
+  // `undefined`, 26 `log-normal`) and only 4 carry a standard deviation.
   const distributions = selectedComments.map((exchange) =>
     Object.hasOwn(exchange, 'uncertaintyDistributionType')
       ? String(exchange['uncertaintyDistributionType'])
@@ -377,11 +380,12 @@ export function buildLengthTimeCohort(): LengthTimeCohortFixture {
     Object.hasOwn(exchange, 'relativeStandardDeviation95In'),
   );
   if (
-    distributions.filter((value) => value === null).length !== 13 ||
+    distributions.filter((value) => value === 'undefined').length !== 13 ||
     distributions.filter((value) => value === 'log-normal').length !== 26 ||
+    distributions.some((value) => value === null) ||
     deviations.filter(Boolean).length !== 4
   ) {
-    throw new Error('Length*time fixture must carry the reviewed 13/22/4 uncertainty split.');
+    throw new Error('Length*time fixture must carry the reviewed distribution/SD carrier.');
   }
   return {
     actor_id: LENGTH_TIME_FIXTURE_ACTOR,

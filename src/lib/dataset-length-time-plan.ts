@@ -42,8 +42,11 @@ export const LENGTH_TIME_DERIVE_MISMATCH = 'LENGTH_TIME_DERIVE_MISMATCH';
 export const LENGTH_TIME_UNCERTAINTY_UNSUPPORTED = 'LENGTH_TIME_UNCERTAINTY_UNSUPPORTED';
 
 /**
- * The keys every selected occurrence of the audited cohort must carry: identity, derivation status,
- * direction, the source declaration, both absolute amount leaves and the flow reference.
+ * The keys every selected occurrence of the audited cohort carries: identity, derivation status,
+ * direction, the source declaration, both absolute amount leaves, the flow reference and the
+ * uncertainty distribution. All 39 occurrences carry the distribution — 13 of them as the literal
+ * string `"undefined"` and 26 as `"log-normal"` — so the field itself is never absent and is never
+ * dropped: its value, whatever it is, is preserved byte-for-byte.
  */
 export const LENGTH_TIME_REQUIRED_EXCHANGE_KEYS = [
   '@dataSetInternalID',
@@ -53,20 +56,16 @@ export const LENGTH_TIME_REQUIRED_EXCHANGE_KEYS = [
   'meanAmount',
   'referenceToFlowDataSet',
   'resultingAmount',
+  'uncertaintyDistributionType',
 ] as const;
 
 /**
- * The reviewed uncertainty keys, which the audited cohort carries **unevenly**: of the 39 selected
- * occurrences, 13 declare no distribution at all and no standard deviation, 22 declare `log-normal`
- * without a standard deviation, and 4 declare `log-normal` with one. Presence, absence and value
- * are therefore preserved byte-for-byte and are never interpreted, invented or defaulted — a missing
- * standard deviation is a source-authoring gap in the input, not a quantity this correction may
- * fabricate, and it does not block a pure x1000 rescale.
+ * The one optional reviewed key. Of the 39 selected occurrences, 4 carry a relative standard
+ * deviation and 35 do not: a missing standard deviation is a source-authoring gap in the input, not
+ * a quantity this correction may fabricate, default to zero or reinterpret, and it does not block a
+ * pure x1000 rescale. Its presence, absence and value are preserved exactly.
  */
-export const LENGTH_TIME_OPTIONAL_EXCHANGE_KEYS = [
-  'relativeStandardDeviation95In',
-  'uncertaintyDistributionType',
-] as const;
+export const LENGTH_TIME_OPTIONAL_EXCHANGE_KEYS = ['relativeStandardDeviation95In'] as const;
 
 /** The complete reviewed exchange key set: everything required, plus the optional uncertainty pair. */
 export const LENGTH_TIME_EXCHANGE_KEYS = [
@@ -474,9 +473,9 @@ function lengthTimeInstanceOf(
       );
     }
   }
-  // The optional uncertainty keys are neither required nor read: whatever the occurrence declares —
-  // nothing, a distribution without a deviation, or both — survives untouched in the desired image,
-  // because the whole payload is copied and only the two amount leaves move.
+  // The distribution the occurrence declares is never judged: the audited corpus spells it
+  // `"undefined"` for thirteen occurrences and `"log-normal"` for the rest, and the optional standard
+  // deviation is equally untouched. The whole payload is copied and only the two amount leaves move.
   const internalId = exchange['@dataSetInternalID'];
   if (typeof internalId !== 'string' || !INTERNAL_ID.test(internalId)) {
     fail(LENGTH_TIME_PLAN_INVALID, 'Length*time exchange must carry its internal id.', details);
