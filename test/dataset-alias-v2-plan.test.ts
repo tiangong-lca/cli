@@ -7,6 +7,9 @@ import {
   ALIAS_V2_FACTOR,
   ALIAS_V2_PLAN_SCHEMA,
   ALIAS_V2_REFERENCE_SHAPE_INVALID,
+  ALIAS_V2_TARGET_SHAPE_INVALID,
+  aliasV2TargetFlowPropertyReference,
+  assertCanonicalFlowPropertyReference,
   buildAliasV2Plan,
   type AliasV2PlanInput,
 } from '../src/lib/dataset-alias-v2-plan.js';
@@ -50,6 +53,7 @@ function flow(id: string, propertyEntries: JsonObject[] = [propertyEntry()]): Js
         quantitativeReference: { referenceToReferenceFlowProperty: '1' },
       },
       flowProperties: { flowProperty: propertyEntries },
+      modellingAndValidation: { LCIMethod: { typeOfDataSet: 'Product flow' } },
       administrativeInformation: { marker: 'unchanged' },
     },
   };
@@ -119,7 +123,22 @@ function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
     target_flow_property: {
       id: TARGET_FP,
       version: '01.00.000',
-      json: { flowPropertyDataSet: { flowPropertiesInformation: { marker: 'target' } } },
+      // The real snapshot schema: plural information node, name at dataSetInformation["common:name"],
+      // unit group reference at quantitativeReference.referenceToReferenceUnitGroup.
+      json: {
+        flowPropertyDataSet: {
+          flowPropertiesInformation: {
+            dataSetInformation: { 'common:name': { '#text': 'Time', '@xml:lang': 'en' } },
+            quantitativeReference: {
+              referenceToReferenceUnitGroup: {
+                '@type': 'unit group data set',
+                '@refObjectId': TARGET_UG,
+                '@version': '01.00.000',
+              },
+            },
+          },
+        },
+      },
     },
     target_unit_group: {
       id: TARGET_UG,
@@ -131,7 +150,6 @@ function input(overrides: Partial<AliasV2PlanInput> = {}): AliasV2PlanInput {
       version: '00.00.001',
       json: { unitGroupDataSet: { units: { unit: [{ name: 'hr', meanValue: '1' }] } } },
     },
-    target_flow_property_reference: TARGET_REFERENCE,
     source_evidence_sha256: SOURCE_EVIDENCE,
     ...overrides,
   };
@@ -286,7 +304,12 @@ test('each payload shape is resolved through its own accessor, never a neighbour
         {
           id: 'flow-a',
           version: '00.00.001',
-          json: { flowDataSet: { flowProperties: { flowProperty: propertyEntry() } } },
+          json: {
+            flowDataSet: {
+              modellingAndValidation: { LCIMethod: { typeOfDataSet: 'Product flow' } },
+              flowProperties: { flowProperty: propertyEntry() },
+            },
+          },
         },
       ],
       processes: [
@@ -357,6 +380,41 @@ test('each payload shape is resolved through its own accessor, never a neighbour
   );
   // Malformed roots on either family are refused instead of being read with the other root.
   rejects(singleFlow({}), invalid);
+  rejects(
+    singleFlow({
+      flowDataSet: {
+        modellingAndValidation: { LCIMethod: { typeOfDataSet: 'Product flow' } },
+      },
+    }),
+    invalid,
+  );
+  rejects(
+    singleFlow({
+      flowDataSet: {
+        modellingAndValidation: { LCIMethod: { typeOfDataSet: 'Product flow' } },
+        flowProperties: 'nope',
+      },
+    }),
+    invalid,
+  );
+  rejects(
+    singleFlow({
+      flowDataSet: {
+        modellingAndValidation: { LCIMethod: { typeOfDataSet: 'Product flow' } },
+        flowProperties: { flowProperty: 'nope' },
+      },
+    }),
+    invalid,
+  );
+  rejects(
+    singleFlow({
+      flowDataSet: {
+        modellingAndValidation: { LCIMethod: { typeOfDataSet: 'Product flow' } },
+        flowProperties: { flowProperty: [1] },
+      },
+    }),
+    invalid,
+  );
   rejects(singleFlow({ flowDataSet: [] }), invalid);
   rejects(singleFlow({ flowDataSet: { flowProperties: null } }), invalid);
   rejects(singleFlow({ flowDataSet: { flowProperties: 'nope' } }), invalid);
@@ -448,57 +506,93 @@ test('the v2 plan refuses anything outside the reviewed shape', () => {
   rejects({ flows: [] }, invalid);
   rejects({ processes: [] }, invalid);
   rejects({ source_evidence_sha256: 'nope' }, invalid);
-  // The reviewed target template must be the canonical five-key reference: the id, version,
-  // @type, canonical @uri and the language-tagged description object the real rows carry.
-  const shapeInvalid = ALIAS_V2_REFERENCE_SHAPE_INVALID;
+  // The target reference is a projection of the locked snapshot, so a snapshot that does not
+  // carry the real schema — the plural information node, the language-tagged common:name at
+  // dataSetInformation, and the unit group reference — is refused rather than projected from an
+  // assumed path. The Process name shape is deliberately not accepted here.
+  const targetShapeInvalid = ALIAS_V2_TARGET_SHAPE_INVALID;
+  const targetSnapshot = (json: JsonObject): Partial<AliasV2PlanInput> => ({
+    target_flow_property: { id: TARGET_FP, version: '01.00.000', json },
+  });
+  const realTarget = (): JsonObject =>
+    JSON.parse(JSON.stringify(input().target_flow_property.json)) as JsonObject;
+  const withInformation = (
+    mutate: (information: JsonObject) => void,
+  ): Partial<AliasV2PlanInput> => {
+    const json = realTarget();
+    const information = (json['flowPropertyDataSet'] as JsonObject)[
+      'flowPropertiesInformation'
+    ] as JsonObject;
+    mutate(information);
+    return targetSnapshot(json);
+  };
+  rejects(targetSnapshot({}), targetShapeInvalid);
+  rejects(targetSnapshot({ flowPropertyDataSet: {} }), targetShapeInvalid);
   rejects(
-    { target_flow_property_reference: { ...TARGET_REFERENCE, '@refObjectId': 'other' } },
-    shapeInvalid,
+    // No data set information node at all: there is nothing to project a name from.
+    withInformation((information) => {
+      delete information['dataSetInformation'];
+    }),
+    targetShapeInvalid,
   );
   rejects(
-    { target_flow_property_reference: { ...TARGET_REFERENCE, '@version': '2.0.0' } },
-    shapeInvalid,
+    withInformation((information) => {
+      information['dataSetInformation'] = 'nope';
+    }),
+    targetShapeInvalid,
   );
   rejects(
-    { target_flow_property_reference: { ...TARGET_REFERENCE, '@version': '02.00.000' } },
-    invalid,
+    // The singular spelling is a path the data does not have.
+    targetSnapshot({ flowPropertyDataSet: { flowPropertyInformation: {} } }),
+    targetShapeInvalid,
   );
-  // A well-formed reference that simply points at another data set is a different failure: it
-  // passes the canonical-shape check and is refused for not binding this target.
   rejects(
-    {
-      target_flow_property_reference: {
-        ...TARGET_REFERENCE,
-        '@refObjectId': 'beefbeef-0000-4000-8000-000000000001',
-        '@uri': '../flowproperties/beefbeef-0000-4000-8000-000000000001.json',
-      },
-    },
-    invalid,
+    withInformation((information) => {
+      information['dataSetInformation'] = {
+        'common:shortDescription': { '#text': 'Time', '@xml:lang': 'en' },
+      };
+    }),
+    targetShapeInvalid,
   );
-  rejects({ target_flow_property_reference: null as unknown as JsonObject }, shapeInvalid);
-  rejects({ target_flow_property_reference: 'nope' as unknown as JsonObject }, shapeInvalid);
-  const shapeCases: Array<[string, unknown]> = [
-    ['@type', undefined],
-    ['@type', 'unit group data set'],
-    ['@uri', '../flowproperties/somewhere-else.json'],
-    ['common:shortDescription', [{ '#text': 'Time' }]],
-    ['common:shortDescription', { '#text': 'Time' }],
-    ['common:shortDescription', { '@xml:lang': 'en' }],
-    ['extra', 'x'],
-  ];
-  for (const [key, value] of shapeCases) {
-    const reference: JsonObject = { ...TARGET_REFERENCE };
-    if (value === undefined) {
-      delete reference[key];
-    } else {
-      reference[key] = value;
-    }
-    rejects({ target_flow_property_reference: reference }, shapeInvalid);
+  rejects(
+    // The Process-style name path is not this data set family's shape.
+    withInformation((information) => {
+      information['dataSetInformation'] = { name: { baseName: [{ '#text': 'Time' }] } };
+    }),
+    targetShapeInvalid,
+  );
+  for (const name of [
+    [{ '#text': 'Time', '@xml:lang': 'en' }],
+    'Time',
+    { '#text': 'Time' },
+    { '@xml:lang': 'en' },
+    { '#text': '', '@xml:lang': 'en' },
+    { '#text': 'Time', '@xml:lang': '' },
+  ]) {
+    rejects(
+      withInformation((information) => {
+        information['dataSetInformation'] = { 'common:name': name };
+      }),
+      targetShapeInvalid,
+    );
   }
   rejects(
-    { target_flow_property_reference: { ...TARGET_REFERENCE, '@refObjectId': '' } },
-    shapeInvalid,
+    withInformation((information) => {
+      delete information['quantitativeReference'];
+    }),
+    targetShapeInvalid,
   );
+  for (const unitGroup of [
+    { '@refObjectId': 'beefbeef-0000-4000-8000-000000000001' },
+    { '@refObjectId': TARGET_UG, '@version': '02.00.000' },
+  ]) {
+    rejects(
+      withInformation((information) => {
+        information['quantitativeReference'] = { referenceToReferenceUnitGroup: unitGroup };
+      }),
+      targetShapeInvalid,
+    );
+  }
   // Duplicate rows, wrong property-entry counts and unreviewed entry values.
   rejects({ flows: [input().flows[0]!, input().flows[0]!] }, invalid);
   rejects(singleFlow(flow('flow-a', [propertyEntry(), propertyEntry()])), invalid);
@@ -713,4 +807,146 @@ test('unreviewed exchange fields and functional-unit forms fail closed with thei
   // Neither `mean` nor `resulting` uncertainty fields are absolute amounts.
   assert.equal(ALIAS_V2_EXCHANGE_KEYS.includes('relativeStandardDeviation95In'), true);
   assert.equal(ALIAS_V2_EXCHANGE_KEYS.includes('uncertaintyDistributionType'), true);
+});
+
+test('the target reference is projected from the locked snapshot, never carried in', () => {
+  const target = input().target_flow_property;
+  const unitGroup = input().target_unit_group;
+  const projected = aliasV2TargetFlowPropertyReference(target, unitGroup);
+  // Exactly the five canonical keys, and the description is the target's own language object.
+  assert.deepEqual(projected, TARGET_REFERENCE);
+  assert.deepEqual(projected['common:shortDescription'], {
+    '#text': 'Time',
+    '@xml:lang': 'en',
+  });
+  // Nothing else from the name object is projected into the reference.
+  const loose = aliasV2TargetFlowPropertyReference(
+    {
+      ...target,
+      json: {
+        flowPropertyDataSet: {
+          flowPropertiesInformation: {
+            dataSetInformation: {
+              'common:name': { '#text': 'Time', '@xml:lang': 'en', '@extra': 'x' },
+            },
+            quantitativeReference: {
+              referenceToReferenceUnitGroup: { '@refObjectId': TARGET_UG },
+            },
+          },
+        },
+      },
+    },
+    unitGroup,
+  );
+  assert.deepEqual(Object.keys(loose['common:shortDescription'] as JsonObject).sort(), [
+    '#text',
+    '@xml:lang',
+  ]);
+  // A unit group reference without a version is accepted; the identity is what binds it.
+  assert.equal(loose['@version'], '01.00.000');
+  // The reference identity a caller reads back is the target's own row identity.
+  assert.equal(loose['@refObjectId'], target.id);
+  assert.equal(loose['@uri'], `../flowproperties/${target.id}.json`);
+  // The canonical-shape guard itself refuses every deficient spelling, including the ones a
+  // neighbouring data set family would produce.
+  const shapeInvalid = ALIAS_V2_REFERENCE_SHAPE_INVALID;
+  const deficient: Array<[string, unknown]> = [
+    ['not-an-object', null],
+    ['not-an-object', 'nope'],
+    ['missing-@type', { ...TARGET_REFERENCE, '@type': undefined }],
+    ['wrong-@type', { ...TARGET_REFERENCE, '@type': 'unit group data set' }],
+    ['wrong-@uri', { ...TARGET_REFERENCE, '@uri': '../flowproperties/other.json' }],
+    ['empty-id', { ...TARGET_REFERENCE, '@refObjectId': '' }],
+    ['bad-version', { ...TARGET_REFERENCE, '@version': '1.0.0' }],
+    ['array-description', { ...TARGET_REFERENCE, 'common:shortDescription': ['Time'] }],
+    ['no-lang', { ...TARGET_REFERENCE, 'common:shortDescription': { '#text': 'Time' } }],
+    ['no-text', { ...TARGET_REFERENCE, 'common:shortDescription': { '@xml:lang': 'en' } }],
+    ['extra-key', { ...TARGET_REFERENCE, extra: 'x' }],
+  ];
+  for (const [label, value] of deficient) {
+    if (label === 'not-an-object') {
+      assert.throws(
+        () => assertCanonicalFlowPropertyReference(value),
+        (error: unknown) => (error as { code?: string }).code === shapeInvalid,
+        label,
+      );
+      continue;
+    }
+    const candidate = { ...(value as JsonObject) };
+    if (label === 'missing-@type') {
+      delete candidate['@type'];
+    }
+    assert.throws(
+      () => assertCanonicalFlowPropertyReference(candidate),
+      (error: unknown) => (error as { code?: string }).code === shapeInvalid,
+      label,
+    );
+  }
+});
+
+test('only the reviewed Product flow kind is eligible, and nothing wider', () => {
+  const invalid = 'ALIAS_V2_PLAN_INVALID';
+  const flowWith = (mutate: (payload: JsonObject) => void): JsonObject => {
+    const payload = flow('flow-a');
+    mutate(payload);
+    return payload;
+  };
+  // The reviewed value is accepted (the base fixture already carries it).
+  assert.doesNotThrow(() => buildAliasV2Plan(input()));
+  // Missing, elementary, waste and non-string values are all refused before any write.
+  const cases: Array<[string, (payload: JsonObject) => void]> = [
+    [
+      'missing modellingAndValidation',
+      (payload) => {
+        delete (payload['flowDataSet'] as JsonObject)['modellingAndValidation'];
+      },
+    ],
+    [
+      'missing LCIMethod',
+      (payload) => {
+        (payload['flowDataSet'] as JsonObject)['modellingAndValidation'] = {};
+      },
+    ],
+    [
+      'missing typeOfDataSet',
+      (payload) => {
+        (payload['flowDataSet'] as JsonObject)['modellingAndValidation'] = { LCIMethod: {} };
+      },
+    ],
+    [
+      'Elementary flow',
+      (payload) => {
+        (payload['flowDataSet'] as JsonObject)['modellingAndValidation'] = {
+          LCIMethod: { typeOfDataSet: 'Elementary flow' },
+        };
+      },
+    ],
+    [
+      'Waste flow',
+      (payload) => {
+        (payload['flowDataSet'] as JsonObject)['modellingAndValidation'] = {
+          LCIMethod: { typeOfDataSet: 'Waste flow' },
+        };
+      },
+    ],
+    [
+      'non-string',
+      (payload) => {
+        (payload['flowDataSet'] as JsonObject)['modellingAndValidation'] = {
+          LCIMethod: { typeOfDataSet: 3 },
+        };
+      },
+    ],
+    [
+      'LCIMethod as array',
+      (payload) => {
+        (payload['flowDataSet'] as JsonObject)['modellingAndValidation'] = {
+          LCIMethod: [{ typeOfDataSet: 'Product flow' }],
+        };
+      },
+    ],
+  ];
+  for (const [, mutate] of cases) {
+    rejects(singleFlow(flowWith(mutate)), invalid);
+  }
 });

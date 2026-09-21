@@ -42,6 +42,7 @@ function planInput(): AliasV2PlanInput {
         json: {
           flowDataSet: {
             flowInformation: { quantitativeReference: { referenceToReferenceFlowProperty: '1' } },
+            modellingAndValidation: { LCIMethod: { typeOfDataSet: 'Product flow' } },
             flowProperties: {
               flowProperty: [
                 {
@@ -66,6 +67,7 @@ function planInput(): AliasV2PlanInput {
         json: {
           flowDataSet: {
             flowInformation: { quantitativeReference: { referenceToReferenceFlowProperty: '1' } },
+            modellingAndValidation: { LCIMethod: { typeOfDataSet: 'Product flow' } },
             flowProperties: {
               flowProperty: [
                 {
@@ -149,7 +151,19 @@ function planInput(): AliasV2PlanInput {
     target_flow_property: {
       id: TARGET_FP,
       version: '01.00.000',
-      json: { flowPropertyDataSet: {} },
+      json: {
+        flowPropertyDataSet: {
+          flowPropertiesInformation: {
+            dataSetInformation: { 'common:name': { '#text': 'Time', '@xml:lang': 'en' } },
+            quantitativeReference: {
+              referenceToReferenceUnitGroup: {
+                '@refObjectId': '49ce0c2f-2241-54e3-8e75-e75ffbdaecfb',
+                '@version': '01.00.000',
+              },
+            },
+          },
+        },
+      },
     },
     target_unit_group: {
       id: '49ce0c2f-2241-54e3-8e75-e75ffbdaecfb',
@@ -160,13 +174,6 @@ function planInput(): AliasV2PlanInput {
       id: 'aeddc8ee-da6f-5181-9a99-73466e198b86',
       version: '00.00.001',
       json: {},
-    },
-    target_flow_property_reference: {
-      '@type': 'flow property data set',
-      '@refObjectId': TARGET_FP,
-      '@uri': `../flowproperties/${TARGET_FP}.json`,
-      '@version': '01.00.000',
-      'common:shortDescription': { '#text': 'Time', '@xml:lang': 'en' },
     },
     source_evidence_sha256: 'e'.repeat(64),
   };

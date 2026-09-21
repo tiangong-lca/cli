@@ -84,6 +84,9 @@ function flowPayload(id: string): JsonObject {
           },
         ],
       },
+      modellingAndValidation: {
+        LCIMethod: { typeOfDataSet: 'Product flow' },
+      },
       administrativeInformation: { 'common:other': 'fixture' },
     },
   };
@@ -192,10 +195,22 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
     target_flow_property: {
       id: TARGET_FP,
       version: '01.00.000',
+      // The real snapshot schema: the plural information node, the name at
+      // dataSetInformation["common:name"] as a language object, and the unit group reference at
+      // quantitativeReference.referenceToReferenceUnitGroup.
       json: {
         flowPropertyDataSet: {
           flowPropertiesInformation: {
-            quantitativeReference: { referenceToReferenceUnitGroup: { '@refObjectId': TARGET_UG } },
+            dataSetInformation: {
+              'common:name': { '#text': 'Time', '@xml:lang': 'en' },
+            },
+            quantitativeReference: {
+              referenceToReferenceUnitGroup: {
+                '@type': 'unit group data set',
+                '@refObjectId': TARGET_UG,
+                '@version': '01.00.000',
+              },
+            },
           },
         },
       },
@@ -218,13 +233,6 @@ export function buildAliasV2CohortInput(): AliasV2PlanInput {
       id: SOURCE_UG,
       version: '00.00.001',
       json: { unitGroupDataSet: { units: { unit: [{ name: 'hr', meanValue: '1' }] } } },
-    },
-    target_flow_property_reference: {
-      '@type': 'flow property data set',
-      '@refObjectId': TARGET_FP,
-      '@version': '01.00.000',
-      '@uri': `../flowproperties/${TARGET_FP}.json`,
-      'common:shortDescription': { '#text': 'Time', '@xml:lang': 'en' },
     },
     source_evidence_sha256: 'a1b2c3d4'.repeat(8),
   };

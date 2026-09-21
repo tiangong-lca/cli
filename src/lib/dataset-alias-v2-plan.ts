@@ -33,6 +33,7 @@ export const ALIAS_V2_FACTOR = '0.00011415525114155251';
 
 export const ALIAS_V2_PLAN_INVALID = 'ALIAS_V2_PLAN_INVALID';
 export const ALIAS_V2_REFERENCE_SHAPE_INVALID = 'ALIAS_V2_REFERENCE_SHAPE_INVALID';
+export const ALIAS_V2_TARGET_SHAPE_INVALID = 'ALIAS_V2_TARGET_SHAPE_INVALID';
 export const ALIAS_V2_UNCERTAINTY_UNSUPPORTED = 'ALIAS_V2_UNCERTAINTY_UNSUPPORTED';
 export const ALIAS_V2_TEXT_RULE_VIOLATION = 'ALIAS_V2_TEXT_RULE_VIOLATION';
 export const ALIAS_V2_COUNT_MISMATCH = 'ALIAS_V2_COUNT_MISMATCH';
@@ -67,8 +68,6 @@ export type AliasV2PlanInput = {
   target_flow_property: AliasV2Row;
   target_unit_group: AliasV2Row;
   source_unit_group: AliasV2Row;
-  /** The reviewed reference object a flow writes when it adopts the target flow property. */
-  target_flow_property_reference: JsonObject;
   source_evidence_sha256: string;
   expected_counts?: JsonObject;
 };
@@ -91,9 +90,13 @@ function isJsonObject(value: unknown): value is JsonObject {
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
+/**
+ * The flow's property entries. Only ever called on a payload whose Product-flow eligibility has
+ * already been proven, so the `flowDataSet` root is a proven object here; a missing or malformed
+ * property array still returns null and fails closed at the call site.
+ */
 function flowPropertyEntries(payload: JsonObject): JsonObject[] | null {
-  const root = payload['flowDataSet'];
-  const properties = isJsonObject(root) ? root['flowProperties'] : null;
+  const properties = (payload['flowDataSet'] as JsonObject)['flowProperties'];
   const value = isJsonObject(properties) ? properties['flowProperty'] : null;
   if (Array.isArray(value)) return value.every(isJsonObject) ? (value as JsonObject[]) : null;
   return isJsonObject(value) ? [value] : null;
@@ -105,6 +108,103 @@ function exchangeEntries(payload: JsonObject): JsonObject[] | null {
   if (Array.isArray(value)) return value.every(isJsonObject) ? (value as JsonObject[]) : null;
   return isJsonObject(value) ? [value] : null;
 }
+/**
+ * The reviewed eligibility gate for every flow this plan touches: the current cohort's 113
+ * before images are all Product flows, and the maintenance path must never widen to an
+ * elementary or waste flow. Anything but the reviewed value is refused before any write.
+ */
+export function assertProductFlow(payload: JsonObject, id: string): void {
+  const root = payload['flowDataSet'];
+  const modellingAndValidation = isJsonObject(root) ? root['modellingAndValidation'] : null;
+  const lciMethod = isJsonObject(modellingAndValidation)
+    ? modellingAndValidation['LCIMethod']
+    : null;
+  const typeOfDataSet = isJsonObject(lciMethod) ? lciMethod['typeOfDataSet'] : null;
+  if (typeOfDataSet !== 'Product flow') {
+    invalid('Alias v2 flow action requires a Product flow data set.', {
+      id,
+      type_of_dataset: typeOfDataSet,
+    });
+  }
+}
+
+/**
+ * The target flow property's own information node. The real snapshot spells it as the plural
+ * `flowPropertiesInformation` under `flowPropertyDataSet`; a singular spelling is a different
+ * path that does not exist in the data, so it is refused rather than accepted as an alias.
+ */
+export function flowPropertyInformation(payload: JsonObject): JsonObject | null {
+  const root = payload['flowPropertyDataSet'];
+  const information = isJsonObject(root) ? root['flowPropertiesInformation'] : null;
+  return isJsonObject(information) ? information : null;
+}
+
+/**
+ * Derives the canonical reference a flow writes when it adopts the locked target flow property.
+ * Everything the reference claims comes from the locked snapshot itself, at the real schema
+ * paths: the identity from the row, and the description from the target's own
+ * `dataSetInformation["common:name"]` language object — never from a `name`/`baseName` array, a
+ * `common:shortDescription`, or any other node inherited from a different data set family. The
+ * projection keeps exactly the two language-object keys so nothing else can be smuggled in.
+ */
+export function aliasV2TargetFlowPropertyReference(
+  target: AliasV2Row,
+  targetUnitGroup: AliasV2Row,
+): JsonObject {
+  const information = flowPropertyInformation(target.json);
+  if (information === null) {
+    fail(
+      ALIAS_V2_TARGET_SHAPE_INVALID,
+      'Alias v2 target flow property must carry its flowPropertiesInformation node.',
+      { id: target.id },
+    );
+  }
+  const dataSetInformation = information['dataSetInformation'];
+  const name = isJsonObject(dataSetInformation) ? dataSetInformation['common:name'] : null;
+  if (
+    !isJsonObject(name) ||
+    typeof name['#text'] !== 'string' ||
+    (name['#text'] as string) === '' ||
+    typeof name['@xml:lang'] !== 'string' ||
+    (name['@xml:lang'] as string) === ''
+  ) {
+    fail(
+      ALIAS_V2_TARGET_SHAPE_INVALID,
+      'Alias v2 target flow property must carry a language-tagged common:name.',
+      { id: target.id },
+    );
+  }
+  const quantitativeReference = information['quantitativeReference'];
+  const unitGroup = isJsonObject(quantitativeReference)
+    ? quantitativeReference['referenceToReferenceUnitGroup']
+    : null;
+  if (!isJsonObject(unitGroup) || unitGroup['@refObjectId'] !== targetUnitGroup.id) {
+    fail(
+      ALIAS_V2_TARGET_SHAPE_INVALID,
+      'Alias v2 target flow property must reference the locked target unit group.',
+      { id: target.id },
+    );
+  }
+  if (Object.hasOwn(unitGroup, '@version') && unitGroup['@version'] !== targetUnitGroup.version) {
+    fail(
+      ALIAS_V2_TARGET_SHAPE_INVALID,
+      'Alias v2 target flow property must reference the locked target unit group version.',
+      { id: target.id },
+    );
+  }
+  const reference = {
+    '@refObjectId': target.id,
+    '@type': 'flow property data set',
+    '@uri': `../flowproperties/${target.id}.json`,
+    '@version': target.version,
+    'common:shortDescription': {
+      '#text': name['#text'],
+      '@xml:lang': name['@xml:lang'],
+    },
+  };
+  return assertCanonicalFlowPropertyReference(reference);
+}
+
 /**
  * The canonical flow-property reference every affected flow actually carries and every derived
  * action must keep: exactly five keys, `@type` naming the flow property data set, the `@uri`
@@ -213,17 +313,13 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
     invalid('Alias v2 plan requires the source evidence sha256.');
   }
   const target = input.target_flow_property;
-  // The reviewed target template is the canonical five-key reference or the plan is refused.
-  const canonicalTargetReference = assertCanonicalFlowPropertyReference(
-    input.target_flow_property_reference,
+  // The reference is a projection of the locked target snapshot at its real schema paths, not a
+  // caller-supplied template: the identity comes from the row and the description from the
+  // target's own common:name.
+  const canonicalTargetReference = aliasV2TargetFlowPropertyReference(
+    target,
+    input.target_unit_group,
   );
-  const targetReference = referenceIdentity(canonicalTargetReference);
-  if (targetReference.id !== target.id) {
-    invalid('Alias v2 target flow property reference must bind the target snapshot id.');
-  }
-  if (targetReference.version !== target.version) {
-    invalid('Alias v2 target flow property reference must bind the target snapshot version.');
-  }
 
   const actions: JsonObject[] = [];
   const textActions: JsonObject[] = [];
@@ -237,6 +333,8 @@ export function buildAliasV2Plan(input: AliasV2PlanInput): AliasV2PlanResult {
       invalid('Alias v2 plan repeats a flow action.', { id: flow.id, version: flow.version });
     }
     flowIds.add(`${flow.id}@${flow.version}`);
+    // Eligibility first: only the reviewed Product flow kind may be retargeted.
+    assertProductFlow(flow.json, flow.id);
     const entries = flowPropertyEntries(flow.json);
     if (!entries || entries.length !== 1) {
       invalid('Alias v2 flow actions cover flows with exactly one property entry.', {

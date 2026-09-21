@@ -3,7 +3,9 @@ import test from 'node:test';
 import { sha256Json } from '../src/lib/dataset-maintenance-contract.js';
 import {
   ALIAS_V2_FACTOR,
-  ALIAS_V2_REFERENCE_SHAPE_INVALID,
+  ALIAS_V2_PLAN_INVALID,
+  ALIAS_V2_TARGET_SHAPE_INVALID,
+  aliasV2TargetFlowPropertyReference,
   buildAliasV2Plan,
   type AliasV2PlanInput,
 } from '../src/lib/dataset-alias-v2-plan.js';
@@ -330,7 +332,42 @@ test('the cohort fixture is anonymized and deterministic', () => {
   assert.equal(identifiers.size, 113 + 274);
 });
 
-test('every reference in the cohort carries the real five-key shape, and a deficient one is refused', () => {
+test('every cohort flow is a Product flow, and nothing wider is eligible', () => {
+  const input = buildAliasV2CohortInput();
+  // The fixture carries the real field on all 113 before images.
+  for (const flow of input.flows) {
+    const lciMethod = (
+      (flow.json['flowDataSet'] as JsonObject)['modellingAndValidation'] as JsonObject
+    )['LCIMethod'] as JsonObject;
+    assert.equal(lciMethod['typeOfDataSet'], 'Product flow', flow.id);
+  }
+  for (const action of ACTIONS.filter((entry) => entry['table'] === 'flows')) {
+    const lciMethod = (
+      ((action['expected_json_ordered'] as JsonObject)['flowDataSet'] as JsonObject)[
+        'modellingAndValidation'
+      ] as JsonObject
+    )['LCIMethod'] as JsonObject;
+    assert.equal(lciMethod['typeOfDataSet'], 'Product flow', String(action['id']));
+  }
+  // A flow of another kind — or one missing the field altogether — is refused before any write.
+  for (const typeOfDataSet of [undefined, 'Elementary flow', 'Waste flow']) {
+    const json = JSON.parse(JSON.stringify(input.flows[0]!.json)) as JsonObject;
+    if (typeOfDataSet === undefined) {
+      delete (json['flowDataSet'] as JsonObject)['modellingAndValidation'];
+    } else {
+      (json['flowDataSet'] as JsonObject)['modellingAndValidation'] = {
+        LCIMethod: { typeOfDataSet },
+      };
+    }
+    assert.throws(
+      () => buildAliasV2Plan({ ...input, flows: [{ ...input.flows[0]!, json }] }),
+      (error: unknown) => (error as { code?: string }).code === ALIAS_V2_PLAN_INVALID,
+      String(typeOfDataSet),
+    );
+  }
+});
+
+test('every reference in the cohort carries the real five-key shape, projected from the locked target', () => {
   const input = buildAliasV2CohortInput();
   const canonicalKeys = ['@refObjectId', '@type', '@uri', '@version', 'common:shortDescription'];
   const assertCanonical = (reference: JsonObject, label: string): void => {
@@ -355,20 +392,44 @@ test('every reference in the cohort carries the real five-key shape, and a defic
       assertCanonical(entry['referenceToFlowPropertyDataSet'] as JsonObject, flow.id);
     }
   }
-  // The template the plan derives from, and every derived reference it produces.
-  assertCanonical(input.target_flow_property_reference, 'target template');
+  // The target snapshot carries the real schema, and the projected reference takes its
+  // description from the target's own language-tagged common:name — not from a name/baseName
+  // array, not from a common:shortDescription, and not from any Process-shaped path.
+  const target = input.target_flow_property;
+  const information = (target.json['flowPropertyDataSet'] as JsonObject)[
+    'flowPropertiesInformation'
+  ] as JsonObject;
+  const name = (information['dataSetInformation'] as JsonObject)['common:name'] as JsonObject;
+  assert.deepEqual(Object.keys(information).sort(), [
+    'dataSetInformation',
+    'quantitativeReference',
+  ]);
+  assert.equal(Object.hasOwn(information, 'flowPropertyInformation'), false);
+  assert.deepEqual(name, { '#text': 'Time', '@xml:lang': 'en' });
+  assert.deepEqual(
+    (
+      (information['quantitativeReference'] as JsonObject)[
+        'referenceToReferenceUnitGroup'
+      ] as JsonObject
+    )['@refObjectId'],
+    (input.target_unit_group as { id: string }).id,
+  );
+  const projected = aliasV2TargetFlowPropertyReference(target, input.target_unit_group);
+  assertCanonical(projected, 'projected target reference');
+  assert.deepEqual(projected['common:shortDescription'], name);
+  // Every action's desired reference and mutation reference is exactly that projection.
   for (const action of ACTIONS.filter((entry) => entry['table'] === 'flows')) {
     const desired = ((action['desired_json_ordered'] as JsonObject)['flowDataSet'] as JsonObject)[
       'flowProperties'
     ] as JsonObject;
-    assertCanonical(
-      ((desired['flowProperty'] as JsonObject[])[0] as JsonObject)[
-        'referenceToFlowPropertyDataSet'
-      ] as JsonObject,
-      String(action['id']),
-    );
-    assertCanonical(
-      (action['mutation'] as JsonObject)['reference'] as JsonObject,
+    const derived = ((desired['flowProperty'] as JsonObject[])[0] as JsonObject)[
+      'referenceToFlowPropertyDataSet'
+    ] as JsonObject;
+    assertCanonical(derived, String(action['id']));
+    assert.deepEqual(derived, projected, String(action['id']));
+    assert.deepEqual(
+      (action['mutation'] as JsonObject)['reference'],
+      projected,
       String(action['id']),
     );
   }
@@ -381,16 +442,31 @@ test('every reference in the cohort carries the real five-key shape, and a defic
     )['quantitativeReference'] as JsonObject;
     assert.equal(isJsonObject(quantitative['functionalUnitOrOther']), true, String(action['id']));
   }
-  // A template in the deficient shape another implementation might derive — four keys, no
-  // `@type`, a non-canonical uri, an array description — is refused rather than copied.
-  const deficient = {
-    '@refObjectId': input.target_flow_property_reference['@refObjectId'],
-    '@version': input.target_flow_property_reference['@version'],
-    '@uri': `${input.target_flow_property_reference['@refObjectId']}.json`,
-    'common:shortDescription': [{ '#text': 'Time', '@xml:lang': 'en' }],
-  } as JsonObject;
-  assert.throws(
-    () => buildAliasV2Plan({ ...input, target_flow_property_reference: deficient }),
-    (error: unknown) => (error as { code?: string }).code === ALIAS_V2_REFERENCE_SHAPE_INVALID,
-  );
+  // A snapshot whose name lives at the Process-shaped path, or at common:shortDescription, or
+  // whose unit group reference points elsewhere, is refused rather than projected.
+  const mutateTarget = (mutate: (information: JsonObject) => void): AliasV2PlanInput => {
+    const json = JSON.parse(JSON.stringify(target.json)) as JsonObject;
+    mutate((json['flowPropertyDataSet'] as JsonObject)['flowPropertiesInformation'] as JsonObject);
+    return { ...input, target_flow_property: { ...target, json } };
+  };
+  for (const mutate of [
+    (information: JsonObject) => {
+      information['dataSetInformation'] = { name: { baseName: [{ '#text': 'Time' }] } };
+    },
+    (information: JsonObject) => {
+      information['dataSetInformation'] = {
+        'common:shortDescription': { '#text': 'Time', '@xml:lang': 'en' },
+      };
+    },
+    (information: JsonObject) => {
+      information['quantitativeReference'] = {
+        referenceToReferenceUnitGroup: { '@refObjectId': 'beefbeef-0000-4000-8000-000000000001' },
+      };
+    },
+  ]) {
+    assert.throws(
+      () => buildAliasV2Plan(mutateTarget(mutate)),
+      (error: unknown) => (error as { code?: string }).code === ALIAS_V2_TARGET_SHAPE_INVALID,
+    );
+  }
 });
