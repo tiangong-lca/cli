@@ -592,3 +592,26 @@ test('the argv path passes the reviewed timeout through to the versioned freeze'
   assert.equal(typeof report['approval_request_sha256'], 'string');
   assert.deepEqual(calls, [], 'the freeze stage reads only the local artefacts and the session');
 });
+
+test('every versioned stage is discoverable from its own help', async (t) => {
+  const cases: Array<[string, string[]]> = [
+    // The plan stage names the versioned planning input and that it replaces the scope-driven plan.
+    ['plan', ['--alias-v2-input']],
+    // The freeze stage names the baselines a versioned plan requires.
+    ['freeze-protected', ['--derivative-baselines']],
+    // The seal and run stages name the versioned selection they route by.
+    ['seal-protected-approval', ['dataset-alias-execution-freeze.v2']],
+    ['run-protected', ['dataset-alias-execution-freeze.v2']],
+  ];
+  for (const [action, expected] of cases) {
+    const result = await executeCli(
+      ['dataset', 'maintenance', action, '--help'],
+      cliDeps(authOnlyFetch),
+    );
+    assert.equal(result.exitCode, 0, `${action}: ${result.stderr}`);
+    for (const needle of expected) {
+      assert.equal(result.stdout.includes(needle), true, `${action} help must document ${needle}`);
+    }
+  }
+  void t;
+});

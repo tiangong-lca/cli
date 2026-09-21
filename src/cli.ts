@@ -1133,6 +1133,10 @@ Operations:
 Options:
   --scope <file>       Maintenance scope manifest
   --operation <value> Intended row-level maintenance operation
+  --alias-v2-input <file>
+                       Reviewed Time alias planning input; builds the versioned
+                       dataset-alias-plan.v2 plan and batch instead of the scope-driven plan
+                       (requires --out-dir and ignores --scope/--operation)
   --out-dir <dir>      Artifact directory
   --page-size <n>      Requested snapshot page size, 1-5000 (default: 1000); server caps are followed using exact counts
   --timeout-ms <n>     Request timeout in milliseconds
@@ -1189,6 +1193,10 @@ Required:
   --out-dir <dir>               New private immutable artifact directory
 
 Options:
+  --derivative-baselines <file> Reviewed six-key derivative baselines; required when --plan is a
+                                dataset-alias-plan.v2 (versioned Time alias) plan, whose freeze is
+                                then derived from the plan, the toolchain evidence and these
+                                baselines under the authenticated owner's own account
   --page-size <n>               Complete account scan page size, 1-5000
   --timeout-ms <n>              Positive authentication/read timeout in milliseconds
   --json                        Print compact JSON
@@ -1223,6 +1231,11 @@ Required:
 Options:
   --json                        Print compact JSON
   -h, --help
+
+Versioned selection:
+  A dataset-alias-execution-freeze.v2 freeze seals the versioned approval request the versioned
+  freeze-protected run produced; the byte-exact text, freeze-file hash, request hash and account
+  checks are the same ones v1 has always enforced.
 
 Offline safety:
   This command receives no environment or HTTP client and performs zero authentication, network,
@@ -1265,6 +1278,13 @@ Options:
   --timeout-ms <n>          Positive request timeout in milliseconds
   --json                    Print compact JSON
   -h, --help
+
+Versioned selection:
+  The seal decides the chain. A dataset-alias-execution-freeze.v2 seal runs the versioned Time
+  alias lifecycle (preflight, the three gates, one admission, then the read stage) with the same
+  180-second window, the same single-admission policy and the same durable local evidence; a v1
+  seal runs the frozen v1 chain unchanged. Unknown admission outcomes are recovered only by the
+  read stage, and the sealed plan's expected counts are checked against the server's proof.
 
 Only a terminal passed proof exits successfully. pending, failed, and indeterminate return non-zero.
 `.trim();
