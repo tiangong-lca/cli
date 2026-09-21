@@ -25,6 +25,14 @@ import {
   type AliasV2ExecutionIdentity,
 } from '../../src/lib/dataset-alias-v2-protected-contract.js';
 import { buildAliasV2CohortInput } from '../fixtures/alias-v2-cohort.js';
+import {
+  buildLengthTimePlan,
+  protectedPlanProfile,
+  type LengthTimePlanInput,
+  type ProtectedPlanProfile,
+} from '../../src/lib/dataset-length-time-plan.js';
+import { LENGTH_TIME_PROTECTED_ARTIFACTS } from '../../src/lib/dataset-length-time-public.js';
+import { buildLengthTimePlanInput } from '../fixtures/length-time-cohort.js';
 
 export const ALIAS_V2_TEST_ACCOUNT = {
   user_id: 'c536ee37-64ab-427b-b7e3-4e2bb4fdffb7',
@@ -74,6 +82,7 @@ export type SealedAliasV2Execution = {
   approvalPath: string;
   plan: JsonObject;
   freeze: AliasV2Freeze;
+  planFileSha256: string;
   freezeFileSha256: string;
   approvalFileSha256: string;
   approveExecution: string;
@@ -96,6 +105,18 @@ export function aliasV2DerivativeTargets(plan: JsonObject, userId: string): Json
     state_code: 0,
     baseline_snapshot_sha256: sha256Json({ baseline: action['id'] }),
   }));
+}
+
+/**
+ * The closed profile of the fixture plan, derived exactly the way the production stages derive it:
+ * from the plan document's own `schema_version`. A fixture plan outside both profiles is refused.
+ */
+export function fixturePlanProfile(plan: JsonObject): ProtectedPlanProfile {
+  const profile = protectedPlanProfile(plan);
+  if (profile === null) {
+    throw new Error('Protected fixture requires a versioned plan document.');
+  }
+  return profile;
 }
 
 function writeCanonical(filePath: string, value: unknown): string {
@@ -132,6 +153,7 @@ export function sealAliasV2Fixture(plan: JsonObject): {
     freeze: freezeArtifact.value,
     freezeFileSha256,
     approvedAtUtc: ALIAS_V2_TEST_APPROVED_AT,
+    profile: fixturePlanProfile(plan),
   });
   const requestFileSha256 = createHash('sha256')
     .update(`${stableJsonText(requestArtifact.value)}\n`)
@@ -168,13 +190,18 @@ export function sealAliasV2Fixture(plan: JsonObject): {
 
 /**
  * Seals one complete execution on disk and returns the paths, the artefacts and the identity the
- * run derives from them.
+ * run derives from them. The plan document and the plan-file name are the only profile-specific
+ * inputs: every later artefact is built the shared way from the plan's own closed discriminator.
  */
-export function sealedAliasV2Execution(): SealedAliasV2Execution {
-  const directory = mkdtempSync(path.join(os.tmpdir(), 'alias-v2-sealed-'));
+export function sealProtectedExecution(options: {
+  plan: JsonObject;
+  planFileName: string;
+  directoryPrefix: string;
+}): SealedAliasV2Execution {
+  const directory = mkdtempSync(path.join(os.tmpdir(), options.directoryPrefix));
   chmodSync(directory, 0o700);
-  const plan = buildAliasV2Plan(buildAliasV2CohortInput()).plan;
-  const planPath = path.join(directory, ALIAS_V2_PROTECTED_ARTIFACTS.plan_file);
+  const plan = options.plan;
+  const planPath = path.join(directory, options.planFileName);
   const planFileSha256 = writeCanonical(planPath, plan);
 
   const sealed = sealAliasV2Fixture(plan);
@@ -185,6 +212,7 @@ export function sealedAliasV2Execution(): SealedAliasV2Execution {
     freeze: sealed.freeze,
     freezeFileSha256,
     approvedAtUtc: ALIAS_V2_TEST_APPROVED_AT,
+    profile: fixturePlanProfile(plan),
   });
   const requestPath = path.join(directory, ALIAS_V2_PROTECTED_ARTIFACTS.approval_request);
   const requestFileSha256 = writeCanonical(requestPath, requestArtifact.value);
@@ -213,7 +241,6 @@ export function sealedAliasV2Execution(): SealedAliasV2Execution {
     freezeFileSha256,
     approvalFileSha256,
   });
-  void planFileSha256;
   return {
     directory,
     planPath,
@@ -221,9 +248,28 @@ export function sealedAliasV2Execution(): SealedAliasV2Execution {
     approvalPath,
     plan,
     freeze: sealed.freeze,
+    planFileSha256,
     freezeFileSha256,
     approvalFileSha256,
     approveExecution: approvalArtifact.value.approval_identity_sha256,
     identity,
   };
+}
+
+/** The sealed Time alias v2 execution the Time contract tests drive. */
+export function sealedAliasV2Execution(): SealedAliasV2Execution {
+  return sealProtectedExecution({
+    plan: buildAliasV2Plan(buildAliasV2CohortInput()).plan,
+    planFileName: ALIAS_V2_PROTECTED_ARTIFACTS.plan_file,
+    directoryPrefix: 'alias-v2-sealed-',
+  });
+}
+
+/** The sealed Length*time execution the Length contract tests drive, built from the shared fixture. */
+export function sealedLengthTimeExecution(): SealedAliasV2Execution {
+  return sealProtectedExecution({
+    plan: buildLengthTimePlan(buildLengthTimePlanInput() as unknown as LengthTimePlanInput).plan,
+    planFileName: LENGTH_TIME_PROTECTED_ARTIFACTS.plan_file,
+    directoryPrefix: 'length-time-sealed-',
+  });
 }

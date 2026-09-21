@@ -180,6 +180,19 @@ export function assertProductFlow(payload: JsonObject, id: string): void {
 }
 
 /**
+ * The same reviewed Product-flow test as a pure predicate, so a second protected profile can refuse
+ * in its own code family without either copying the Time refusal or widening it.
+ */
+export function isProductFlowPayload(payload: JsonObject): boolean {
+  const root = payload['flowDataSet'];
+  const modellingAndValidation = isJsonObject(root) ? root['modellingAndValidation'] : null;
+  const lciMethod = isJsonObject(modellingAndValidation)
+    ? modellingAndValidation['LCIMethod']
+    : null;
+  return (isJsonObject(lciMethod) ? lciMethod['typeOfDataSet'] : null) === 'Product flow';
+}
+
+/**
  * The target flow property's own information node. The real snapshot spells it as the plural
  * `flowPropertiesInformation` under `flowPropertyDataSet`; a singular spelling is a different
  * path that does not exist in the data, so it is refused rather than accepted as an alias.
@@ -266,20 +279,25 @@ export function assertAliasV2SourceFlowProperty(input: AliasV2PlanInput): {
 const YEAR_BASE_FACTORS = ['1', '1.0'] as const;
 
 /**
- * Validates a unit group's table at the real canonical schema, for the target and for the source
- * alias's currently declared group.
+ * The ONE canonical unit-group path policy, shared by every protected profile that reads a unit
+ * group's table: `unitGroupDataSet.units.unit[]` carries the rows and
+ * `unitGroupDataSet.unitGroupInformation.quantitativeReference.referenceToReferenceUnit` — a
+ * string — names the base row's internal id. An earlier reviewed excerpt showed that selector
+ * without its `unitGroupInformation` parent, and reading the flattened projection as if it were the
+ * tree refused the real row; only the canonical parent is accepted, a root-level
+ * `quantitativeReference` is refused, and a malformed table refuses here.
  *
- * The base unit is selected the way the data actually does it: `quantitativeReference.
- * referenceToReferenceUnit` names the internal id of the base row, and that row lives in
- * `units.unit[]` beside its factor. The table must carry that referenced base row at the reviewed
- * one-year factor plus the reviewed `hr` row at the fixed hour factor. A substituted factor, a
- * missing base reference, a reference id the table does not carry, or a table without both rows is
- * refused — a fixture with `hr = 1` is not a unit group of this campaign.
+ * Each profile asserts its own reviewed factors on top of the table this returns; the path itself
+ * is never re-implemented per profile.
  */
-function assertAliasV2UnitGroupTable(row: AliasV2Row, role: 'target' | 'source'): JsonObject {
-  const code = role === 'target' ? ALIAS_V2_TARGET_SHAPE_INVALID : ALIAS_V2_SOURCE_SHAPE_INVALID;
-  const label = role === 'target' ? 'Alias v2 target unit group' : 'Alias v2 source unit group';
-  const dataSet = isJsonObject(row.json) ? row.json['unitGroupDataSet'] : null;
+export function readCanonicalUnitGroupRows(
+  row: AliasV2Row,
+  label: string,
+  code: string,
+): { root: JsonObject; table: JsonObject[]; baseReference: string; selected: JsonObject } {
+  // Callers reach this only with a row whose payload was already proven an object, so the read is a
+  // cast rather than a second shape guess; a payload without the node still fails closed below.
+  const dataSet = (row.json as JsonObject)['unitGroupDataSet'];
   const root = isJsonObject(dataSet) ? dataSet : null;
   const units = root === null ? null : root['units'];
   const entries = isJsonObject(units) ? units['unit'] : null;
@@ -291,10 +309,6 @@ function assertAliasV2UnitGroupTable(row: AliasV2Row, role: 'target' | 'source')
   if (root === null || table === null || table.length === 0) {
     fail(code, `${label} must carry its unit table.`, { id: row.id });
   }
-  // The canonical TIDAS tree nests the base-unit selector under `unitGroupInformation`:
-  // `unitGroupDataSet.unitGroupInformation.quantitativeReference.referenceToReferenceUnit`. An
-  // earlier reviewed excerpt showed that node without its parent, and reading the flattened
-  // projection as if it were the tree refused the real row; only the canonical parent is accepted.
   const unitGroupInformation = root['unitGroupInformation'];
   if (!isJsonObject(unitGroupInformation)) {
     fail(code, `${label} must carry its canonical unitGroupInformation parent.`, { id: row.id });
@@ -312,17 +326,52 @@ function assertAliasV2UnitGroupTable(row: AliasV2Row, role: 'target' | 'source')
       reference: baseReference ?? null,
     });
   }
+  // The selected reference must be exactly one row. A table with a repeated internal id would make
+  // "the" base unit depend on which duplicate happens to come first, so it is refused rather than
+  // silently resolved — the base unit of a correction may never be ambiguous.
+  const identifiers = table.map((unit) =>
+    typeof unit['@dataSetInternalID'] === 'string' ? (unit['@dataSetInternalID'] as string) : null,
+  );
+  if (identifiers.some((identifier) => identifier === null)) {
+    fail(code, `${label} must carry an internal id on every unit row.`, { id: row.id });
+  }
+  if (new Set(identifiers).size !== identifiers.length) {
+    fail(code, `${label} must not repeat a unit internal id.`, { id: row.id });
+  }
+  if (identifiers.filter((identifier) => identifier === baseReference).length !== 1) {
+    fail(code, `${label} must select exactly one row as its reference unit.`, {
+      id: row.id,
+      reference: baseReference,
+    });
+  }
+  // The selected row is returned rather than looked up again: after the uniqueness rule above it
+  // exists exactly once, so no caller needs a "the reference names no row" branch any more.
+  const selected = table[identifiers.indexOf(baseReference)] as JsonObject;
+  return { root, table, baseReference, selected };
+}
+
+/**
+ * Validates a unit group's table at the real canonical schema, for the target and for the source
+ * alias's currently declared group.
+ *
+ * The base unit is selected the way the data actually does it: `quantitativeReference.
+ * referenceToReferenceUnit` names the internal id of the base row, and that row lives in
+ * `units.unit[]` beside its factor. The table must carry that referenced base row at the reviewed
+ * one-year factor plus the reviewed `hr` row at the fixed hour factor. A substituted factor, a
+ * missing base reference, a reference id the table does not carry, or a table without both rows is
+ * refused — a fixture with `hr = 1` is not a unit group of this campaign.
+ */
+function assertAliasV2UnitGroupTable(row: AliasV2Row, role: 'target' | 'source'): JsonObject {
+  const code = role === 'target' ? ALIAS_V2_TARGET_SHAPE_INVALID : ALIAS_V2_SOURCE_SHAPE_INVALID;
+  const label = role === 'target' ? 'Alias v2 target unit group' : 'Alias v2 source unit group';
+  const { root, table, baseReference, selected } = readCanonicalUnitGroupRows(row, label, code);
   const factorOf = (unit: JsonObject): string | null =>
     typeof unit['meanValue'] === 'string' ? unit['meanValue'] : null;
-  const base = table.find((unit) => unit['@dataSetInternalID'] === baseReference);
-  if (
-    base === undefined ||
-    !(YEAR_BASE_FACTORS as readonly (string | null)[]).includes(factorOf(base))
-  ) {
+  if (!(YEAR_BASE_FACTORS as readonly (string | null)[]).includes(factorOf(selected))) {
     fail(code, `${label} must carry the referenced base unit at the year factor 1.`, {
       id: row.id,
       reference: baseReference,
-      factor: base === undefined ? null : factorOf(base),
+      factor: factorOf(selected),
     });
   }
   const hourly = table.find((unit) => unit['name'] === 'hr');

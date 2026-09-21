@@ -545,7 +545,8 @@ test('the before image reads the functional-unit leaf tolerantly, and a missing 
     (classify(claimingText, SEALED, { plan: flatPlan }) as { kind: string }).kind,
     'invalid',
   );
-  // ...while a null observation is exactly the missing leaf's own value.
+  // ...while a null observation is exactly the missing leaf's own value, bound by the complete
+  // observed payload hash above it.
   const claimingNull = patched(aliasV2StatusEnvelope(SEALED, { terminal_proof: proof }), [
     ['terminal_proof.readback.rows.' + String(rowIndex) + '.functional_unit_text', null],
   ]);

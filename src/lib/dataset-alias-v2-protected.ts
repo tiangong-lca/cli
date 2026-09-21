@@ -46,6 +46,14 @@ import {
   type AliasV2Lifecycle,
   type AliasV2StepResult,
 } from './dataset-alias-v2-lifecycle.js';
+import {
+  assertLengthTimePlanDocument,
+  lengthTimeTargetSnapshots,
+  protectedPlanProfile,
+  type ProtectedPlanProfile,
+} from './dataset-length-time-plan.js';
+
+export type { ProtectedPlanProfile };
 import type { AliasV2ObservedServerIdentities } from './dataset-alias-v2-status.js';
 import {
   ALIAS_V2_CLOCK_SKEW_MS,
@@ -436,6 +444,47 @@ export function assertAliasV2PlanDocument(value: unknown): JsonObject {
   return value;
 }
 
+/**
+ * The frozen support snapshots a plan binds, projected the way the freeze envelope carries them.
+ * For the Time profile they are the plan's own node; for the Length profile, whose plan carries its
+ * two canonical targets directly, they are the projection the wire contract fixes, so the freeze
+ * stays one 13-key envelope with one canonical hash.
+ */
+export function protectedTargetSnapshots(plan: JsonObject): JsonObject {
+  // Both branches are object-valued by the profile's own plan predicate, which every caller has
+  // already run over this document: the Time plan's `target_snapshots` is asserted there, and the
+  // Length projection is built here from the plan's own two target blocks.
+  return protectedPlanProfile(plan) === 'length_time_v1'
+    ? lengthTimeTargetSnapshots(plan)
+    : (plan['target_snapshots'] as JsonObject);
+}
+
+/**
+ * The plan document a protected run, freeze or seal may bind. The document's own closed
+ * `schema_version` selects the profile's rule set: the Time plan keeps its reviewed predicate, the
+ * Length plan gets its own, and anything else is refused here rather than at a later stage.
+ */
+export function assertProtectedPlanDocument(value: unknown): {
+  profile: ProtectedPlanProfile;
+  plan: JsonObject;
+} {
+  const profile = protectedPlanProfile(value);
+  if (profile === null) {
+    fail(
+      'A protected plan artefact must be a versioned dataset-alias-plan.v2 or dataset-length-time-plan.v1 document.',
+      'ALIAS_V2_PROTECTED_ARTIFACT_INVALID',
+      2,
+    );
+  }
+  return {
+    profile,
+    plan:
+      profile === 'length_time_v1'
+        ? assertLengthTimePlanDocument(value)
+        : assertAliasV2PlanDocument(value),
+  };
+}
+
 /** Parses a v2 freeze and proves its content identity is its own digest. */
 export function parseAliasV2Freeze(value: unknown): AliasV2Freeze {
   if (!isJsonObject(value)) {
@@ -705,7 +754,9 @@ export function assertAliasV2Bindings(options: {
     freeze.plan.plan_file_sha256 !== options.planFileSha256 ||
     freeze.plan.plan_sha256 !== options.plan['plan_sha256'] ||
     sha256Json(freeze.expected) !== sha256Json(options.plan['expected']) ||
-    sha256Json(freeze.target_snapshots) !== sha256Json(options.plan['target_snapshots']) ||
+    // The plan's own target snapshots, projected exactly the way the freeze carries them for this
+    // profile: a freeze that bound a different projection never authorises this plan.
+    sha256Json(freeze.target_snapshots) !== sha256Json(protectedTargetSnapshots(options.plan)) ||
     sha256Json(freeze.source_evidence) !== sha256Json(options.plan['source_evidence'])
   ) {
     fail(
@@ -752,7 +803,7 @@ export function buildAliasV2Freeze(options: {
   sets: JsonObject;
   derivativeTargets: JsonValue[];
 }): AliasV2Artifact<AliasV2Freeze> {
-  const plan = assertAliasV2PlanDocument(options.plan);
+  const { plan } = assertProtectedPlanDocument(options.plan);
   hash(options.planFileSha256, 'planFileSha256');
   token(options.projectRef, 'projectRef');
   // The derivative targets are the plan's own changed rows: exactly one target per actual
@@ -781,7 +832,7 @@ export function buildAliasV2Freeze(options: {
     target_visibility: 'owner_draft',
     plan: { plan_file_sha256: options.planFileSha256, plan_sha256: plan['plan_sha256'] as string },
     expected: expectedOf(plan['expected'], 'plan.expected'),
-    target_snapshots: plan['target_snapshots'] as JsonObject,
+    target_snapshots: protectedTargetSnapshots(plan),
     source_evidence: plan['source_evidence'] as JsonObject,
     derivative_targets: targets,
     sets: setsOf(options.sets),
@@ -796,6 +847,11 @@ export function buildAliasV2ApprovalRequest(options: {
   freeze: AliasV2Freeze;
   freezeFileSha256: string;
   approvedAtUtc: string;
+  /**
+   * The closed profile the caller detected on the plan document. The human approval text names the
+   * capability the operator is actually approving, so it is never inferred from a digest.
+   */
+  profile: ProtectedPlanProfile;
 }): AliasV2Artifact<AliasV2ApprovalRequest> {
   const { freeze } = options;
   hash(options.freezeFileSha256, 'freezeFileSha256');
@@ -810,8 +866,9 @@ export function buildAliasV2ApprovalRequest(options: {
     freeze_sha256: freeze.freeze_sha256,
     expected: freeze.expected,
   };
+  const approved = `${options.profile === 'length_time_v1' ? 'Length*time' : 'Time alias v2'} plan`;
   const approvalText = [
-    `Approved Time alias v2 plan ${freeze.plan.plan_sha256}`,
+    `Approved ${approved} ${freeze.plan.plan_sha256}`,
     `data set under freeze ${freeze.freeze_sha256}`,
     `for project ${freeze.project_ref} at ${options.approvedAtUtc}.`,
     `Counts: ${stableJsonText(freeze.expected)}.`,
@@ -1112,7 +1169,7 @@ export async function runAliasV2Protected(
     filePath: options.planPath,
     label: 'Alias v2 plan',
   });
-  const plan = assertAliasV2PlanDocument(planArtifact.value);
+  const { plan } = assertProtectedPlanDocument(planArtifact.value);
   const freezeArtifact = readProtectedJsonArtifact({
     filePath: options.freezePath,
     label: 'Alias v2 freeze',

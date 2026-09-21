@@ -336,7 +336,11 @@ export function validateAliasV2TerminalProof(
     }
     if (entry['table'] === 'processes') {
       // A process carrying a text action must show the approved post text; every other process must
-      // still show the functional-unit text of its own before image.
+      // still show the functional-unit text of its own before image. The published Time-v2 contract
+      // reads a before image whose leaf is missing or unreadable as "no text" and accepts the live
+      // row's own NULL as the observation of that missing text, bound by the complete observed
+      // payload hash above; a profile that requires the text to be present (Length*time) enforces it
+      // in its own plan validation instead of tightening this shared comparison.
       const expectedText =
         typeof action['after_text'] === 'string'
           ? action['after_text']
