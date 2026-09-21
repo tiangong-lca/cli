@@ -103,7 +103,12 @@ export type AliasV2LocalRpcOptions = {
   evidenceDir?: string;
 };
 
-export type AliasV2RpcCall = { name: string; args: Record<string, unknown> };
+export type AliasV2RpcCall = {
+  name: string;
+  args: Record<string, unknown>;
+  /** The function's reply text, exactly as the server returned it. */
+  reply?: string;
+};
 
 export type AliasV2LocalRpcAdapter = {
   fetchImpl: FetchLike;
@@ -228,7 +233,8 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
     return alias;
   };
   const rpc = (name: string, args: Record<string, unknown>): string => {
-    calls.push({ name, args });
+    const call: AliasV2RpcCall = { name, args };
+    calls.push(call);
     const target = targetFor(name);
     if (name === 'cmd_dataset_alias_execution_preflight_v2_guarded') {
       const request = args['p_request'];
@@ -306,6 +312,8 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
     retain(`${name}-wire-request.json`, init.body);
     const body = JSON.parse(init.body) as Record<string, unknown>;
     const text = rpc(name, body);
+    const recorded = calls[calls.length - 1] as AliasV2RpcCall;
+    recorded.reply = text;
     retain(`${name}-function-reply.json`, text);
     return jsonResponse(JSON.parse(text));
   }) as FetchLike;

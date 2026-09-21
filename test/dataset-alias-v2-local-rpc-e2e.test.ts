@@ -174,6 +174,44 @@ function persistDispatchedNonce(adapter: LocalAdapter): void {
   );
 }
 
+/**
+ * The durable server facts of the seeded execution. Reading them is SELECT-only; a missing row
+ * returns an empty string and therefore fails the calling stage loudly instead of guessing.
+ */
+function readDurableFacts(adapter: LocalAdapter): {
+  attempts: number;
+  dispatches: number;
+  status: string;
+  terminal_proof: boolean;
+} {
+  assert.ok(READY);
+  const line = adapter.runSql(
+    [
+      `select jsonb_build_object(`,
+      `  'attempts', attempt_count,`,
+      `  'dispatches', dispatch_count,`,
+      `  'status', status,`,
+      `  'terminal_proof', terminal_proof is not null)::text`,
+      `from util.dataset_alias_execution_v2_requests`,
+      `where id = '${READY.request_id}'::uuid;`,
+    ].join('\n'),
+  );
+  return JSON.parse(line) as {
+    attempts: number;
+    dispatches: number;
+    status: string;
+    terminal_proof: boolean;
+  };
+}
+
+/**
+ * A dependent stage refuses to run when its prerequisite stage did not produce the exact outcome it
+ * depends on: a failed earlier stage can never be absorbed by a later one.
+ */
+function requireStage(value: unknown, label: string): asserts value {
+  assert.notEqual(value, undefined, `the ${label} stage must have completed successfully first`);
+}
+
 /** The owner's transport stub must be installed, so no committing path can queue a live callback. */
 function assertTransportStubInstalled(adapter: LocalAdapter): void {
   const installed = adapter.runSql(
@@ -245,6 +283,13 @@ e2eTest(
     const campaignDir = mkdtempSync(path.join(os.tmpdir(), 'alias-v2-campaign-'));
     const freshStatusDir = mkdtempSync(path.join(os.tmpdir(), 'alias-v2-fresh-'));
     const replayDir = mkdtempSync(path.join(os.tmpdir(), 'alias-v2-replay-'));
+    const stage: {
+      pristine?: AliasV2ProtectedReport;
+      admitted?: AliasV2ProtectedReport;
+      applied?: AliasV2ProtectedReport;
+      fresh?: AliasV2ProtectedReport;
+      refused?: AliasV2ProtectedReport;
+    } = {};
     t.after(() => {
       for (const dir of [campaignDir, freshStatusDir, replayDir]) {
         rmSync(dir, { recursive: true, force: true });
@@ -263,16 +308,19 @@ e2eTest(
       assert.deepEqual([report.status, report.phase], ['not_admitted', 'prepared']);
       assert.equal(report.admission_attempts, 0);
       assert.equal(admitRpcCalls(adapter), 0);
-      // Only the read touched the stack.
+      // Only the read touched the stack, and the stack is still empty afterwards.
       assert.deepEqual(
         [...new Set(adapter.calls.map((call) => call.name))],
         ['cmd_dataset_alias_execution_read_v2'],
       );
+      assertPristineSeed(adapter);
+      stage.pristine = report;
     });
 
     await t.test(
       'the real CLI admits exactly once and reads the in-flight execution as pending',
       async () => {
+        requireStage(stage.pristine, 'pristine read');
         const adapter = localAdapter();
         assertPristineSeed(adapter);
         assertTransportStubInstalled(adapter);
@@ -300,13 +348,29 @@ e2eTest(
           'execution_unused',
           'derivative_quiescence',
         ]);
+        // The durable ledger proves exactly one consumed attempt and one dispatch, not yet terminal.
+        const facts = readDurableFacts(adapter);
+        assert.deepEqual(
+          [facts.attempts, facts.dispatches, facts.terminal_proof],
+          [1, 1, false],
+          JSON.stringify(facts),
+        );
+        assert.equal(
+          ['dispatching', 'dispatched', 'running', 'derivatives_pending'].includes(facts.status),
+          true,
+          facts.status,
+        );
+        stage.admitted = report;
       },
     );
 
     await t.test(
       'the supported completion contract drives the same run directory to applied',
       async () => {
+        requireStage(stage.admitted, 'admission');
         const adapter = localAdapter();
+        const before = readDurableFacts(adapter);
+        assert.deepEqual([before.attempts, before.dispatches], [1, 1], JSON.stringify(before));
         completeSeededExecution(adapter);
         const report = await runCli({
           adapter,
@@ -316,14 +380,28 @@ e2eTest(
           waitSeconds: 0,
         });
         assert.deepEqual([report.status, report.phase], ['passed', 'applied']);
-        assert.equal(admitRpcCalls(adapter), 0);
+        assert.equal(admitRpcCalls(adapter), 0, 'the completion stage never admits');
+        const after = readDurableFacts(adapter);
+        assert.deepEqual(
+          [after.attempts, after.dispatches, after.status, after.terminal_proof],
+          [1, 1, 'completed', true],
+          JSON.stringify(after),
+        );
+        stage.applied = report;
       },
     );
 
     await t.test(
       'a fresh output directory reads the completed execution from the server alone',
       async () => {
+        requireStage(stage.applied, 'completion');
         const adapter = localAdapter();
+        const before = readDurableFacts(adapter);
+        assert.deepEqual(
+          [before.attempts, before.dispatches, before.status, before.terminal_proof],
+          [1, 1, 'completed', true],
+          JSON.stringify(before),
+        );
         const report = await runCli({
           adapter,
           outDir: freshStatusDir,
@@ -334,13 +412,30 @@ e2eTest(
         assert.deepEqual([report.status, report.phase], ['passed', 'applied']);
         assert.equal(report.admission_attempts, 0);
         assert.equal(admitRpcCalls(adapter), 0);
+        assert.deepEqual(
+          readDurableFacts(adapter),
+          before,
+          'a read-only stage never changes the ledger',
+        );
+        stage.fresh = report;
       },
     );
 
     await t.test(
-      'a second admission of the same execution is refused, with one dispatch',
+      'a second admission of the completed execution is refused, with one dispatch',
       async () => {
+        // This stage may only start from an already completed execution: the durable ledger must
+        // show the terminal proof, and the before/after attempt and dispatch counts are compared
+        // exactly, so an initial dispatch can never masquerade as a refusal.
+        requireStage(stage.applied, 'completion');
+        requireStage(stage.fresh, 'fresh status read');
         const adapter = localAdapter();
+        const before = readDurableFacts(adapter);
+        assert.deepEqual(
+          [before.attempts, before.dispatches, before.status, before.terminal_proof],
+          [1, 1, 'completed', true],
+          JSON.stringify(before),
+        );
         const report = await runCli({
           adapter,
           outDir: replayDir,
@@ -349,58 +444,85 @@ e2eTest(
           waitSeconds: 10,
         });
         assert.notEqual(report.status, 'passed');
-        assert.equal(report.admission_attempts <= 1, true, String(report.admission_attempts));
+        const after = readDurableFacts(adapter);
+        assert.deepEqual(after, before, 'a refused replay must not change the durable ledger');
+        // The refusal is the server's own: either the attempt was already consumed at the admission
+        // rpc, or the preflight refused before it. Both are verified from the recorded reply text.
+        const refusals = adapter.calls
+          .filter((call) => call.name.startsWith('cmd_dataset_alias_execution_'))
+          .map((call) => call.reply ?? '');
+        const coded = refusals.filter((reply) => /ALIAS_EXECUTION_[A-Z_]+/u.test(reply));
+        assert.equal(
+          coded.length >= 1,
+          true,
+          `a coded server refusal must be recorded: ${String(report.code)}`,
+        );
+        assert.match(String(report.code), /ALIAS_EXECUTION_[A-Z_]+|ALIAS_V2_[A-Z_]+/u);
         assert.equal(admitRpcCalls(adapter) <= 1, true, String(admitRpcCalls(adapter)));
+        stage.refused = report;
       },
     );
 
     if (EVIDENCE_DIR !== null) {
       // Retain the native run directories before the routine cleanup removes them: the reports,
       // attempt markers, gate receipts, preflight evidence, status ledgers and the sealed inputs.
+      // Best effort: a failed indexing pass must never destroy the already-written RPC packet or
+      // mask a stage failure.
       const retained: Record<string, string> = {};
-      for (const [label, dir] of [
-        ['campaign', campaignDir],
-        ['fresh-status', freshStatusDir],
-        ['no-replay', replayDir],
-      ] as const) {
-        const target = path.join(EVIDENCE_DIR, 'runs', label);
-        mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
-        cpSync(dir, target, { recursive: true });
-        for (const file of readdirSync(target).sort()) {
-          const bytes = readFileSync(path.join(target, file));
-          retained[`runs/${label}/${file}`] = createHash('sha256').update(bytes).digest('hex');
+      try {
+        for (const [label, dir] of [
+          ['campaign', campaignDir],
+          ['fresh-status', freshStatusDir],
+          ['no-replay', replayDir],
+        ] as const) {
+          const target = path.join(EVIDENCE_DIR, 'runs', label);
+          mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
+          cpSync(dir, target, { recursive: true });
+          for (const file of readdirSync(target).sort()) {
+            const bytes = readFileSync(path.join(target, file));
+            retained[`runs/${label}/${file}`] = createHash('sha256').update(bytes).digest('hex');
+          }
         }
-      }
-      for (const entry of readdirSync(EVIDENCE_DIR, { withFileTypes: true }).sort((a, b) =>
-        a.name.localeCompare(b.name),
-      )) {
-        if (!entry.isFile() || retained[entry.name] !== undefined) {
-          continue;
+        for (const entry of readdirSync(EVIDENCE_DIR, { withFileTypes: true }).sort((a, b) =>
+          a.name.localeCompare(b.name),
+        )) {
+          if (!entry.isFile() || retained[entry.name] !== undefined) {
+            continue;
+          }
+          const bytes = readFileSync(path.join(EVIDENCE_DIR, entry.name));
+          retained[entry.name] = createHash('sha256').update(bytes).digest('hex');
         }
-        const bytes = readFileSync(path.join(EVIDENCE_DIR, entry.name));
-        retained[entry.name] = createHash('sha256').update(bytes).digest('hex');
-      }
-      writeFileSync(
-        path.join(EVIDENCE_DIR, 'campaign-summary.json'),
-        `${JSON.stringify(
-          {
-            schema: 'cli358-local-rpc-campaign.v1',
-            ran_at_utc: new Date().toISOString(),
-            marker: {
-              path: READY_PATH,
-              container: READY.container,
-              request_id: READY.request_id,
-              plan_sha256: READY.plan_sha256 ?? null,
-              scenarios: READY.scenarios,
+        writeFileSync(
+          path.join(EVIDENCE_DIR, 'campaign-summary.json'),
+          `${JSON.stringify(
+            {
+              schema: 'cli358-local-rpc-campaign.v1',
+              ran_at_utc: new Date().toISOString(),
+              marker: {
+                path: READY_PATH,
+                container: READY.container,
+                request_id: READY.request_id,
+                plan_sha256: READY.plan_sha256 ?? null,
+                scenarios: READY.scenarios,
+              },
+              stages: {
+                pristine: stage.pristine?.status ?? 'not-reached',
+                admitted: stage.admitted?.status ?? 'not-reached',
+                applied: stage.applied?.status ?? 'not-reached',
+                fresh: stage.fresh?.status ?? 'not-reached',
+                refused: stage.refused?.status ?? 'not-reached',
+              },
+              rpc_calls: 'see the numbered *-wire-request.json / *-function-reply.json files',
+              retained_files_sha256: retained,
             },
-            rpc_calls: 'see the numbered *-wire-request.json / *-function-reply.json files',
-            retained_files_sha256: retained,
-          },
-          null,
-          1,
-        )}\n`,
-        { mode: 0o600 },
-      );
+            null,
+            1,
+          )}\n`,
+          { mode: 0o600 },
+        );
+      } catch (error) {
+        process.stderr.write(`evidence indexing failed (packet kept): ${String(error)}\n`);
+      }
     }
   },
 );
