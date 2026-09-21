@@ -1419,6 +1419,7 @@ test('execution contract dry-run preflights the exact before state and dispatche
     assert.equal(report.mode, 'dry_run');
     assert.equal(report.commit, false);
     assert.equal(report.status, 'completed');
+    assert.equal(report.counts.prepared, 1);
     assert.equal(report.counts.executed, 0);
     assert.equal(report.counts.attempts_consumed, 0);
     assert.equal(report.rows[0]?.status, 'prepared');

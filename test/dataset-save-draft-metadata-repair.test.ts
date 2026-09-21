@@ -304,6 +304,7 @@ test('metadata repair admission gives the same evidence in a dry-run without dis
 
     assert.equal(report.mode, 'dry_run');
     assert.equal(report.commit, false);
+    assert.equal(report.counts.prepared, 1);
     assert.equal(row?.status, 'prepared');
     assert.equal(row?.operation, 'would_sync');
     assert.equal(row?.attempt_consumed, false);

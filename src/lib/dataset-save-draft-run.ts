@@ -2070,7 +2070,7 @@ async function runExecutionContractBatch(options: {
           : 'completed',
     counts: {
       selected: options.preparedRows.length,
-      prepared: 0,
+      prepared: completedReports.filter((row) => row.status === 'prepared').length,
       executed: completedReports.filter((row) => row.status === 'executed').length,
       failed,
       unknown,
