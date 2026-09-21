@@ -32,6 +32,12 @@ export type AliasV2InteropReady = {
   request_id: string;
   /** The sealed artefact paths, when the marker names them itself. */
   artifacts?: { plan?: string; freeze?: string; approval?: string };
+  /**
+   * Optional test-only containment wrappers: reviewed RPC name -> the schema-qualified function the
+   * database owner installed for it. The wrapper must take the same named arguments and return the
+   * real function's reply verbatim; anything else is refused.
+   */
+  rpc_aliases?: Record<string, string>;
   /** A COMMITTING SQL script (path) that runs the queued execute and completes every child. */
   complete_script?: string;
   /** The lifecycle stages the database owner has prepared on this stack. */
@@ -82,6 +88,8 @@ export type AliasV2LocalRpcOptions = {
   sqlUser?: string;
   sqlDatabase?: string;
   projectRef: string;
+  /** Reviewed RPC name -> the schema-qualified function the owner installed for containment. */
+  rpcAliases?: Record<string, string>;
 };
 
 export type AliasV2RpcCall = { name: string; args: Record<string, unknown> };
@@ -176,8 +184,21 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
       `end $ctx$;`,
     ].join('\n');
 
+  const QUALIFIED = /^(api|util)\.[a-z0-9_]+$/u;
+  /** The function this reviewed RPC is executed through: its own name, or the owner's wrapper. */
+  const targetFor = (name: string): string => {
+    const alias = options.rpcAliases?.[name];
+    if (alias === undefined) {
+      return `api.${name}`;
+    }
+    if (!QUALIFIED.test(alias)) {
+      throw new Error(`the marker's rpc alias for ${name} is not a schema-qualified function`);
+    }
+    return alias;
+  };
   const rpc = (name: string, args: Record<string, unknown>): string => {
     calls.push({ name, args });
+    const target = targetFor(name);
     if (name === 'cmd_dataset_alias_execution_preflight_v2_guarded') {
       const request = args['p_request'];
       if (Object.keys(args).length !== 1 || request === undefined) {
@@ -185,7 +206,7 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
       }
       const encoded = Buffer.from(JSON.stringify(request), 'utf8').toString('base64');
       return runSql(
-        `${asActor()}\nselect api.${name}(convert_from(decode('${encoded}','base64'),'UTF8')::jsonb);`,
+        `${asActor()}\nselect ${target}(convert_from(decode('${encoded}','base64'),'UTF8')::jsonb);`,
       );
     }
     if (name === 'cmd_dataset_alias_execution_admit_v2_guarded') {
@@ -195,7 +216,7 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
       }
       const encoded = Buffer.from(JSON.stringify(request), 'utf8').toString('base64');
       return runSql(
-        `${asActor()}\nselect api.${name}(convert_from(decode('${encoded}','base64'),'UTF8')::jsonb);`,
+        `${asActor()}\nselect ${target}(convert_from(decode('${encoded}','base64'),'UTF8')::jsonb);`,
       );
     }
     if (name === 'cmd_dataset_alias_execution_gate_v2_guarded') {
@@ -214,7 +235,7 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
         throw new Error(`gate arguments must be exactly the reviewed three`);
       }
       return runSql(
-        `${asActor()}\nselect api.${name}('${requestId}'::uuid, ${sqlLiteral(token)}, ${sqlLiteral(gateName)});`,
+        `${asActor()}\nselect ${target}('${requestId}'::uuid, ${sqlLiteral(token)}, ${sqlLiteral(gateName)});`,
       );
     }
     if (name === 'cmd_dataset_alias_execution_read_v2') {
@@ -226,7 +247,7 @@ export function aliasV2LocalRpcAdapter(options: AliasV2LocalRpcOptions): AliasV2
       ) {
         throw new Error(`read arguments must be exactly {p_request_id}`);
       }
-      return runSql(`${asActor()}\nselect api.${name}('${requestId}'::uuid);`);
+      return runSql(`${asActor()}\nselect ${target}('${requestId}'::uuid);`);
     }
     throw new Error(`the adapter refuses an unapproved RPC: ${name}`);
   };

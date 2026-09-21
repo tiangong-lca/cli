@@ -58,6 +58,7 @@ function localAdapter() {
     actor: READY.actor,
     ...(READY.sql_user === undefined ? {} : { sqlUser: READY.sql_user }),
     ...(READY.sql_database === undefined ? {} : { sqlDatabase: READY.sql_database }),
+    ...(READY.rpc_aliases === undefined ? {} : { rpcAliases: READY.rpc_aliases }),
     projectRef: READY.project_ref,
   });
 }
