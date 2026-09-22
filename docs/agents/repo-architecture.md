@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-22
-lastReviewedCommit: 53a53b82686eefc53c04f7a6e8e0b975db099eed
-lastReviewedNote: 'Reviewed for CLI #362: the version-only 0.1.21 release preparation for merged source PRs #360 and #361 changes package identity and the live CLI-version fixtures only; runtime modules, public exports, the sole lock, dependencies, command families, ledger/transport design and ownership boundaries remain exactly as reviewed for #358 and #359.'
+lastReviewedCommit: 24f227a98d9dbf4c6acd48ddaa45b8a5e6acd0a3
+lastReviewedNote: 'Reviewed for CLI #362: the version-only 0.1.21 release preparation, refreshed onto merged source PR #365 (CLI #364) at main 24f227a, changes package identity and the live CLI-version fixtures only; runtime modules, public exports, the sole lock, dependencies, command families, ledger/transport design and ownership boundaries remain exactly as reviewed for #358, #359 and #364.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -41,7 +41,9 @@ related:
   - ../../DEV_CN.md
 ---
 
-Review note, 2026-09-22: Issue #362 prepares package 0.1.21 for merged source PRs #360 and #361 without changing architecture. Package identity and the live CLI-version fixtures follow the package file; runtime modules, public exports, the sole lock, dependencies, command families, ledger/transport design and ownership boundaries remain exactly as reviewed for #358 and #359.
+Review note, 2026-09-22: Issue #362 prepares package 0.1.21 on the refreshed source `24f227a` (PR #365, CLI #364 approval-time binding, over the reviewed PR #360/#361 source) without changing architecture. Package identity and the live CLI-version fixtures follow the package file; runtime modules, public exports, the sole lock, dependencies, command families, ledger/transport design and ownership boundaries remain exactly as reviewed for #358, #359 and #364.
+
+Review note, 2026-09-22: CLI #364 keeps the v2 approval-time binding inside the existing owners and adds no module, command family or adapter. `src/lib/dataset-alias-v2-protected.ts` owns the request core's designated `approved_at_utc`, the one module-private renderer of the approved words, the parse-time text proof and the seal's timestamp/text enforcement; `src/lib/dataset-alias-v2-public.ts` owns the freeze stage's designated clock and the seal stage's passthrough; `src/cli.ts` keeps the same argv surface, with `--approved-at` on `seal-protected-approval` only. The local approval-request envelope still never reaches the server: the preflight/admit/read owners and the database capability are untouched.
 
 Review note, 2026-09-22: CLI #359 adds a second protected profile to the same architecture, not a new pipeline. `src/lib/dataset-length-time-plan.ts` owns the closed `dataset-length-time-plan.v1` document (13 Process actions x the two absolute amount leaves of 39 selected occurrences, fixed factor 1000, read-only flows as `{id, version, sha256}` evidence, anchored source-comment parsing and the shared source-comment vectors), `src/lib/dataset-length-time-public.ts` owns the `plan --length-time-input` stage, and the existing `dataset-alias-v2-{public,protected,status}.ts` owners keep the freeze, seal, preflight/gate/admit/read transport and the strict terminal-proof adapter. The plan's own `schema_version` is the only selector: `protectedPlanProfile`, `assertProtectedPlanDocument` and `protectedTargetSnapshots` dispatch on it, each profile keeps its own predicate, and the freeze envelope, approval/identity, request key sets, gates, window and one-admission policy are unchanged. The shared canonical unit-group reader now also refuses a repeated unit internal id or an ambiguous selected reference.
 

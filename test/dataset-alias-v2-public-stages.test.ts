@@ -224,6 +224,7 @@ test('the seal stage refuses a request that binds other freeze bytes', async () 
     const foreign = { ...request, freeze_file_sha256: 'f'.repeat(64) } as JsonObject;
     foreign['request_sha256'] = sha256Json({
       schema_version: foreign['schema_version'],
+      approved_at_utc: foreign['approved_at_utc'],
       environment: foreign['environment'],
       project_ref: foreign['project_ref'],
       account: foreign['account'],

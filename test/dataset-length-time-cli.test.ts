@@ -176,6 +176,9 @@ async function buildLengthChain(): Promise<LengthChain> {
   const humanApprovalPath = path.join(directory, ALIAS_V2_PROTECTED_ARTIFACTS.human_approval);
   const freezeFileSha256 = sha256OfText(readFileSync(freezePath, 'utf8'));
   const requestFileSha256 = sha256OfText(readFileSync(approvalRequestPath, 'utf8'));
+  const request = JSON.parse(readFileSync(approvalRequestPath, 'utf8')) as {
+    approved_at_utc: string;
+  };
 
   const sealed = await executeCli(
     [
@@ -199,7 +202,8 @@ async function buildLengthChain(): Promise<LengthChain> {
       '--confirm',
       ALIAS_V2_TEST_ACCOUNT.email,
       '--approved-at',
-      '2026-09-21T00:00:00.000Z',
+      // The seal reuses the timestamp this request designated, never an operator-chosen instant.
+      request.approved_at_utc,
       '--json',
     ],
     cliDeps(authOnlyFetch),
