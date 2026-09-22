@@ -298,6 +298,56 @@ function approvalTimeUtc(value: unknown, label: string): string {
   }
   return value;
 }
+/**
+ * The exact words a human approves, rendered from the request's own facts. The builder and the
+ * parser both come through here, so a request is valid only while its text is exactly this
+ * rendering: the designated timestamp, the capability, the plan and freeze digests, the project and
+ * the counts are all bound into the words the human accepted.
+ */
+function renderAliasV2ApprovalText(fields: {
+  profile: ProtectedPlanProfile;
+  planSha256: string;
+  freezeSha256: string;
+  projectRef: string;
+  approvedAtUtc: string;
+  expected: JsonObject;
+}): string {
+  const capability = fields.profile === 'length_time_v1' ? 'Length*time' : 'Time alias v2';
+  return [
+    `Approved ${capability} plan ${fields.planSha256}`,
+    `data set under freeze ${fields.freezeSha256}`,
+    `for project ${fields.projectRef} with designated approval-request timestamp ${fields.approvedAtUtc}`,
+    'accepted with these exact contents and reused unchanged by the seal.',
+    `Counts: ${stableJsonText(fields.expected)}.`,
+    'One admission, no automatic retry, owner-draft visibility only.',
+  ].join(' ');
+}
+
+/**
+ * Proves the approved words are the canonical rendering of the request's own facts, for one of the
+ * two reviewed profiles. Neither the designated timestamp nor the capability phrase can be edited
+ * while the words stay: a re-timed request whose text still names the old time is refused, and the
+ * request digest can never cover a time the approved words do not name.
+ */
+function assertAliasV2ApprovalText(request: AliasV2ApprovalRequest): void {
+  const fields = {
+    planSha256: request.plan_sha256,
+    freezeSha256: request.freeze_sha256,
+    projectRef: request.project_ref,
+    approvedAtUtc: request.approved_at_utc,
+    expected: request.expected,
+  };
+  if (
+    request.approval_text !== renderAliasV2ApprovalText({ ...fields, profile: 'alias_v2' }) &&
+    request.approval_text !== renderAliasV2ApprovalText({ ...fields, profile: 'length_time_v1' })
+  ) {
+    fail(
+      'Alias v2 approval request text must be the canonical rendering of its own designated timestamp, profile, plan, freeze, project and counts.',
+      'ALIAS_V2_PROTECTED_APPROVAL_TEXT_MISMATCH',
+      2,
+    );
+  }
+}
 function exactKeys(value: JsonObject, keys: readonly string[], label: string): void {
   if (
     Object.keys(value).length !== keys.length ||
@@ -759,6 +809,9 @@ export function parseAliasV2ApprovalRequest(value: unknown): AliasV2ApprovalRequ
       2,
     );
   }
+  // Both digests can be recomputed by anyone: only the words bind the request's facts to what a
+  // human actually approved.
+  assertAliasV2ApprovalText(request);
   return request;
 }
 
@@ -910,15 +963,14 @@ export function buildAliasV2ApprovalRequest(options: {
     freeze_sha256: freeze.freeze_sha256,
     expected: freeze.expected,
   };
-  const approved = `${options.profile === 'length_time_v1' ? 'Length*time' : 'Time alias v2'} plan`;
-  const approvalText = [
-    `Approved ${approved} ${freeze.plan.plan_sha256}`,
-    `data set under freeze ${freeze.freeze_sha256}`,
-    `for project ${freeze.project_ref} with designated approval-request timestamp ${approvedAtUtc}`,
-    'accepted with these exact contents and reused unchanged by the seal.',
-    `Counts: ${stableJsonText(freeze.expected)}.`,
-    'One admission, no automatic retry, owner-draft visibility only.',
-  ].join(' ');
+  const approvalText = renderAliasV2ApprovalText({
+    profile: options.profile,
+    planSha256: freeze.plan.plan_sha256,
+    freezeSha256: freeze.freeze_sha256,
+    projectRef: freeze.project_ref,
+    approvedAtUtc,
+    expected: freeze.expected,
+  });
   return artifactOf({
     ...core,
     request_sha256: sha256Json(core),
@@ -966,6 +1018,9 @@ export function sealAliasV2Approval(options: {
       2,
     );
   }
+  // Defence in depth for a request assembled in memory rather than read from its own file: the
+  // words being sealed must be the canonical rendering of the facts being sealed.
+  assertAliasV2ApprovalText(request);
   // The human approval text must be exactly the request's text: the operator approves the words
   // the request carries, not a paraphrase.
   if (sha256Text(options.humanApprovalText) !== request.approval_text_sha256) {
