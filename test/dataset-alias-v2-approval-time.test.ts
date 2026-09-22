@@ -47,7 +47,7 @@ import {
 } from './helpers/supabase-auth.js';
 import type { FetchLike } from '../src/lib/http.js';
 
-const CLI_VERSION = '0.1.20';
+const CLI_VERSION = '0.1.21';
 const DESIGNATED_AT = '2026-09-22T06:30:00.000Z';
 const OTHER_AT = '2026-09-22T07:45:00.000Z';
 const ARTIFACT_INVALID = 'ALIAS_V2_PROTECTED_ARTIFACT_INVALID';

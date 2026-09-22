@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 6b8460e19c2bdbe39a5c927bd4e4c880aa42c455
-lastReviewedNote: 'Reviewed for CLI #358: the shared synthetic cohort now carries matching embedded dataset versions for ordinary Database triggers and the source-proven 128 Time versus 146 non-Time reference-output mix. Two focused RED/GREEN regressions and the full local coverage gate pass; the runtime, v1 policy, package identity and release controls are unchanged by this fixture correction.'
+lastReviewedAt: 2026-09-22
+lastReviewedCommit: 24f227a98d9dbf4c6acd48ddaa45b8a5e6acd0a3
+lastReviewedNote: 'Reviewed for CLI #362: the release-only 0.1.21 preparation, refreshed onto merged source PR #365 (CLI #364) at main 24f227a, re-ran the unchanged gate set on the refreshed head — focused tests, test:package, the full pre-push gate with exact 100% coverage, the pack dry-run and Docpact — with the live CLI-version fixture set advanced and no assertion weakened. Publication has not occurred.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -43,6 +43,8 @@ related:
   - ../release-runbook.md
   - ../release-setup.md
 ---
+
+Review note, 2026-09-22: Issue #362 is the release-only 0.1.21 preparation, refreshed by merging main `24f227a` (PR #365, CLI #364 approval-time binding) over the reviewed PR #360/#361 source. Six live CLI-version fixtures were proven RED against the bumped package identity and GREEN after the update — three `cliVersion` expectations in `test/cli.test.ts` (the third re-proved directly after the earlier assertion in its own test had aborted), one in `test/dataset-maintenance-flow-identity-coverage-cli-remote.test.ts`, and the protected toolchain-evidence fixtures in `test/dataset-alias-v2-protected-cli.test.ts` and `test/dataset-length-time-cli.test.ts`, which refused with `Toolchain evidence does not bind the running published CLI version.` — plus the explicit-parameter constants in `test/dataset-alias-v2-public-stages.test.ts` and the merge-arrived `test/dataset-alias-v2-approval-time.test.ts`, which supply the expected version themselves and therefore stayed green, advanced with the others so no stale previous-version fixture remains and no assertion is weakened. The gate set is unchanged and was re-run on the refreshed head: pre-mutation npm/tag absence via `release-version.cjs`, focused tests, `test:package`, the full pre-push gate with exact 100% coverage, the pack dry-run and Docpact; after root's push and the exact-head four-platform matrix it requires the automatic tag plus Trusted Publishing/provenance, registry integrity, fresh public consumers and exact workspace integration.
 
 Review note, 2026-09-22: CLI #364 adds `test/dataset-alias-v2-approval-time.test.ts` as the focused proof for the v2 approval-time binding, and its categories are the minimum proof for touching that contract: the public freeze designates its injectable clock and no approved artifact carries the epoch constant; two builds of the same freeze at different clocks produce different request digests and different words; a request whose designated time was edited no longer matches its own digest; absent, non-string, empty, unparsable and non-canonical spellings are refused with `..._REQUEST_UNBOUND_TIME` or `..._APPROVAL_TIME_INVALID`; a changed seal timestamp is refused and an exact reseal is one identity; root's adversarial self-consistent re-timed request — recomputed `request_sha256`, untouched approved words and text digest — is refused by the parse and by the public seal stage even when the new time is the one it carries; a foreign text shape is refused as well; and an approval sealed before the binding still parses and still binds its execution. The existing v2 public-stage and argv-driver tests now read the designated time from the request instead of passing a fixed unrelated instant, which is the operator workflow the seal enforces. The authoritative full gate remains `pnpm prepush:gate` with the exact 100% coverage assertion, the package case and Docpact; the release gate, four-platform matrix and publication rules are unchanged.
 

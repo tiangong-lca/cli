@@ -115,7 +115,7 @@ async function buildPublicChain(): Promise<PublicChain> {
   const plan = JSON.parse(readFileSync(planPath, 'utf8')) as JsonObject;
 
   const toolchainPath = path.join(directory, 'toolchain.json');
-  writeFileSync(toolchainPath, `${stableJsonText(protectedToolchainEvidence('0.1.20'))}\n`, {
+  writeFileSync(toolchainPath, `${stableJsonText(protectedToolchainEvidence('0.1.21'))}\n`, {
     mode: 0o600,
   });
   const baselinesPath = path.join(directory, 'baselines.json');

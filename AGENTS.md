@@ -37,9 +37,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 75c51bf43f6c73e6a82fd241642b8703f7472f8a
-lastReviewedNote: 'Reviewed for CLI #358: the read stage now binds the ACTUAL versioned status envelope (`src/lib/dataset-alias-v2-status.ts`), authorises `applied` only through the genuinely observed terminal proof (per-row ledger audits, fresh current-row hashes and functional-unit texts, one scientific batch), treats the server read-only conflicts as polls and the not-found answer as no admission, and a gated real-local-RPC end-to-end driver exercises the real command against the database owner interop stack. V1 bytes and behaviour are unchanged.'
+lastReviewedAt: 2026-09-22
+lastReviewedCommit: 24f227a98d9dbf4c6acd48ddaa45b8a5e6acd0a3
+lastReviewedNote: 'Reviewed for CLI #362: the release-only 0.1.21 preparation, refreshed onto merged source PR #365 (CLI #364) at main 24f227a, changes package identity and the live version fixtures only, without changing CLI-owned policy, commands, authorization, or release semantics; publication has not occurred (npm latest 0.1.20, no cli-v0.1.21 tag) and the merge-triggered tag plus Trusted Publishing remain the only publication route.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -50,6 +50,8 @@ related:
   - docs/release-runbook.md
   - docs/release-setup.md
 ---
+
+Review note, 2026-09-22: Issue #362 is the version-only 0.1.21 release preparation on `codex/issue-362-cli021`, refreshed by merging main `24f227a` (PR #365, CLI #364 approval-time binding) over the reviewed PR #360 (CLI #358) and PR #361 (CLI #359) source. Only package identity and the live CLI-version fixtures change; dependencies, the sole lock, runtime, public exports, authorization, workflows and release automation are unchanged. The source capabilities are merged while publication has not occurred (npm latest 0.1.20, no `cli-v0.1.21` tag); the Database #674/#680 capability and current-closure guards are deployed and integrated on main, so the remaining steps are root's push, the exact-head four-platform CI, the merge-triggered tag and Trusted Publishing, and local publication or manual tag creation remains forbidden.
 
 Review note, 2026-09-22: CLI #364 binds the versioned (v2) protected approval to one canonical approval-authority timestamp. The freeze stage designates its own injectable clock at request time: `approved_at_utc` is a field of the approval-request core, so the request digest moves with it, and the human-visible approval text names it as the designated approval-request timestamp accepted with those exact contents and reused unchanged by the seal — the epoch constant is gone and the freeze generation is never presented as the human approval event. `seal-protected-approval` validates `--approved-at` and requires it to equal the request's designated value before it writes anything; an absent value is refused by name so a pre-binding request must be regenerated rather than silently re-read, and a non-canonical spelling is refused instead of normalised. One module-private renderer builds the approved words from the request's own facts (designated timestamp, capability phrase, plan and freeze digests, project, counts) and is shared by the builder, the parser and the seal, so root's self-consistent re-timing attack — rewrite `approved_at_utc`, recompute `request_sha256`, keep the approved words and their digest — is refused by the parse and again at the seal. The sealed approval keeps its reviewed 14-key shape, so an approval sealed before this binding still parses and still binds its execution for status-only recovery; the server preflight/admit/read envelopes, the expected counts, the one-shot runtime, `src/lib/dataset-maintenance-*` v1, dependencies, package version and workflows are unchanged, and no database migration or authorization framework is added — the local approval-request envelope never reaches the database. Coverage stays 100% across `src/**`.
 

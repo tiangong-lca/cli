@@ -24,15 +24,17 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 6b8460e19c2bdbe39a5c927bd4e4c880aa42c455
-lastReviewedNote: 'Reviewed for CLI #358: the shared synthetic cohort now carries matching embedded dataset versions for ordinary Database triggers and the source-proven 128 Time versus 146 non-Time reference-output mix. Two focused RED/GREEN regressions and the full local coverage gate pass; the runtime, v1 policy, package identity and release controls are unchanged by this fixture correction.'
+lastReviewedAt: 2026-09-22
+lastReviewedCommit: 24f227a98d9dbf4c6acd48ddaa45b8a5e6acd0a3
+lastReviewedNote: 'Reviewed for CLI #362: the 0.1.21 version-only preparation, refreshed onto merged source PR #365 (CLI #364) at main 24f227a, adds no secret, environment, runner, dependency, lockfile change, Trusted Publisher setting, workflow filename, tag rule, credential, or alternate publication path, records that npm latest is 0.1.20 and no cli-v0.1.21 tag exists, and keeps the merge-triggered four-platform tag plus native pnpm OIDC Trusted Publishing as the only route.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
   - ./release-runbook.md
   - ./agents/repo-validation.md
 ---
+
+Review note, 2026-09-22: Issue #362 is the 0.1.21 version-only preparation, refreshed by merging main `24f227a` (PR #365, CLI #364 approval-time binding) over the reviewed PR #360/#361 source. It adds no secret, environment, runner, dependency, lockfile change, Trusted Publisher setting, workflow filename, tag rule, credential, or alternate publication path, and it records honestly that publication has not occurred: npm latest is 0.1.20 and no `cli-v0.1.21` tag exists. The merge-triggered four-platform tag workflow, native pnpm OIDC Trusted Publishing and provenance verification remain the only publication route; the Database #674/#680 capability is deployed and integrated on main, so no further backend gate remains before root's push and the release CI.
 
 Review note, 2026-09-22: CLI #364 adds no release setup surface. The v2 approval-time binding is source only: it adds no secret, environment, runner, dependency, lockfile change, Trusted Publisher setting, workflow filename, tag rule, credential, or alternate publication path, and it reuses the existing release setup unchanged.
 

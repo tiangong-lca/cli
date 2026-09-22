@@ -25,15 +25,17 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 6b8460e19c2bdbe39a5c927bd4e4c880aa42c455
-lastReviewedNote: 'Reviewed for CLI #358: the shared synthetic cohort now carries matching embedded dataset versions for ordinary Database triggers and the source-proven 128 Time versus 146 non-Time reference-output mix. Two focused RED/GREEN regressions and the full local coverage gate pass; the runtime, v1 policy, package identity and release controls are unchanged by this fixture correction.'
+lastReviewedAt: 2026-09-22
+lastReviewedCommit: 24f227a98d9dbf4c6acd48ddaa45b8a5e6acd0a3
+lastReviewedNote: 'Reviewed for CLI #362: the 0.1.21 release preparation, refreshed onto merged source PR #365 (CLI #364) at main 24f227a, changes only package identity and the live CLI-version fixtures; the fixture RED/GREEN history, the unchanged package/Docpact/pre-push gates, and the post-merge tag, Trusted Publishing/provenance, consumer and workspace-integration path are recorded in the runbook.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
   - ./release-setup.md
   - ./agents/repo-validation.md
 ---
+
+Review note, 2026-09-22: Issue #362 is the dedicated 0.1.21 release preparation, refreshed by merging main `24f227a98d9dbf4c6acd48ddaa45b8a5e6acd0a3` (PR #365, CLI #364 approval-time binding) over the previously reviewed PR #360 (CLI #358 Time alias, main merge `e69592e32c98d6b73c3f08c8db35b3ebd73538bb`) and PR #361 (CLI #359 Length*time, main merge `53a53b82686eefc53c04f7a6e8e0b975db099eed`) source; the refresh resolved only review-note/frontmatter conflicts and advanced the merge-arrived fixture constant, weakening no assertion. It changes only `package.json` identity and the live CLI-version fixtures (three in `test/cli.test.ts`, one in `test/dataset-maintenance-flow-identity-coverage-cli-remote.test.ts`, one in `test/dataset-alias-v2-protected-cli.test.ts`, one in `test/dataset-length-time-cli.test.ts`, plus the explicit-parameter constants in `test/dataset-alias-v2-public-stages.test.ts` and `test/dataset-alias-v2-approval-time.test.ts`), and keeps the sole lock, dependencies, runtime files, strict exports, workflows and release automation byte-unchanged. The source is merged but publication has not happened: npm latest is 0.1.20 (published and integrated), no `cli-v0.1.21` tag exists locally or on `origin`, and `scripts/ci/release-version.cjs assert-unpublished --version 0.1.21` passes before any mutation while `next-version --part patch` resolves 0.1.21 from published 0.1.20. The six genuinely bound fixtures were RED against the bumped identity (actual 0.1.21 against the stale 0.1.20 expectation, and `Toolchain evidence does not bind the running published CLI version.` for the two protected toolchain fixtures) and GREEN afterwards; the explicit-parameter constants supply the expected version themselves, stayed GREEN, and were advanced so no stale previous-version fixture remains. The Database #674/#680 capability and current-closure guards are deployed and integrated on main, so the remaining steps are root's push, the exact-head four-platform matrix, the merge-triggered `cli-v0.1.21` tag, native pnpm Trusted Publishing with cryptographic provenance, registry integrity and `gitHead` binding, fresh credential-free consumers, and exact release-merge workspace integration. Local publication and manual tag creation remain forbidden, and publishing this software does not publish any dataset.
 
 Review note, 2026-09-22: CLI #364 adds no release surface. The v2 approval-time binding is a source correction inside the existing protected lifecycle: no version bump, dependency, lock, workflow, tag rule or publication change, and the held 0.1.21 release PR363 must be refreshed onto this exact source and requalified through the unchanged package/Docpact/pre-push gates (with the exact 100% coverage assertion), the pack dry-run and the four-platform tag workflow with native pnpm Trusted Publishing/provenance before anything is published. Local publication and manual tag creation remain forbidden.
 

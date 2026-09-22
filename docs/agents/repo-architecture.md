@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 83189e2
-lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: 新增一个自包含的精确十进制模块（归一化 + bigint 乘法 + 渲染），不改 v1 alias 架构、导出、依赖或写路径。'
+lastReviewedAt: 2026-09-22
+lastReviewedCommit: 24f227a98d9dbf4c6acd48ddaa45b8a5e6acd0a3
+lastReviewedNote: 'Reviewed for CLI #362: the version-only 0.1.21 release preparation, refreshed onto merged source PR #365 (CLI #364) at main 24f227a, changes package identity and the live CLI-version fixtures only; runtime modules, public exports, the sole lock, dependencies, command families, ledger/transport design and ownership boundaries remain exactly as reviewed for #358, #359 and #364.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -40,6 +40,8 @@ related:
   - ../../README.md
   - ../../DEV_CN.md
 ---
+
+Review note, 2026-09-22: Issue #362 prepares package 0.1.21 on the refreshed source `24f227a` (PR #365, CLI #364 approval-time binding, over the reviewed PR #360/#361 source) without changing architecture. Package identity and the live CLI-version fixtures follow the package file; runtime modules, public exports, the sole lock, dependencies, command families, ledger/transport design and ownership boundaries remain exactly as reviewed for #358, #359 and #364.
 
 Review note, 2026-09-22: CLI #364 keeps the v2 approval-time binding inside the existing owners and adds no module, command family or adapter. `src/lib/dataset-alias-v2-protected.ts` owns the request core's designated `approved_at_utc`, the one module-private renderer of the approved words, the parse-time text proof and the seal's timestamp/text enforcement; `src/lib/dataset-alias-v2-public.ts` owns the freeze stage's designated clock and the seal stage's passthrough; `src/cli.ts` keeps the same argv surface, with `--approved-at` on `seal-protected-approval` only. The local approval-request envelope still never reaches the server: the preflight/admit/read owners and the database capability are untouched.
 
