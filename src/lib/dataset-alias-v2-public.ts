@@ -312,7 +312,9 @@ export async function freezeAliasV2Protected(options: {
   const approvalRequest = buildAliasV2ApprovalRequest({
     freeze: freezeArtifact.value,
     freezeFileSha256,
-    approvedAtUtc: new Date(0).toISOString(),
+    // The request designates one canonical approval-authority timestamp: this stage's own clock,
+    // named in the words the human approves, covered by the request digest and reused by the seal.
+    approvedAtUtc: (options.now ?? new Date()).toISOString(),
     profile,
   });
   const requestPath = path.join(outDir, ALIAS_V2_PROTECTED_ARTIFACTS.approval_request);
