@@ -14,6 +14,7 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   sha256Json,
+  sha256Text,
   stableJsonText,
   type JsonObject,
 } from '../src/lib/dataset-maintenance-contract.js';
@@ -53,6 +54,7 @@ const ARTIFACT_INVALID = 'ALIAS_V2_PROTECTED_ARTIFACT_INVALID';
 const TIME_INVALID = 'ALIAS_V2_PROTECTED_APPROVAL_TIME_INVALID';
 const TIME_MISMATCH = 'ALIAS_V2_PROTECTED_APPROVAL_TIME_MISMATCH';
 const REQUEST_UNBOUND_TIME = 'ALIAS_V2_PROTECTED_APPROVAL_REQUEST_UNBOUND_TIME';
+const TEXT_MISMATCH = 'ALIAS_V2_PROTECTED_APPROVAL_TEXT_MISMATCH';
 
 /** A transport that answers only the owner's own session; every other call is a failure. */
 const authOnlyFetch: FetchLike = (async (input: string) => {
@@ -145,13 +147,11 @@ async function freezeChain(directory: string, designatedAt: string): Promise<Cha
   };
 }
 
-/**
- * The exact document a pre-binding freeze wrote: the same words and the digest over the twelve-key
- * core, with no designated approval time at all.
- */
-function legacyRequestWithoutTime(request: JsonObject): JsonObject {
-  const core: JsonObject = {
+/** Every field the request digest covers. */
+function requestCore(request: JsonObject): JsonObject {
+  return {
     schema_version: request['schema_version'],
+    approved_at_utc: request['approved_at_utc'],
     environment: request['environment'],
     project_ref: request['project_ref'],
     account: request['account'],
@@ -161,6 +161,15 @@ function legacyRequestWithoutTime(request: JsonObject): JsonObject {
     freeze_sha256: request['freeze_sha256'],
     expected: request['expected'],
   };
+}
+
+/**
+ * The exact document a pre-binding freeze wrote: the same words and the digest over the core of
+ * that time, with no designated approval time at all.
+ */
+function legacyRequestWithoutTime(request: JsonObject): JsonObject {
+  const core = requestCore(request);
+  delete core['approved_at_utc'];
   return {
     ...core,
     request_sha256: sha256Json(core),
@@ -294,6 +303,48 @@ test('the same approved request cannot be sealed with another timestamp', () => 
   }
 });
 
+test('a self-consistent re-timed request cannot keep the words a human approved', () => {
+  const sealed = sealedAliasV2Execution();
+  try {
+    const request = documentOf(
+      buildAliasV2ApprovalRequest({
+        freeze: sealed.freeze,
+        freezeFileSha256: sealed.freezeFileSha256,
+        approvedAtUtc: DESIGNATED_AT,
+        profile: fixturePlanProfile(sealed.plan),
+      }).value,
+    );
+    // The attack: rewrite the designated time and recompute the request digest — it is not secret —
+    // while the words the human approved, and their hash, stay byte-identical. The tampered
+    // request is self-consistent on both digests; only the words still name the old time.
+    const retimed: JsonObject = { ...request, approved_at_utc: OTHER_AT };
+    retimed['request_sha256'] = sha256Json(requestCore(retimed));
+    assert.equal(retimed['request_sha256'], sha256Json(requestCore(retimed)));
+    assert.equal(retimed['approval_text'], request['approval_text']);
+    assert.equal(retimed['approval_text_sha256'], request['approval_text_sha256']);
+    assert.throws(
+      () => parseAliasV2ApprovalRequest(retimed),
+      (error: unknown) => codeOf(error) === TEXT_MISMATCH,
+      'the approved words must be the canonical rendering of the designated time',
+    );
+    // The words are the canonical rendering of the request's own facts or they are refused: the
+    // capability phrase is one of the two reviewed spellings, never free text.
+    const foreignText = String(request['approval_text']).replace(
+      'Approved Time alias v2 plan',
+      'Approved Time alias v2 plan (re-timed)',
+    );
+    const foreign: JsonObject = { ...request, approval_text: foreignText };
+    foreign['approval_text_sha256'] = sha256Text(foreignText);
+    foreign['request_sha256'] = sha256Json(requestCore(foreign));
+    assert.throws(
+      () => parseAliasV2ApprovalRequest(foreign),
+      (error: unknown) => codeOf(error) === TEXT_MISMATCH,
+    );
+  } finally {
+    rmSync(sealed.directory, { recursive: true, force: true });
+  }
+});
+
 test('the public seal stage reuses the designated timestamp and refuses every other', async () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'alias-v2-approval-seal-'));
   try {
@@ -334,6 +385,22 @@ test('the public seal stage reuses the designated timestamp and refuses every ot
         }),
       (error: unknown) => codeOf(error) === REQUEST_UNBOUND_TIME,
       'a request without the designated time must be refused',
+    );
+    // The self-consistent re-timed request is refused at the seal boundary too: even when the
+    // operator passes exactly the new time it carries, the untouched words still name the old one.
+    const retimed: JsonObject = { ...request, approved_at_utc: OTHER_AT };
+    retimed['request_sha256'] = sha256Json(requestCore(retimed));
+    const retimedPath = path.join(directory, 'retimed-request.json');
+    write(retimedPath, retimed);
+    assert.throws(
+      () =>
+        seal({
+          approvalRequestPath: retimedPath,
+          approveRequest: digestOf(retimedPath),
+          approvedAtUtc: OTHER_AT,
+        }),
+      (error: unknown) => codeOf(error) === TEXT_MISMATCH,
+      'a re-timed request must not mint a second identity',
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });
