@@ -218,6 +218,36 @@ test('the designated timestamp is part of the request identity', () => {
   }
 });
 
+test('a designated timestamp that is absent or not canonical is refused', () => {
+  const sealed = sealedAliasV2Execution();
+  try {
+    const request = documentOf(
+      buildAliasV2ApprovalRequest({
+        freeze: sealed.freeze,
+        freezeFileSha256: sealed.freezeFileSha256,
+        approvedAtUtc: DESIGNATED_AT,
+        profile: fixturePlanProfile(sealed.plan),
+      }).value,
+    );
+    // A request written before the binding designated no timestamp at all: it is refused by name
+    // rather than re-read as if the value had always been there.
+    const legacy = legacyRequestWithoutTime(request);
+    assert.throws(
+      () => parseAliasV2ApprovalRequest(legacy),
+      (error: unknown) => codeOf(error) === REQUEST_UNBOUND_TIME,
+    );
+    for (const value of [5, null, '', 'not-a-time', '2026-09-22', '2026-09-22T06:30:00Z']) {
+      assert.throws(
+        () => parseAliasV2ApprovalRequest({ ...request, approved_at_utc: value }),
+        (error: unknown) => codeOf(error) === TIME_INVALID,
+        `the designated time ${JSON.stringify(value)} must be refused`,
+      );
+    }
+  } finally {
+    rmSync(sealed.directory, { recursive: true, force: true });
+  }
+});
+
 test('the same approved request cannot be sealed with another timestamp', () => {
   const sealed = sealedAliasV2Execution();
   try {

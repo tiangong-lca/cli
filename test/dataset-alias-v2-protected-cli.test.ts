@@ -38,8 +38,6 @@ import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
 import type { FetchLike, ResponseLike } from '../src/lib/http.js';
 
 const dotEnvStatus: DotEnvLoadResult = { loaded: false, path: '/tmp/.env', count: 0 };
-const START = Date.parse('2026-09-21T00:00:00.000Z');
-const iso = (offsetMs: number): string => new Date(START + offsetMs).toISOString();
 
 function jsonResponse(value: unknown, status = 200): ResponseLike {
   return {
@@ -183,7 +181,8 @@ async function buildPublicChain(): Promise<PublicChain> {
       '--confirm',
       ALIAS_V2_TEST_ACCOUNT.email,
       '--approved-at',
-      iso(0),
+      // The seal reuses the timestamp this request designated, never an operator-chosen instant.
+      String(request['approved_at_utc']),
       '--json',
     ],
     cliDeps(authOnlyFetch),

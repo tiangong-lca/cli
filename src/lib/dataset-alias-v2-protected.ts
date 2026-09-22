@@ -193,6 +193,12 @@ export type AliasV2Freeze = {
 
 export type AliasV2ApprovalRequest = {
   schema_version: typeof ALIAS_V2_PROTECTED_CONTRACT.approval_request_schema;
+  /**
+   * The one canonical approval-authority timestamp this request designates: the freeze's own clock
+   * at request time, named in the words the human approves, covered by the request digest, and
+   * reused unchanged by the seal. It is not the moment of the human approval.
+   */
+  approved_at_utc: string;
   environment: 'production';
   project_ref: string;
   account: AliasV2Account;
@@ -269,6 +275,26 @@ function hash(value: unknown, label: string): string {
 function token(value: unknown, label: string): string {
   if (typeof value !== 'string' || value.trim() === '') {
     fail(`${label} must be a non-empty string.`, 'ALIAS_V2_PROTECTED_ARTIFACT_INVALID', 2);
+  }
+  return value;
+}
+/**
+ * The canonical approval-authority timestamp of the whole v2 chain: the approval request designates
+ * it at freeze time, the human approves it verbatim, and the seal reuses exactly this value. A
+ * string that denotes another instant — or the same instant in another spelling — is not it.
+ */
+function approvalTimeUtc(value: unknown, label: string): string {
+  const parsed = typeof value === 'string' ? Date.parse(value) : Number.NaN;
+  if (
+    typeof value !== 'string' ||
+    !Number.isFinite(parsed) ||
+    new Date(parsed).toISOString() !== value
+  ) {
+    fail(
+      `${label} must be a canonical ISO-8601 UTC timestamp.`,
+      'ALIAS_V2_PROTECTED_APPROVAL_TIME_INVALID',
+      2,
+    );
   }
   return value;
 }
@@ -652,10 +678,23 @@ export function parseAliasV2ApprovalRequest(value: unknown): AliasV2ApprovalRequ
       2,
     );
   }
+  // A request written before the approval-time binding is refused by name: it designated no
+  // timestamp, so it cannot be silently re-read as if it had.
+  if (
+    value['schema_version'] === ALIAS_V2_PROTECTED_CONTRACT.approval_request_schema &&
+    !Object.hasOwn(value, 'approved_at_utc')
+  ) {
+    fail(
+      'Alias v2 approval request carries no designated approved_at_utc: a request written before the approval-time binding cannot be sealed. Regenerate the freeze and its approval request with this CLI version.',
+      'ALIAS_V2_PROTECTED_APPROVAL_REQUEST_UNBOUND_TIME',
+      2,
+    );
+  }
   exactKeys(
     value,
     [
       'schema_version',
+      'approved_at_utc',
       'environment',
       'project_ref',
       'account',
@@ -682,6 +721,7 @@ export function parseAliasV2ApprovalRequest(value: unknown): AliasV2ApprovalRequ
   }
   const request: AliasV2ApprovalRequest = {
     schema_version: ALIAS_V2_PROTECTED_CONTRACT.approval_request_schema,
+    approved_at_utc: approvalTimeUtc(value['approved_at_utc'], 'approval_request.approved_at_utc'),
     environment: 'production',
     project_ref: token(value['project_ref'], 'approval_request.project_ref'),
     account: accountOf(value['account'], 'approval_request.account'),
@@ -699,6 +739,7 @@ export function parseAliasV2ApprovalRequest(value: unknown): AliasV2ApprovalRequ
   };
   const core = {
     schema_version: request.schema_version,
+    approved_at_utc: request.approved_at_utc,
     environment: request.environment,
     project_ref: request.project_ref,
     account: request.account,
@@ -846,6 +887,7 @@ export function buildAliasV2Freeze(options: {
 export function buildAliasV2ApprovalRequest(options: {
   freeze: AliasV2Freeze;
   freezeFileSha256: string;
+  /** The freeze's own clock: the timestamp this request designates. */
   approvedAtUtc: string;
   /**
    * The closed profile the caller detected on the plan document. The human approval text names the
@@ -855,8 +897,10 @@ export function buildAliasV2ApprovalRequest(options: {
 }): AliasV2Artifact<AliasV2ApprovalRequest> {
   const { freeze } = options;
   hash(options.freezeFileSha256, 'freezeFileSha256');
+  const approvedAtUtc = approvalTimeUtc(options.approvedAtUtc, 'approvedAtUtc');
   const core = {
     schema_version: ALIAS_V2_PROTECTED_CONTRACT.approval_request_schema,
+    approved_at_utc: approvedAtUtc,
     environment: 'production' as const,
     project_ref: freeze.project_ref,
     account: freeze.account,
@@ -870,7 +914,8 @@ export function buildAliasV2ApprovalRequest(options: {
   const approvalText = [
     `Approved ${approved} ${freeze.plan.plan_sha256}`,
     `data set under freeze ${freeze.freeze_sha256}`,
-    `for project ${freeze.project_ref} at ${options.approvedAtUtc}.`,
+    `for project ${freeze.project_ref} with designated approval-request timestamp ${approvedAtUtc}`,
+    'accepted with these exact contents and reused unchanged by the seal.',
     `Counts: ${stableJsonText(freeze.expected)}.`,
     'One admission, no automatic retry, owner-draft visibility only.',
   ].join(' ');
@@ -911,6 +956,16 @@ export function sealAliasV2Approval(options: {
       2,
     );
   }
+  // The seal may not re-time an approval: the request designated one canonical timestamp at freeze
+  // time, and sealing accepts exactly that value or nothing.
+  const approvedAtUtc = approvalTimeUtc(options.approvedAtUtc, 'approvedAtUtc');
+  if (approvedAtUtc !== request.approved_at_utc) {
+    fail(
+      'Alias v2 approval must be sealed with the exact timestamp the approval request designated; the supplied --approved-at is another instant.',
+      'ALIAS_V2_PROTECTED_APPROVAL_TIME_MISMATCH',
+      2,
+    );
+  }
   // The human approval text must be exactly the request's text: the operator approves the words
   // the request carries, not a paraphrase.
   if (sha256Text(options.humanApprovalText) !== request.approval_text_sha256) {
@@ -922,7 +977,7 @@ export function sealAliasV2Approval(options: {
   }
   const core = {
     schema_version: ALIAS_V2_PROTECTED_CONTRACT.approval_schema,
-    approved_at_utc: options.approvedAtUtc,
+    approved_at_utc: request.approved_at_utc,
     environment: 'production' as const,
     project_ref: request.project_ref,
     account: request.account,
