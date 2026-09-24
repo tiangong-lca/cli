@@ -1,8 +1,8 @@
 version: 1
 layout: repo
 lastReviewedAt: '2026-09-24'
-lastReviewedCommit: '709b4f402ddc2febe2d81b6cb61461ea15d66463'
-lastReviewedNote: 'Reviewed for CLI #368 at 709b4f4: exact schema and SDK adoption changes no documentation routing, ownership or coverage rule.'
+lastReviewedCommit: '4f1f0543146e554b4f088e2eeac54f223fb3651f'
+lastReviewedNote: 'Reviewed for CLI #370 at 4f1f054: version-only release preparation changes no documentation routing, ownership or coverage rule.'
 
 catalog:
   repos:

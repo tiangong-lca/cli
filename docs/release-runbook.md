@@ -26,14 +26,16 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 709b4f402ddc2febe2d81b6cb61461ea15d66463
-lastReviewedNote: 'Reviewed for CLI #368 at 709b4f4: spec 0.2.3 and SDK 0.4.1 are source changes under CLI 0.1.21; any publication needs a separate version-only PR and unchanged four-platform/provenance gate.'
+lastReviewedCommit: 4f1f0543146e554b4f088e2eeac54f223fb3651f
+lastReviewedNote: 'Reviewed for CLI #370 at 4f1f054: 0.1.22 is version-only preparation over source merge 916032f; npm latest is 0.1.21 and no cli-v0.1.22 tag exists. Automatic merge-tag, Trusted Publishing and provenance remain mandatory.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
   - ./release-setup.md
   - ./agents/repo-validation.md
 ---
+
+Review note, 2026-09-24: CLI #370 prepares 0.1.22 from exact merged source `916032f8d77d5d533a1b9566b6c2a1f05ef968ae` (CLI #368). `next-version --part patch` chose 0.1.22 from published 0.1.21; `assert-unpublished` and remote tag readback found no 0.1.22 publication/tag before editing. The version-only diff is package identity plus eight fixtures, leaving dependencies, pnpm lock and workflows unchanged. The exact-head four-platform gate, automatic merge tag, Trusted Publishing/provenance, public consumer verification and exact root integration are still required.
 
 Review note, 2026-09-24: CLI #368 is an unchanged-version 0.1.21 source update for spec 0.2.3 and SDK 0.4.1. The dependency lock changes only for this reviewed SDK pin. Publish the fix only through a separate version-only release PR, the existing four-platform gate, automatic tag and native pnpm Trusted Publishing/provenance; no dataset publication is implied.
 

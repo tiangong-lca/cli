@@ -32,9 +32,11 @@ checkPaths:
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 709b4f402ddc2febe2d81b6cb61461ea15d66463
-lastReviewedNote: 'Reviewed for CLI #368 at 709b4f4: the source branch accepts a non-flow Process reference with required functional text and does not publish a new CLI version or dataset.'
+lastReviewedCommit: 4f1f0543146e554b4f088e2eeac54f223fb3651f
+lastReviewedNote: 'Reviewed for CLI #370 at 4f1f054: the in-repository 0.1.22 preparation is distinct from currently published 0.1.21; source behavior comes from merged CLI #368.'
 ---
+
+Review note, 2026-09-24: CLI #370 prepares 0.1.22 from merged non-flow reference source #368. The repository package version is a candidate until the canonical merge-created tag and npm provenance are verified; published npm latest was 0.1.21 at preparation time. No dataset is published by this CLI release.
 
 Review note, 2026-09-24: CLI #368 source accepts a Process `Other parameter` with `functionalUnitOrOther` and no Flow reference, while rejecting the opposite missing-field cases. It consumes released spec 0.2.3 and SDK 0.4.1 at unchanged CLI 0.1.21; a later reviewed release remains separate.
 
@@ -44,7 +46,7 @@ Issue #278 adds a managed Node host interface in source, for the subsequent qual
 
 # TianGong LCA CLI
 
-Package: `@tiangong-lca/cli` Executable: `tiangong-lca` Current package version: `0.1.21` (release preparation; npm latest remains `0.1.20`) Node: `24.19.0`
+Package: `@tiangong-lca/cli` Executable: `tiangong-lca` Current package version: `0.1.22` (release preparation; npm latest remains `0.1.21`) Node: `24.19.0`
 
 Repository development is single-track on pnpm `11.24.0` and TypeScript `7.0.2`. The published package remains a clean, package-manager-neutral consumer artifact: it contains runtime files only, not pnpm, TypeScript, Oxlint, tests, source-only tooling, or repository lockfiles.
 

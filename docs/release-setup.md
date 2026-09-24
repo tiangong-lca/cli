@@ -25,14 +25,16 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 709b4f402ddc2febe2d81b6cb61461ea15d66463
-lastReviewedNote: 'Reviewed for CLI #368 at 709b4f4: dependency and schema source identity change, but Trusted Publisher settings, credentials, tag semantics and workflows do not.'
+lastReviewedCommit: 4f1f0543146e554b4f088e2eeac54f223fb3651f
+lastReviewedNote: 'Reviewed for CLI #370 at 4f1f054: package version and bound fixtures change; no secret, Trusted Publisher setting, workflow, dependency, lock or tag rule changes.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
   - ./release-runbook.md
   - ./agents/repo-validation.md
 ---
+
+Review note, 2026-09-24: CLI #370 changes only version identity and directly bound fixtures. It adds no token, credential, Trusted Publisher setting, workflow, dependency, lock or alternate tag/publication path. npm latest is 0.1.21 and `cli-v0.1.22` was absent at preparation time.
 
 Review note, 2026-09-24: CLI #368 changes the reviewed SDK dependency and schema/public-rule identity only. No Trusted Publisher setting, credential, tag rule, workflow or alternate publication route changes; a later version-only PR uses the existing setup.
 
