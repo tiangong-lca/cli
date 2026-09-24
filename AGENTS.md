@@ -38,8 +38,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 709b4f402ddc2febe2d81b6cb61461ea15d66463
-lastReviewedNote: 'Reviewed for CLI #368 at 709b4f4: Process Other parameter validation now follows spec 0.2.3 and SDK 0.4.1; CLI ownership, auth, publication and root-integration boundaries remain unchanged.'
+lastReviewedCommit: 4f1f0543146e554b4f088e2eeac54f223fb3651f
+lastReviewedNote: 'Reviewed for CLI #370 at 4f1f054: version-only 0.1.22 preparation from merged #368 changes package identity and eight bound fixtures; source runtime, SDK/schema, lock, auth and release workflows stay unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -50,6 +50,8 @@ related:
   - docs/release-runbook.md
   - docs/release-setup.md
 ---
+
+Review note, 2026-09-24: CLI #370 prepares a separate version-only 0.1.22 release after merged #368 / PR #369 at `916032f8d77d5d533a1b9566b6c2a1f05ef968ae`. Only package identity and eight directly bound test fixtures change; dependencies, lock, runtime, public exports, authorization and release workflows do not. npm latest remains 0.1.21 and the 0.1.22 tag is absent before this branch merges.
 
 Review note, 2026-09-24: CLI #368 synchronizes the 0.2.3 Process reference schema and pins published SDK 0.4.1 at unchanged CLI 0.1.21 source. `Other parameter` needs functional text, while `Reference flow(s)` still needs its Flow ID. No data, command authorization or publication scope changes; a separate release is required.
 

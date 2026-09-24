@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 709b4f402ddc2febe2d81b6cb61461ea15d66463
-lastReviewedNote: 'Reviewed for CLI #368 at 709b4f4: public schema and rules are bound to spec candidate f118660; SDK 0.4.1 feeds CLI-owned runtime policy without changing command ownership.'
+lastReviewedCommit: 4f1f0543146e554b4f088e2eeac54f223fb3651f
+lastReviewedNote: 'Reviewed for CLI #370 at 4f1f054: version-only release changes no module ownership, runtime policy, SDK/schema or cross-repository boundary.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -40,6 +40,8 @@ related:
   - ../../README.md
   - ../../DEV_CN.md
 ---
+
+Review note, 2026-09-24: CLI #370 changes only the package version and directly bound fixture constants; module ownership, SDK 0.4.1/spec 0.2.3 data flow, runtime rules and public exports remain as reviewed for #368.
 
 The `src/runtime.ts` public facade and bounded `src/lib/runtime/**` owners expose package/Node/asset identity through one read-only API and `runtime describe`. [The runtime distribution contract](runtime-distribution-contract.md) separates this package observation from complete component/dependency provenance, host ABI readiness and task authorization. `src/main.ts` admits supported architecture tuples before loading user configuration and bypasses dotenv for runtime commands. The manifest/manager/cache/lease/exec owners are under `src/lib/runtime/**`, and the no-Node POSIX/PowerShell bootstrap is under `scripts/bootstrap/`. Product component assembly remains downstream.
 

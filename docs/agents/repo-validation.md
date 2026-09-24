@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 709b4f402ddc2febe2d81b6cb61461ea15d66463
-lastReviewedNote: 'Reviewed for CLI #368 at 709b4f4: synthetic non-flow Process, conditional schema, read-only case and unchanged full quality gates are covered.'
+lastReviewedCommit: 4f1f0543146e554b4f088e2eeac54f223fb3651f
+lastReviewedNote: 'Reviewed for CLI #370 at 4f1f054: bound fixture RED/GREEN and unchanged package, exact coverage, Docpact and four-platform release gates remain required.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -43,6 +43,8 @@ related:
   - ../release-runbook.md
   - ../release-setup.md
 ---
+
+Review note, 2026-09-24: CLI #370 has a version-fixture RED at package 0.1.22 with stale 0.1.21 expectations and a GREEN after eight bound fixtures advance. Full package, exact-100% coverage, Docpact and four-platform gates remain the release criteria; no data write is in scope.
 
 Review note, 2026-09-24: CLI #368 checks a real SDK 0.4.1 Process fixture through `dataset validate`: bilingual non-flow basis succeeds unchanged; missing basis or Flow ID is rejected. The read-only data #33 case still reports unrelated annual-volume and import-trace blockers. The canonical exact-coverage, package, Docpact and four-platform gates remain required.
 
