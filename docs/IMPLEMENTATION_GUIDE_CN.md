@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 83189e2
-lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: 实施指南补充 v2 有界精确指数十进制模块（无浮点、v1 不变），v2 wire 待 Database #673 提案。'
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: 709b4f402ddc2febe2d81b6cb61461ea15d66463
+lastReviewedNote: '针对 CLI #368 审阅 709b4f4：内置规范升级至 0.2.3，SDK 锁至 0.4.1，Other parameter 依文字计量基准校验；命令、认证和发布边界不变。'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -31,6 +31,8 @@ related:
   - ./agents/repo-architecture.md
   - ./agents/repo-validation.md
 ---
+
+Review note, 2026-09-24: CLI #368 把 Process 非 Flow 定量参考纳入正式 SDK 0.4.1 校验：`Other parameter` 要求双语计量文字，`Reference flow(s)` 仍要求 Flow ID。数据 #33 只读案例保留独立缺陷提示，不视为入库许可；CLI 版本与认证边界不变。
 
 #274 新增 `runtime describe --json` 与公开 `@tiangong-lca/cli/runtime` 模块，检查 CLI 包、资产和 Node 文件内容。runtime 命令不加载项目 `.env`，不登录、不下载；启动入口拒绝 macOS Intel，同时保留 Linux/Windows x64。组件 manifest、安装缓存、离线复用、lease/prune 和受控执行已由 #274 实现；无 Node 的 POSIX/PowerShell bootstrap 已实现并由相邻 lock 固定；公开组件和四平台 C1 仍需发行资格验证，见 [Runtime Distribution Contract](./agents/runtime-distribution-contract.md)。该 API 尚未随现有公开 0.1.9 发布。
 
