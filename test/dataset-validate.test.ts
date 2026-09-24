@@ -562,3 +562,78 @@ test('runDatasetValidate uses deep SDK fallback for default schema failures', as
     tidasSdk.ProcessSchema.safeParse = originalSafeParse;
   }
 });
+
+test('runDatasetValidate preserves a non-flow Process accounting basis under the published SDK', async () => {
+  const fixture = JSON.parse(
+    readFileSync(
+      new URL('./fixtures/tidas-sdk/test-data/process-annual-volume.json', import.meta.url),
+      'utf8',
+    ),
+  ) as {
+    processDataSet: {
+      processInformation: {
+        quantitativeReference: {
+          '@type': string;
+          referenceToReferenceFlow?: string;
+          functionalUnitOrOther?: { '@xml:lang': string; '#text': string }[];
+        };
+      };
+      modellingAndValidation: { LCIMethodAndAllocation: { typeOfDataSet?: string } };
+    };
+  };
+  const reference = fixture.processDataSet.processInformation.quantitativeReference;
+  reference['@type'] = 'Other parameter';
+  delete reference.referenceToReferenceFlow;
+  reference.functionalUnitOrOther = [
+    { '@xml:lang': 'en', '#text': '1 t unwashed raw coal' },
+    { '@xml:lang': 'zh', '#text': '1 吨未洗选原煤' },
+  ];
+  delete fixture.processDataSet.modellingAndValidation.LCIMethodAndAllocation.typeOfDataSet;
+  const unchanged = structuredClone(fixture);
+
+  const accepted = await runDatasetValidate({
+    inputPath: 'synthetic-non-flow-process',
+    type: 'process',
+    rawInput: fixture,
+  });
+  assert.equal(accepted.rows[0]?.status, 'valid');
+  assert.deepEqual(accepted.rows[0]?.issues, []);
+  assert.deepEqual(fixture, unchanged);
+  assert.equal(reference.referenceToReferenceFlow, undefined);
+  assert.equal(
+    fixture.processDataSet.modellingAndValidation.LCIMethodAndAllocation.typeOfDataSet,
+    undefined,
+  );
+
+  const missingBasis = structuredClone(fixture);
+  delete missingBasis.processDataSet.processInformation.quantitativeReference.functionalUnitOrOther;
+  const rejectedBasis = await runDatasetValidate({
+    inputPath: 'synthetic-missing-basis',
+    type: 'process',
+    rawInput: missingBasis,
+  });
+  assert.equal(rejectedBasis.rows[0]?.status, 'invalid');
+  assert.equal(
+    rejectedBasis.rows[0]?.issues.some((issue) =>
+      issue.path.endsWith('quantitativeReference.functionalUnitOrOther'),
+    ),
+    true,
+  );
+
+  const missingFlow = structuredClone(fixture);
+  const flowReference = missingFlow.processDataSet.processInformation.quantitativeReference;
+  flowReference['@type'] = 'Reference flow(s)';
+  delete flowReference.functionalUnitOrOther;
+  const rejectedFlow = await runDatasetValidate({
+    inputPath: 'synthetic-missing-flow',
+    type: 'process',
+    rawInput: missingFlow,
+  });
+  assert.equal(rejectedFlow.rows[0]?.status, 'invalid');
+  assert.equal(
+    rejectedFlow.rows[0]?.issues.some((issue) =>
+      issue.path.endsWith('quantitativeReference.referenceToReferenceFlow'),
+    ),
+    true,
+  );
+});

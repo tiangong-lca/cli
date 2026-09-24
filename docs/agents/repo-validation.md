@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: 456ec7beed6ade9a2af6f42cbb6561d2a2cc22e4
-lastReviewedNote: 'Current validation matrix, coverage, and release gates are reviewed.'
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: 709b4f402ddc2febe2d81b6cb61461ea15d66463
+lastReviewedNote: 'Reviewed for CLI #368 at 709b4f4: synthetic non-flow Process, conditional schema, read-only case and unchanged full quality gates are covered.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -43,6 +43,8 @@ related:
   - ../release-runbook.md
   - ../release-setup.md
 ---
+
+Review note, 2026-09-24: CLI #368 checks a real SDK 0.4.1 Process fixture through `dataset validate`: bilingual non-flow basis succeeds unchanged; missing basis or Flow ID is rejected. The read-only data #33 case still reports unrelated annual-volume and import-trace blockers. The canonical exact-coverage, package, Docpact and four-platform gates remain required.
 
 ## Branch-deletion-only hook exception
 

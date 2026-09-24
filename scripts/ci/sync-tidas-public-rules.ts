@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../..');
 const OUTPUT_ROOT = path.join(REPOSITORY_ROOT, 'assets/tidas-public-rules');
-const EXPECTED_COMMIT = 'd4cb089c753ffd20b173db2e56fb553a364f48f4';
+const EXPECTED_COMMIT = 'f118660dbcbfbf736be74837cce0bf26cd177245';
 const EXPECTED_INDEX_SHA = 'd8f1e90777fe0c675d1e24cbd7f1141ee776d3ebda9d8b24c91f714779540dec';
 const EXPECTED_SCHEMA_SHA = '552a8c5fb87300dbe4ff5021d3d09a2b2d369999e887c223bc5c9738a99549f5';
 const FILES = ['public-rules.v1.json', 'public-rules.v1.schema.json'] as const;

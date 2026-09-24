@@ -29,5 +29,5 @@ minimumReleaseAgeExclude:
   - '@oxlint/binding-win32-arm64-msvc@1.80.0'
   - '@oxlint/binding-win32-ia32-msvc@1.80.0'
   - '@oxlint/binding-win32-x64-msvc@1.80.0'
-  - '@tiangong-lca/tidas-sdk@0.3.0'
+  - '@tiangong-lca/tidas-sdk@0.4.1'
   - oxlint@1.80.0

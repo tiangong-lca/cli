@@ -14,15 +14,37 @@ test('bundled TIDAS assets bind the approved canonical source identity', () => {
   );
   assert.equal(identity.schema, 'tiangong-lca.cli-tidas-spec-source.v1');
   assert.equal(identity.spec_repository, 'tiangong-lca/tidas-spec');
-  assert.equal(identity.spec_commit, '8a9470a7dd4c074ae246bb9967b3bfae3e371e32');
+  assert.equal(identity.spec_commit, 'f118660dbcbfbf736be74837cce0bf26cd177245');
   assert.equal(identity.source_repository, 'https://github.com/tiangong-lca/tidas-toolkit');
   assert.equal(identity.source_commit, '9c0d8b1c8ceb1841074f5bc6de5fbb7fcc9318f5');
-  assert.equal(identity.spec_version, '0.2.2');
+  assert.equal(identity.spec_version, '0.2.3');
   assert.equal(
     identity.manifest_sha256,
-    '620e2e389d91af7a774e92e1d7c67e282ccb910e0c2e9f9391926cbe1c5e5f09',
+    '5b69ab859e26a253dc51c6aeee68c971d727b1f8db44128143795113fe3eee6a',
   );
   assert.equal(identity.schemas.length, 18);
+});
+
+test('Process quantitative reference requires the field selected by its type', () => {
+  const schema = readSchema('tidas_processes.json');
+  const reference =
+    schema.properties.processDataSet.properties.processInformation.properties.quantitativeReference;
+  assert.deepEqual(reference.required, ['@type']);
+  assert.deepEqual(reference.allOf, [
+    {
+      if: { properties: { '@type': { const: 'Reference flow(s)' } }, required: ['@type'] },
+      then: { required: ['referenceToReferenceFlow'] },
+    },
+    {
+      if: {
+        properties: {
+          '@type': { enum: ['Functional unit', 'Other parameter', 'Production period'] },
+        },
+        required: ['@type'],
+      },
+      then: { required: ['functionalUnitOrOther'] },
+    },
+  ]);
 });
 
 function reviewSchema(schema, rootKey) {

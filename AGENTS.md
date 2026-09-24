@@ -37,9 +37,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: 456ec7beed6ade9a2af6f42cbb6561d2a2cc22e4
-lastReviewedNote: 'Current command ownership, runtime boundaries, validation gates, and workspace integration rules are reviewed.'
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: 709b4f402ddc2febe2d81b6cb61461ea15d66463
+lastReviewedNote: 'Reviewed for CLI #368 at 709b4f4: Process Other parameter validation now follows spec 0.2.3 and SDK 0.4.1; CLI ownership, auth, publication and root-integration boundaries remain unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -50,6 +50,8 @@ related:
   - docs/release-runbook.md
   - docs/release-setup.md
 ---
+
+Review note, 2026-09-24: CLI #368 synchronizes the 0.2.3 Process reference schema and pins published SDK 0.4.1 at unchanged CLI 0.1.21 source. `Other parameter` needs functional text, while `Reference flow(s)` still needs its Flow ID. No data, command authorization or publication scope changes; a separate release is required.
 
 # CLI Repository Contract
 

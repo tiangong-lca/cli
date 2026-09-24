@@ -27,11 +27,11 @@ The workspace decision recorded in #1240 establishes the original `tidas-tools` 
 
 ## Current qualified comparison
 
-- CLI issue #350 asset baseline: `340c15df11692688467e1e3e1cdc9688b8240268`.
-- `tidas-spec` candidate: `8a9470a7dd4c074ae246bb9967b3bfae3e371e32`; package version `0.2.2`; manifest SHA-256 `620e2e389d91af7a774e92e1d7c67e282ccb910e0c2e9f9391926cbe1c5e5f09`.
+- CLI issue #368 asset baseline: `709b4f402ddc2febe2d81b6cb61461ea15d66463`.
+- `tidas-spec` candidate: `f118660dbcbfbf736be74837cce0bf26cd177245`; package version `0.2.3`; manifest SHA-256 `5b69ab859e26a253dc51c6aeee68c971d727b1f8db44128143795113fe3eee6a`.
 - 18 files compared: all 18 identical and zero different.
 - The pre-convergence W6a baseline had 110 differing semantic JSON locations across 11 files.
-- The 0.2.2 candidate retains the previously converged assets and changes Process `validation.review` to accept one review object or a non-empty ordered array; the CLI synchronizer still installs all 18 canonical schemas, and the regenerated report has 18 identical files and zero differing or unresolved locations.
+- The 0.2.3 candidate retains the review object-or-array behavior and conditionally requires a reference-flow ID for `Reference flow(s)` or functional text for `Functional unit`, `Other parameter` and `Production period`. The CLI synchronizer installs all 18 canonical schemas; the regenerated report has 18 identical files and zero differing or unresolved locations.
 - `assets/tidas-spec-source.json` binds the installed directory to the exact spec commit, original source commit, spec version, and manifest SHA. `scripts/ci/sync-tidas-spec.py --check` fails closed on missing/extra files, manifest errors, hash drift, or identity drift.
 
 Observed classes include dataset-version `$ref`/type changes, global-reference and classification structure changes, flow name requirements, numeric/reference constraints, LCIA normalisation and weighting types, lifecycle-model connection versions, source digital-file alternatives, and location/taxonomy membership. These labels describe the observed constraint locations; they do not decide which side is correct.
@@ -44,12 +44,12 @@ From the CLI repository root:
 python3 scripts/ci/test-sync-tidas-spec.py
 python3 scripts/ci/sync-tidas-spec.py \
   --spec-root ../tidas-spec \
-  --spec-commit 8a9470a7dd4c074ae246bb9967b3bfae3e371e32 \
+  --spec-commit f118660dbcbfbf736be74837cce0bf26cd177245 \
   --check
 python3 scripts/ci/test-compare-tidas-spec.py
 python3 scripts/ci/compare-tidas-spec.py \
   --spec-root ../tidas-spec \
-  --cli-commit 340c15df11692688467e1e3e1cdc9688b8240268 \
+  --cli-commit 709b4f402ddc2febe2d81b6cb61461ea15d66463 \
   --check docs/agents/tidas-spec-difference-ledger.json
 ```
 
@@ -60,3 +60,7 @@ The comparator and synchronizer fail if the selected source tree, file set, pars
 The synchronizer has positive coverage for a valid manifest/source tree and negative coverage for invalid manifests, tampered assets, unexpected files, and identity drift. The Process compatibility wrapper validates each array member against the currently published SDK schema, preserves order and input bytes, and reports a failing member with its numeric index; empty arrays and malformed supplied references still fail. This source task keeps CLI 0.1.18 and SDK 0.3.0 unchanged. SDK PR #147 carries the generated 0.2.2 schema model, while its package publication and the later CLI dependency/version release remain separately tracked.
 
 A bounded scan of the 2,039 JSON files under `tidas-toolkit/test_data/open_data/processes` found 63 review arrays: 52 non-empty and 11 empty. Published SDK 0.3.0 emitted the obsolete “expected object, received array” finding for all 63. The CLI bridge emits that mismatch zero times; the 11 empty arrays still receive an explicit minimum-size failure, and all 63 samples retain their other independent validation findings. This proves removal of the cardinality false positive without treating the corpus as otherwise valid.
+
+## Issue #368 consumer evidence
+
+Published SDK 0.4.1 and the 0.2.3 bundle accept a synthetic Process with bilingual `Other parameter` text, no reference-flow ID and no invented process type. The same CLI path rejects missing functional text and missing `Reference flow(s)` ID. A read-only import of data #33's provisional candidate passes the SDK schema, while CLI authoring validation still reports the independent missing annual-volume and import-trace blockers; acceptance of the reference does not imply publication readiness. The data source/purpose decision and Toolkit provenance-preserving runtime remain separately tracked.

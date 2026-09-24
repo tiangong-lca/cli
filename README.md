@@ -31,10 +31,12 @@ checkPaths:
   - test/auth-identity*.test.ts
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
-lastReviewedAt: 2026-09-22
-lastReviewedCommit: 24f227a98d9dbf4c6acd48ddaa45b8a5e6acd0a3
-lastReviewedNote: 'Reviewed for CLI #362: 0.1.21 is the version-only release preparation, refreshed onto merged source PR #365 (CLI #364) at main 24f227a; the package-version line separates the in-repository preparation from the actually published 0.1.20 and no cli-v0.1.21 tag exists yet.'
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: 709b4f402ddc2febe2d81b6cb61461ea15d66463
+lastReviewedNote: 'Reviewed for CLI #368 at 709b4f4: the source branch accepts a non-flow Process reference with required functional text and does not publish a new CLI version or dataset.'
 ---
+
+Review note, 2026-09-24: CLI #368 source accepts a Process `Other parameter` with `functionalUnitOrOther` and no Flow reference, while rejecting the opposite missing-field cases. It consumes released spec 0.2.3 and SDK 0.4.1 at unchanged CLI 0.1.21; a later reviewed release remains separate.
 
 CLI 0.1.10 is the designated C1 release for `tiangong-lca runtime describe --json` and the explicit `@tiangong-lca/cli/runtime` API for package, asset and Node content inspection. Runtime inspection loads no project `.env`, performs no authentication and downloads nothing. See [the runtime distribution contract](docs/agents/runtime-distribution-contract.md) for exact fields and trust boundaries; verify public availability and provenance before treating the candidate version as released.
 

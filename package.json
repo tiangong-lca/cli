@@ -106,6 +106,6 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
-    "@tiangong-lca/tidas-sdk": "0.3.0"
+    "@tiangong-lca/tidas-sdk": "0.4.1"
   }
 }

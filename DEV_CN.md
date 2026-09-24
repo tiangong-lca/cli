@@ -22,9 +22,9 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 83189e2
-lastReviewedNote: 'Reviewed for CLI #358 at head 83189e2: 维护者说明补充有界精确指数十进制模块（v1 不变，v2 wire 待提案），无依赖/版本/lock 变化。'
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: 709b4f402ddc2febe2d81b6cb61461ea15d66463
+lastReviewedNote: '针对 CLI #368 审阅 709b4f4：规范 0.2.3 与 SDK 0.4.1 的校验兼容已验证；包版本仍为 0.1.21，发布需独立流程。'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -33,6 +33,8 @@ related:
   - docs/agents/repo-architecture.md
   - docs/IMPLEMENTATION_GUIDE_CN.md
 ---
+
+Review note, 2026-09-24: CLI #368 使用已发布的 spec 0.2.3 与 SDK 0.4.1，按参考类型验证 Process。矿井水数据 #33 仅作只读兼容案例；软件源码与正式数据修复、发布分别交付。
 
 当前 #274 平台合同仅支持 macOS arm64、Linux x64/arm64、Windows x64；不通过旧版安装器回退 macOS Intel。`runtime ensure/status/prune/lease-release/exec` 已由 CLI 的 manifest、完整文件清单、锁、缓存及 lease 控制；无 Node 的 POSIX/PowerShell bootstrap 已进入 `scripts/bootstrap/`，只读取相邻的产品 lock；公开 C1 和组件资格仍待完成。运行时描述/组件分发的 owner 与验证边界见 [Runtime Distribution Contract](docs/agents/runtime-distribution-contract.md)。
 
