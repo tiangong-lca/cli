@@ -30,7 +30,7 @@ function readJson(filePath: string): unknown {
   return JSON.parse(readFileSync(filePath, 'utf8'));
 }
 
-test('installed SDK 0.3.0 omits the retired mixed ruleset input and getter', () => {
+test('installed SDK 0.4.1 omits the retired mixed ruleset input and getter', () => {
   const requireFromHere = createRequire(import.meta.url);
   const contractsPath = requireFromHere.resolve('@tiangong-lca/tidas-sdk/contracts');
   const sdkRoot = path.resolve(path.dirname(contractsPath), '..');

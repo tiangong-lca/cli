@@ -1,7 +1,7 @@
 {
   "schema_version": "tidas.public-rules-source.v1",
   "repository": "https://github.com/tiangong-lca/tidas-spec.git",
-  "commit": "d4cb089c753ffd20b173db2e56fb553a364f48f4",
+  "commit": "f118660dbcbfbf736be74837cce0bf26cd177245",
   "rules_version": "2026.09.20",
   "status": "released",
   "index_sha256": "d8f1e90777fe0c675d1e24cbd7f1141ee776d3ebda9d8b24c91f714779540dec",
