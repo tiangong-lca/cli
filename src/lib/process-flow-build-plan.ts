@@ -356,6 +356,18 @@ function firstMultiLang(plan: JsonObject, paths: string[], fallback: string): Js
   return multiLangFromValue(undefined, fallback);
 }
 
+const INTENDED_APPLICATIONS_PATH = 'administrative_information.intended_applications';
+const INTENDED_APPLICATIONS_PATHS = [
+  INTENDED_APPLICATIONS_PATH,
+  'administrativeInformation.intendedApplications',
+];
+
+function plannedIntendedApplications(plan: JsonObject): JsonObject[] {
+  return firstMultiLang(plan, INTENDED_APPLICATIONS_PATHS, '').filter((entry) =>
+    Boolean(textToken(entry['#text'])),
+  );
+}
+
 function globalReference(options: {
   type: string;
   refObjectId: string;
@@ -1013,14 +1025,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
       administrativeInformation: {
         'common:commissionerAndGoal': {
           'common:referenceToCommissioner': contactReference(plan, 'commissioner'),
-          'common:intendedApplications': firstMultiLang(
-            plan,
-            [
-              'administrative_information.intended_applications',
-              'administrativeInformation.intendedApplications',
-            ],
-            'Automated LCA data production draft for expert review.',
-          ),
+          'common:intendedApplications': plannedIntendedApplications(plan),
         },
         dataEntryBy: {
           'common:timeStamp':
@@ -1339,10 +1344,23 @@ function evaluateBuildPlan(plan: JsonObject, kind: BuildPlanKind): Evaluation {
 
   const bindingPaths = evidenceBindingPaths(plan);
   const required = requiredFieldSpecs(kind);
+  if (
+    kind === 'process' &&
+    !isRecord(firstValue(plan, ['payload', 'materialized_payload', 'materializedPayload']))
+  ) {
+    required.push({
+      path: INTENDED_APPLICATIONS_PATH,
+      aliases: INTENDED_APPLICATIONS_PATHS,
+    });
+  }
   const satisfied: string[] = [];
   const missing: string[] = [];
   for (const spec of required) {
-    if (pathIsSatisfied(plan, spec.aliases)) {
+    const hasValue =
+      spec.path === INTENDED_APPLICATIONS_PATH
+        ? plannedIntendedApplications(plan).length > 0
+        : pathIsSatisfied(plan, spec.aliases);
+    if (hasValue) {
       satisfied.push(spec.path);
       if (!bindingPaths.has(spec.path)) {
         blockers.push(

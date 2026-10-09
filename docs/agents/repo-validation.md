@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: 6d3515e7bc58b5e2fc2ff26344600e0d77c9037b
-lastReviewedNote: 'CLI410 prepares separate version-only0.1.27 from independently reviewed builder boundary source PR409 at main6d3515e7. Package identity and eight directly bound fixtures advance; runtime, exact SDK0.5.1, dependencies, pnpm lock, exports, authorization and workflows remain unchanged. Required four-platform, official publication, installed public builder and workspace qualification remain separate acceptance.'
+lastReviewedAt: 2026-10-09
+lastReviewedCommit: 010b35100919d8525af7c91d3cc8f197d890ba8d
+lastReviewedNote: 'Reviewed PR #413 public-command proof and existing-caller recovery guidance. Synthetic replay records actual launcher exits, gates and payload preservation; production behavior, dependencies and installed runtimes are unchanged, and maintainer compatibility acceptance is separate.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -77,6 +77,25 @@ pnpm prepush:gate
 ```
 
 Process ownership-version changes require focused `dataset-command`, `process-save-draft`, and `publish` tests in addition to the baseline. Prove exact `modelId`/`modelVersion` forwarding, omission-compatible legacy fallback, rejection of `modelVersion` without `modelId`, precedence among canonical source metadata forms, and absence of any latest-Model lookup. The final proof remains the exact-100% `pnpm prepush:gate`.
+
+Process intended-application generation tests use the real SDK through the public build-plan functions. Prove absent/blank inputs produce the native missing-field report and no materialized artifact, explicit bilingual values survive both plan aliases, evidence binding is required, and all embedded-payload aliases preserve their existing bodies without duplicate plan metadata. These checks establish input presence and preservation, not natural-language correctness or a universal keyword ban.
+
+### Process purpose public-command proof
+
+Run the public launcher separately from the function-level tests:
+
+```bash
+pnpm build
+node scripts/ci/prove-process-intended-applications.mjs --out-dir /tmp/process-purpose-proof
+```
+
+Choose a new evidence directory outside the checkout for each run. The script uses the synthetic [plan fixture](../../test/fixtures/process-intended-applications-plan.json) and spawns `bin/tiangong-lca.js process build-plan` with real SDK validation, default exit policy and a minimal environment. It imports no production helper or mock. It asserts both `validate` and `materialize` reject a missing purpose or its missing canonical evidence binding with exit 1, the exact native blocker and no payload. It then checks bilingual materialization and byte-identical preservation of an embedded payload without duplicate purpose metadata.
+
+`proof.json` records timestamps, runtime version and hashes, checkout HEAD/clean status when available, argv, exit codes, gate/payload hashes, payload absence and the resulting bilingual field. Each case retains its exact input, stdout, stderr and native gate/payload files. CLI input/output paths are relative to the evidence directory; the displayed launcher and working-directory paths use `<cli>` and `<evidence-dir>` so the report is shareable without host paths or account configuration. Inspect and retain these actual outputs, rather than citing test source or a gate-success claim alone.
+
+For a differential replay, pass `--cli-bin /absolute/path/to/cli/bin/tiangong-lca.js --expect legacy` to use a separately selected, exact baseline package. That mode verifies the old fallback and missing-binding acceptance; it does not weaken the production CLI. Running the default `explicit` expectation against that baseline must fail. A published package's version/hash is package evidence, not proof of a Git source revision unless that mapping is independently established.
+
+Rebuild and rerun on the final clean commit, and publish the actual exact-head summary with links to this script/fixture and inspectable gate/payload excerpts. Keep large raw outputs outside Git. Full `pnpm prepush:gate` and Docpact remain required; preserve their actual command, exit and output evidence separately. Contributor-run proof must not be described as trusted reviewer execution or maintainer acceptance of the stricter existing-caller contract. That compatibility decision remains with the repository maintainer before merge.
 
 Annual-volume changes require the real SDK Process schema in `process-annual-volume-policy.test.ts`, not an injected passing validator. Prove schema-valid unknown arrays remain authoring gaps; real quantities (including `9999 kg/year`) and language order survive; malformed shapes remain diagnosable; reference amounts and default units never become annual production; and historical trace metadata cannot bypass validation. Compare the two Process draft command families' complete validation results and exact payload digests. Nested SDK union language errors and duplicate annual-language entries must be reported accurately without treating classification hierarchies as multilingual fields. The private real-case lane freezes source inputs before RED and replays those same inputs after the fix; credential or service failures are not product RED evidence.
 

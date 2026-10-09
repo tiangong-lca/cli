@@ -850,6 +850,7 @@ function buildInitialProcessBuildPlan(
         'replace scaffold unit_of_analysis with a skill-authored decision artifact',
         'run process identity-preflight with local and remote candidates',
         'replace scaffold geography, technology, classification, exchange values, and annual volume with evidence-backed values',
+        'document intended applications from the study goal or task brief and bind their evidence before materialization',
         'run process build-plan validate/materialize before save-draft or publish-build',
       ],
     },

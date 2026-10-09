@@ -31,9 +31,9 @@ checkPaths:
   - test/auth-identity*.test.ts
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: 6d3515e7bc58b5e2fc2ff26344600e0d77c9037b
-lastReviewedNote: 'Reviewed CLI410 version-only0.1.27 from merged builder boundary PR409 at6d3515e7; package identity/eight bound fixtures advance. Runtime, SDK0.5.1, dependencies, lock, exports, authorization and workflows unchanged; actual publication, installed qualification and root integration remain required.'
+lastReviewedAt: 2026-10-09
+lastReviewedCommit: 010b35100919d8525af7c91d3cc8f197d890ba8d
+lastReviewedNote: 'Reviewed PR #413 public-command proof and existing-caller recovery guidance. Synthetic replay records actual launcher exits, gates and payload preservation; production behavior, dependencies and installed runtimes are unchanged, and maintainer compatibility acceptance is separate.'
 ---
 
 Review note, 2026-10-07: CLI #407 prepares the separate version-only 0.1.26 release from reviewed allocation/reference PR #406 at main `0a476fee7569af67f4197a1469bb97666d9911e9`. The existing helper selected 0.1.26 from repository and npm latest 0.1.25, proved the target unpublished, and the canonical tag read found no cli-v0.1.26. Package identity and eight directly bound fixture values advance; runtime, exact SDK 0.5.1 dependency, pnpm lock, exports, authentication and workflows remain unchanged. Publication and installed/Foundry managed acceptance still require the existing exact-head four-platform gate, automatic merge tag, native pnpm Trusted Publishing/provenance, credential-free consumers and exact workspace integration.
@@ -557,6 +557,12 @@ Only comparable mass amounts are normalized to kilograms. Mass-valued fuels and 
 For `process identity-preflight` and `flow identity-preflight`, canonical TIDAS wrappers are schema-checked when present. Loose target objects are accepted for early planning and produce `schema_validation.status: "not_applicable"` until materialization. Candidate rows can be embedded in the request, loaded from repeatable `--candidate-input` local files/directories, or fetched through explicit `--remote-candidates` hybrid search; `identity-candidate-sources.json` records scanned files, remote endpoints, queries, filters, edge-search options, and row counts. The remote Edge Function receives only search-safe query/options fields; local-only `profile_hints` stay in the preflight target profile and candidate scoring evidence.
 
 For `process build-plan` and `flow build-plan`, canonical payloads embedded in the plan are schema-checked during `materialize`. Plan-only materialization creates deterministic canonical `processDataSet` / `flowDataSet` wrappers, requires an explicit canonical locked-taxonomy `classification_path`, and validates the result with the TIDAS SDK before reporting `passed`; it never invents taxonomy ids from free-form labels.
+
+A plan-only Process build also needs non-empty `administrative_information.intended_applications` (or `administrativeInformation.intendedApplications`) and an EvidenceManifest binding at `administrative_information.intended_applications`. Describe the actual study or decision from its brief/evidence; no workflow-purpose default is inserted. Both `validate` and `materialize` report missing or blank purpose before creating a payload. An embedded canonical payload keeps its own documentation and does not need duplicated plan metadata. Presence is a deterministic check; field meaning, scientific limitations and appropriate use still require semantic review.
+
+To recover an existing plan-only caller, inspect `outputs/build-plan-gate-report.json`: `build_plan_required_field_missing` at that path means the purpose needs authoring; `evidence_binding_missing` means its basis needs a canonical `evidence_manifest.field_bindings[].field_path` entry linked to the study brief or other source in the evidence manifest. Add the evidenced purpose and binding, keeping other plan content and scientific restrictions unchanged, then rerun `validate` and `materialize` into a new output directory. Under the default exit policy, a blocked report exits 1 and creates no new payload; `--report-only` is not a repair. Inspect the successful payload's `common:intendedApplications`, not only the plan. Do not insert a guessed goal or copy a test fixture's purpose into real data.
+
+The [synthetic public-command proof](docs/agents/repo-validation.md#process-purpose-public-command-proof) demonstrates both failures, bilingual recovery and unchanged embedded payloads without an account or database operation.
 
 For `process save-draft`, canonical process payloads are validated locally with `ProcessSchema` before any `--commit` write. Schema-invalid rows remain in `outputs/save-draft-rpc/failures.jsonl` instead of being persisted. Batch import callers should pass `--target-user-id`; the CLI then verifies the current auth session and any visible draft owner before writing, while downstream readback verification still proves the final owner and payload.
 

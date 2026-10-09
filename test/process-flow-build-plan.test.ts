@@ -97,6 +97,7 @@ function processPlan(overrides: Record<string, unknown> = {}) {
         { field_path: 'target.geography' },
         { field_path: 'target.technology_route' },
         { field_path: 'quantitative_reference_plan.reference_flow_id' },
+        { field_path: 'administrative_information.intended_applications' },
       ],
     },
     name_plan: {
@@ -122,6 +123,11 @@ function processPlan(overrides: Record<string, unknown> = {}) {
     quantitative_reference_plan: {
       reference_flow_id: '190f39ca-0ec8-5aab-b2d9-c91fc55ee58d',
       reference_unit: 'unit',
+    },
+    administrative_information: {
+      intended_applications: {
+        en: 'Background inventory for screening the installation stage of photovoltaic electricity systems.',
+      },
     },
     ...overrides,
   };
@@ -219,6 +225,158 @@ test('process build-plan validate passes and writes a gate report', async () => 
       path.join(outDir, 'outputs', 'materialized-process.json'),
     );
     assert.equal(existsSync(path.join(outDir, 'outputs', 'build-plan-gate-report.json')), true);
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+test('process build-plan reports absent or blank intended use instead of producing workflow prose', async () => {
+  const missingValues = [
+    undefined,
+    null,
+    '',
+    '  ',
+    [],
+    {},
+    { en: '  ' },
+    [{ '#text': ' ', '@xml:lang': 'en' }],
+  ];
+  for (const intendedApplications of missingValues) {
+    const outDir = mkdtempSync(path.join(os.tmpdir(), 'process-intended-use-missing-'));
+    try {
+      const rawInput = processPlan({
+        administrative_information: { intended_applications: intendedApplications },
+      });
+      for (const run of [runProcessBuildPlanValidate, runProcessBuildPlanMaterialize]) {
+        const report = await run({
+          inputPath: '/tmp/process-build-plan.json',
+          outDir,
+          rawInput,
+          now,
+        });
+        assert.equal(report.status, 'blocked');
+        assert.ok(
+          report.required_fields.missing.includes(
+            'administrative_information.intended_applications',
+          ),
+        );
+        assert.ok(
+          report.blockers.some(
+            (finding) =>
+              finding.code === 'build_plan_required_field_missing' &&
+              finding.path === 'administrative_information.intended_applications',
+          ),
+        );
+        assert.equal(report.schema_validation.status, 'not_applicable');
+        assert.equal(existsSync(report.files.materialized_artifact!), false);
+      }
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('process build-plan preserves explicit bilingual intended use through both plan aliases', async () => {
+  const purpose = [
+    {
+      '#text': '用于光伏发电系统安装阶段的背景清单建模；尚未完成独立审查，不支持公开比较断言。',
+      '@xml:lang': 'zh',
+    },
+    {
+      '#text':
+        'Background inventory for the installation stage of photovoltaic electricity systems; not independently reviewed for public comparative assertions.',
+      '@xml:lang': 'en',
+    },
+  ];
+  for (const admin of [
+    { administrative_information: { intended_applications: purpose } },
+    {
+      administrative_information: undefined,
+      administrativeInformation: { intendedApplications: purpose },
+    },
+  ]) {
+    const outDir = mkdtempSync(path.join(os.tmpdir(), 'process-intended-use-explicit-'));
+    try {
+      const report = await runProcessBuildPlanMaterialize({
+        inputPath: '/tmp/process-build-plan.json',
+        outDir,
+        rawInput: processPlan(admin),
+        now,
+      });
+      assert.equal(report.status, 'passed');
+      assert.equal(report.schema_validation.status, 'passed');
+      const materialized = JSON.parse(readFileSync(report.files.materialized_artifact!, 'utf8'));
+      assert.deepEqual(
+        materialized.processDataSet.administrativeInformation['common:commissionerAndGoal'][
+          'common:intendedApplications'
+        ],
+        purpose,
+      );
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('process build-plan requires the intended-use evidence binding and retains alias precedence', async () => {
+  const plan = processPlan();
+  plan.evidence_manifest.field_bindings = plan.evidence_manifest.field_bindings.filter(
+    (binding) => binding.field_path !== 'administrative_information.intended_applications',
+  );
+  const noBinding = await runProcessBuildPlanValidate({
+    inputPath: '/tmp/intended-use-no-binding.json',
+    rawInput: plan,
+    now,
+  });
+  assert.equal(noBinding.status, 'blocked');
+  assert.ok(
+    noBinding.blockers.some(
+      (finding) =>
+        finding.code === 'evidence_binding_missing' &&
+        finding.path === 'administrative_information.intended_applications',
+    ),
+  );
+  assert.equal(noBinding.required_fields.missing.length, 0);
+
+  const blankFirstAlias = await runProcessBuildPlanValidate({
+    inputPath: '/tmp/intended-use-alias-precedence.json',
+    rawInput: processPlan({
+      administrative_information: { intended_applications: '  ' },
+      administrativeInformation: {
+        intendedApplications: 'Background inventory for photovoltaic installation modelling.',
+      },
+    }),
+    now,
+  });
+  assert.equal(blankFirstAlias.status, 'blocked');
+  assert.ok(
+    blankFirstAlias.required_fields.missing.includes(
+      'administrative_information.intended_applications',
+    ),
+  );
+});
+
+test('embedded Process payloads keep their own intended use without duplicated plan metadata', async () => {
+  const plan = processPlan();
+  const payload = __testInternals.buildCanonicalProcessPayload(plan, '/tmp/embedded-purpose.json');
+  plan.evidence_manifest.field_bindings = plan.evidence_manifest.field_bindings.filter(
+    (binding) => binding.field_path !== 'administrative_information.intended_applications',
+  );
+  const outDir = mkdtempSync(path.join(os.tmpdir(), 'process-intended-use-embedded-'));
+  try {
+    for (const alias of ['payload', 'materialized_payload', 'materializedPayload']) {
+      const report = await runProcessBuildPlanMaterialize({
+        inputPath: '/tmp/embedded-purpose.json',
+        outDir,
+        rawInput: { ...plan, administrative_information: undefined, [alias]: payload },
+        now,
+      });
+      assert.equal(report.status, 'passed');
+      assert.deepEqual(
+        JSON.parse(readFileSync(report.files.materialized_artifact!, 'utf8')),
+        payload,
+      );
+    }
   } finally {
     rmSync(outDir, { recursive: true, force: true });
   }

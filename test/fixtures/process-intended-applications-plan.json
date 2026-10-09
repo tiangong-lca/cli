@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "kind": "process",
+  "ruleset": { "id": "process-authoring/strict", "version": "1" },
+  "target": {
+    "geography": "GLO",
+    "technology_route": "Synthetic electricity-generation installation"
+  },
+  "classification_path": [
+    {
+      "@level": "0",
+      "@classId": "D",
+      "#text": "Electricity, gas, steam and air conditioning supply"
+    },
+    {
+      "@level": "1",
+      "@classId": "35",
+      "#text": "Electricity, gas, steam and air conditioning supply"
+    },
+    {
+      "@level": "2",
+      "@classId": "351",
+      "#text": "Electric power generation, transmission and distribution activities"
+    },
+    {
+      "@level": "3",
+      "@classId": "3511",
+      "#text": "Electric power generation activities from non-renewable sources"
+    }
+  ],
+  "identity_decision": { "decision": "create_new" },
+  "evidence_manifest": {
+    "sources": [
+      {
+        "id": "66666666-6666-6666-6666-666666666666",
+        "type": "local-fixture",
+        "title": "Synthetic study brief for public CLI contract proof; no real inventory or write authority"
+      }
+    ],
+    "field_bindings": [
+      { "field_path": "target", "source_id": "66666666-6666-6666-6666-666666666666" },
+      {
+        "field_path": "identity_decision.decision",
+        "source_id": "66666666-6666-6666-6666-666666666666"
+      },
+      { "field_path": "unit_of_analysis", "source_id": "66666666-6666-6666-6666-666666666666" },
+      { "field_path": "name_plan.base_name", "source_id": "66666666-6666-6666-6666-666666666666" },
+      { "field_path": "target.geography", "source_id": "66666666-6666-6666-6666-666666666666" },
+      {
+        "field_path": "target.technology_route",
+        "source_id": "66666666-6666-6666-6666-666666666666"
+      },
+      {
+        "field_path": "quantitative_reference_plan.reference_flow_id",
+        "source_id": "66666666-6666-6666-6666-666666666666"
+      },
+      {
+        "field_path": "administrative_information.intended_applications",
+        "source_id": "66666666-6666-6666-6666-666666666666"
+      }
+    ]
+  },
+  "name_plan": { "base_name": "Synthetic electricity-generating installation" },
+  "unit_of_analysis": {
+    "target_kind": "countable_installation",
+    "decision": "ready_for_materialization",
+    "functional_unit": {
+      "what": "represent an installation in a synthetic inventory example",
+      "how_much": "one synthetic installation",
+      "how_well": "test-only technology description",
+      "how_long": "test-only declared study period"
+    },
+    "reference_flow": {
+      "flow_identity": "Synthetic electricity-generating installation",
+      "reference_unit": "unit",
+      "reference_amount": 1,
+      "flow_property": "Number of items"
+    },
+    "scaling_evidence_status": "not_required_for_fixture"
+  },
+  "quantitative_reference_plan": {
+    "reference_flow_id": "11111111-1111-4111-8111-111111111111",
+    "reference_unit": "unit"
+  },
+  "administrative_information": {
+    "intended_applications": [
+      { "@xml:lang": "zh", "#text": "用于合成发电设施示例的筛选性清单建模；不支持公开比较断言。" },
+      {
+        "@xml:lang": "en",
+        "#text": "Screening inventory modelling of a synthetic electricity-generation installation; not for public comparative assertions."
+      }
+    ]
+  }
+}
