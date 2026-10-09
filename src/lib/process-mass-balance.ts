@@ -15,7 +15,16 @@ import {
 import { sha256Json } from './dataset-maintenance-contract.js';
 
 type ReferenceKind = 'flow' | 'flowproperty' | 'unitgroup';
-type Dimension = 'mass' | 'count' | 'energy' | 'length' | 'area' | 'volume' | 'time' | 'area_time';
+type Dimension =
+  | 'mass'
+  | 'count'
+  | 'energy'
+  | 'length'
+  | 'area'
+  | 'volume'
+  | 'time'
+  | 'area_time'
+  | 'transport_work';
 type Unit = { name: string; dimension: Dimension; kilograms: number | null };
 type EvidenceRow = { payload: JsonObject; sha256: string };
 export type MassReferenceEvidence = {
@@ -165,6 +174,7 @@ function recognizedUnit(value: unknown): Unit | null {
       ['second', 'seconds', 'hour', 'hours', 'year', 'years'],
     ],
     ['area_time', ['m2*a'], []],
+    ['transport_work', ['kg*km', 't*km'], []],
   ];
   const matched = dimensions.find(
     ([, symbols, names]) => symbols.includes(name) || names.includes(lowerName),
@@ -245,7 +255,11 @@ function resolveExchange(
     for (const tag of uoms) {
       const tagged = recognizedUnit(tag);
       requireValue(
-        tagged && tagged.dimension === unit.dimension && tagged.kilograms === unit.kilograms,
+        tagged &&
+          tagged.dimension === unit.dimension &&
+          tagged.kilograms === unit.kilograms &&
+          // Freight units have distinct scales despite both being nonmass quantities.
+          (unit.dimension !== 'transport_work' || tagged.name === unit.name),
         'Exchange unit tag conflicts with exact reference-unit evidence.',
       );
     }

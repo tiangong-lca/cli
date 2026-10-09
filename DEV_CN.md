@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-10-09
-lastReviewedCommit: 6ee127980300a130b0c85d0bf4ffcef742d876da
-lastReviewedNote: 'Reviewed CLI #414 at 6ee1279: expiry-aware action getter preserves owner checks, transport token and no replay. Focused regressions and independent source review are complete; full canonical gate remains pending after a coverage-only failure and added explicit read-recovery proof. No session-layer, dependency, public API or release change.'
+lastReviewedCommit: 49c4ac555d35666e4a6ab8ad701338a45c345147
+lastReviewedNote: 'CLI #391 integration with main 49c4ac5: retain expiry-aware owner-token reuse and CLI 0.1.28; exact freight-work QA, scale guards, conservative failures and input evidence remain unchanged. This QA change adds no dependency, version bump, release or authorization surface.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

@@ -1,8 +1,8 @@
 version: 1
 layout: repo
 lastReviewedAt: '2026-10-09'
-lastReviewedCommit: '662a33695afdfa3c24eaa2ff0fb547ba63dda578'
-lastReviewedNote: 'Reviewed CLI #416 candidate 662a336: version-only 0.1.28 from merged owner-token repair PR #415 at dc3c87d; package identity and eight bound fixtures advance. Runtime, dependencies, frozen lock, exports and workflows are unchanged. Full release gate, four-platform CI, publication verification and root integration remain pending.'
+lastReviewedCommit: 49c4ac555d35666e4a6ab8ad701338a45c345147
+lastReviewedNote: 'CLI #391 integration with main 49c4ac5: retain expiry-aware owner-token reuse and CLI 0.1.28; exact freight-work QA, scale guards, conservative failures and input evidence remain unchanged. This QA change adds no dependency, version bump, release or authorization surface.'
 
 catalog:
   repos:

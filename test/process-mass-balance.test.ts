@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -144,14 +145,20 @@ async function evaluate(
   fs.writeFileSync(rowsFile, JSON.stringify([process]));
   fs.writeFileSync(refs, references.map((row) => JSON.stringify(row)).join('\n') + '\n');
   const before = fs.readFileSync(rowsFile, 'utf8');
+  const referenceBytes = fs.readFileSync(refs);
   const report = await runProcessQa({
     rowsFile,
     referenceRowsFiles: [refs],
     outDir: path.join(root, 'qa'),
   });
   assert.equal(fs.readFileSync(rowsFile, 'utf8'), before);
+  assert.deepEqual(fs.readFileSync(refs), referenceBytes);
   assert.equal(report.reference_evidence?.length, 1);
   assert.match(report.reference_evidence![0].sha256, /^[a-f0-9]{64}$/u);
+  assert.equal(
+    report.reference_evidence![0].sha256,
+    createHash('sha256').update(referenceBytes).digest('hex'),
+  );
   assert.match(report.mass_balance![0].process_payload_sha256, /^[a-f0-9]{64}$/u);
   return report;
 }
@@ -187,6 +194,167 @@ test('comparable kilograms retain a real mass imbalance finding', async (t) => {
     fs.readFileSync(report.files.rule_findings!, 'utf8'),
     /process_material_balance_deviation/u,
   );
+});
+
+test('exact transport-work inputs retain quantities and references without entering a kg balance', async (t) => {
+  for (const unit of ['kg*km', 't*km']) {
+    const report = await evaluate(t, 'kg', (process, refs) => {
+      refs.push(...unitChain(10, unit));
+      exchanges(process).push({
+        '@dataSetInternalID': '3',
+        exchangeDirection: 'Input',
+        meanAmount: '7375.19',
+        commonComment: `[tg_io_uom_tag=${unit}] freight transport`,
+        referenceToFlowDataSet: reference(10, 'flow data set'),
+      });
+    });
+    const mass = report.mass_balance![0];
+    assert.equal(mass.status, 'applicable');
+    assert.deepEqual(mass.findings, []);
+    assert.equal(mass.input_mass_kg, 10);
+    assert.equal(mass.output_mass_kg, 3);
+    assert.equal(mass.relative_deviation, 0.7);
+    const transport = mass.exchanges[3];
+    assert.equal(transport.amount, 7375.19);
+    assert.deepEqual(transport.unit, { name: unit, dimension: 'transport_work', kilograms: null });
+    assert.equal(transport.mass_kg, null);
+    assert.deepEqual(
+      transport.references.map(({ kind, id: refId, version: refVersion }) => [
+        kind,
+        refId,
+        refVersion,
+      ]),
+      [
+        ['flow', id(10), version],
+        ['flowproperty', id(11), version],
+        ['unitgroup', id(12), version],
+      ],
+    );
+    assert.ok(transport.references.every((ref) => /^[a-f0-9]{64}$/u.test(ref.payload_sha256)));
+    assert.match(
+      fs.readFileSync(report.files.rule_findings!, 'utf8'),
+      /process_material_balance_deviation/u,
+    );
+  }
+});
+
+test('exact transport-work reference products make mass applicability and totals unavailable', async (t) => {
+  for (const unit of ['kg*km', 't*km']) {
+    const report = await evaluate(t, unit);
+    const mass = report.mass_balance![0];
+    assert.equal(mass.status, 'not_applicable');
+    assert.deepEqual(mass.findings, []);
+    assert.equal(mass.exchanges[0].unit?.dimension, 'transport_work');
+    assert.equal(mass.exchanges[0].mass_kg, null);
+    assert.equal(mass.input_mass_kg, null);
+    assert.equal(mass.output_mass_kg, null);
+    assert.equal(mass.delta, null);
+    assert.equal(mass.relative_deviation, null);
+    assert.equal(report.totals.raw_input, null);
+    assert.equal(report.totals.relative_deviation, null);
+    assert.doesNotMatch(
+      fs.readFileSync(report.files.rule_findings!, 'utf8'),
+      /process_material_balance_deviation/u,
+    );
+  }
+});
+
+test('mixed inventories select the exact freight reference ID and exclude both freight directions', async (t) => {
+  for (const unit of ['kg*km', 't*km']) {
+    const report = await evaluate(t, 'kg', (process, refs) => {
+      refs.push(...unitChain(10, 'MJ'), ...unitChain(13, 'm3'), ...unitChain(16, unit));
+      const group = object(refs[14].unitGroupDataSet);
+      object(object(group.unitGroupInformation).quantitativeReference).referenceToReferenceUnit =
+        '7';
+      object(group.units).unit = [
+        {
+          '@dataSetInternalID': '0',
+          name: unit === 'kg*km' ? 't*km' : 'kg*km',
+          meanValue: unit === 'kg*km' ? '1000' : '0.001',
+        },
+        { '@dataSetInternalID': '7', name: unit, meanValue: '1' },
+      ];
+      const rows = exchanges(process);
+      for (const [start, amount, direction] of [
+        [10, '100', 'Input'],
+        [13, '1000', 'Input'],
+        [16, '100000000', 'Input'],
+        [16, '999', 'Output'],
+      ] as const) {
+        rows.push({
+          '@dataSetInternalID': String(rows.length),
+          exchangeDirection: direction,
+          meanAmount: amount,
+          referenceToFlowDataSet: reference(start, 'flow data set'),
+        });
+      }
+    });
+    const mass = report.mass_balance![0];
+    assert.equal(mass.status, 'applicable');
+    assert.deepEqual(mass.findings, []);
+    assert.equal(mass.input_mass_kg, 10);
+    assert.equal(mass.output_mass_kg, 3);
+    assert.equal(mass.relative_deviation, 0.7);
+    assert.deepEqual(
+      mass.exchanges.slice(3).map((row) => [row.amount, row.unit?.dimension, row.mass_kg]),
+      [
+        [100, 'energy', null],
+        [1000, 'volume', null],
+        [100000000, 'transport_work', null],
+        [999, 'transport_work', null],
+      ],
+    );
+    assert.ok(mass.exchanges.slice(5).every((row) => row.unit?.name === unit));
+  }
+});
+
+test('freight-like unsupported composite spellings remain unresolved', async (t) => {
+  for (const unit of ['KG*km', 'kg*KM', 'kg km', 'kg/km', 'kg*km*a', 'tkm']) {
+    const report = await evaluate(t, unit);
+    assert.equal(report.mass_balance![0].status, 'unresolved', unit);
+    assert.match(report.mass_balance![0].exchanges[0].error!, /unknown or ambiguous/u);
+    assert.equal(report.totals.raw_input, null);
+    assert.equal(report.totals.relative_deviation, null);
+  }
+});
+
+test('transport-work unit tags cannot disguise different scales or mass dimensions', async (t) => {
+  for (const [unit, tag] of [
+    ['kg*km', 't*km'],
+    ['t*km', 'kg*km'],
+    ['kg*km', 'kg'],
+    ['kg', 'kg*km'],
+  ]) {
+    const report = await evaluate(t, unit, (process) => {
+      exchanges(process)[0].commonComment = `[tg_io_uom_tag=${tag}]`;
+    });
+    const mass = report.mass_balance![0];
+    assert.equal(mass.status, 'unresolved');
+    assert.equal(mass.exchanges[0].mass_kg, null);
+    assert.match(mass.exchanges[0].error!, /unit tag conflicts/u);
+    assert.equal(report.totals.relative_deviation, null);
+  }
+});
+
+test('transport work still requires exact reference versions and unit factor one', async (t) => {
+  for (const change of [
+    (process: JsonRecord) => {
+      object(exchanges(process)[0].referenceToFlowDataSet)['@version'] = '00.00.002';
+    },
+    (_process: JsonRecord, refs: JsonRecord[]) => {
+      object(object(object(refs[2].unitGroupDataSet).units).unit).meanValue = '1000';
+    },
+  ]) {
+    const report = await evaluate(t, 'kg*km', change);
+    assert.equal(report.mass_balance![0].status, 'unresolved');
+    assert.ok(
+      report.mass_balance![0].findings.some(
+        (finding) => finding.code === 'process_mass_unit_unresolved',
+      ),
+    );
+    assert.equal(report.mass_balance![0].exchanges[0].mass_kg, null);
+    assert.equal(report.totals.relative_deviation, null);
+  }
 });
 
 test('mass-valued fuels and grams participate in kg balance while energy quantities stay separate', async (t) => {
