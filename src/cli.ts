@@ -1623,6 +1623,9 @@ Options:
                    with append-only attempt/readback evidence. Without --commit: preflight the exact
                    owner/state/before/content contract state, block the report on any failure, dispatch
                    nothing and create no attempt or ledger
+  --reference-intent-file <file>
+                   Explicit #289 consumer/occurrence/review evidence for a Flow-only execution contract.
+                   Rechecked before dispatch; consumed attempts require the original selection for recovery
   --max-parallel <1-8>
                    Keep the dependency prefix serial, then run only the target-unique suffix with this concurrency (requires --commit; default: 1)
   --allow-account-local-support
@@ -3472,8 +3475,18 @@ function parseDatasetSaveDraftFlags(args: string[]): {
   commit: boolean;
   allowReferenceOnlySupport: boolean;
   executionContractPath: string | null;
+  referenceIntentFile: string | undefined;
   maxParallel: number;
 } {
+  if (
+    args.filter(
+      (arg) => arg === '--reference-intent-file' || arg.startsWith('--reference-intent-file='),
+    ).length > 1
+  )
+    throw new CliError('Select exactly one reference intent file.', {
+      code: 'DATASET_REFERENCE_INTENT_INVALID',
+      exitCode: 2,
+    });
   let values: ReturnType<typeof parseArgs>['values'];
   try {
     ({ values } = parseArgs({
@@ -3490,6 +3503,7 @@ function parseDatasetSaveDraftFlags(args: string[]): {
         'dry-run': { type: 'boolean' },
         'allow-account-local-support': { type: 'boolean' },
         'execution-contract': { type: 'string' },
+        'reference-intent-file': { type: 'string' },
         'max-parallel': { type: 'string' },
       },
     }));
@@ -3531,6 +3545,10 @@ function parseDatasetSaveDraftFlags(args: string[]): {
     allowReferenceOnlySupport: Boolean(values['allow-account-local-support']),
     executionContractPath:
       typeof values['execution-contract'] === 'string' ? values['execution-contract'] : null,
+    referenceIntentFile:
+      typeof values['reference-intent-file'] === 'string'
+        ? values['reference-intent-file']
+        : undefined,
     maxParallel,
   };
 }
@@ -7988,6 +8006,9 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
         commit: datasetFlags.commit,
         allowReferenceOnlySupport: datasetFlags.allowReferenceOnlySupport,
         executionContractPath: datasetFlags.executionContractPath,
+        ...(datasetFlags.referenceIntentFile !== undefined
+          ? { referenceIntentFile: datasetFlags.referenceIntentFile }
+          : {}),
         maxParallel: datasetFlags.maxParallel,
         env: deps.env,
         fetchImpl: deps.fetchImpl,

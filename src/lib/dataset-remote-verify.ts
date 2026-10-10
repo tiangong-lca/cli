@@ -701,12 +701,13 @@ export async function lookupRemoteDataset(options: {
   };
 }
 
-async function lookupRemoteDatasetPayload(options: {
+export async function lookupRemoteDatasetPayload(options: {
   runtime: SupabaseDataRuntime;
   fetchImpl: FetchLike;
   timeoutMs: number;
   request: RemoteDatasetLookupRequest;
   allowLatest?: boolean;
+  requireUnique?: boolean;
 }): Promise<RemoteDatasetPayloadLookup | null> {
   if (!options.request.version && !(options.allowLatest && options.request.version === null)) {
     return null;
@@ -732,7 +733,9 @@ async function lookupRemoteDatasetPayload(options: {
       : query.eq('version', options.request.version),
     sourceUrl,
   );
-  const payloadRow = normalizePayloadRow(Array.isArray(rows) ? rows[0] : null);
+  const payloadRow = normalizePayloadRow(
+    Array.isArray(rows) && (!options.requireUnique || rows.length === 1) ? rows[0] : null,
+  );
   return payloadRow ? { ...payloadRow, source_url: sourceUrl } : null;
 }
 
@@ -758,7 +761,7 @@ function checkMessage(reference: RemoteDatasetReference, status: RemoteVerificat
   }
 }
 
-function classifyCheck(
+export function classifyCheck(
   reference: RemoteDatasetReference,
   lookup: RemoteDatasetLookup | null,
   lookupFailed: boolean,
@@ -947,7 +950,7 @@ function uniqueLookupKey(reference: RemoteDatasetReference): string | null {
     : null;
 }
 
-function exactReferenceConsumers(rows: JsonObject[]): ExactReferenceConsumer[] {
+export function exactReferenceConsumers(rows: JsonObject[]): ExactReferenceConsumer[] {
   return rows.map((row, index) => {
     const payload = unwrapDatasetPayload(row),
       root = rootIdentity({}, payload),
@@ -972,6 +975,26 @@ function exactReferenceConsumers(rows: JsonObject[]): ExactReferenceConsumer[] {
       payload_sha256: sha256Json(payload),
     };
   });
+}
+
+/** Shared complete-body observation; row metadata alone never supplies a reviewed hash. */
+export function exactReferenceObservation(
+  request: RemoteDatasetLookupRequest,
+  remote: RemoteDatasetPayloadLookup | null,
+): ExactReferenceObservation | null {
+  if (!remote) return null;
+  const root = remote.payload ? rootIdentity({}, remote.payload) : null;
+  const valid =
+    root?.table === request.table &&
+    root.id?.toLowerCase() === remote.id.toLowerCase() &&
+    root.version === remote.version;
+  return {
+    id: remote.id,
+    version: remote.version,
+    user_id: remote.user_id,
+    state_code: remote.state_code,
+    payload_sha256: valid && remote.payload ? sha256Json(remote.payload) : null,
+  };
 }
 
 export async function runDatasetRemoteVerify(
@@ -1071,19 +1094,7 @@ export async function runDatasetRemoteVerify(
                 allowLatest: true,
               })
             : null;
-        if (!remote) return null;
-        const root = remote.payload ? rootIdentity({}, remote.payload) : null;
-        const valid =
-          root?.table === request.table &&
-          root.id?.toLowerCase() === remote.id.toLowerCase() &&
-          root.version === remote.version;
-        return {
-          id: remote.id,
-          version: remote.version,
-          user_id: remote.user_id,
-          state_code: remote.state_code,
-          payload_sha256: valid && remote.payload ? sha256Json(remote.payload) : null,
-        };
+        return exactReferenceObservation(request, remote);
       })();
       referencePayloadCache.set(key, cached);
     }

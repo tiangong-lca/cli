@@ -71,6 +71,8 @@ Private live-account testing is maintainer-only and requires explicit account au
 
 Process QA consumes explicitly selected exact Flow/Flow Property/Unit Group evidence through `process-mass-balance.ts`; `process-qa.ts` owns report/finding projection. Keep nonmass or unresolved applicability separate from a physical mass result, retain null unavailable values and hash-bound evidence, and never infer arbitrary composite units or use a version label to restore mixed-dimension arithmetic. Foundry #122 owns downstream evidence selection and transport.
 
+Guarded Flow-only `dataset save-draft --execution-contract --reference-intent-file` also follows the exact-reference contract: reuse its parser/evaluator, reobserve immediately before dispatch, await the transport gate, and retain per-action admission in the original consumed ledger. Foundry owns selection/snapshots and runtime continuation, not CLI eligibility.
+
 Explicit exact-reference verification follows `docs/agents/exact-reference-intent-contract.md`. Keep strict consumer/actor/reference/review binding and current input rechecks in the CLI owner; preserve default latest/root policy and current-user RLS. Foundry transports the evidence without implementing eligibility or treating a review file as write authority.
 
 ## Bootstrap Order

@@ -382,3 +382,6 @@ export function assertExactReferenceInputsCurrent(
     );
   }
 }
+
+// Reuse the exact same snapshot eligibility when validating retained owner-admission evidence.
+export { snapshot as parseExactReferenceSnapshot };

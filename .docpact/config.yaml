@@ -753,7 +753,13 @@ rules:
         kind: command-logic
       - path: src/lib/dataset-remote-verify.ts
         kind: command-logic
+      - path: src/lib/dataset-save-draft-reference-intent.ts
+        kind: command-logic
+      - path: src/lib/dataset-save-draft-run.ts
+        kind: command-logic
       - path: test/dataset-exact-reference-intent.test.ts
+        kind: validation
+      - path: test/dataset-save-draft-exact-reference.test.ts
         kind: validation
     requiredDocs:
       - path: docs/agents/exact-reference-intent-contract.md

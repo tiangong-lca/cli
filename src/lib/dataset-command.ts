@@ -118,11 +118,11 @@ async function invokeDatasetCommand(options: {
   transport: DatasetCommandTransport;
   commandName: 'app_dataset_create' | 'app_dataset_save_draft' | 'app_dataset_delete';
   body: JsonObject;
-  beforeDispatch?: () => void;
+  beforeDispatch?: () => void | Promise<void>;
 }): Promise<JsonObject> {
   const url = `${options.transport.functionsBaseUrl}/${options.commandName}`;
   try {
-    options.beforeDispatch?.();
+    await options.beforeDispatch?.();
   } catch {
     throw new CliError('Dataset command was blocked before request dispatch.', {
       code: 'DATASET_COMMAND_BEFORE_DISPATCH_FAILED',
@@ -187,7 +187,7 @@ export async function createDatasetRecord(options: {
   id: string;
   payload: JsonObject;
   extraData?: JsonObject;
-  beforeDispatch?: () => void;
+  beforeDispatch?: () => void | Promise<void>;
 }): Promise<JsonObject> {
   if (options.table === 'processes')
     await assertProcessAllocationWriteAdmission(
@@ -234,7 +234,7 @@ export async function saveDraftDatasetRecord(options: {
    */
   expectedJsonOrdered?: JsonObject;
   extraData?: JsonObject;
-  beforeDispatch?: () => void;
+  beforeDispatch?: () => void | Promise<void>;
 }): Promise<JsonObject> {
   if (options.table === 'processes')
     await assertProcessAllocationWriteAdmission(

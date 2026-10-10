@@ -30,6 +30,17 @@ import {
 } from './dataset-command.js';
 import { readDatasetRowsInput } from './dataset-local.js';
 import { CliError } from './errors.js';
+import {
+  loadExactReferenceIntent,
+  assertExactReferenceInputsCurrent,
+  type LoadedExactReferenceIntent,
+} from './dataset-exact-reference-intent.js';
+import {
+  checkSaveDraftExactReferences,
+  saveDraftReferenceAdmission,
+  isSaveDraftReferenceAdmission,
+  type SaveDraftReferenceAdmission,
+} from './dataset-save-draft-reference-intent.js';
 import type { FetchLike } from './http.js';
 import {
   normalizeIssuePath,
@@ -48,6 +59,8 @@ import {
 import { createSupabaseDataRuntime } from './supabase-session.js';
 import {
   collectRemoteReferences,
+  exactReferenceConsumers,
+  type RemoteVerificationCheck,
   lookupRemoteDataset,
   type RemoteDatasetLookup,
   type RemoteDatasetReference,
@@ -149,6 +162,7 @@ export type DatasetSaveDraftRowReport = {
   replayed?: false;
   readback?: 'desired_exact' | 'not_desired' | 'not_performed';
   draft_repair_admission?: DraftRepairAdmission;
+  reference_intent_admission?: SaveDraftReferenceAdmission;
 };
 
 export type DatasetSaveDraftReport = {
@@ -179,6 +193,7 @@ export type DatasetSaveDraftReport = {
     execution_ledger?: string;
   };
   rows: DatasetSaveDraftRowReport[];
+  reference_intent?: LoadedExactReferenceIntent;
   execution_contract?: {
     path: string;
     sha256: string;
@@ -207,6 +222,7 @@ export type RunDatasetSaveDraftOptions = {
    */
   allowReferenceOnlySupport?: boolean | null;
   executionContractPath?: string | null;
+  referenceIntentFile?: string;
   maxParallel?: number | null;
 };
 
@@ -249,6 +265,7 @@ type DatasetSaveDraftLedgerEvent = {
   // Optional and hash-bound: a first attempt of an admitted metadata repair carries the verified
   // admission so a later recovery can return the original evidence instead of re-inventing it.
   draft_repair_admission?: DraftRepairAdmission;
+  reference_intent_admission?: SaveDraftReferenceAdmission;
   previous_event_sha256: string | null;
   event_sha256: string;
 };
@@ -318,12 +335,7 @@ type MissingFlowRemoteReference = {
   version: string | null;
   path: string;
   short_description: string | null;
-  status:
-    | 'missing_dataset'
-    | 'missing_version'
-    | 'unsupported_type'
-    | 'version_missing'
-    | 'version_outdated';
+  status: RemoteVerificationCheck['status'];
   latest_version: string | null;
 };
 
@@ -579,6 +591,8 @@ function parseLedgerEvent(value: unknown, index: number): DatasetSaveDraftLedger
     !(event.previous_event_sha256 === null || SHA256_PATTERN.test(event.previous_event_sha256)) ||
     (event.draft_repair_admission !== undefined &&
       !isLedgerRepairAdmission(event.draft_repair_admission)) ||
+    (event.reference_intent_admission !== undefined &&
+      !isSaveDraftReferenceAdmission(event.reference_intent_admission)) ||
     !SHA256_PATTERN.test(event.event_sha256)
   ) {
     executionContractError(`Execution ledger event ${index} has an invalid shape.`);
@@ -614,6 +628,16 @@ function loadExecutionLedger(
           (event.draft_repair_admission.before_sha256 !== action.before_sha256 ||
             event.draft_repair_admission.desired_sha256 !== action.desired_sha256 ||
             event.draft_repair_admission.policy !== draftRepairPolicyForTable(action.table))) ||
+        (event.reference_intent_admission !== undefined &&
+          (event.reference_intent_admission.consumer.table !== action.table ||
+            event.reference_intent_admission.consumer.id !== action.id ||
+            event.reference_intent_admission.consumer.version !== action.version ||
+            event.reference_intent_admission.consumer.payload_sha256 !== action.desired_sha256 ||
+            event.reference_intent_admission.project_ref !== contract.project_ref ||
+            event.reference_intent_admission.actor_user_id !== contract.owner.user_id)) ||
+        (event.event_type === 'outcome' &&
+          sha256Json(event.reference_intent_admission ?? null) !==
+            sha256Json(attempts.get(action.action_id)?.reference_intent_admission ?? null)) ||
         event.previous_event_sha256 !== (previous?.event_sha256 ?? null) ||
         event.event_sha256 !== sha256Json(eventWithoutSha(event))
       ) {
@@ -651,6 +675,7 @@ function appendExecutionEvent(options: {
   recovered: boolean;
   recordedAtUtc: string;
   draftRepairAdmission?: DraftRepairAdmission;
+  referenceIntentAdmission?: SaveDraftReferenceAdmission;
 }): DatasetSaveDraftLedgerEvent {
   const actionEvents = options.ledger.events.get(
     options.action.action_id,
@@ -669,6 +694,9 @@ function appendExecutionEvent(options: {
     recorded_at_utc: options.recordedAtUtc,
     ...(options.draftRepairAdmission
       ? { draft_repair_admission: options.draftRepairAdmission }
+      : {}),
+    ...(options.referenceIntentAdmission
+      ? { reference_intent_admission: options.referenceIntentAdmission }
       : {}),
     previous_event_sha256: actionEvents.at(-1)?.event_sha256 ?? null,
   };
@@ -1053,9 +1081,29 @@ async function missingFlowRemoteReferences(options: {
   timeoutMs: number;
   cache: Map<string, Promise<RemoteDatasetLookup>>;
   payload: JsonObject;
+  exactChecks?: ReadonlyMap<string, RemoteVerificationCheck>;
 }): Promise<MissingFlowRemoteReference[]> {
   const missing: MissingFlowRemoteReference[] = [];
-  for (const reference of uniqueFlowRemoteReferences(options.payload)) {
+  const references = options.exactChecks
+    ? collectRemoteReferences([options.payload]).filter(
+        (reference) => reference.role === 'reference',
+      )
+    : uniqueFlowRemoteReferences(options.payload);
+  for (const reference of references) {
+    const exactCheck = options.exactChecks?.get(reference.path);
+    if (exactCheck) {
+      if (exactCheck.status !== 'ok')
+        missing.push({
+          table: reference.table,
+          id: reference.id,
+          version: reference.version,
+          path: reference.path,
+          short_description: reference.short_description,
+          status: exactCheck.status,
+          latest_version: exactCheck.latest_version,
+        });
+      continue;
+    }
     if (!isLookupableRemoteReference(reference)) {
       missing.push({
         table: reference.table,
@@ -1357,6 +1405,36 @@ async function exactExecutionRows(options: {
   return parseExecutionRows(payload, url.toString());
 }
 
+function assertExecutionBeforeState(
+  rows: ExecutionDatasetRow[],
+  action: DatasetSaveDraftExecutionAction,
+  ownerUserId: string,
+): JsonObject | null {
+  const before = rows[0];
+  const operation = rows.length === 0 ? 'insert' : 'save_draft';
+  const beforeExact = Boolean(
+    rows.length === 1 &&
+    before &&
+    before.id === action.id &&
+    before.version === action.version &&
+    before.user_id === ownerUserId &&
+    before.state_code === 0 &&
+    before.json_ordered &&
+    sha256Json(before.json_ordered) === action.before_sha256,
+  );
+  if (
+    rows.length > 1 ||
+    operation !== action.expected_operation ||
+    (operation === 'save_draft' && !beforeExact)
+  ) {
+    throw new CliError('Execution action before-state or expected operation drifted.', {
+      code: 'DATASET_SAVE_DRAFT_EXECUTION_BEFORE_DRIFT',
+      exitCode: 1,
+    });
+  }
+  return before?.json_ordered ?? null;
+}
+
 function exactDesiredReadback(options: {
   rows: ExecutionDatasetRow[];
   action: DatasetSaveDraftExecutionAction;
@@ -1385,6 +1463,7 @@ function contractRowReport(options: {
   error?: { message: string; details?: unknown };
   visibleRow?: VisibleDatasetRow | null;
   draftRepairAdmission?: DraftRepairAdmission;
+  referenceIntentAdmission?: SaveDraftReferenceAdmission;
 }): DatasetSaveDraftRowReport {
   return {
     index: options.row.index,
@@ -1404,6 +1483,9 @@ function contractRowReport(options: {
     ...(options.draftRepairAdmission
       ? { draft_repair_admission: options.draftRepairAdmission }
       : {}),
+    ...(options.referenceIntentAdmission
+      ? { reference_intent_admission: options.referenceIntentAdmission }
+      : {}),
     ...(options.error ? { error: options.error } : {}),
   };
 }
@@ -1420,6 +1502,7 @@ async function finalizeAttemptedAction(options: {
   now: () => string;
   recovered: boolean;
   draftRepairAdmission?: DraftRepairAdmission;
+  referenceIntentAdmission?: SaveDraftReferenceAdmission;
 }): Promise<DatasetSaveDraftRowReport> {
   const desiredExact = await readbackIsDesiredExact(options);
   appendExecutionEvent({
@@ -1431,6 +1514,7 @@ async function finalizeAttemptedAction(options: {
     outcome: desiredExact ? 'executed' : 'unknown',
     recovered: options.recovered,
     recordedAtUtc: options.now(),
+    referenceIntentAdmission: options.referenceIntentAdmission,
   });
   return contractRowReport({
     row: options.row,
@@ -1443,6 +1527,7 @@ async function finalizeAttemptedAction(options: {
     attemptConsumed: true,
     readback: desiredExact ? 'desired_exact' : 'not_desired',
     ...(options.draftRepairAdmission ? { draftRepairAdmission: options.draftRepairAdmission } : {}),
+    referenceIntentAdmission: options.referenceIntentAdmission,
     ...(desiredExact
       ? {}
       : {
@@ -1635,6 +1720,8 @@ async function runExecutionContractBatch(options: {
   now: () => string;
   maxParallel: number;
   mode: 'commit' | 'dry_run';
+  referenceIntent: LoadedExactReferenceIntent | null;
+  readReferenceRows: () => JsonObject[];
 }): Promise<DatasetSaveDraftReport> {
   const contractSha256 = sha256Json(options.contract);
   const ledgerRoot = executionLedgerRoot(options.env, options.contract);
@@ -1671,6 +1758,73 @@ async function runExecutionContractBatch(options: {
       statuses.set(action.action_id, report.status);
     };
     const preparedFailure = buildPreparedFailure(row, options.allowReferenceOnlySupport);
+    const commandTransport = options.referenceIntent
+      ? { ...options.commandTransport }
+      : options.commandTransport;
+    const expectedReferenceAdmission = options.referenceIntent
+      ? saveDraftReferenceAdmission(options.referenceIntent, index)
+      : undefined;
+    const recoveredReferenceAdmission = ledger.attempts.get(
+      action.action_id,
+    )?.reference_intent_admission;
+    // Changed/omitted selection can never create a second ledger domain or retrofit a past attempt.
+    if (
+      ledger.attempts.has(action.action_id) &&
+      sha256Json(recoveredReferenceAdmission ?? null) !==
+        sha256Json(expectedReferenceAdmission ?? null)
+    ) {
+      storeReport(
+        contractRowReport({
+          row,
+          action,
+          status: options.mode === 'dry_run' ? 'blocked' : 'unknown',
+          operation: 'retained_attempt',
+          attemptConsumed: true,
+          readback: 'not_performed',
+          referenceIntentAdmission: recoveredReferenceAdmission,
+          error: {
+            message:
+              'Consumed action exact-reference selection differs; retain the original evidence and use readback recovery without replay.',
+            details: { code: 'DATASET_SAVE_DRAFT_REFERENCE_RECOVERY_MISMATCH' },
+          },
+        }),
+      );
+      return;
+    }
+    const assertReferenceInputs = () => {
+      if (options.referenceIntent) {
+        assertExactReferenceInputsCurrent(
+          options.referenceIntent,
+          exactReferenceConsumers(options.readReferenceRows()),
+        );
+        assertExactReferenceInputsCurrent(
+          options.referenceIntent,
+          exactReferenceConsumers(options.preparedRows.map((entry) => entry.row)),
+        );
+      }
+    };
+    const checkFlowReferences = async (cache: Map<string, Promise<RemoteDatasetLookup>>) => {
+      assertReferenceInputs();
+      const exactChecks = options.referenceIntent
+        ? await checkSaveDraftExactReferences({
+            intent: options.referenceIntent,
+            rows: options.preparedRows.map((entry) => entry.row),
+            rowIndex: index,
+            env: options.env,
+            runtime: options.runtime,
+            fetchImpl: options.fetchImpl,
+            timeoutMs: options.timeoutMs,
+          })
+        : undefined;
+      return missingFlowRemoteReferences({
+        exactChecks,
+        runtime: options.runtime,
+        fetchImpl: options.fetchImpl,
+        timeoutMs: options.timeoutMs,
+        cache,
+        payload: row.payload,
+      });
+    };
     if (options.mode === 'dry_run') {
       // Retained evidence is read-only in a preflight: an action that already owns an attempt or
       // outcome is never re-authorized as prepared, and it is never reported as executed either.
@@ -1685,6 +1839,7 @@ async function runExecutionContractBatch(options: {
             operation: retainedOutcome ? 'retained_outcome' : 'retained_attempt',
             attemptConsumed: true,
             readback: 'not_performed',
+            referenceIntentAdmission: recoveredReferenceAdmission,
             error: {
               message: retainedOutcome
                 ? 'Terminal attempt evidence already exists for this action; a dry-run preflight cannot re-authorize it.'
@@ -1720,6 +1875,7 @@ async function runExecutionContractBatch(options: {
         attemptConsumed: true,
         readback: desiredStillExact ? 'desired_exact' : 'not_desired',
         ...(recoveredAdmission ? { draftRepairAdmission: recoveredAdmission } : {}),
+        referenceIntentAdmission: recoveredReferenceAdmission,
         ...(status === 'unknown'
           ? {
               error: {
@@ -1748,6 +1904,7 @@ async function runExecutionContractBatch(options: {
         now: options.now,
         recovered: true,
         ...(recoveredAdmission ? { draftRepairAdmission: recoveredAdmission } : {}),
+        referenceIntentAdmission: recoveredReferenceAdmission,
       });
       storeReport(report);
       return;
@@ -1809,37 +1966,9 @@ async function runExecutionContractBatch(options: {
         id: action.id,
         version: action.version,
       });
-      const before = beforeRows[0];
-      beforeImage = beforeRows.length === 1 ? (before as ExecutionDatasetRow).json_ordered : null;
-      const observedOperation = beforeRows.length === 0 ? 'insert' : 'save_draft';
-      const beforeExact = Boolean(
-        beforeRows.length === 1 &&
-        before &&
-        before.id === action.id &&
-        before.version === action.version &&
-        before.user_id === options.contract.owner.user_id &&
-        before.state_code === 0 &&
-        before.json_ordered &&
-        sha256Json(before.json_ordered) === action.before_sha256,
-      );
-      if (
-        beforeRows.length > 1 ||
-        observedOperation !== action.expected_operation ||
-        (observedOperation === 'save_draft' && !beforeExact)
-      ) {
-        throw new CliError('Execution action before-state or expected operation drifted.', {
-          code: 'DATASET_SAVE_DRAFT_EXECUTION_BEFORE_DRIFT',
-          exitCode: 1,
-        });
-      }
+      beforeImage = assertExecutionBeforeState(beforeRows, action, options.contract.owner.user_id);
       if (row.type === 'flow') {
-        const unresolvedReferences = await missingFlowRemoteReferences({
-          runtime: options.runtime,
-          fetchImpl: options.fetchImpl,
-          timeoutMs: options.timeoutMs,
-          cache: referenceOnlySupportCache,
-          payload: row.payload,
-        });
+        const unresolvedReferences = await checkFlowReferences(referenceOnlySupportCache);
         if (unresolvedReferences.length > 0) {
           if (options.mode === 'dry_run') {
             // A preflight never invents remote rows. When every still-missing reference is a
@@ -1877,9 +2006,10 @@ async function runExecutionContractBatch(options: {
       }
       await renewExecutionOwnerToken({
         runtime: options.runtime,
-        commandTransport: options.commandTransport,
+        commandTransport,
         contract: options.contract,
       });
+      assertReferenceInputs();
     } catch (error) {
       const report = contractRowReport({
         row,
@@ -1978,6 +2108,7 @@ async function runExecutionContractBatch(options: {
           operation: 'would_sync',
           attemptConsumed: false,
           readback: 'not_performed',
+          referenceIntentAdmission: expectedReferenceAdmission,
           ...(draftRepairAdmission ? { draftRepairAdmission } : {}),
           visibleRow: beforeRows.length
             ? {
@@ -1993,13 +2124,36 @@ async function runExecutionContractBatch(options: {
     }
 
     try {
-      const beforeDispatch = () => {
+      const beforeDispatch = async () => {
+        if (options.referenceIntent) {
+          const unresolved = await checkFlowReferences(new Map());
+          if (unresolved.length)
+            throw new CliError('Exact-reference admission changed before dispatch.', {
+              code: 'DATASET_SAVE_DRAFT_REMOTE_REFERENCE_UNRESOLVED',
+              exitCode: 1,
+            });
+          const freshBeforeRows = await exactExecutionRows({
+            client: options.dataClient.client,
+            restBaseUrl: options.dataClient.restBaseUrl,
+            table: action.table,
+            id: action.id,
+            version: action.version,
+          });
+          assertExecutionBeforeState(freshBeforeRows, action, options.contract.owner.user_id);
+          await renewExecutionOwnerToken({
+            runtime: options.runtime,
+            commandTransport,
+            contract: options.contract,
+          });
+          assertReferenceInputs();
+        }
         appendExecutionEvent({
           ledgerRoot,
           ledger,
           contractSha256,
           action,
           eventType: 'attempt_emitted',
+          referenceIntentAdmission: expectedReferenceAdmission,
           outcome: null,
           recovered: false,
           recordedAtUtc: options.now(),
@@ -2008,7 +2162,7 @@ async function runExecutionContractBatch(options: {
       };
       if (action.expected_operation === 'insert') {
         await createDatasetRecord({
-          transport: options.commandTransport,
+          transport: commandTransport,
           table: action.table,
           id: action.id,
           payload: row.payload,
@@ -2023,7 +2177,7 @@ async function runExecutionContractBatch(options: {
         // json_ordered matched this action's before hash in this run; that same object is the
         // transport's complete before image. A guard conflict is terminal: no fallback, no retry.
         await saveDraftDatasetRecord({
-          transport: options.commandTransport,
+          transport: commandTransport,
           table: action.table,
           id: action.id,
           version: action.version,
@@ -2057,6 +2211,7 @@ async function runExecutionContractBatch(options: {
       restBaseUrl: options.dataClient.restBaseUrl,
       now: options.now,
       recovered: transportFailed,
+      referenceIntentAdmission: expectedReferenceAdmission,
       ...(draftRepairAdmission ? { draftRepairAdmission } : {}),
     });
     storeReport(report);
@@ -2163,6 +2318,7 @@ async function runExecutionContractBatch(options: {
     },
     files: options.files,
     rows: completedReports,
+    ...(options.referenceIntent ? { reference_intent: options.referenceIntent } : {}),
     execution_contract: {
       path: path.resolve(options.contractPath),
       sha256: contractSha256,
@@ -2211,6 +2367,27 @@ export async function runDatasetSaveDraft(
     bindExecutionContractRows(executionContract, preparedRows);
   }
 
+  let referenceIntent: LoadedExactReferenceIntent | null = null;
+  if (options.referenceIntentFile !== undefined) {
+    if (!executionContract || !preparedRows.every((row) => row.type === 'flow'))
+      executionContractError(
+        'Exact-reference selection requires a Flow-only --execution-contract.',
+      );
+    const rows = preparedRows.map((row) => row.row);
+    referenceIntent = loadExactReferenceIntent({
+      file: options.referenceIntentFile,
+      consumers: exactReferenceConsumers(rows),
+      references: collectRemoteReferences(rows),
+    });
+    if (
+      referenceIntent.actor_user_id !== executionContract.owner.user_id ||
+      referenceIntent.project_ref !== executionContract.project_ref
+    )
+      executionContractError(
+        'Exact-reference intent and owner execution contract identity differ.',
+      );
+  }
+
   // An execution contract always needs real auth and REST bindings: a commit dispatches guarded
   // owner writes, and a dry-run preflights the exact owner/draft/before state against the platform.
   const needsRuntime = commit || Boolean(executionContract);
@@ -2249,6 +2426,8 @@ export async function runDatasetSaveDraft(
     return runExecutionContractBatch({
       contractPath: executionContractPath,
       contract: executionContract,
+      referenceIntent,
+      readReferenceRows: () => readDatasetRowsInput(inputPath, options.rawInput),
       preparedRows,
       allowReferenceOnlySupport,
       files,

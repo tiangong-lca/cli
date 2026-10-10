@@ -24,9 +24,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-10-09
-lastReviewedCommit: 662a33695afdfa3c24eaa2ff0fb547ba63dda578
-lastReviewedNote: 'Reviewed CLI #416 candidate 662a336: version-only 0.1.28 from merged owner-token repair PR #415 at dc3c87d; package identity and eight bound fixtures advance. Runtime, dependencies, frozen lock, exports and workflows are unchanged. Full release gate, four-platform CI, publication verification and root integration remain pending.'
+lastReviewedAt: 2026-10-10
+lastReviewedCommit: c19e65c61bb7eb81f743e4a57cb90711d1847998
+lastReviewedNote: 'Reviewed CLI #419 at c19e65c: explicit Flow exact-reference admission adds no package version, dependency, lock, public package export, release workflow or credential changes. Full local prepush gate passed with exact 100% source coverage; original caller qualification and any later PR/release remain separate.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

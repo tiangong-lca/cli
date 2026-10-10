@@ -156,6 +156,8 @@ Process mass QA tests must prove count and canonical area-time are not added to 
 
 Exact-reference tests must cover default latest behavior, explicit older/public/own-draft success, fresh actor/project mismatch, root and undeclared-reference preservation, role/path collisions, consumer/control-file drift, selected/latest owner/state/payload mismatch, missing transport evidence, exact-payload/review caching, and zero mutation through the real RLS adapter with controlled HTTP responses. The parser and verifier remain under the whole-source 100% gate. See [the protocol contract](exact-reference-intent-contract.md).
 
+Guarded exact-reference Flow tests must exercise public save-draft dry-run/commit on the same full payloads accepted by verify-remote. Cover every repeated occurrence, undeclared/default policy, malformed and changed selections, fresh actor/project and complete selected/latest body proof, asynchronous predispatch rejection, before-image drift, immutable admission, consumed selection omission/change, lost-response exact readback and terminal UNKNOWN without replay. Fixtures use guarded synthetic transport; they do not replace the original caller/runtime qualification.
+
 ## Minimum PR Note Quality
 
 A good PR note for this repo should say:

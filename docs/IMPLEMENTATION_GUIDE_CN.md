@@ -1414,3 +1414,9 @@ Allocation serialization follows the public three-decimal `Perc` boundary using 
 Model activity multiplier 要求显式 finite nonnegative numeric scalar，缺失不是科学上的0。乘数保持 JavaScript finite number 精度直到乘法，不能按最终 exchange 截断；5e-11 ×20000000000=1，1.23456e-10 ×10000000000=1.23456。非有限乘法结果报错。最终 inventory 仍沿用既有12位小数格式及 absolute1e-10 cutoff（按该 exchange 的原数量基准），这只是数值输出策略，不构成单位无关的科学可忽略结论；allocation 无法守恒的微小量继续明确阻止。
 
 最终 `exchanges.exchange` 始终是 schema array，即使只保留一个 reference output。默认 type 为 `Partly terminated system`，amount 为 numeric string；supported override 保留，无效 enum 仍由真实 Schema 拒绝。未知 annual volume 仍是单独 authoring evidence 缺项，不伪造年产量。builder 的 validation/qualification 报告区分可保留的诊断 candidate 与 qualified/publish_ready output；释放软件不改历史数据。
+
+### Flow owner 精确引用准入
+
+Flow-only `dataset save-draft --execution-contract` 可在 dry-run／commit 中显式传入一个 `--reference-intent-file`，沿用 #289 的完整 consumer、每个引用 occurrence、selected/latest 正文与 review 文件绑定。CLI 在前检和真正 dispatch 前重新检查认证账号、引用正文、before image 和本地字节；异步 gate 完成后才写 attempt 并发请求。原 v1 execution contract 无新增字段，普通路径保持默认规则。
+
+`reference_intent_admission` 随 prepared/executed 行与原 action ledger 保存；consumed 恢复必须匹配原选择，缺失或变更只能报告 consumed 阻断／UNKNOWN，不能新建 ledger 或重放。字段、哈希域和 caller snapshot 约束见 [exact-reference contract](agents/exact-reference-intent-contract.md#guarded-flow-owner-drafts)。Foundry 的原 Task 状态、授权和候选准入须由其自己的公开接口证明。
