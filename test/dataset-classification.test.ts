@@ -259,6 +259,196 @@ test('dataset classification apply normalizes decisions against schema and write
   }
 });
 
+function sampleSourceRow(classification: unknown) {
+  return {
+    sourceDataSet: {
+      sourceInformation: {
+        dataSetInformation: {
+          'common:UUID': '11111111-1111-4111-8111-111111111111',
+          classificationInformation: { 'common:classification': classification },
+        },
+      },
+    },
+  };
+}
+
+test('Source classification preserves object and single-array containers and their metadata', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-source-classification-'));
+  const previous = { '@level': '0', '@classId': '0', '#text': 'Images' };
+  const applied = { '@level': '0', '@classId': '5', '#text': 'Publications and communications' };
+  try {
+    for (const asArray of [false, true]) {
+      const classification = {
+        '@name': 'ILCD',
+        '@classes': 'https://example.org/source-categories',
+        'common:other': { note: 'preserve classification metadata' },
+        'common:class': asArray ? [previous] : previous,
+      };
+      const input = sampleSourceRow(asArray ? [classification] : classification);
+      const before = structuredClone(input);
+      const report = await runDatasetClassificationApply({
+        inputPath: 'memory',
+        rawInput: input,
+        decisionsPath: 'memory',
+        rawDecisions: [{ row_index: 0, code: '5' }],
+        type: 'source',
+        outPath: path.join(dir, `${asArray}.jsonl`),
+      });
+      assert.equal(report.counts.applied, 1);
+      assert.equal(report.counts.blockers, 0);
+      assert.deepEqual(input, before);
+      const expected = { ...classification, 'common:class': asArray ? [applied] : applied };
+      assert.deepEqual(readJsonl(report.out_path), [
+        sampleSourceRow(asArray ? [expected] : expected),
+      ]);
+      const evidence = readJsonl(report.files.evidence) as Array<Record<string, unknown>>;
+      assert.deepEqual(evidence[0]?.previous_classification, asArray ? [previous] : previous);
+      assert.deepEqual(evidence[0]?.applied_classification, [applied]);
+      const reapplied = await runDatasetClassificationApply({
+        inputPath: report.out_path,
+        decisionsPath: 'memory',
+        rawDecisions: [{ row_index: 0, code: '5' }],
+        type: 'source',
+        outPath: path.join(dir, `${asArray}-reapplied.jsonl`),
+      });
+      assert.equal(reapplied.counts.blockers, 0);
+      assert.equal(readFileSync(reapplied.out_path, 'utf8'), readFileSync(report.out_path, 'utf8'));
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Source classification blocks ambiguous or malformed array containers without discarding content', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-source-classification-blocked-'));
+  const entry = {
+    '@name': 'External scheme',
+    'common:class': [{ '@level': '0', '@classId': 'custom', '#text': 'External' }],
+  };
+  try {
+    for (const classification of [[], [null], [entry, { ...entry, '@name': 'Second scheme' }]]) {
+      const input = sampleSourceRow(classification);
+      const report = await runDatasetClassificationApply({
+        inputPath: 'memory',
+        rawInput: input,
+        decisionsPath: 'memory',
+        rawDecisions: [{ row_index: 0, code: '5' }],
+        type: 'source',
+        outPath: path.join(dir, 'blocked.jsonl'),
+      });
+      assert.equal(report.status, 'blocked');
+      assert.equal(report.counts.applied, 0);
+      assert.equal(report.counts.blockers, 1);
+      assert.deepEqual(readJsonl(report.out_path), [input]);
+      assert.deepEqual(readJsonl(report.files.evidence), []);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('singleton support classifications preserve full paths without truncation', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-support-classification-'));
+  const cases = [
+    ['source', 'sourceDataSet', 'sourceInformation'],
+    ['flowproperty', 'flowPropertyDataSet', 'flowPropertiesInformation'],
+    ['unitgroup', 'unitGroupDataSet', 'unitGroupInformation'],
+  ] as const;
+  try {
+    for (const [type, root, information] of cases) {
+      const categories = await runDatasetClassificationChildren({ type });
+      for (const category of categories.children) {
+        assert.equal(category.path.length, 1, `${type}/${category.code}: complete catalog path`);
+        const makeRow = (classification: unknown) => ({
+          [root]: {
+            [information]: {
+              dataSetInformation: {
+                classificationInformation: { 'common:classification': classification },
+              },
+            },
+          },
+        });
+        for (const asArray of [false, true]) {
+          const entry = {
+            '@name': 'Synthetic',
+            '@classes': 'https://example.org/categories',
+            'common:class': asArray ? category.path : category.path[0],
+          };
+          const input = makeRow(asArray ? [entry] : entry);
+          const report = await runDatasetClassificationApply({
+            inputPath: 'memory',
+            rawInput: input,
+            decisionsPath: 'memory',
+            rawDecisions: [{ row_index: 0, code: category.code }],
+            type,
+            outPath: path.join(dir, 'classified.jsonl'),
+          });
+          assert.equal(report.counts.applied, 1);
+          assert.equal(report.counts.blockers, 0);
+          assert.deepEqual(readJsonl(report.out_path), [input]);
+        }
+        const object = makeRow({ 'common:class': category.path[0] });
+        const row = __testInternals.prepareRows('memory', object)[0]!;
+        for (const unrepresentable of [[], [...category.path, ...category.path]]) {
+          assert.equal(__testInternals.setClassification(row, type, unrepresentable), false);
+          assert.deepEqual(row.payload, object);
+        }
+      }
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('array classification writers retain full paths and unrelated metadata', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-classification-arrays-'));
+  const cases = [
+    ['contact', 'contactDataSet', 'contactInformation', '2.1', 2],
+    ['flow-elementary', 'flowDataSet', 'flowInformation', '1.1.1', 3],
+    ['flow-product', 'flowDataSet', 'flowInformation', '01111', 5],
+    ['lciamethod', 'LCIAMethodDataSet', 'LCIAMethodInformation', '1.2.1', 3],
+    ['process', 'processDataSet', 'processInformation', '0111', 4],
+  ] as const;
+  try {
+    for (const [type, root, information, code, length] of cases) {
+      const category = await runDatasetClassificationPath({ type, code });
+      assert.equal(category.path.length, length, type);
+      const containerKey =
+        type === 'flow-elementary'
+          ? 'common:elementaryFlowCategorization'
+          : 'common:classification';
+      const valueKey = type === 'flow-elementary' ? 'common:category' : 'common:class';
+      const metadata = { '@name': 'Synthetic classification', 'common:other': { retained: true } };
+      const untouched = { 'common:class': [{ '#text': 'Unrelated classification' }] };
+      const makeRow = (classes: unknown) => ({
+        [root]: {
+          [information]: {
+            dataSetInformation: {
+              classificationInformation: {
+                unrelated: untouched,
+                [containerKey]: { ...metadata, [valueKey]: classes },
+              },
+            },
+          },
+        },
+      });
+      const report = await runDatasetClassificationApply({
+        inputPath: 'memory',
+        rawInput: makeRow([]),
+        decisionsPath: 'memory',
+        rawDecisions: [{ row_index: 0, code: category.code }],
+        type,
+        outPath: path.join(dir, `${type}.jsonl`),
+      });
+      assert.equal(report.counts.blockers, 0, type);
+      assert.equal(report.counts.applied, 1, type);
+      assert.deepEqual(readJsonl(report.out_path), [makeRow(category.path)], type);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('dataset classification audit and apply enforce TIDAS location codes', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dataset-location-'));
   const inputPath = path.join(dir, 'processes.jsonl');

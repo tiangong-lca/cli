@@ -25,9 +25,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-10-13
-lastReviewedCommit: ffe2e5e46e5319b65d64fa2f4c10c927f0534170
-lastReviewedNote: 'Reviewed PR #413 integration with canonical main ffe2e5e: original intended-application presence/binding, aliases, embedded payload path and public proof are unchanged; upstream guarded Flow exact-reference admission and existing CLI 0.1.28 release boundaries are retained. Maintainer compatibility acceptance and managed-consumer adoption remain separate.'
+lastReviewedAt: 2026-10-14
+lastReviewedCommit: 71b5dff76240400a1c79637dccf73921de9191ed
+lastReviewedNote: 'Reviewed CLI #378 classification serialization scope for Source, Flow Property and Unit Group: public command ownership, schema/catalog authority, dependencies and release procedure remain unchanged; complete synthetic public-command proof supplements the required original-workflow retest and strict prepush gate.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

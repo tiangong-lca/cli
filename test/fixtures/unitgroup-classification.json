@@ -1,0 +1,92 @@
+{
+  "unitGroupDataSet": {
+    "@xmlns": "http://lca.jrc.it/ILCD/UnitGroup",
+    "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+    "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+    "@version": "1.1",
+    "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/UnitGroup ../../schemas/ILCD_UnitGroupDataSet.xsd",
+    "unitGroupInformation": {
+      "dataSetInformation": {
+        "common:UUID": "22222222-2222-4222-8222-222222222222",
+        "common:name": {
+          "@xml:lang": "en",
+          "#text": "Synthetic UnitGroup"
+        },
+        "classificationInformation": {
+          "common:classification": {
+            "@name": "ILCD",
+            "@classes": "https://example.org/synthetic/classes",
+            "common:other": {
+              "@xmlns:synthetic": "https://example.org/synthetic",
+              "synthetic:note": "Keep classification metadata"
+            },
+            "common:class": {
+              "@level": "0",
+              "@classId": "1",
+              "#text": "Technical unit groups"
+            }
+          }
+        },
+        "common:generalComment": {
+          "@xml:lang": "en",
+          "#text": "Entirely synthetic engineering schema fixture."
+        }
+      },
+      "quantitativeReference": {
+        "referenceToReferenceUnit": "0"
+      }
+    },
+    "administrativeInformation": {
+      "dataEntryBy": {
+        "common:timeStamp": "2026-10-14T00:00:00Z",
+        "common:referenceToDataSetFormat": {
+          "@type": "source data set",
+          "@refObjectId": "33333333-3333-4333-8333-333333333333",
+          "@version": "01.00.000",
+          "@uri": "https://example.org/synthetic/33333333-3333-4333-8333-333333333333",
+          "common:shortDescription": {
+            "@xml:lang": "en",
+            "#text": "Synthetic format"
+          }
+        }
+      },
+      "publicationAndOwnership": {
+        "common:dataSetVersion": "01.00.000",
+        "common:referenceToOwnershipOfDataSet": {
+          "@type": "contact data set",
+          "@refObjectId": "44444444-4444-4444-8444-444444444444",
+          "@version": "01.00.000",
+          "@uri": "https://example.org/synthetic/44444444-4444-4444-8444-444444444444",
+          "common:shortDescription": {
+            "@xml:lang": "en",
+            "#text": "Synthetic owner"
+          }
+        }
+      }
+    },
+    "modellingAndValidation": {
+      "complianceDeclarations": {
+        "compliance": {
+          "common:referenceToComplianceSystem": {
+            "@type": "source data set",
+            "@refObjectId": "33333333-3333-4333-8333-333333333333",
+            "@version": "01.00.000",
+            "@uri": "https://example.org/synthetic/33333333-3333-4333-8333-333333333333",
+            "common:shortDescription": {
+              "@xml:lang": "en",
+              "#text": "Synthetic compliance"
+            }
+          },
+          "common:approvalOfOverallCompliance": "Not defined"
+        }
+      }
+    },
+    "units": {
+      "unit": {
+        "@dataSetInternalID": "0",
+        "name": "synthetic_unit",
+        "meanValue": "1"
+      }
+    }
+  }
+}

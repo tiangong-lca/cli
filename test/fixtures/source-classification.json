@@ -1,0 +1,55 @@
+{
+  "sourceDataSet": {
+    "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+    "@xmlns": "http://lca.jrc.it/ILCD/Source",
+    "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+    "@version": "1.1",
+    "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Source ../../schemas/ILCD_SourceDataSet.xsd",
+    "sourceInformation": {
+      "dataSetInformation": {
+        "common:UUID": "11111111-1111-4111-8111-111111111111",
+        "common:shortName": { "@xml:lang": "en", "#text": "Synthetic classification source" },
+        "classificationInformation": {
+          "common:classification": {
+            "@name": "Synthetic source categories",
+            "@classes": "https://example.invalid/categories/source",
+            "common:class": { "@level": "0", "@classId": "6", "#text": "Other source types" },
+            "common:other": {
+              "@xmlns:proof": "https://example.invalid/proof",
+              "proof:marker": { "#text": "classification metadata must survive" }
+            }
+          }
+        },
+        "sourceCitation": "Synthetic author (2026), CLI classification fixture.",
+        "publicationType": "Other unpublished and grey literature",
+        "sourceDescriptionOrComment": {
+          "@xml:lang": "en",
+          "#text": "Entirely synthetic offline command proof. No scientific data or live references."
+        },
+        "referenceToDigitalFile": { "@uri": "https://example.invalid/source.txt" }
+      }
+    },
+    "administrativeInformation": {
+      "dataEntryBy": {
+        "common:timeStamp": "2026-01-01T00:00:00Z",
+        "common:referenceToDataSetFormat": {
+          "@type": "source data set",
+          "@refObjectId": "22222222-2222-4222-8222-222222222222",
+          "@version": "01.00.000",
+          "@uri": "https://example.invalid/format.xml",
+          "common:shortDescription": { "@xml:lang": "en", "#text": "Synthetic format reference" }
+        }
+      },
+      "publicationAndOwnership": {
+        "common:dataSetVersion": "01.00.000",
+        "common:referenceToOwnershipOfDataSet": {
+          "@type": "contact data set",
+          "@refObjectId": "33333333-3333-4333-8333-333333333333",
+          "@version": "01.00.000",
+          "@uri": "https://example.invalid/contact.xml",
+          "common:shortDescription": { "@xml:lang": "en", "#text": "Synthetic owner reference" }
+        }
+      }
+    }
+  }
+}
