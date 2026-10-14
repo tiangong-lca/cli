@@ -37,9 +37,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-10-11
-lastReviewedCommit: a780355c2e348250d828bc13085c80f1dbc99a17
-lastReviewedNote: 'Reviewed PR #413 integration with canonical main a780355: explicit intended applications, evidence binding, aliases, embedded payloads and public proof remain intact; upstream owner-token reuse, CLI 0.1.28 and exact freight-work QA are retained. Maintainer compatibility acceptance and managed-consumer adoption remain separate.'
+lastReviewedAt: 2026-10-14
+lastReviewedCommit: 87374a90ebbcdb486204358c0bdf99218fd5f1c0
+lastReviewedNote: 'Reviewed CLI #423/#424/#425 local builder admission against canonical main 87374a9: exact local Process body identity, connection declarations and static quantity guards stay in the CLI; existing allocation, remote lookup, package/dependency, authorization and release boundaries remain unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md

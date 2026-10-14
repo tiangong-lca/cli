@@ -137,6 +137,10 @@ type Edge = {
   to: string;
   exchange_id: string | null;
   flow_uuid: string | null;
+  upstream_flow_uuid?: unknown;
+  downstream_flow_uuid?: unknown;
+  upstream_flow_version?: unknown;
+  downstream_flow_version?: unknown;
 };
 
 function isRecord(value: unknown): value is JsonObject {
@@ -758,6 +762,14 @@ function extractEdges(model: JsonObject): Edge[] {
             downstream['@flowUUID'],
             exchange.flowUUID,
           ),
+          ...('@flowUUID' in exchange
+            ? { upstream_flow_uuid: exchange['@flowUUID'] }
+            : 'flowUUID' in exchange
+              ? { upstream_flow_uuid: exchange.flowUUID }
+              : {}),
+          ...('@flowUUID' in downstream ? { downstream_flow_uuid: downstream['@flowUUID'] } : {}),
+          ...('@version' in exchange ? { upstream_flow_version: exchange['@version'] } : {}),
+          ...('@version' in downstream ? { downstream_flow_version: downstream['@version'] } : {}),
         });
       });
     });
@@ -791,6 +803,7 @@ function parseProcessRecord(
   options: {
     sourceLabel: string;
     sourcePath: string | null;
+    expectedIdentity?: { processId: string; version: string };
   },
 ): ProcessRecord {
   const dataset = processDatasetRoot(payload);
@@ -810,7 +823,25 @@ function parseProcessRecord(
     });
   }
 
-  const version = firstNonEmpty(publication['common:dataSetVersion']) ?? DEFAULT_DATASET_VERSION;
+  const declaredVersion = firstNonEmpty(publication['common:dataSetVersion']);
+  if (
+    options.expectedIdentity &&
+    (processUuid !== options.expectedIdentity.processId ||
+      declaredVersion !== options.expectedIdentity.version)
+  )
+    throw new CliError(
+      `Local Process identity mismatch at ${options.sourcePath}: requested ${options.expectedIdentity.processId}@${options.expectedIdentity.version}, observed ${processUuid}@${declaredVersion ?? '(missing)'}.`,
+      {
+        code: 'LIFECYCLEMODEL_PROCESS_IDENTITY_MISMATCH',
+        exitCode: 2,
+        details: {
+          source_path: options.sourcePath,
+          requested: options.expectedIdentity,
+          observed: { processId: processUuid, version: declaredVersion },
+        },
+      },
+    );
+  const version = declaredVersion ?? DEFAULT_DATASET_VERSION;
   const quantitativeReference = isRecord(info.quantitativeReference)
     ? info.quantitativeReference
     : {};
@@ -1037,6 +1068,7 @@ async function resolveProcessRecords(
         {
           sourceLabel: path.dirname(localPath),
           sourcePath: localPath,
+          expectedIdentity: { processId: process_id, version },
         },
       );
       records[`${process_id}@${version}`] = record;
@@ -1414,7 +1446,8 @@ function buildResultingProcessPayload(options: {
     group.amount = normalizeNumericOutput(
       group.contributions.reduce((sum, item) => sum + item.amount, 0),
     );
-    if (group.contributions.some((item) => hasAllocationDeclaration(item.exchange))) {
+    const allocated = group.contributions.some((item) => hasAllocationDeclaration(item.exchange));
+    if (allocated) {
       if (group.amount <= 0)
         throw new CliError(`Zero or signed allocated quantity basis at ${group.key}`, {
           code: 'LIFECYCLEMODEL_ALLOCATION_TRANSFORMATION_UNSUPPORTED',
@@ -1429,15 +1462,30 @@ function buildResultingProcessPayload(options: {
               exitCode: 2,
             },
           );
-        if (
-          item.exchange.resultingAmount !== undefined &&
-          Number(item.exchange.meanAmount) !== Number(item.exchange.resultingAmount)
-        )
-          throw new CliError(`Conflicting quantity basis at ${item.source}`, {
-            code: 'LIFECYCLEMODEL_ALLOCATION_QUANTITY_BASIS_CONFLICT',
-            exitCode: 2,
-          });
       }
+    }
+    for (const item of group.contributions) {
+      if (item.exchange.referenceToVariable !== undefined)
+        throw new CliError(
+          `Variable-dependent inventory is unsupported at ${item.source}; supply an explicitly evaluated static inventory.`,
+          { code: 'LIFECYCLEMODEL_VARIABLE_INVENTORY_UNSUPPORTED', exitCode: 2 },
+        );
+      if (
+        item.exchange.resultingAmount !== undefined &&
+        (allocated || item.exchange.meanAmount !== undefined) &&
+        Number(item.exchange.meanAmount) !== Number(item.exchange.resultingAmount)
+      )
+        throw new CliError(`Conflicting quantity basis at ${item.source}`, {
+          code: allocated
+            ? 'LIFECYCLEMODEL_ALLOCATION_QUANTITY_BASIS_CONFLICT'
+            : 'LIFECYCLEMODEL_QUANTITY_BASIS_CONFLICT',
+          exitCode: 2,
+          details: {
+            source: item.source,
+            meanAmount: item.exchange.meanAmount,
+            resultingAmount: item.exchange.resultingAmount,
+          },
+        });
     }
   }
 
@@ -1448,10 +1496,6 @@ function buildResultingProcessPayload(options: {
     ),
   );
   connections.forEach((edge) => {
-    if (!edge.flow_uuid) {
-      return;
-    }
-
     const downstreamInstance = instanceById.get(edge.to);
     if (!downstreamInstance) {
       return;
@@ -1461,6 +1505,19 @@ function buildResultingProcessPayload(options: {
       instanceById.get(edge.from)?.multiplication_factor === 0
     )
       return;
+
+    for (const key of ['upstream_flow_uuid', 'downstream_flow_uuid'] as const) {
+      if (key in edge && (!firstNonEmpty(edge[key]) || firstNonEmpty(edge[key]) !== edge.flow_uuid))
+        throw new CliError(
+          `Unsupported connection Flow mapping at ${edge.edge_id}: ${key} does not match ${edge.flow_uuid ?? '(missing)'}. The builder requires the same exact Flow at both endpoints; display dominance does not define a numerical conversion.`,
+          {
+            code: 'LIFECYCLEMODEL_CONNECTION_MAPPING_UNSUPPORTED',
+            exitCode: 2,
+            details: { edge_id: edge.edge_id, endpoint: key, declared: edge[key] },
+          },
+        );
+    }
+    if (!edge.flow_uuid) return;
 
     const downstreamCandidates = [...totals.values()]
       .flatMap((group) => group.contributions.map((contribution) => ({ group, contribution })))
@@ -1513,6 +1570,28 @@ function buildResultingProcessPayload(options: {
           exitCode: 2,
         },
       );
+    }
+    for (const [endpoint, declaredVersion, contribution] of [
+      ['outputExchange', edge.upstream_flow_version, upstreamCandidates[0].contribution],
+      ['downstreamProcess', edge.downstream_flow_version, downstreamCandidates[0].contribution],
+    ] as const) {
+      const actualVersion = (contribution.exchange.referenceToFlowDataSet as JsonObject)[
+        '@version'
+      ];
+      if (
+        declaredVersion !== undefined &&
+        (typeof declaredVersion !== 'string' ||
+          !declaredVersion.trim() ||
+          declaredVersion !== actualVersion)
+      )
+        throw new CliError(
+          `Connection version mismatch at ${edge.edge_id}/${endpoint}: declared ${String(declaredVersion)}, inventory ${String(actualVersion)}.`,
+          {
+            code: 'LIFECYCLEMODEL_CONNECTION_VERSION_MISMATCH',
+            exitCode: 2,
+            details: { edge_id: edge.edge_id, endpoint, declaredVersion, actualVersion },
+          },
+        );
     }
     const internalAmount = Math.min(
       downstreamCandidates[0].contribution.amount,

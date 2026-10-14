@@ -1411,6 +1411,10 @@ Allocation serialization follows the public three-decimal `Perc` boundary using 
 
 连接未提供 transfer quantity 或竞争分配规则，因此 builder 仅自动处理双方各有唯一 exchange、相同 Flow UUID/version/property/unit basis 的连接，按两端已缩放 contribution 的较小值取消。2 的供给连接 5 的需求保留外部 Input3，5 的供给连接 2 的需求保留 Output3；未连接 inventory 不参与扣减。取消量同时从精确 source instance/exchange contribution 与聚合组扣除，保留 allocation 守恒。重复或竞争 provider/consumer、多个候选 exchange、signed quantity 或不同 exact basis 明确报错，不能靠 edge 顺序猜 split。factor0 节点及其连接禁用，不取消其他有效节点的 boundary inventory。
 
+本地 Process 文件按请求 UUID/version 解析后，还必须核对正文 `common:UUID` 和显式 `common:dataSetVersion`；文件名不能代替正文身份，缺失正文版本不能用默认版本通过本地身份检查。远端 exact-or-latest lookup 保持原有行为。有效连接保留两处声明的 Flow UUID/version：任何显式 UUID 必须属于同一受支持 Flow，任何显式版本必须与实际 endpoint exchange 的 Flow 引用一致，不能拿 Process 版本代替 Flow 版本。历史输入省略连接字段仍沿用兼容路径；factor0 连接不参与该检查。
+
+TIDAS schema 允许两端不同 Flow，并允许用 `dominant` 指定连接展示等属性的来源；当前 builder 对这种映射明确返回 unsupported，要求提供其支持的相同 exact Flow 静态 inventory，不把映射判为 schema 非法，也不推导 Flow 转换或数值等价。相同 Flow 两端都声明 `dominant=true` 仍受支持。所有有效 contribution group 都检查同时存在的 `meanAmount`/`resultingAmount` 是否一致；allocated group 保留 `LIFECYCLEMODEL_ALLOCATION_QUANTITY_BASIS_CONFLICT`，未分配 group 使用 `LIFECYCLEMODEL_QUANTITY_BASIS_CONFLICT`。有效 exchange 出现 `referenceToVariable` 时返回 `LIFECYCLEMODEL_VARIABLE_INVENTORY_UNSUPPORTED`，要求消费者先提供显式求值的静态 inventory；未被 exchange 使用的 mathematical metadata 不触发此限制。
+
 `referenceToReferenceProcess` 的 schema integer（含0）按 string instance ID 精确匹配；既有非空 string 和 reference object 兼容。显式无效、未解析或重复 instance ID 阻止投影；只有完全省略 reference 才保留既有 first-positive/fallback 行为。builder 不替消费者选另一个产品来修复错误 reference。
 
 Model activity multiplier 要求显式 finite nonnegative numeric scalar，缺失不是科学上的0。乘数保持 JavaScript finite number 精度直到乘法，不能按最终 exchange 截断；5e-11 ×20000000000=1，1.23456e-10 ×10000000000=1.23456。非有限乘法结果报错。最终 inventory 仍沿用既有12位小数格式及 absolute1e-10 cutoff（按该 exchange 的原数量基准），这只是数值输出策略，不构成单位无关的科学可忽略结论；allocation 无法守恒的微小量继续明确阻止。
