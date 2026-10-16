@@ -38,8 +38,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-10-16
-lastReviewedCommit: 87374a90ebbcdb486204358c0bdf99218fd5f1c0
-lastReviewedNote: 'CLI #427: reviewed automatic exact-head dependency/configuration/Actions PR qualification and focused monitoring against base 87374a9; existing package, source, 100% coverage and release authorization contracts are retained.'
+lastReviewedCommit: de06f0f18659dc58416db555ec53f6d13941ea1d
+lastReviewedNote: 'CLI #433: reviewed per-exchange exact unit evidence precedence, conservative unresolved findings and exact energy symbol scales; CLI ownership, full coverage and separate release/adoption gates remain required.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -70,6 +70,8 @@ Review note, 2026-09-24: CLI #368 synchronizes the 0.2.3 Process reference schem
 Private live-account testing is maintainer-only and requires explicit account authorization. Follow [the live case guide](docs/agents/live-case-testing.md); public CLI authentication remains OAuth-only and personal credentials never enter public CI.
 
 Process QA consumes explicitly selected exact Flow/Flow Property/Unit Group evidence through `process-mass-balance.ts`; `process-qa.ts` owns report/finding projection. Exact `kg*km` and `t*km` are transport work, excluded from material mass sums; unit tags must preserve the selected reference-unit scale. Keep nonmass or unresolved applicability separate from a physical mass result, retain null unavailable values and hash-bound evidence, and never infer arbitrary composite units or use a version label to restore mixed-dimension arithmetic. Foundry #122 owns downstream evidence selection and transport.
+
+Successful exact unit-chain observations take precedence over descriptive unit heuristics for that exchange, including water exclusion comments on heat. Energy symbols retain their selected scale and case; no energy conversion is inferred. Missing, ambiguous or contradictory evidence retains the unresolved finding and conservative prose checks. Source proof, installed-package qualification and unchanged Foundry caller acceptance remain separate.
 
 Guarded Flow-only `dataset save-draft --execution-contract --reference-intent-file` also follows the exact-reference contract: reuse its parser/evaluator, reobserve immediately before dispatch, await the transport gate, and retain per-action admission in the original consumed ledger. Foundry owns selection/snapshots and runtime continuation, not CLI eligibility.
 

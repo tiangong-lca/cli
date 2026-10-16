@@ -22,9 +22,9 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-10-11
-lastReviewedCommit: a780355c2e348250d828bc13085c80f1dbc99a17
-lastReviewedNote: 'Reviewed PR #413 integration with canonical main a780355: explicit intended applications, evidence binding, aliases, embedded payloads and public proof remain intact; upstream owner-token reuse, CLI 0.1.28 and exact freight-work QA are retained. Maintainer compatibility acceptance and managed-consumer adoption remain separate.'
+lastReviewedAt: 2026-10-16
+lastReviewedCommit: de06f0f18659dc58416db555ec53f6d13941ea1d
+lastReviewedNote: 'CLI #433: reviewed local process QA unit findings and the existing exact coverage/full gate; exact-chain precedence and energy scale checks add no maintainer, dependency, runtime ownership or release workflow.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

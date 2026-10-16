@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-10-16
-lastReviewedCommit: 87374a90ebbcdb486204358c0bdf99218fd5f1c0
-lastReviewedNote: 'CLI #427: reviewed automatic exact-head dependency/configuration/Actions PR qualification and focused monitoring against base 87374a9; existing package, source, 100% coverage and release authorization contracts are retained.'
+lastReviewedCommit: de06f0f18659dc58416db555ec53f6d13941ea1d
+lastReviewedNote: 'CLI #433: reviewed reuse of per-exchange exact unit observations in the existing QA report owner; no new resolver, dependency, remote path or Foundry eligibility implementation is introduced.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -184,6 +184,8 @@ These modules share one contract:
 - maintenance and QA commands still emit artifact-first local outputs and remain covered by the strict `src/**/*.ts` coverage gate
 
 Process dimensional QA is split between `process-mass-balance.ts` (explicit exact reference evidence, unit-chain resolution, applicability and kg arithmetic) and `process-qa.ts` (existing classification, findings and artifact reports). `cli.ts` owns repeatable reference-file parsing and help. No remote lookup, dependency, credential path or Foundry-owned physical-unit implementation is added. Selected file and payload digests bind observations; canonical area-time and exact `kg*km`/`t*km` transport work are recognized nonmass units, while arbitrary composites remain unresolved. Transport work retains its quantities and references, stays outside material mass sums, and rejects unit tags that conflict with the selected reference-unit scale.
+
+The report owner reuses each exact unit observation before applying descriptive unit heuristics. A complete, successful chain that validates every unit tag takes precedence over incidental prose; a heat/MJ exchange does not become water because its comment excludes water-stream enthalpy. Missing or contradictory evidence retains conservative heuristics and unresolved findings. Energy symbols must match the selected reference symbol, including scale and case, without implicit conversion; unrelated nonmass conversion policy is unchanged.
 
 Annual supply/production volume remains a separate evidence field. `process-required-fields.ts` preserves real single-object and multilingual values, recognizes only explicit historical missing markers, and retains unknown volume as `[]` with an authoring blocker. A quantitative reference or default/reference unit cannot supply annual production. `process-flow-build-plan.ts` preserves explicit annual input and emits an unknown array when evidence is absent. Legacy unresolved-trace metadata cannot waive the evidence requirement.
 

@@ -1177,7 +1177,16 @@ export async function runProcessQa(options: RunProcessQaOptions): Promise<Proces
     baseRows.push([fileName, base]);
     ruleFindings.push(...reviewFindingsForBase(fileName, base));
 
-    exchanges.forEach((exchange) => {
+    const mass = assessProcessMassBalance({
+      processFile: fileName,
+      processPayload,
+      exchanges,
+      referenceFlowId,
+      references: referenceEvidence,
+      classify: (exchange) => classifyExchange(exchange, referenceFlowId),
+    });
+
+    exchanges.forEach((exchange, index) => {
       const classified = classifyExchange(exchange, referenceFlowId);
       if (!hasNumericAmount(exchange)) {
         ruleFindings.push(
@@ -1194,7 +1203,12 @@ export async function runProcessQa(options: RunProcessQaOptions): Promise<Proces
           }),
         );
       }
-      const currentUnitIssues = unitIssueCheck(exchange, classified.uoms, classified.blob);
+      const observation = mass.exchanges[index];
+      // A complete exact unit chain validates every tag before prose heuristics apply.
+      const currentUnitIssues =
+        observation.unit && observation.error === null
+          ? []
+          : unitIssueCheck(exchange, classified.uoms, classified.blob);
       unitIssues.push(...currentUnitIssues);
       currentUnitIssues.forEach((issue) => {
         ruleFindings.push(
@@ -1209,14 +1223,6 @@ export async function runProcessQa(options: RunProcessQaOptions): Promise<Proces
       });
     });
 
-    const mass = assessProcessMassBalance({
-      processFile: fileName,
-      processPayload,
-      exchanges,
-      referenceFlowId,
-      references: referenceEvidence,
-      classify: (exchange) => classifyExchange(exchange, referenceFlowId),
-    });
     massBalances.push(mass);
     ruleFindings.push(
       ...mass.findings.map((finding) =>

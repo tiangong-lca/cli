@@ -258,8 +258,8 @@ function resolveExchange(
         tagged &&
           tagged.dimension === unit.dimension &&
           tagged.kilograms === unit.kilograms &&
-          // Freight units have distinct scales despite both being nonmass quantities.
-          (unit.dimension !== 'transport_work' || tagged.name === unit.name),
+          // Energy and freight symbols retain their exact reference scale; no conversion is inferred.
+          (!['energy', 'transport_work'].includes(unit.dimension) || tagged.name === unit.name),
         'Exchange unit tag conflicts with exact reference-unit evidence.',
       );
     }

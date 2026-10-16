@@ -169,6 +169,166 @@ function exchanges(process: JsonRecord): JsonRecord[] {
   return object(object(process.processDataSet).exchanges).exchange as JsonRecord[];
 }
 
+test('exact heat evidence keeps MJ authoritative when comments exclude a water stream', async (t) => {
+  for (const comment of [
+    'Direct sensible heat to ambient air.',
+    'Direct sensible heat to ambient air; water-stream enthalpy is excluded.',
+  ]) {
+    const report = await evaluate(t, 'kg', (process, refs) => {
+      refs.push(...unitChain(10, 'MJ'));
+      exchanges(process).push({
+        '@dataSetInternalID': '3',
+        exchangeDirection: 'Output',
+        meanAmount: '2',
+        commonComment: `[tg_io_uom_tag=MJ] ${comment}`,
+        referenceToFlowDataSet: {
+          ...reference(10, 'flow data set'),
+          'common:shortDescription': 'Waste heat, air',
+        },
+      });
+    });
+    const heat = report.mass_balance![0].exchanges[3];
+    assert.equal(heat.unit?.name, 'MJ');
+    assert.equal(heat.unit?.dimension, 'energy');
+    assert.equal(heat.error, null);
+    assert.equal(heat.references.length, 3);
+    assert.doesNotMatch(
+      fs.readFileSync(report.files.rule_findings!, 'utf8'),
+      /process_exchange_unit_semantic_mismatch/u,
+    );
+    assert.doesNotMatch(fs.readFileSync(report.files.unit_issue_log, 'utf8'), /m3 或 kg/u);
+  }
+});
+
+test('energy tags with a different exact reference scale remain unresolved', async (t) => {
+  for (const [unit, tags] of [
+    ['MJ', '[tg_io_uom_tag=GJ]'],
+    ['MJ', '[tg_io_uom_tag=mJ]'],
+    ['MJ', '[tg_io_uom_tag=kWh]'],
+    ['mJ', '[tg_io_uom_tag=MJ]'],
+    ['kWh', '[tg_io_uom_tag=MWh]'],
+    ['MJ', '[tg_io_uom_tag=MJ] [tg_io_uom_tag=GJ]'],
+  ]) {
+    const report = await evaluate(t, 'kg', (process, refs) => {
+      refs.push(...unitChain(10, unit));
+      exchanges(process).push({
+        '@dataSetInternalID': '3',
+        exchangeDirection: 'Output',
+        meanAmount: '2',
+        commonComment: `${tags} Heat to air; water-stream enthalpy is excluded.`,
+        referenceToFlowDataSet: reference(10, 'flow data set'),
+      });
+    });
+    const mass = report.mass_balance![0];
+    assert.equal(mass.status, 'unresolved', `${unit}: ${tags}`);
+    assert.match(mass.exchanges[3].error!, /unit tag conflicts/u);
+    assert.equal(mass.exchanges[3].mass_kg, null);
+    assert.equal(report.totals.relative_deviation, null);
+    assert.match(
+      fs.readFileSync(report.files.rule_findings!, 'utf8'),
+      /process_mass_unit_unresolved/u,
+    );
+  }
+});
+
+test('exact water mass and volume units and exact energy symbols survive incidental prose', async (t) => {
+  for (const [unit, comment] of [
+    ['kg', '[tg_io_uom_tag=kg] Water; electricity use is documented separately.'],
+    ['m3', '[tg_io_uom_tag=m3] Water; electricity use is documented separately.'],
+    ['MJ', '[tg_io_uom_tag=MJ] Heat; water-stream enthalpy excluded.'],
+    ['mJ', '[tg_io_uom_tag=mJ] Heat; water-stream enthalpy excluded.'],
+    ['GJ', '[tg_io_uom_tag=GJ] Heat; water-stream enthalpy excluded.'],
+    ['kWh', '[tg_io_uom_tag=kWh] Electricity; water is excluded.'],
+    ['MWh', '[tg_io_uom_tag=MWh] Electricity; water is excluded.'],
+    ['MJ', 'Heat; water-stream enthalpy excluded.'],
+  ]) {
+    const report = await evaluate(t, unit, (process) => {
+      exchanges(process)[0].commonComment = comment;
+    });
+    assert.equal(report.mass_balance![0].exchanges[0].error, null, unit);
+    assert.equal(report.mass_balance![0].exchanges[0].unit?.name, unit);
+    assert.doesNotMatch(
+      fs.readFileSync(report.files.rule_findings!, 'utf8'),
+      /process_exchange_unit_semantic_mismatch/u,
+    );
+    assert.match(
+      fs.readFileSync(report.files.unit_issue_log, 'utf8'),
+      /未发现基于直接证据的单位矛盾/u,
+    );
+  }
+});
+
+test('missing, ambiguous and contradictory unit chains retain conservative QA findings', async (t) => {
+  const changes: ((process: JsonRecord, refs: JsonRecord[]) => void)[] = [
+    (_process, refs) => {
+      refs.splice(0);
+    },
+    (_process, refs) => {
+      refs.splice(1, 1);
+    },
+    (_process, refs) => {
+      refs.splice(2, 1);
+    },
+    (process) => {
+      object(exchanges(process)[0].referenceToFlowDataSet)['@version'] = '00.00.002';
+    },
+    (_process, refs) => {
+      const units = object(object(refs[2].unitGroupDataSet).units);
+      units.unit = [units.unit, units.unit];
+    },
+    (_process, refs) => {
+      object(object(object(refs[2].unitGroupDataSet).units).unit).name = 'unknown';
+    },
+    (_process, refs) => {
+      object(object(object(refs[2].unitGroupDataSet).units).unit).name = 'kg';
+    },
+    (process) => {
+      exchanges(process)[0].generalComment = '[tg_io_uom_tag=kg]';
+    },
+  ];
+  for (const [index, change] of changes.entries()) {
+    const report = await evaluate(t, 'MJ', (process, refs) => {
+      exchanges(process)[0].commonComment = '[tg_io_uom_tag=MJ] Water';
+      change(process, refs);
+    });
+    const mass = report.mass_balance![0];
+    assert.equal(mass.status, 'unresolved', `case ${index}`);
+    assert.notEqual(mass.exchanges[0].error, null, `case ${index}`);
+    assert.equal(report.totals.raw_input, null);
+    const findings = fs.readFileSync(report.files.rule_findings!, 'utf8');
+    assert.match(findings, /process_mass_unit_unresolved/u);
+    assert.match(findings, /process_exchange_unit_semantic_mismatch/u);
+    assert.match(fs.readFileSync(report.files.unit_issue_log, 'utf8'), /m3 或 kg/u);
+  }
+});
+
+test('exact evidence precedence is exchange-specific even when the process remains unresolved', async (t) => {
+  const report = await evaluate(t, 'kg', (process, refs) => {
+    refs.push(...unitChain(10, 'MJ'));
+    const rows = exchanges(process);
+    rows.push({
+      '@dataSetInternalID': '3',
+      exchangeDirection: 'Output',
+      meanAmount: '2',
+      commonComment: '[tg_io_uom_tag=MJ] Heat; water is excluded.',
+      referenceToFlowDataSet: reference(10, 'flow data set'),
+    });
+    rows[1].commonComment = '[tg_io_uom_tag=MJ] Water';
+  });
+  const mass = report.mass_balance![0];
+  assert.equal(mass.status, 'unresolved');
+  assert.equal(mass.exchanges[3].error, null);
+  assert.match(mass.exchanges[1].error!, /unit tag conflicts/u);
+  const findings = fs
+    .readFileSync(report.files.rule_findings!, 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as JsonRecord)
+    .filter((finding) => finding.code === 'process_exchange_unit_semantic_mismatch');
+  assert.equal(findings.length, 1);
+  assert.equal(object(findings[0].evidence).flow_uuid, id(4));
+});
+
 test('known count and canonical area-time references are explicitly not applicable, with complete unit evidence', async (t) => {
   for (const unit of ['Item(s)', 'm2*a', 'm²*a']) {
     const report = await evaluate(t, unit);

@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-10-11
-lastReviewedCommit: a780355c2e348250d828bc13085c80f1dbc99a17
-lastReviewedNote: 'Reviewed PR #413 integration with canonical main a780355: explicit intended applications, evidence binding, aliases, embedded payloads and public proof remain intact; upstream owner-token reuse, CLI 0.1.28 and exact freight-work QA are retained. Maintainer compatibility acceptance and managed-consumer adoption remain separate.'
+lastReviewedAt: 2026-10-16
+lastReviewedCommit: de06f0f18659dc58416db555ec53f6d13941ea1d
+lastReviewedNote: 'CLI #433: reviewed exact-chain precedence over incidental prose, case-sensitive energy scale checks and conservative unresolved findings; quantities and reference payloads remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -891,6 +891,7 @@ outputs/evidence-search-declaration.json
 - 从 `--run-root` 读取 `exports/processes/*.json`
 - 以 v2.2-unit-aware 做基础信息和量纲有效的质量平衡核查：显式重复 `--reference-rows-file` 选择 Flow、Flow Property、Unit Group 精确版本证据，沿参考属性和参考单位解析 kg；质量型燃料仍计入输入
 - 精确 `kg*km` / `t*km` 识别为运输功，保留数量、单位和引用，不进入物料质量和；交换单位标签须与选定参考单位的尺度一致，不隐式换算
+- 逐 exchange 复用完整且成功的精确单位链，标签一致时优先于描述子串推测；Heat/MJ 注释排除 water-stream 不产生水单位误报。能量符号保持尺度和大小写，不隐式换算；缺失、歧义或矛盾证据保留 unresolved finding 和保守描述检查
 - 计数、规范面积时间（`m2*a` / `m²*a`）、运输功等已知非质量参考产品报告 `not_applicable`，质量与偏差为 null；缺失、冲突、未知单位、无效数量和溢出保留待处理 finding，不猜测任意复合单位
 - `mass_balance` 保留过程 payload 哈希和逐 exchange 的精确引用哈希，`reference_evidence` 保留显式输入文件哈希；不修改数量或引用，跨过程合计仅为诊断，独立 source-model 物理平衡仍必需
 - 写出中英文 markdown review、timing、unit issue log、summary 和 report

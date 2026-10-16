@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-10-16
-lastReviewedCommit: 87374a90ebbcdb486204358c0bdf99218fd5f1c0
-lastReviewedNote: 'CLI #427: reviewed automatic exact-head dependency/configuration/Actions PR qualification and focused monitoring against base 87374a9; existing package, source, 100% coverage and release authorization contracts are retained.'
+lastReviewedCommit: de06f0f18659dc58416db555ec53f6d13941ea1d
+lastReviewedNote: 'CLI #433: reviewed this source-only QA repair against the existing full gate and separate version-bump, publication and installed-caller qualification route; release mechanics and package identity are unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

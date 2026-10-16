@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-10-16
-lastReviewedCommit: 87374a90ebbcdb486204358c0bdf99218fd5f1c0
-lastReviewedNote: 'CLI #427: reviewed automatic exact-head dependency/configuration/Actions PR qualification and focused monitoring against base 87374a9; existing package, source, 100% coverage and release authorization contracts are retained.'
+lastReviewedCommit: de06f0f18659dc58416db555ec53f6d13941ea1d
+lastReviewedNote: 'CLI #433: reviewed public QA report regression coverage for heat exclusion comments, valid water units, energy scales and missing or contradictory evidence; exact whole-source coverage and separate caller qualification remain required.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -172,6 +172,8 @@ Facts that matter:
 If the task changes control flow, add or update tests instead of using coverage-ignore pragmas.
 
 Process mass QA tests must prove count, canonical area-time and exact `kg*km`/`t*km` transport work are not added to kg. Freight-reference products retain `not_applicable` and null mass results; mixed mass/energy/volume/freight inventories select the exact reference unit occurrence, preserve its factor-one requirement and exclude both freight directions. Conflicting freight unit tags fail without implicit scale conversion. Mass-valued fuels and scaled mass units remain included, exact reference/version/occurrence conflicts and malformed selections fail closed, quantity and aggregate overflow remain actionable, zero-input ratios are not fabricated, and source quantities and selected reference files remain byte-stable. The CLI transport must retain every explicit reference file. Both the new unit owner and existing QA module remain subject to exact full-source coverage without exclusions; local focused coverage alone is not the release gate.
+
+Public QA report regressions must also compare heat/MJ control and water-exclusion comments, valid water kg/m3 and exact energy symbols, and absent tags. Exact evidence precedence is per exchange, even when another exchange remains unresolved. Missing Flow/Flow Property/Unit Group evidence, ambiguous units, incompatible dimensions, conflicting tags and energy scales must remain actionable. Keep source tests distinct from published/installed package and unchanged original Foundry caller qualification.
 
 Exact-reference tests must cover default latest behavior, explicit older/public/own-draft success, fresh actor/project mismatch, root and undeclared-reference preservation, role/path collisions, consumer/control-file drift, selected/latest owner/state/payload mismatch, missing transport evidence, exact-payload/review caching, and zero mutation through the real RLS adapter with controlled HTTP responses. The parser and verifier remain under the whole-source 100% gate. See [the protocol contract](exact-reference-intent-contract.md).
 
