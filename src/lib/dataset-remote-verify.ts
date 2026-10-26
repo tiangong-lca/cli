@@ -7,6 +7,19 @@ import { CliError } from './errors.js';
 import { runAuthIdentityReceipt } from './auth-identity-receipt.js';
 import { loadCliPackageVersion } from './package-version.js';
 import {
+  loadExistingDraftRootIntent,
+  assertExistingDraftRootInputsCurrent,
+  type LoadedExistingDraftRootIntent,
+} from './dataset-existing-draft-root-intent.js';
+import {
+  observeExistingDraftRoot,
+  type ExistingDraftRootObservation,
+} from './dataset-existing-draft-root-remote.js';
+import {
+  evaluateExistingDraftRoot,
+  type ExistingDraftRootCheckEvidence,
+} from './dataset-existing-draft-root.js';
+import {
   loadExactReferenceIntent,
   evaluateExactReference,
   assertExactReferenceInputsCurrent,
@@ -62,6 +75,7 @@ export type RemoteVerificationIssueCode =
   | 'payload_mismatch'
   | 'remote_payload_missing'
   | 'state_code_mismatch'
+  | 'existing_draft_root_mismatch'
   | 'reference_intent_mismatch';
 
 export type RemoteDatasetReference = {
@@ -104,6 +118,7 @@ export type RemoteDatasetLookupRequest = {
 };
 
 export type RemoteVerificationCheck = {
+  existing_draft_root?: ExistingDraftRootCheckEvidence;
   reference_intent?: ExactReferenceCheckEvidence;
   row_index: number;
   role: RemoteVerificationReferenceRole;
@@ -140,6 +155,7 @@ export type RemoteVerificationBlocker = {
 };
 
 export type DatasetRemoteVerificationReport = {
+  existing_draft_root?: LoadedExistingDraftRootIntent;
   reference_intent?: LoadedExactReferenceIntent;
   schema_version: 1;
   generated_at_utc: string;
@@ -166,6 +182,12 @@ export type DatasetRemoteVerificationReport = {
 };
 
 export type RunDatasetRemoteVerifyOptions = {
+  existingDraftRootFile?: string;
+  observeExistingDraftRootImpl?: (request: {
+    id: string;
+    version: string;
+    actorUserId: string;
+  }) => Promise<ExistingDraftRootObservation>;
   referenceIntentFile?: string;
   resolveReferenceIdentityImpl?: () => Promise<{ project_ref: string; user_id: string }>;
   lookupReferencePayloadImpl?: (
@@ -708,6 +730,7 @@ export async function lookupRemoteDatasetPayload(options: {
   request: RemoteDatasetLookupRequest;
   allowLatest?: boolean;
   requireUnique?: boolean;
+  ownerDraftUserId?: string;
 }): Promise<RemoteDatasetPayloadLookup | null> {
   if (!options.request.version && !(options.allowLatest && options.request.version === null)) {
     return null;
@@ -717,7 +740,7 @@ export async function lookupRemoteDatasetPayload(options: {
     options.fetchImpl,
     options.timeoutMs,
   );
-  const sourceUrl = buildRemotePayloadUrl(
+  let sourceUrl = buildRemotePayloadUrl(
     restBaseUrl,
     options.request.table,
     options.request.id,
@@ -727,6 +750,14 @@ export async function lookupRemoteDatasetPayload(options: {
     .from(options.request.table)
     .select('id,version,user_id,state_code,modified_at,json,json_ordered')
     .eq('id', options.request.id);
+  if (options.ownerDraftUserId !== undefined) {
+    // Eligibility must constrain the body request itself, before any bytes are read.
+    query.eq('user_id', options.ownerDraftUserId).eq('state_code', 0);
+    const scopedUrl = new URL(sourceUrl);
+    scopedUrl.searchParams.set('user_id', `eq.${options.ownerDraftUserId}`);
+    scopedUrl.searchParams.set('state_code', 'eq.0');
+    sourceUrl = scopedUrl.toString();
+  }
   const rows = await runSupabaseArrayQuery(
     options.request.version === null
       ? query.order('version', { ascending: false }).limit(1)
@@ -736,6 +767,12 @@ export async function lookupRemoteDatasetPayload(options: {
   const payloadRow = normalizePayloadRow(
     Array.isArray(rows) && (!options.requireUnique || rows.length === 1) ? rows[0] : null,
   );
+  if (
+    payloadRow &&
+    options.ownerDraftUserId !== undefined &&
+    (payloadRow.user_id !== options.ownerDraftUserId || payloadRow.state_code !== 0)
+  )
+    return null;
   return payloadRow ? { ...payloadRow, source_url: sourceUrl } : null;
 }
 
@@ -1018,6 +1055,32 @@ export async function runDatasetRemoteVerify(
         });
   const environment = { ...(options.env ?? process.env) };
   const rootPolicy = options.rootPolicy ?? 'existing';
+  const rootIntent =
+    options.existingDraftRootFile === undefined
+      ? null
+      : loadExistingDraftRootIntent({
+          file: options.existingDraftRootFile,
+          consumers: exactReferenceConsumers(rows),
+          references,
+        });
+  // Root discovery intentionally projects one identity for ordinary verification.
+  // This bounded qualification must also reject additional unverified payload roots.
+  if (rootIntent && Object.keys(unwrapDatasetPayload(rows[0]!)).join(',') !== 'processDataSet')
+    throw new CliError('Existing-draft root qualification requires only one Process wrapper.', {
+      code: 'DATASET_EXISTING_DRAFT_ROOT_INVALID',
+      exitCode: 2,
+    });
+  if (
+    rootIntent &&
+    (rootPolicy !== 'candidate' ||
+      (intent &&
+        (intent.project_ref !== rootIntent.project_ref ||
+          intent.actor_user_id !== rootIntent.actor_user_id)))
+  )
+    throw new CliError(
+      'Existing-draft root qualification requires candidate policy and consistent reference actor/project bindings.',
+      { code: 'DATASET_EXISTING_DRAFT_ROOT_INVALID', exitCode: 2 },
+    );
   const compareRootPayload = options.compareRootPayload === true;
   const targetUserId = trimToken(options.targetUserId);
   const stateCode = options.stateCode ?? null;
@@ -1051,9 +1114,14 @@ export async function runDatasetRemoteVerify(
             fetchImpl,
             timeoutMs,
             request,
+            ...(rootIntent
+              ? { ownerDraftUserId: rootIntent.actor_user_id, requireUnique: true }
+              : {}),
           })
       : null);
-  if (intent) {
+  const verifyBoundIdentity = async () => {
+    const binding = rootIntent ?? intent;
+    if (!binding) return;
     const observed = options.resolveReferenceIdentityImpl
       ? await options.resolveReferenceIdentityImpl()
       : await (async () => {
@@ -1061,19 +1129,44 @@ export async function runDatasetRemoteVerify(
             env: environment,
             fetchImpl,
             cliVersion: loadCliPackageVersion(new URL('../cli.js', import.meta.url).href),
-            expectedProjectRef: intent.project_ref,
-            expectedUserId: intent.actor_user_id,
+            expectedProjectRef: binding.project_ref,
+            expectedUserId: binding.actor_user_id,
             timeoutMs,
             now: options.now,
           });
           return { project_ref: receipt.project.project_ref, user_id: receipt.identity.user_id };
         })();
-    if (observed.project_ref !== intent.project_ref || observed.user_id !== intent.actor_user_id)
+    if (observed.project_ref !== binding.project_ref || observed.user_id !== binding.actor_user_id)
       throw new CliError(
-        'Exact-reference intent differs from the current verified actor or project.',
-        { code: 'DATASET_REFERENCE_INTENT_IDENTITY_MISMATCH', exitCode: 2 },
+        'Selected verification evidence differs from the current verified actor or project.',
+        {
+          code: rootIntent
+            ? 'DATASET_EXISTING_DRAFT_ROOT_IDENTITY_MISMATCH'
+            : 'DATASET_REFERENCE_INTENT_IDENTITY_MISMATCH',
+          exitCode: 2,
+        },
       );
-  }
+  };
+  await verifyBoundIdentity();
+  let rootLookupFailed = false;
+  const observeRoot = async (): Promise<ExistingDraftRootObservation | null> => {
+    if (!rootIntent) return null;
+    const request = {
+      id: rootIntent.candidate.id,
+      version: rootIntent.candidate.version,
+      actorUserId: rootIntent.actor_user_id,
+    };
+    try {
+      if (options.observeExistingDraftRootImpl)
+        return await options.observeExistingDraftRootImpl(request);
+      if (!runtime) throw new Error('Existing-draft root transport is unavailable.');
+      return await observeExistingDraftRoot({ ...request, runtime, fetchImpl, timeoutMs });
+    } catch {
+      rootLookupFailed = true;
+      return null;
+    }
+  };
+  const initialRoot = await observeRoot();
   const referencePins = new Map(
     intent?.references.map((pin) => [`${pin.row_index}:reference:${pin.path}`, pin]),
   );
@@ -1189,7 +1282,7 @@ export async function runDatasetRemoteVerify(
     const rootChecks = checks.filter(
       (check) =>
         check.role === 'root' &&
-        check.status === 'ok' &&
+        (check.status === 'ok' || (rootIntent && check.row_index === 0)) &&
         check.table &&
         check.id &&
         (compareRootPayload || rootPolicy !== 'candidate' || Boolean(check.exact_version)),
@@ -1230,6 +1323,25 @@ export async function runDatasetRemoteVerify(
     }
   }
 
+  if (rootIntent) {
+    const rechecked = await observeRoot();
+    await verifyBoundIdentity();
+    const index = checks.findIndex((check) => check.role === 'root' && check.row_index === 0);
+    checks[index] = evaluateExistingDraftRoot({
+      intent: rootIntent,
+      check: checks[index]!,
+      initial: initialRoot,
+      rechecked,
+      lookupFailed: rootLookupFailed,
+    });
+    assertExistingDraftRootInputsCurrent(
+      rootIntent,
+      exactReferenceConsumers(
+        options.rawInput === undefined ? readDatasetRowsInput(inputPath) : rows,
+      ),
+    );
+  }
+
   const blockers = checks
     .map(blockerFromCheck)
     .filter((blocker): blocker is RemoteVerificationBlocker => blocker !== null);
@@ -1258,6 +1370,7 @@ export async function runDatasetRemoteVerify(
   const report: DatasetRemoteVerificationReport = {
     schema_version: 1,
     ...(intent ? { reference_intent: intent } : {}),
+    ...(rootIntent ? { existing_draft_root: rootIntent } : {}),
     generated_at_utc: nowIso(options.now),
     status: blockers.length > 0 ? 'blocked_remote_verification' : 'passed_remote_verification',
     root_policy: rootPolicy,

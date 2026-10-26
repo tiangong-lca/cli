@@ -1591,6 +1591,7 @@ Options:
   --input <file>         Local rows as JSON or JSONL; objects with rows[] are also accepted
   --out-dir <dir>        Artifact directory for the remote verification report
   --reference-intent-file <file> Explicit consumer/content/review-bound exact-reference intent
+  --existing-draft-root-file <file> Explicit read-only qualification of one selected standalone Process owner draft; requires candidate policy
   --root-policy <mode>   existing | candidate (default: existing)
   --compare-root-payload Compare each root row payload hash against the remote row
   --target-user-id <id>  Require root readback rows to belong to this user
@@ -4146,12 +4147,23 @@ function parseDatasetRemoteVerifyFlags(args: string[]): {
   json: boolean;
   inputPath: string;
   referenceIntentFile: string | undefined;
+  existingDraftRootFile: string | undefined;
   outDir: string;
   rootPolicy: 'existing' | 'candidate';
   compareRootPayload: boolean;
   targetUserId: string | null;
   stateCode: number | null;
 } {
+  if (
+    args.filter(
+      (arg) =>
+        arg === '--existing-draft-root-file' || arg.startsWith('--existing-draft-root-file='),
+    ).length > 1
+  )
+    throw new CliError('Select exactly one existing-draft root file.', {
+      code: 'DATASET_EXISTING_DRAFT_ROOT_INVALID',
+      exitCode: 2,
+    });
   if (
     args.filter(
       (arg) => arg === '--reference-intent-file' || arg.startsWith('--reference-intent-file='),
@@ -4172,6 +4184,7 @@ function parseDatasetRemoteVerifyFlags(args: string[]): {
         json: { type: 'boolean' },
         input: { type: 'string' },
         'reference-intent-file': { type: 'string' },
+        'existing-draft-root-file': { type: 'string' },
         'out-dir': { type: 'string' },
         'root-policy': { type: 'string' },
         'compare-root-payload': { type: 'boolean' },
@@ -4186,6 +4199,15 @@ function parseDatasetRemoteVerifyFlags(args: string[]): {
     });
   }
 
+  const existingDraftRootFile =
+    typeof values['existing-draft-root-file'] === 'string'
+      ? values['existing-draft-root-file']
+      : undefined;
+  if (existingDraftRootFile !== undefined && !existingDraftRootFile.trim())
+    throw new CliError('Existing-draft root selection cannot be empty.', {
+      code: 'DATASET_EXISTING_DRAFT_ROOT_INVALID',
+      exitCode: 2,
+    });
   const referenceIntentFile =
     typeof values['reference-intent-file'] === 'string'
       ? values['reference-intent-file']
@@ -4219,6 +4241,7 @@ function parseDatasetRemoteVerifyFlags(args: string[]): {
     help: Boolean(values.help),
     json: Boolean(values.json),
     referenceIntentFile,
+    existingDraftRootFile,
     inputPath: typeof values.input === 'string' ? values.input : '',
     outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : '',
     rootPolicy,
@@ -8090,6 +8113,9 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
       }
 
       const report = await datasetRemoteVerifyImpl({
+        ...(datasetFlags.existingDraftRootFile !== undefined
+          ? { existingDraftRootFile: datasetFlags.existingDraftRootFile }
+          : {}),
         ...(datasetFlags.referenceIntentFile !== undefined
           ? { referenceIntentFile: datasetFlags.referenceIntentFile }
           : {}),

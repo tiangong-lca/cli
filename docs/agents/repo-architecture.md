@@ -195,6 +195,8 @@ Annual supply/production volume remains a separate evidence field. `process-requ
 
 Dataset-local governance now uses the same CLI-native command layer:
 
+`dataset-existing-draft-root-intent.ts` parses the explicit selected-root evidence, `dataset-existing-draft-root-remote.ts` observes current authenticated Process facts with complete census proofs, and `dataset-existing-draft-root.ts` evaluates the two observation sets. `dataset-remote-verify.ts` owns integration and report publication. The [root qualification contract](existing-draft-root-contract.md) is separate from reference intent and has no mutation or preparation-service dependency.
+
 - `src/lib/dataset-validate.ts`
 - `src/lib/dataset-save-draft-run.ts`
 - `src/lib/dataset-curation-queue.ts`

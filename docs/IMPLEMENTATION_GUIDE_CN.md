@@ -884,6 +884,8 @@ outputs/evidence-search-declaration.json
 
 `dataset verify-remote --reference-intent-file` 接受显式、绑定消费者/项目/当前账户/内容/评审文件的精确引用意图。它只对实际匹配的 reference occurrence 应用例外；root、未声明引用、缺失/不可见版本及变化后的 owner/state/payload/latest 证据仍阻断。现有身份凭据和 RLS GET 传输归 CLI 所有，Foundry 只负责选择、快照、传递与 handoff/readback 绑定。完整字段、哈希域及失败语义见 [精确引用意图契约](agents/exact-reference-intent-contract.md)。
 
+固定旧版 owner 草稿根使用独立的 `--root-policy candidate --existing-draft-root-file` 只读资格路径。首版仅接受单个独立 Process、唯一当前 owner0 草稿和空审核集合，绑定完整候选、前像、较新公开基线及兼容性评审，并在使用时重新观测。默认根规则与引用意图格式保持不变；通过结果不授予保存或新版本权限。输入、哈希、调用与漂移处理见 [既有草稿根合同](agents/existing-draft-root-contract.md)。
+
 `qa process` 现在固定的是“本地 process QA 契约层”。
 
 它负责：

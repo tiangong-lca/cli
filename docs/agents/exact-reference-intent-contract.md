@@ -33,6 +33,8 @@ related:
 
 `dataset verify-remote --reference-intent-file <file>` checks an explicitly reviewed physical definition even when a newer visible version exists. It is read-only observation, not a write grant, database lock, schema-validation substitute or general exception to current-user RLS. Without this option, the existing latest-version and root policies retain their previous behavior and report shape.
 
+An explicitly selected existing owner-draft Process root uses the separate [existing-draft root qualification](existing-draft-root-contract.md). Root declarations remain invalid in this reference-intent format, including when both options are selected. The two files must bind the same verified actor/project and complete input content.
+
 `dataset-exact-reference-intent.ts` owns strict local selection and observation evaluation. `dataset-remote-verify.ts` owns row/reference collection, the existing fresh auth-identity receipt, RLS GET transport, payload caching and report publication. Foundry owns explicit input selection, snapshot lineage and handoff/readback binding; it must not reproduce the CLI's eligibility policy.
 
 ## Intent input

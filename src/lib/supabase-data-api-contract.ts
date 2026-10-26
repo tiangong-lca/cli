@@ -66,6 +66,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/dataset-maintenance-clear-account.ts',
   ],
   processes: [
+    'src/lib/dataset-existing-draft-root-remote.ts',
     'src/lib/process-get.ts',
     'src/lib/process-list.ts',
     'src/lib/process-save-draft.ts',

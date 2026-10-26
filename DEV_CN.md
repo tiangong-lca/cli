@@ -932,3 +932,5 @@ Review note, 2026-09-21: independently reviewed CLI #283 annual-volume commit d4
 ### Guarded Flow exact-reference 开发验证
 
 `dataset save-draft --execution-contract --reference-intent-file` 仅在 Flow-only 合约中消费 #289 的显式选择。前检与 dispatch 前鲜检由 CLI 承担；Foundry 只绑定并传递 snapshot，不复制 eligibility。新增用例位于 `test/dataset-save-draft-exact-reference.test.ts`，覆盖同一完整 consumer 的 public dry-run／commit、正文和账号漂移、async gate、原 admission ledger 与 UNKNOWN 不重放。执行 `pnpm prepush:gate` 的全量证明后，仍须由原调用方资格通路完成实际 Task 回验；合成 transport 成功不代表生产或正式 runtime 采用。字段定义见 [exact-reference contract](docs/agents/exact-reference-intent-contract.md#guarded-flow-owner-drafts)。
+
+`dataset verify-remote --existing-draft-root-file` 的 [只读根资格合同](docs/agents/existing-draft-root-contract.md) 仅支持一个已选择的独立 Process owner0 草稿，使用现有身份凭据和 Process 关系 GET，并复用完整分页证明。它不依赖草稿创建 RPC，不改变 OAuth、安装版本或默认根策略。候选交付应保留精确构建与 `runtime describe`，由原调用方使用支持的隔离入口回验；完整本地门禁及原流程通过分别记录。

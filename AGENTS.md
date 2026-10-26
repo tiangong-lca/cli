@@ -75,6 +75,8 @@ Guarded Flow-only `dataset save-draft --execution-contract --reference-intent-fi
 
 Explicit exact-reference verification follows `docs/agents/exact-reference-intent-contract.md`. Keep strict consumer/actor/reference/review binding and current input rechecks in the CLI owner; preserve default latest/root policy and current-user RLS. Foundry transports the evidence without implementing eligibility or treating a review file as write authority.
 
+Selected older owner-draft Process root verification follows `docs/agents/existing-draft-root-contract.md`. Its separate explicit read-only qualification binds the candidate, complete current selection, before-image and public baseline; default root policies and reference-only intent remain unchanged.
+
 ## Bootstrap Order
 
 Load docs in this order:

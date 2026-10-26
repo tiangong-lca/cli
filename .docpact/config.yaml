@@ -336,6 +336,7 @@ docInventory:
   include:
     - docs/agents/dependency-maintenance.md
     - docs/agents/exact-reference-intent-contract.md
+    - docs/agents/existing-draft-root-contract.md
     - docs/agents/runtime-distribution-contract.md
     - docs/agents/live-case-testing.md
     - AGENTS.md
@@ -749,6 +750,23 @@ rules:
       - path: docs/agents/repo-validation.md
         mode: review_or_update
     reason: Local push documentation governance gates must stay aligned with repo validation guidance and docpact configuration.
+
+  - id: cli-existing-draft-root-contract
+    scope: repo
+    repo: cli
+    triggers:
+      - path: src/lib/dataset-existing-draft-root*.ts
+        kind: command-logic
+      - path: src/lib/dataset-remote-verify.ts
+        kind: command-logic
+      - path: test/dataset-existing-draft-root*.test.ts
+        kind: validation
+      - path: docs/agents/existing-draft-root-contract.md
+        kind: doc-contract
+    requiredDocs:
+      - path: docs/agents/existing-draft-root-contract.md
+        mode: review_or_update
+    reason: Explicit existing-draft root qualification must bind the complete selected draft, current identity, before-image, candidate and public compatibility baseline without changing default or reference-only policy.
 
   - id: cli-exact-reference-intent-contract
     scope: repo
