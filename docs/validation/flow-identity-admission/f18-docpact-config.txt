@@ -1,0 +1,14 @@
+{
+  "schema_version": "docpact.validate-config.v1",
+  "tool_name": "docpact",
+  "tool_version": "0.1.9",
+  "command": "validate-config",
+  "summary": {
+    "status": "ok",
+    "strict": true,
+    "rule_count": 17,
+    "problem_count": 0
+  },
+  "warnings": [],
+  "problems": []
+}

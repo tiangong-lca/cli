@@ -73,6 +73,8 @@ Process QA consumes explicitly selected exact Flow/Flow Property/Unit Group evid
 
 Guarded Flow-only `dataset save-draft --execution-contract --reference-intent-file` also follows the exact-reference contract: reuse its parser/evaluator, reobserve immediately before dispatch, await the transport gate, and retain per-action admission in the original consumed ledger. Foundry owns selection/snapshots and runtime continuation, not CLI eligibility.
 
+For the opt-in Flow identity prepare/save v2 profile, follow [scoped identity admission](docs/agents/flow-identity-admission.md), including the original host pin, actual Agent provenance, bounded read scopes and consumed-operation recovery.
+
 Explicit exact-reference verification follows `docs/agents/exact-reference-intent-contract.md`. Keep strict consumer/actor/reference/review binding and current input rechecks in the CLI owner; preserve default latest/root policy and current-user RLS. Foundry transports the evidence without implementing eligibility or treating a review file as write authority.
 
 ## Bootstrap Order

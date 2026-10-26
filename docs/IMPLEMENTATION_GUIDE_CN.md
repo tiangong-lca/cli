@@ -749,6 +749,8 @@ outputs/evidence-search-declaration.json
 
 ### 4.4 process / review / publish / validation 的当前边界
 
+`flow identity-admission prepare` 提供单个新 Product/Waste Flow 的显式 Agent 裁决绑定，详见[身份准入合同](agents/flow-identity-admission.md)。完整 target、候选、真实审查/站立授权来源和有界检索证据形成离线 receipt；save v2 必须消费原宿主独立固定的合同原字节 hash，复查当前正文、覆盖范围、owner 和期限后才进入既有 writer。并发恢复与原写入共用操作锁；动态观察留在原 attempt，不进入重放身份。旧 v1、无合同及 Process 入口不变，不声称全渠道强制门禁或人工审核资格。
+
 `process auto-build` 现在固定的是“本地 process-from-flow intake 与 scaffold 契约层”。
 
 它负责：

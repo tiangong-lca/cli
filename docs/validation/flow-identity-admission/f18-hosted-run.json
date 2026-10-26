@@ -1,0 +1,252 @@
+{
+  "source": "GitHub Actions API run/jobs metadata and read-only job log inspection",
+  "run": {
+    "id": 39410863313,
+    "html_url": "https://github.com/changmillet/tiangong-cli/actions/runs/39410863313",
+    "head_sha": "f18f94f3ce2b6e9d6877b79c03ae521af8b2ca7f",
+    "head_branch": "codex/cli-374-identity-admission-20261020",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "run_attempt": 1,
+    "created_at": "2026-10-20T10:51:24Z",
+    "updated_at": "2026-10-20T10:57:31Z",
+    "path": ".github/workflows/quality-gate.yml",
+    "name": "quality-gate"
+  },
+  "jobs": [
+    {
+      "id": 118588004963,
+      "name": "quality-gate (windows-latest / x64)",
+      "html_url": "https://github.com/changmillet/tiangong-cli/actions/runs/39410863313/job/118588004963",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-20T10:51:27Z",
+      "completed_at": "2026-10-20T10:56:58Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Checkout",
+          "conclusion": "success"
+        },
+        {
+          "name": "Set up pnpm and Node.js",
+          "conclusion": "success"
+        },
+        {
+          "name": "Assert runner platform and architecture",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify Windows bootstrap HTTP behavior",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run canonical prepush gate",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Set up pnpm and Node.js",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Checkout",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ],
+      "observed_log_facts": {
+        "checkout_head_present": true,
+        "node_24_19_0_present": true,
+        "pnpm_11_24_0_present": true,
+        "native_platform_assertions": ["{\"ok\":true,\"platform\":\"win32\",\"arch\":\"x64\"}"],
+        "canonical_gate_command_present": true
+      }
+    },
+    {
+      "id": 118588005132,
+      "name": "quality-gate (macos-latest / arm64)",
+      "html_url": "https://github.com/changmillet/tiangong-cli/actions/runs/39410863313/job/118588005132",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-20T10:51:31Z",
+      "completed_at": "2026-10-20T10:57:30Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Checkout",
+          "conclusion": "success"
+        },
+        {
+          "name": "Set up pnpm and Node.js",
+          "conclusion": "success"
+        },
+        {
+          "name": "Assert runner platform and architecture",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify Windows bootstrap HTTP behavior",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Run canonical prepush gate",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Set up pnpm and Node.js",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Checkout",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ],
+      "observed_log_facts": {
+        "checkout_head_present": true,
+        "node_24_19_0_present": true,
+        "pnpm_11_24_0_present": true,
+        "native_platform_assertions": ["{\"ok\":true,\"platform\":\"darwin\",\"arch\":\"arm64\"}"],
+        "canonical_gate_command_present": true
+      }
+    },
+    {
+      "id": 118588005164,
+      "name": "quality-gate (ubuntu-latest / x64)",
+      "html_url": "https://github.com/changmillet/tiangong-cli/actions/runs/39410863313/job/118588005164",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-20T10:51:28Z",
+      "completed_at": "2026-10-20T10:55:53Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Checkout",
+          "conclusion": "success"
+        },
+        {
+          "name": "Set up pnpm and Node.js",
+          "conclusion": "success"
+        },
+        {
+          "name": "Assert runner platform and architecture",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify Windows bootstrap HTTP behavior",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Run canonical prepush gate",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Set up pnpm and Node.js",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Checkout",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ],
+      "observed_log_facts": {
+        "checkout_head_present": true,
+        "node_24_19_0_present": true,
+        "pnpm_11_24_0_present": true,
+        "native_platform_assertions": ["{\"ok\":true,\"platform\":\"linux\",\"arch\":\"x64\"}"],
+        "canonical_gate_command_present": true
+      }
+    },
+    {
+      "id": 118588005181,
+      "name": "quality-gate (ubuntu-24.04-arm / arm64)",
+      "html_url": "https://github.com/changmillet/tiangong-cli/actions/runs/39410863313/job/118588005181",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-20T10:51:30Z",
+      "completed_at": "2026-10-20T10:55:02Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Checkout",
+          "conclusion": "success"
+        },
+        {
+          "name": "Set up pnpm and Node.js",
+          "conclusion": "success"
+        },
+        {
+          "name": "Assert runner platform and architecture",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install dependencies",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify Windows bootstrap HTTP behavior",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Run canonical prepush gate",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Set up pnpm and Node.js",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Checkout",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ],
+      "observed_log_facts": {
+        "checkout_head_present": true,
+        "node_24_19_0_present": true,
+        "pnpm_11_24_0_present": true,
+        "native_platform_assertions": ["{\"ok\":true,\"platform\":\"linux\",\"arch\":\"arm64\"}"],
+        "canonical_gate_command_present": true
+      }
+    }
+  ],
+  "availability": "Metadata and all four complete job logs were readable with gh at evidence preparation; hosted log retention is controlled by GitHub."
+}

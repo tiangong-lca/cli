@@ -146,6 +146,7 @@ import {
   type RunFlowIdentityPreflightOptions,
   type RunProcessIdentityPreflightOptions,
 } from './lib/identity-preflight.js';
+import { runFlowIdentityAdmissionPrepare } from './lib/flow-identity-admission.js';
 import { runPublish, type PublishReport, type RunPublishOptions } from './lib/publish.js';
 import { runProcessQa, type ProcessQaReport, type RunProcessQaOptions } from './lib/process-qa.js';
 import { runFlowQa, type FlowQaReport, type RunFlowQaOptions } from './lib/flow-qa.js';
@@ -582,7 +583,7 @@ Implemented Commands:
   search     flow | process | lifecyclemodel
   process    get | list | identity-preflight | build-plan | scope-statistics | dedup-review | auto-build | resume-build | publish-build | complete-required-fields | save-draft | batch-build | refresh-references | verify-rows
   dataset    support-cache export | contract get | context-pack | classification children/path/audit/apply | curation-queue build/next/verify | import-lca convert | author | patch apply | save-draft | source upload-attachments | validate | verify-remote | bilingual extract/apply/validate | evidence-search plan/run | references rewrite/refresh-remote | maintenance clear-account/plan/apply/verify/flow-identity
-  flow       get | list | identity-preflight | build-plan | fetch-rows | materialize-decisions | remediate | publish-version | publish-reviewed-data | build-alias-map | scan-process-flow-refs | plan-process-flow-repairs | apply-process-flow-repairs | regen-product | validate-processes
+  flow       get | list | identity-preflight | identity-admission | build-plan | fetch-rows | materialize-decisions | remediate | publish-version | publish-reviewed-data | build-alias-map | scan-process-flow-refs | plan-process-flow-repairs | apply-process-flow-repairs | regen-product | validate-processes
   lifecyclemodel auto-build | validate-build | publish-build | save-draft | graph | build-resulting-process | publish-resulting-process | orchestrate
   qa         process | flow | lifecyclemodel
   publish    run
@@ -1623,6 +1624,8 @@ Options:
                    with append-only attempt/readback evidence. Without --commit: preflight the exact
                    owner/state/before/content contract state, block the report on any failure, dispatch
                    nothing and create no attempt or ledger
+  --execution-contract-sha256 <sha256>
+                   Required original host-pinned raw contract hash for the identity-admitted v2 profile
   --reference-intent-file <file>
                    Explicit #289 consumer/occurrence/review evidence for a Flow-only execution contract.
                    Rechecked before dispatch; consumed attempts require the original selection for recovery
@@ -1857,6 +1860,7 @@ Implemented Subcommands:
   get          Load one flow dataset by identifier through direct Supabase access
   list         Enumerate flow datasets through direct Supabase access with deterministic filters
   identity-preflight Compare one target flow against local candidates before generation
+  identity-admission prepare  Bind an agent review and bounded coverage to one new owner Flow
   build-plan  Validate or materialize a flow build plan into gate artifacts
   fetch-rows   Materialize real DB flow refs into local qa-input rows and fetch artifacts
   materialize-decisions Materialize approved merge decisions into canonical-map, rewrite-plan, and seed artifacts
@@ -3475,9 +3479,21 @@ function parseDatasetSaveDraftFlags(args: string[]): {
   commit: boolean;
   allowReferenceOnlySupport: boolean;
   executionContractPath: string | null;
+  executionContractSha256: string | undefined;
   referenceIntentFile: string | undefined;
   maxParallel: number;
 } {
+  if (
+    args.filter(
+      (arg) =>
+        arg === '--execution-contract-sha256' || arg.startsWith('--execution-contract-sha256='),
+    ).length > 1
+  ) {
+    throw new CliError('Select exactly one original execution contract hash.', {
+      code: 'INVALID_ARGS',
+      exitCode: 2,
+    });
+  }
   if (
     args.filter(
       (arg) => arg === '--reference-intent-file' || arg.startsWith('--reference-intent-file='),
@@ -3503,6 +3519,7 @@ function parseDatasetSaveDraftFlags(args: string[]): {
         'dry-run': { type: 'boolean' },
         'allow-account-local-support': { type: 'boolean' },
         'execution-contract': { type: 'string' },
+        'execution-contract-sha256': { type: 'string' },
         'reference-intent-file': { type: 'string' },
         'max-parallel': { type: 'string' },
       },
@@ -3545,6 +3562,10 @@ function parseDatasetSaveDraftFlags(args: string[]): {
     allowReferenceOnlySupport: Boolean(values['allow-account-local-support']),
     executionContractPath:
       typeof values['execution-contract'] === 'string' ? values['execution-contract'] : null,
+    executionContractSha256:
+      typeof values['execution-contract-sha256'] === 'string'
+        ? values['execution-contract-sha256']
+        : undefined,
     referenceIntentFile:
       typeof values['reference-intent-file'] === 'string'
         ? values['reference-intent-file']
@@ -8006,6 +8027,9 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
         commit: datasetFlags.commit,
         allowReferenceOnlySupport: datasetFlags.allowReferenceOnlySupport,
         executionContractPath: datasetFlags.executionContractPath,
+        ...(datasetFlags.executionContractSha256 !== undefined
+          ? { executionContractSha256: datasetFlags.executionContractSha256 }
+          : {}),
         ...(datasetFlags.referenceIntentFile !== undefined
           ? { referenceIntentFile: datasetFlags.referenceIntentFile }
           : {}),
@@ -9666,6 +9690,78 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
         stdout: stringifyJson(report, flowFlags.json),
         stderr: '',
       };
+    }
+
+    if (command === 'flow' && subcommand === 'identity-admission') {
+      const help = `Usage:
+  tiangong-lca flow identity-admission prepare --input <file> --preflight <file>
+    --review <file> --coverage <file> --execution-contract <file> --out-dir <fresh-dir> [--json]
+
+Prepare a content-bound agent review for one new Product or Waste Flow owner-draft insert.
+All inputs are local, complete and hash-bound. This command does not authenticate a reviewer,
+grant permissions, search the whole catalogue or write remote data. A reuse decision emits
+no insert contract. The nominated host must independently pin the returned raw contract SHA.
+The v2 save profile rechecks current bounded coverage, content, owner and expiry before dispatch.
+Existing preflight, v1 save and other entrypoints keep their behavior.
+
+Outputs: identity-admission.json and, for create_distinct, execution-contract.json.
+Options: --help, -h; --json. See docs/agents/flow-identity-admission.md for the strict input schemas.`;
+      const action = commandArgs[0];
+      if (!action || action === '--help' || action === '-h')
+        return { exitCode: 0, stdout: `${help}\n`, stderr: '' };
+      if (action !== 'prepare')
+        throw new CliError("flow identity-admission action must be 'prepare'.", {
+          code: 'INVALID_ARGS',
+          exitCode: 2,
+        });
+      const args = commandArgs.slice(1);
+      const names = ['input', 'preflight', 'review', 'coverage', 'execution-contract', 'out-dir'];
+      for (const name of names) {
+        if (args.filter((arg) => arg === `--${name}` || arg.startsWith(`--${name}=`)).length > 1)
+          throw new CliError('Identity admission inputs must be selected exactly once.', {
+            code: 'INVALID_ARGS',
+            exitCode: 2,
+          });
+      }
+      let values: ReturnType<typeof parseArgs>['values'];
+      try {
+        ({ values } = parseArgs({
+          args,
+          allowPositionals: false,
+          strict: true,
+          options: {
+            help: { type: 'boolean', short: 'h' },
+            json: { type: 'boolean' },
+            input: { type: 'string' },
+            preflight: { type: 'string' },
+            review: { type: 'string' },
+            coverage: { type: 'string' },
+            'execution-contract': { type: 'string' },
+            'out-dir': { type: 'string' },
+          },
+        }));
+      } catch (error) {
+        throw new CliError(String(error), { code: 'INVALID_ARGS', exitCode: 2 });
+      }
+      if (values.help) return { exitCode: 0, stdout: `${help}\n`, stderr: '' };
+      const required = (name: string): string => {
+        const value = values[name];
+        if (typeof value !== 'string' || !value.trim())
+          throw new CliError(`Identity admission prepare requires --${name}.`, {
+            code: 'INVALID_ARGS',
+            exitCode: 2,
+          });
+        return value;
+      };
+      const report = await runFlowIdentityAdmissionPrepare({
+        inputPath: required('input'),
+        preflightPath: required('preflight'),
+        reviewPath: required('review'),
+        coveragePath: required('coverage'),
+        executionContractPath: required('execution-contract'),
+        outDir: required('out-dir'),
+      });
+      return { exitCode: 0, stdout: stringifyJson(report, Boolean(values.json)), stderr: '' };
     }
 
     if (command === 'flow' && subcommand === 'identity-preflight') {

@@ -5,10 +5,18 @@ import {
 // data-api-relations: contacts, flowproperties, flows, processes, sources, unitgroups
 // data-api-dynamic-relation-expression: options.table
 import { closeSync, chmodSync, fsyncSync, mkdirSync, openSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
 import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
-import { createBatchContract, runBoundedBatch, type BatchJsonValue } from '../batch.js';
+import {
+  createBatchContract,
+  runBoundedBatch,
+  withBatchRunLock,
+  BatchRunLockIdentityConflictError,
+  BatchRunLockTimeoutError,
+  type BatchJsonValue,
+} from '../batch.js';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
 import { collectImportContentIssues } from './dataset-validate.js';
 import {
@@ -41,6 +49,18 @@ import {
   isSaveDraftReferenceAdmission,
   type SaveDraftReferenceAdmission,
 } from './dataset-save-draft-reference-intent.js';
+import {
+  loadFlowIdentityAdmission,
+  assertFlowIdentityAdmissionInputsCurrent,
+  assertFlowIdentityAdmissionUnexpired,
+  flowIdentityAdmissionSummary,
+  isFlowIdentityAdmissionSummary,
+  type FlowIdentityAdmissionFileFact,
+  type FlowIdentityAdmissionAction,
+  type FlowIdentityAdmissionSummary,
+  type LoadedFlowIdentityAdmission,
+} from './flow-identity-admission.js';
+import { verifyFlowIdentityCoverage } from './flow-identity-admission-remote.js';
 import type { FetchLike } from './http.js';
 import {
   normalizeIssuePath,
@@ -52,10 +72,12 @@ import { validateProcessPayload } from './process-payload-validation.js';
 import { buildDatasetCommandTransport } from './dataset-command.js';
 import {
   createSupabaseDataClient,
+  deriveSupabaseRestBaseUrl,
   requireSupabaseRestRuntime,
   runSupabaseArrayQuery,
   type SupabaseDataRuntime,
 } from './supabase-client.js';
+import { CORE_PUBLIC_RELATIONS } from './supabase-data-api-contract.js';
 import { createSupabaseDataRuntime } from './supabase-session.js';
 import {
   collectRemoteReferences,
@@ -79,6 +101,7 @@ import {
 } from './dataset-validation-layers.js';
 
 type JsonObject = Record<string, unknown>;
+type IdentityCoverageObservation = Awaited<ReturnType<typeof verifyFlowIdentityCoverage>>;
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -163,6 +186,8 @@ export type DatasetSaveDraftRowReport = {
   readback?: 'desired_exact' | 'not_desired' | 'not_performed';
   draft_repair_admission?: DraftRepairAdmission;
   reference_intent_admission?: SaveDraftReferenceAdmission;
+  identity_admission?: FlowIdentityAdmissionSummary;
+  identity_observation?: IdentityCoverageObservation;
 };
 
 export type DatasetSaveDraftReport = {
@@ -223,6 +248,9 @@ export type RunDatasetSaveDraftOptions = {
   allowReferenceOnlySupport?: boolean | null;
   executionContractPath?: string | null;
   referenceIntentFile?: string;
+  executionContractSha256?: string;
+  /** The identity admission clock is sampled at each fresh check, including immediately before dispatch. */
+  identityAdmissionClock?: () => Date;
   maxParallel?: number | null;
 };
 
@@ -235,10 +263,16 @@ type DatasetSaveDraftExecutionAction = {
   version: string;
   before_sha256: string | null;
   dependency_action_ids: string[];
+  identity_admission?: {
+    schema_version: 'flow-identity-admission.v1';
+    receipt: FlowIdentityAdmissionFileFact;
+  };
 };
 
 type DatasetSaveDraftExecutionContract = {
-  schema_version: 'dataset-save-draft-execution-contract.v1';
+  schema_version:
+    'dataset-save-draft-execution-contract.v1' | 'dataset-save-draft-execution-contract.v2';
+  profile?: 'flow-identity-admitted-insert.v1';
   execution_id: string;
   project_ref: string;
   target_mode: 'owner_draft';
@@ -251,7 +285,7 @@ type DatasetSaveDraftExecutionContract = {
 };
 
 type DatasetSaveDraftLedgerEvent = {
-  schema_version: 'dataset-save-draft-execution-event.v1';
+  schema_version: 'dataset-save-draft-execution-event.v1' | 'dataset-save-draft-execution-event.v2';
   sequence: number;
   contract_sha256: string;
   action_id: string;
@@ -266,6 +300,8 @@ type DatasetSaveDraftLedgerEvent = {
   // admission so a later recovery can return the original evidence instead of re-inventing it.
   draft_repair_admission?: DraftRepairAdmission;
   reference_intent_admission?: SaveDraftReferenceAdmission;
+  identity_admission?: FlowIdentityAdmissionSummary;
+  identity_observation?: IdentityCoverageObservation;
   previous_event_sha256: string | null;
   event_sha256: string;
 };
@@ -296,6 +332,24 @@ function isLedgerRepairAdmission(value: unknown): value is DraftRepairAdmission 
     SHA256_PATTERN.test(value.desired_sha256) &&
     value.changed_paths.length > 0 &&
     value.changed_paths.every((path) => typeof path === 'string' && path.length > 0)
+  );
+}
+
+function isIdentityCoverageObservation(value: unknown): value is IdentityCoverageObservation {
+  return (
+    isRecord(value) &&
+    Object.keys(value).sort().join(',') ===
+      'candidate_count,coverage_sha256,observed_at_utc,query_count,scope' &&
+    value.scope === 'bounded_visible_search' &&
+    typeof value.observed_at_utc === 'string' &&
+    Number.isFinite(Date.parse(value.observed_at_utc)) &&
+    new Date(value.observed_at_utc).toISOString() === value.observed_at_utc &&
+    typeof value.coverage_sha256 === 'string' &&
+    SHA256_PATTERN.test(value.coverage_sha256) &&
+    Number.isSafeInteger(value.query_count) &&
+    Number(value.query_count) > 0 &&
+    Number.isSafeInteger(value.candidate_count) &&
+    Number(value.candidate_count) >= 0
   );
 }
 
@@ -398,6 +452,30 @@ function executionContractError(message: string): never {
   });
 }
 
+function safeIdentityError(error: unknown): CliError {
+  const safeCodes = new Set([
+    'FLOW_IDENTITY_ADMISSION_INVALID',
+    'FLOW_IDENTITY_COVERAGE_INVALID',
+    'FLOW_IDENTITY_COVERAGE_READ_FAILED',
+    'FLOW_IDENTITY_COVERAGE_DRIFT',
+    'DATASET_SAVE_DRAFT_EXECUTION_CONTRACT_INVALID',
+    'DATASET_SAVE_DRAFT_RUNTIME_REQUIRED',
+    'DATASET_SAVE_DRAFT_EXECUTION_BEFORE_DRIFT',
+    'DATASET_SAVE_DRAFT_REMOTE_REFERENCE_UNRESOLVED',
+    'DATASET_COMMAND_BEFORE_DISPATCH_FAILED',
+  ]);
+  const code =
+    error instanceof BatchRunLockIdentityConflictError || error instanceof BatchRunLockTimeoutError
+      ? 'FLOW_IDENTITY_OPERATION_BUSY'
+      : error instanceof CliError && safeCodes.has(error.code)
+        ? error.code
+        : 'FLOW_IDENTITY_ADMISSION_FAILED';
+  return new CliError(
+    'Identity-admitted operation failed. Keep the original inputs and attempt for diagnosis or readback recovery.',
+    { code, exitCode: error instanceof CliError ? error.exitCode : 1, details: { code } },
+  );
+}
+
 function requireExecutionToken(value: unknown, label: string): string {
   const normalized = trimToken(value);
   return normalized ?? executionContractError(`${label} must be a non-empty string.`);
@@ -410,12 +488,53 @@ function requireExecutionSha(value: unknown, label: string): string {
     : executionContractError(`${label} must be a lowercase SHA-256 digest.`);
 }
 
+function requireExecutionKeys(value: JsonObject, keys: string[]): void {
+  if (Object.keys(value).sort().join(',') !== keys.sort().join(',')) {
+    executionContractError(
+      'Identity-admitted execution contract has missing or unsupported fields.',
+    );
+  }
+}
+
+/** The selected profile fences every core relation read before it reaches the server. */
+function identityScopedFetch(
+  fetchImpl: FetchLike,
+  apiBaseUrl: string,
+  ownerUserId: string,
+): FetchLike {
+  const rest = new URL(`${deriveSupabaseRestBaseUrl(apiBaseUrl)}/`);
+  return (input, init) => {
+    const url = new URL(input);
+    const table = url.pathname.slice(rest.pathname.length);
+    if (
+      ['GET', 'HEAD'].includes(init?.method ?? 'GET') &&
+      url.origin === rest.origin &&
+      url.pathname.startsWith(rest.pathname) &&
+      (CORE_PUBLIC_RELATIONS as readonly string[]).includes(table)
+    ) {
+      const existing = url.searchParams.getAll('and');
+      if (
+        existing.length > 1 ||
+        (existing.length === 1 && (!existing[0]!.startsWith('(') || !existing[0]!.endsWith(')')))
+      ) {
+        executionContractError('Unsupported compound read scope for identity admission.');
+      }
+      const scope = `or(and(state_code.gte.100,state_code.lt.200),and(state_code.eq.0,user_id.eq.${ownerUserId}))`;
+      const prior = existing[0]?.slice(1, -1);
+      url.searchParams.set('and', `(${prior ? `${prior},` : ''}${scope})`);
+      return fetchImpl(url.toString(), init);
+    }
+    return fetchImpl(input, init);
+  };
+}
+
 function parseExecutionContract(value: unknown): DatasetSaveDraftExecutionContract {
   if (!isRecord(value)) {
     executionContractError('Execution contract must be a JSON object.');
   }
+  const identityProfile = value.schema_version === 'dataset-save-draft-execution-contract.v2';
   if (
-    value.schema_version !== 'dataset-save-draft-execution-contract.v1' ||
+    (!identityProfile && value.schema_version !== 'dataset-save-draft-execution-contract.v1') ||
     value.target_mode !== 'owner_draft' ||
     !isRecord(value.owner) ||
     value.owner.state_code !== 0 ||
@@ -423,6 +542,21 @@ function parseExecutionContract(value: unknown): DatasetSaveDraftExecutionContra
     value.actions.length === 0
   ) {
     executionContractError('Execution contract header is invalid.');
+  }
+  if (identityProfile) {
+    requireExecutionKeys(value, [
+      'schema_version',
+      'profile',
+      'execution_id',
+      'project_ref',
+      'target_mode',
+      'owner',
+      'actions',
+    ]);
+    requireExecutionKeys(value.owner, ['user_id', 'email', 'state_code']);
+    if (value.profile !== 'flow-identity-admitted-insert.v1' || value.actions.length !== 1) {
+      executionContractError('Identity admission requires the single Flow insert profile.');
+    }
   }
   const executionId = requireExecutionToken(value.execution_id, 'execution_id');
   const projectRef = requireExecutionToken(value.project_ref, 'project_ref');
@@ -433,6 +567,34 @@ function parseExecutionContract(value: unknown): DatasetSaveDraftExecutionContra
   for (const [index, rawAction] of value.actions.entries()) {
     if (!isRecord(rawAction) || !Array.isArray(rawAction.dependency_action_ids)) {
       executionContractError(`actions[${index}] is invalid.`);
+    }
+    if (identityProfile) {
+      requireExecutionKeys(rawAction, [
+        'action_id',
+        'desired_sha256',
+        'expected_operation',
+        'table',
+        'id',
+        'version',
+        'before_sha256',
+        'dependency_action_ids',
+        'identity_admission',
+      ]);
+      if (
+        rawAction.table !== 'flows' ||
+        rawAction.expected_operation !== 'insert' ||
+        rawAction.before_sha256 !== null ||
+        rawAction.dependency_action_ids.length !== 0 ||
+        !isRecord(rawAction.identity_admission) ||
+        !isRecord(rawAction.identity_admission.receipt)
+      ) {
+        executionContractError('Identity admission requires one fixed new Flow and a receipt.');
+      }
+      requireExecutionKeys(rawAction.identity_admission, ['schema_version', 'receipt']);
+      requireExecutionKeys(rawAction.identity_admission.receipt, ['path', 'sha256', 'bytes']);
+      if (rawAction.identity_admission.schema_version !== 'flow-identity-admission.v1') {
+        executionContractError('Identity admission receipt version is unsupported.');
+      }
     }
     const actionId = requireExecutionToken(rawAction.action_id, `actions[${index}].action_id`);
     if (seen.has(actionId)) {
@@ -482,11 +644,20 @@ function parseExecutionContract(value: unknown): DatasetSaveDraftExecutionContra
       version: requireExecutionToken(rawAction.version, `actions[${index}].version`),
       before_sha256: beforeSha,
       dependency_action_ids: dependencies,
+      ...(identityProfile
+        ? {
+            identity_admission:
+              rawAction.identity_admission as DatasetSaveDraftExecutionAction['identity_admission'],
+          }
+        : {}),
     });
     seen.add(actionId);
   }
   return {
-    schema_version: 'dataset-save-draft-execution-contract.v1',
+    schema_version: identityProfile
+      ? 'dataset-save-draft-execution-contract.v2'
+      : 'dataset-save-draft-execution-contract.v1',
+    ...(identityProfile ? { profile: 'flow-identity-admitted-insert.v1' as const } : {}),
     execution_id: executionId,
     project_ref: projectRef,
     target_mode: 'owner_draft',
@@ -523,9 +694,14 @@ function bindExecutionContractRows(
   });
 }
 
-function executionActionBindingSha256(action: DatasetSaveDraftExecutionAction): string {
+function executionActionBindingSha256(
+  action: DatasetSaveDraftExecutionAction,
+  contractSha256?: string,
+): string {
   return sha256Json({
-    schema_version: 'dataset-save-draft-action-binding.v1',
+    schema_version: action.identity_admission
+      ? 'dataset-save-draft-action-binding.v2'
+      : 'dataset-save-draft-action-binding.v1',
     action_id: action.action_id,
     desired_sha256: action.desired_sha256,
     expected_operation: action.expected_operation,
@@ -533,6 +709,9 @@ function executionActionBindingSha256(action: DatasetSaveDraftExecutionAction): 
     id: action.id,
     version: action.version,
     before_sha256: action.before_sha256,
+    ...(action.identity_admission
+      ? { identity_admission: action.identity_admission, contract_sha256: contractSha256 }
+      : {}),
   });
 }
 
@@ -577,7 +756,9 @@ function parseLedgerEvent(value: unknown, index: number): DatasetSaveDraftLedger
   }
   const event = value as DatasetSaveDraftLedgerEvent;
   if (
-    event.schema_version !== 'dataset-save-draft-execution-event.v1' ||
+    !['dataset-save-draft-execution-event.v1', 'dataset-save-draft-execution-event.v2'].includes(
+      event.schema_version,
+    ) ||
     event.sequence !== index + 1 ||
     !SHA256_PATTERN.test(event.contract_sha256) ||
     !trimToken(event.action_id) ||
@@ -593,6 +774,10 @@ function parseLedgerEvent(value: unknown, index: number): DatasetSaveDraftLedger
       !isLedgerRepairAdmission(event.draft_repair_admission)) ||
     (event.reference_intent_admission !== undefined &&
       !isSaveDraftReferenceAdmission(event.reference_intent_admission)) ||
+    (event.schema_version === 'dataset-save-draft-execution-event.v2'
+      ? !isFlowIdentityAdmissionSummary(event.identity_admission) ||
+        !isIdentityCoverageObservation(event.identity_observation)
+      : event.identity_admission !== undefined || event.identity_observation !== undefined) ||
     !SHA256_PATTERN.test(event.event_sha256)
   ) {
     executionContractError(`Execution ledger event ${index} has an invalid shape.`);
@@ -609,6 +794,7 @@ function parseLedgerEvent(value: unknown, index: number): DatasetSaveDraftLedger
 function loadExecutionLedger(
   ledgerRoot: string,
   contract: DatasetSaveDraftExecutionContract,
+  contractSha256?: string,
 ): ExecutionLedgerState {
   const events = new Map<string, DatasetSaveDraftLedgerEvent[]>();
   const attempts = new Map<string, DatasetSaveDraftLedgerEvent>();
@@ -622,7 +808,9 @@ function loadExecutionLedger(
       if (
         event.action_id !== action.action_id ||
         event.desired_sha256 !== action.desired_sha256 ||
-        event.action_binding_sha256 !== executionActionBindingSha256(action) ||
+        event.action_binding_sha256 !== executionActionBindingSha256(action, contractSha256) ||
+        Boolean(action.identity_admission) !== Boolean(event.identity_admission) ||
+        (action.identity_admission && event.contract_sha256 !== contractSha256) ||
         event.operation !== action.expected_operation ||
         (event.draft_repair_admission !== undefined &&
           (event.draft_repair_admission.before_sha256 !== action.before_sha256 ||
@@ -638,6 +826,12 @@ function loadExecutionLedger(
         (event.event_type === 'outcome' &&
           sha256Json(event.reference_intent_admission ?? null) !==
             sha256Json(attempts.get(action.action_id)?.reference_intent_admission ?? null)) ||
+        (event.event_type === 'outcome' &&
+          sha256Json(event.identity_admission ?? null) !==
+            sha256Json(attempts.get(action.action_id)?.identity_admission ?? null)) ||
+        (event.event_type === 'outcome' &&
+          sha256Json(event.identity_observation ?? null) !==
+            sha256Json(attempts.get(action.action_id)?.identity_observation ?? null)) ||
         event.previous_event_sha256 !== (previous?.event_sha256 ?? null) ||
         event.event_sha256 !== sha256Json(eventWithoutSha(event))
       ) {
@@ -676,17 +870,21 @@ function appendExecutionEvent(options: {
   recordedAtUtc: string;
   draftRepairAdmission?: DraftRepairAdmission;
   referenceIntentAdmission?: SaveDraftReferenceAdmission;
+  identityAdmission?: FlowIdentityAdmissionSummary;
+  identityObservation?: IdentityCoverageObservation;
 }): DatasetSaveDraftLedgerEvent {
   const actionEvents = options.ledger.events.get(
     options.action.action_id,
   ) as DatasetSaveDraftLedgerEvent[];
   const core = {
-    schema_version: 'dataset-save-draft-execution-event.v1' as const,
+    schema_version: options.identityAdmission
+      ? ('dataset-save-draft-execution-event.v2' as const)
+      : ('dataset-save-draft-execution-event.v1' as const),
     sequence: actionEvents.length + 1,
     contract_sha256: options.contractSha256,
     action_id: options.action.action_id,
     desired_sha256: options.action.desired_sha256,
-    action_binding_sha256: executionActionBindingSha256(options.action),
+    action_binding_sha256: executionActionBindingSha256(options.action, options.contractSha256),
     event_type: options.eventType,
     operation: options.action.expected_operation,
     outcome: options.outcome,
@@ -698,6 +896,8 @@ function appendExecutionEvent(options: {
     ...(options.referenceIntentAdmission
       ? { reference_intent_admission: options.referenceIntentAdmission }
       : {}),
+    ...(options.identityAdmission ? { identity_admission: options.identityAdmission } : {}),
+    ...(options.identityObservation ? { identity_observation: options.identityObservation } : {}),
     previous_event_sha256: actionEvents.at(-1)?.event_sha256 ?? null,
   };
   const event: DatasetSaveDraftLedgerEvent = { ...core, event_sha256: sha256Json(core) };
@@ -1464,6 +1664,7 @@ function contractRowReport(options: {
   visibleRow?: VisibleDatasetRow | null;
   draftRepairAdmission?: DraftRepairAdmission;
   referenceIntentAdmission?: SaveDraftReferenceAdmission;
+  identityAdmission?: FlowIdentityAdmissionSummary;
 }): DatasetSaveDraftRowReport {
   return {
     index: options.row.index,
@@ -1486,6 +1687,7 @@ function contractRowReport(options: {
     ...(options.referenceIntentAdmission
       ? { reference_intent_admission: options.referenceIntentAdmission }
       : {}),
+    ...(options.identityAdmission ? { identity_admission: options.identityAdmission } : {}),
     ...(options.error ? { error: options.error } : {}),
   };
 }
@@ -1503,6 +1705,8 @@ async function finalizeAttemptedAction(options: {
   recovered: boolean;
   draftRepairAdmission?: DraftRepairAdmission;
   referenceIntentAdmission?: SaveDraftReferenceAdmission;
+  identityAdmission?: FlowIdentityAdmissionSummary;
+  identityObservation?: IdentityCoverageObservation;
 }): Promise<DatasetSaveDraftRowReport> {
   const desiredExact = await readbackIsDesiredExact(options);
   appendExecutionEvent({
@@ -1515,6 +1719,8 @@ async function finalizeAttemptedAction(options: {
     recovered: options.recovered,
     recordedAtUtc: options.now(),
     referenceIntentAdmission: options.referenceIntentAdmission,
+    identityAdmission: options.identityAdmission,
+    identityObservation: options.identityObservation,
   });
   return contractRowReport({
     row: options.row,
@@ -1721,14 +1927,20 @@ async function runExecutionContractBatch(options: {
   maxParallel: number;
   mode: 'commit' | 'dry_run';
   referenceIntent: LoadedExactReferenceIntent | null;
+  identityAdmission?: LoadedFlowIdentityAdmission;
+  identityClock?: () => Date;
   readReferenceRows: () => JsonObject[];
 }): Promise<DatasetSaveDraftReport> {
-  const contractSha256 = sha256Json(options.contract);
+  const contractSha256 = options.identityAdmission?.contractSha256 ?? sha256Json(options.contract);
   const ledgerRoot = executionLedgerRoot(options.env, options.contract);
   // Both modes read attempt state read-only (`loadExecutionLedger` only computes paths and reads
   // existing JSONL files; it never creates a directory or event). A dry-run must see a retained
   // attempt or outcome and report it as retained rather than re-authorize it as prepared.
-  const ledger: ExecutionLedgerState = loadExecutionLedger(ledgerRoot, options.contract);
+  const ledger: ExecutionLedgerState = loadExecutionLedger(
+    ledgerRoot,
+    options.contract,
+    contractSha256,
+  );
   const actor = decodeExecutionActor(options.commandTransport.accessToken);
   if (
     projectRefFromApiBaseUrl(options.runtime.apiBaseUrl) !== options.contract.project_ref ||
@@ -1753,20 +1965,45 @@ async function runExecutionContractBatch(options: {
   const executeAction = async (index: number): Promise<void> => {
     const action = options.contract.actions[index] as DatasetSaveDraftExecutionAction;
     const row = options.preparedRows[index] as PreparedDatasetRow;
+    const expectedIdentityAdmission = options.identityAdmission
+      ? flowIdentityAdmissionSummary(options.identityAdmission)
+      : undefined;
+    const recoveredIdentityAdmission = ledger.attempts.get(action.action_id)?.identity_admission;
+    let currentIdentityObservation: IdentityCoverageObservation | undefined;
     const storeReport = (report: DatasetSaveDraftRowReport): void => {
-      reports[index] = report;
+      const identity =
+        ledger.attempts.get(action.action_id)?.identity_admission ??
+        (report.status === 'prepared' ? expectedIdentityAdmission : undefined);
+      const observation =
+        ledger.attempts.get(action.action_id)?.identity_observation ??
+        (report.status === 'prepared' ? currentIdentityObservation : undefined);
+      reports[index] = {
+        ...report,
+        ...(identity ? { identity_admission: identity } : {}),
+        ...(observation ? { identity_observation: observation } : {}),
+      };
       statuses.set(action.action_id, report.status);
     };
     const preparedFailure = buildPreparedFailure(row, options.allowReferenceOnlySupport);
-    const commandTransport = options.referenceIntent
-      ? { ...options.commandTransport }
-      : options.commandTransport;
+    const commandTransport =
+      options.referenceIntent || options.identityAdmission
+        ? { ...options.commandTransport }
+        : options.commandTransport;
     const expectedReferenceAdmission = options.referenceIntent
       ? saveDraftReferenceAdmission(options.referenceIntent, index)
       : undefined;
     const recoveredReferenceAdmission = ledger.attempts.get(
       action.action_id,
     )?.reference_intent_admission;
+    if (
+      ledger.attempts.has(action.action_id) &&
+      sha256Json(recoveredIdentityAdmission ?? null) !==
+        sha256Json(expectedIdentityAdmission ?? null)
+    ) {
+      executionContractError(
+        'Consumed action identity admission differs; retain the original binding for readback.',
+      );
+    }
     // Changed/omitted selection can never create a second ledger domain or retrofit a past attempt.
     if (
       ledger.attempts.has(action.action_id) &&
@@ -1801,6 +2038,32 @@ async function runExecutionContractBatch(options: {
           options.referenceIntent,
           exactReferenceConsumers(options.preparedRows.map((entry) => entry.row)),
         );
+      }
+    };
+    const assertIdentityInputs = () => {
+      if (options.identityAdmission) {
+        assertFlowIdentityAdmissionInputsCurrent(options.identityAdmission);
+        bindExecutionContractRows(
+          options.contract,
+          prepareRows(options.inputPath, undefined, options.requestedType),
+        );
+        bindExecutionContractRows(options.contract, options.preparedRows);
+      }
+    };
+    const checkIdentityAdmission = async () => {
+      if (options.identityAdmission) {
+        assertIdentityInputs();
+        assertFlowIdentityAdmissionUnexpired(options.identityAdmission, options.identityClock!());
+        currentIdentityObservation = await verifyFlowIdentityCoverage({
+          coverage: options.identityAdmission.coverage,
+          env: options.env,
+          fetchImpl: options.fetchImpl,
+          timeoutMs: options.timeoutMs,
+          actorUserId: options.contract.owner.user_id,
+          projectRef: options.contract.project_ref,
+        });
+        assertIdentityInputs();
+        assertFlowIdentityAdmissionUnexpired(options.identityAdmission, options.identityClock!());
       }
     };
     const checkFlowReferences = async (cache: Map<string, Promise<RemoteDatasetLookup>>) => {
@@ -1876,6 +2139,7 @@ async function runExecutionContractBatch(options: {
         readback: desiredStillExact ? 'desired_exact' : 'not_desired',
         ...(recoveredAdmission ? { draftRepairAdmission: recoveredAdmission } : {}),
         referenceIntentAdmission: recoveredReferenceAdmission,
+        identityAdmission: recoveredIdentityAdmission,
         ...(status === 'unknown'
           ? {
               error: {
@@ -1905,6 +2169,8 @@ async function runExecutionContractBatch(options: {
         recovered: true,
         ...(recoveredAdmission ? { draftRepairAdmission: recoveredAdmission } : {}),
         referenceIntentAdmission: recoveredReferenceAdmission,
+        identityAdmission: recoveredIdentityAdmission,
+        identityObservation: ledger.attempts.get(action.action_id)?.identity_observation,
       });
       storeReport(report);
       return;
@@ -1959,6 +2225,7 @@ async function runExecutionContractBatch(options: {
     let transportFailed = false;
     let beforeImage: JsonObject | null = null;
     try {
+      await checkIdentityAdmission();
       beforeRows = await exactExecutionRows({
         client: options.dataClient.client,
         restBaseUrl: options.dataClient.restBaseUrl,
@@ -2010,6 +2277,9 @@ async function runExecutionContractBatch(options: {
         contract: options.contract,
       });
       assertReferenceInputs();
+      assertIdentityInputs();
+      if (options.identityAdmission)
+        assertFlowIdentityAdmissionUnexpired(options.identityAdmission, options.identityClock!());
     } catch (error) {
       const report = contractRowReport({
         row,
@@ -2018,7 +2288,7 @@ async function runExecutionContractBatch(options: {
         operation: action.expected_operation,
         attemptConsumed: false,
         readback: 'not_performed',
-        error: serializeError(error),
+        error: serializeError(options.identityAdmission ? safeIdentityError(error) : error),
       });
       storeReport(report);
       return;
@@ -2125,7 +2395,8 @@ async function runExecutionContractBatch(options: {
 
     try {
       const beforeDispatch = async () => {
-        if (options.referenceIntent) {
+        await checkIdentityAdmission();
+        if (options.referenceIntent || options.identityAdmission) {
           const unresolved = await checkFlowReferences(new Map());
           if (unresolved.length)
             throw new CliError('Exact-reference admission changed before dispatch.', {
@@ -2146,6 +2417,12 @@ async function runExecutionContractBatch(options: {
             contract: options.contract,
           });
           assertReferenceInputs();
+          assertIdentityInputs();
+          if (options.identityAdmission)
+            assertFlowIdentityAdmissionUnexpired(
+              options.identityAdmission,
+              options.identityClock!(),
+            );
         }
         appendExecutionEvent({
           ledgerRoot,
@@ -2154,6 +2431,8 @@ async function runExecutionContractBatch(options: {
           action,
           eventType: 'attempt_emitted',
           referenceIntentAdmission: expectedReferenceAdmission,
+          identityAdmission: expectedIdentityAdmission,
+          identityObservation: currentIdentityObservation,
           outcome: null,
           recovered: false,
           recordedAtUtc: options.now(),
@@ -2212,6 +2491,8 @@ async function runExecutionContractBatch(options: {
       now: options.now,
       recovered: transportFailed,
       referenceIntentAdmission: expectedReferenceAdmission,
+      identityAdmission: expectedIdentityAdmission,
+      identityObservation: currentIdentityObservation,
       ...(draftRepairAdmission ? { draftRepairAdmission } : {}),
     });
     storeReport(report);
@@ -2333,7 +2614,7 @@ async function runExecutionContractBatch(options: {
   return report;
 }
 
-export async function runDatasetSaveDraft(
+async function runDatasetSaveDraftImpl(
   options: RunDatasetSaveDraftOptions,
 ): Promise<DatasetSaveDraftReport> {
   const now = options.now ?? new Date();
@@ -2356,6 +2637,17 @@ export async function runDatasetSaveDraft(
         readJsonFile(executionContractPath, 'Dataset save-draft execution contract'),
       )
     : null;
+  const identityProfile =
+    executionContract?.schema_version === 'dataset-save-draft-execution-contract.v2';
+  if (
+    (identityProfile &&
+      (!options.executionContractSha256 || options.rawInput !== undefined || maxParallel !== 1)) ||
+    (!identityProfile && options.executionContractSha256 !== undefined)
+  ) {
+    executionContractError(
+      'Identity v2 requires a pinned contract SHA, a file input and serial execution; the pin cannot select v1.',
+    );
+  }
 
   if (executionContract && !commit && maxParallel !== 1) {
     executionContractError('--max-parallel greater than 1 requires --commit.');
@@ -2366,6 +2658,15 @@ export async function runDatasetSaveDraft(
   if (executionContract) {
     bindExecutionContractRows(executionContract, preparedRows);
   }
+  const identityAdmission = identityProfile
+    ? await loadFlowIdentityAdmission({
+        contractPath: executionContractPath!,
+        contractSha256: options.executionContractSha256!,
+        action: executionContract.actions[0] as FlowIdentityAdmissionAction,
+        owner: executionContract.owner,
+        projectRef: executionContract.project_ref,
+      })
+    : undefined;
 
   let referenceIntent: LoadedExactReferenceIntent | null = null;
   if (options.referenceIntentFile !== undefined) {
@@ -2397,53 +2698,90 @@ export async function runDatasetSaveDraft(
       exitCode: 2,
     });
   }
+  const operationFetch =
+    identityAdmission && options.fetchImpl
+      ? identityScopedFetch(
+          options.fetchImpl,
+          requireSupabaseRestRuntime(options.env!).apiBaseUrl,
+          executionContract!.owner.user_id,
+        )
+      : options.fetchImpl;
 
   writeJsonLinesArtifact(files.selected_rows, preparedRows.map(selectedRow));
 
   const runtime =
-    needsRuntime && options.env && options.fetchImpl
+    needsRuntime && options.env && operationFetch
       ? createSupabaseDataRuntime({
           runtime: requireSupabaseRestRuntime(options.env),
-          fetchImpl: options.fetchImpl,
+          fetchImpl: operationFetch,
           timeoutMs,
         })
       : null;
   const commandTransport =
-    runtime && options.fetchImpl
+    runtime && operationFetch
       ? await buildDatasetCommandTransport({
           runtime,
-          fetchImpl: options.fetchImpl,
+          fetchImpl: operationFetch,
           timeoutMs,
         })
       : null;
   const dataClient =
-    runtime && options.fetchImpl
-      ? createSupabaseDataClient(runtime, options.fetchImpl, timeoutMs)
-      : null;
+    runtime && operationFetch ? createSupabaseDataClient(runtime, operationFetch, timeoutMs) : null;
   const referenceOnlySupportCache = new Map<string, Promise<RemoteDatasetLookup>>();
 
   if (executionContract && executionContractPath) {
-    return runExecutionContractBatch({
-      contractPath: executionContractPath,
-      contract: executionContract,
-      referenceIntent,
-      readReferenceRows: () => readDatasetRowsInput(inputPath, options.rawInput),
-      preparedRows,
-      allowReferenceOnlySupport,
-      files,
-      inputPath,
-      requestedType,
-      outDir,
-      env: options.env!,
-      runtime: runtime!,
-      commandTransport: commandTransport!,
-      dataClient: dataClient!,
-      fetchImpl: options.fetchImpl!,
-      timeoutMs,
-      now: () => now.toISOString(),
-      maxParallel,
-      mode: commit ? 'commit' : 'dry_run',
-    });
+    const execute = () =>
+      runExecutionContractBatch({
+        contractPath: executionContractPath,
+        contract: executionContract,
+        referenceIntent,
+        identityAdmission,
+        identityClock: options.identityAdmissionClock ?? (() => new Date()),
+        readReferenceRows: () => readDatasetRowsInput(inputPath, options.rawInput),
+        preparedRows,
+        allowReferenceOnlySupport,
+        files,
+        inputPath,
+        requestedType,
+        outDir,
+        env: options.env!,
+        runtime: runtime!,
+        commandTransport: commandTransport!,
+        dataClient: dataClient!,
+        fetchImpl: operationFetch!,
+        timeoutMs,
+        now: () => now.toISOString(),
+        maxParallel,
+        mode: commit ? 'commit' : 'dry_run',
+      });
+    if (identityAdmission && commit) {
+      const action = executionContract.actions[0]!;
+      const runPath = `${executionLedgerPath(
+        executionLedgerRoot(options.env!, executionContract),
+        action,
+      )}.operation`;
+      mkdirSync(runPath, { recursive: true, mode: 0o700 });
+      chmodSync(runPath, 0o700);
+      // Cover ledger load, dispatch and terminal readback in the same existing lock scope.
+      // A concurrent recovery must not finalize an attempt while its original POST is pending.
+      return withBatchRunLock(
+        {
+          runPath,
+          identity: {
+            schema: 'dataset-save-draft-identity-operation.v1',
+            action_id: action.action_id,
+            desired_sha256: action.desired_sha256,
+            // Distinct calls cannot inherit the batch helper's legitimate same-scope reentrancy.
+            // This token exists only in the ephemeral lock, never in the action or attempt identity.
+            invocation_id: randomUUID(),
+          },
+          reason: 'identity-admitted-flow-insert',
+          timeoutMs: 0,
+        },
+        execute,
+      );
+    }
+    return execute();
   }
 
   const reports: DatasetSaveDraftRowReport[] = [];
@@ -2596,7 +2934,21 @@ export async function runDatasetSaveDraft(
   return report;
 }
 
+export async function runDatasetSaveDraft(
+  options: RunDatasetSaveDraftOptions,
+): Promise<DatasetSaveDraftReport> {
+  try {
+    return await runDatasetSaveDraftImpl(options);
+  } catch (error) {
+    // New-profile failures may originate in auth, reference or target adapters. Keep remote
+    // response bodies and transport exceptions out of CLI output and persisted reports.
+    if (options.executionContractSha256 !== undefined) throw safeIdentityError(error);
+    throw error;
+  }
+}
+
 export const __testInternals = {
+  identityScopedFetch,
   DATASET_CONFIGS,
   buildFiles,
   buildPreparedFailure,

@@ -405,6 +405,12 @@ When remote search is enabled, the CLI sends a compact fielded `query` string pl
 
 Exact process exchange fingerprints with matching identity context block duplicate creation, while weaker inventory-only matches still route to manual review. Flow preflight also blocks alias-equivalent flows when type, reference property, unit, and category/CAS evidence match.
 
+## Scoped Flow Identity Admission
+
+For an explicitly reviewed new Product or Waste Flow, `flow identity-admission prepare` binds the complete saved preflight, actual Agent review, standing authorization evidence and bounded search coverage to one owner-draft insert. Its v2 execution contract requires the original host-pinned raw contract SHA through `dataset save-draft --execution-contract-sha256`; fresh content, coverage, owner and expiry checks precede the single guarded write. Consumed attempts recover by exact readback without replay, including after review expiry.
+
+See [the strict inputs, supported searches and trust boundaries](docs/agents/flow-identity-admission.md). Preparation is offline and grants no permission. Existing preflight, v1/no-contract saves and Process paths keep their behavior; this opt-in profile does not enforce a global identity gate.
+
 ## Build Plan Gate
 
 Use build-plan gates after identity preflight and before publish handoff. These commands validate the minimum authoring contract for a process or flow build plan, write a standard `GateReport` for Foundry/skill orchestration, and materialize deterministic canonical TIDAS payloads when no explicit payload is embedded in the plan.

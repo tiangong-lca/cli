@@ -1,7 +1,7 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-10-18"
-lastReviewedCommit: "de62442b665701e72910d35150aacb1ee3d38d46"
+lastReviewedAt: '2026-10-18'
+lastReviewedCommit: 'de62442b665701e72910d35150aacb1ee3d38d46'
 lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
 
 catalog:
@@ -772,6 +772,27 @@ rules:
       - path: docs/agents/exact-reference-intent-contract.md
         mode: review_or_update
     reason: Exact-reference exceptions must retain consumer, actor, content and review binding without changing root or default policy.
+
+  - id: cli-flow-identity-admission-contract
+    scope: repo
+    repo: cli
+    triggers:
+      - path: docs/agents/flow-identity-admission.md
+        kind: doc-contract
+      - path: src/lib/flow-identity-admission*.ts
+        kind: command-logic
+      - path: src/lib/dataset-save-draft-run.ts
+        kind: command-logic
+      - path: test/flow-identity-admission*.test.ts
+        kind: validation
+      - path: test/dataset-save-draft-identity-admission.test.ts
+        kind: validation
+      - path: test/helpers/flow-identity-admission-fixture.ts
+        kind: validation
+    requiredDocs:
+      - path: docs/agents/flow-identity-admission.md
+        mode: review_or_update
+    reason: Scoped new Flow admission must bind real review provenance, complete coverage, original host pins and consumed-attempt recovery without changing legacy entrypoints.
 
   - id: cli-pcr-snapshot-contract
     scope: repo

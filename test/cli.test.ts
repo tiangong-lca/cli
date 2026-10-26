@@ -63,7 +63,10 @@ test('executeCli prints main help when no command is given', async () => {
     result.stdout,
     /process\s+get \| list \| identity-preflight \| build-plan \| scope-statistics/u,
   );
-  assert.match(result.stdout, /flow\s+get \| list \| identity-preflight \| build-plan/u);
+  assert.match(
+    result.stdout,
+    /flow\s+get \| list \| identity-preflight \| identity-admission \| build-plan/u,
+  );
   assert.match(result.stdout, /process\s+auto-build/u);
   assert.match(result.stdout, /lifecyclemodel auto-build/u);
   assert.match(result.stdout, /lifecyclemodel auto-build \| validate-build \| publish-build/u);

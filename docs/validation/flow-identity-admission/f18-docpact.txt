@@ -1,0 +1,57 @@
+{
+  "schema_version": "docpact.diagnostics.v1",
+  "tool_name": "docpact",
+  "tool_version": "0.1.9",
+  "status": "ok",
+  "changed_paths": [
+    ".docpact/config.yaml",
+    "AGENTS.md",
+    "DEV_CN.md",
+    "README.md",
+    "docs/IMPLEMENTATION_GUIDE_CN.md",
+    "docs/agents/exact-reference-intent-contract.md",
+    "docs/agents/flow-identity-admission.md",
+    "docs/agents/repo-architecture.md",
+    "docs/agents/repo-validation.md",
+    "docs/release-runbook.md",
+    "docs/release-setup.md",
+    "src/cli.ts",
+    "src/lib/dataset-save-draft-run.ts",
+    "src/lib/flow-identity-admission-remote.ts",
+    "src/lib/flow-identity-admission.ts",
+    "src/lib/supabase-data-api-contract.ts",
+    "test/cli.test.ts",
+    "test/dataset-save-draft-identity-admission.test.ts",
+    "test/flow-identity-admission-remote.test.ts",
+    "test/flow-identity-admission.test.ts",
+    "test/helpers/flow-identity-admission-fixture.ts"
+  ],
+  "matched_rule_count": 30,
+  "uncovered_changed_paths": [],
+  "coverage_status": "ok",
+  "freshness_status": "ok",
+  "freshness_summary": {
+    "governed_doc_count": 13,
+    "fresh_doc_count": 13,
+    "stale_doc_count": 0,
+    "warn_count": 0,
+    "critical_count": 0,
+    "invalid_review_reference_count": 0
+  },
+  "baseline_status": "not-applied",
+  "baseline_summary": {
+    "active_count": 0,
+    "suppressed_count": 0
+  },
+  "waiver_status": "not-applied",
+  "waiver_summary": {
+    "waived_count": 0,
+    "expired_count": 0
+  },
+  "summary": {
+    "total_count": 0,
+    "counts_by_type": {},
+    "top_rules": []
+  },
+  "diagnostics": []
+}

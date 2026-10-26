@@ -24,8 +24,8 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
+lastReviewedAt: 2026-10-20
+lastReviewedCommit: 2b2eba10c68ff66d8f018b551c6c9b853a85267f
 lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
 related:
   - ../AGENTS.md
