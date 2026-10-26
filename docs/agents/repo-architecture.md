@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: 2026-10-21
+lastReviewedCommit: 6986319877ff874f86884b5b619b437d614c65da
+lastReviewedNote: 'CLI #372: reviewed complete draft/review census, immutable requests, readback-only recovery and offline identity-only proposal/context binding with valid same-proposal review reuse. Initial/bundle scope and native business gates remain separate; package, dependencies and release authority are unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -52,6 +52,8 @@ The `src/runtime.ts` public facade and bounded `src/lib/runtime/**` owners expos
 Managed-host launch selection stays in the generic CLI manager. Dedicated protocol/server/receiver modules hand the exact verified manifest to a declared Node host through a one-use IPC handshake. Original manifest bytes, selected host fields and application argv are owned snapshots; the receiver uses the existing cache/compatibility owners and shared work-directory guards. Product hosts retain their own task, account and business authorization. Cancellation ends handshake admission before child termination, and execution leases remain until output/process closure.
 
 `dataset-save-draft-reference-intent.ts` composes the shared #289 strict selection/evaluator and complete-body observation with the owner execution contract. `dataset-save-draft-run.ts` owns fresh preflight/predispatch, action ledger and recovery; `dataset-command.ts` awaits admission before POST. Default gates and the original ledger domain remain unchanged. [The exact-reference contract](exact-reference-intent-contract.md#guarded-flow-owner-drafts) defines caller snapshots and admission fields.
+
+`dataset prepare-draft` separates stable identity preparation from content saves. `dataset-prepare-draft-contract.ts` owns strict typed/current-actor/source and full candidate preimages; `-remote.ts` owns complete capped relation census, exact reads and two authenticated Edge routes; `-attempt.ts` owns the project/actor/request UUID one-shot claim; `-run.ts` owns the existing batch directory lock, immutable request artifact, input recheck and receipt plus independent-target recovery. Default observation needs no new backend. Commit copies only an exact public source through the server allocator or returns an existing fixed draft; it never accepts a desired scientific payload or calls a legacy fallback. Initial creation and Model/result bundle preparation remain dependencies. Only Product/Waste Flow sources and selected drafts enter the mutable slice; other siblings remain in complete conflicts. Review-state census (20 ≤ state < 100) blocks every new preparation and returns exact existing dataset/review points. Existing guarded save keeps its own action ledger and before-image contract. `dataset-prepare-draft-bind.ts` owns offline hash-bound proposal rebinding through the existing patch owner, limited to version/URI/reviewed preceding reference. It uses the shared GlobalReferenceType schema reached through public SDK ProcessSchema, preserves the scientific projection and keeps save_ready false; an existing valid same-proposal review may be reused. Optional standalone Process semantic context is transported explicitly: only a proposal-bound candidate digest and complete unchanged Flow documents are accepted, then only the candidate digest is rebound after identity-only projection proof; generated allocation provenance stays with its native owner. No new save writer, review queue or scientific acceptance authority is introduced.
 
 ## Repo Shape
 

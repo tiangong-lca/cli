@@ -1,0 +1,61 @@
+{
+  "scope": "Sanitized independent original-workflow acceptance for bounded PR delivery; not data adoption",
+  "candidate_source": "d053d6dcac55f7bfa8a089344c37ee0bc9075ad9",
+  "runtime_content_sha256": "bdadf02e73076f9da5a1dd24ecbe7445469e5c71cc51017b0a44525a7f6e0ca2",
+  "entry": "Original role-scoped launcher -> isolated installed public CLI; authenticated project/actor assertions retained",
+  "observed_cases": [
+    {
+      "case": "A: public source, no current-owner draft",
+      "source_state": 100,
+      "result": "needs_creation",
+      "drafts": 0,
+      "reviews": 0,
+      "target": null,
+      "source_full_body_unchanged": true,
+      "mutation_dispatches": 0,
+      "attempt_consumed": false
+    },
+    {
+      "case": "B: public source and exactly one current-owner draft",
+      "source_state": 100,
+      "result": "selected",
+      "drafts": 1,
+      "reviews": 0,
+      "exact_selected_body_equals_previously_accepted_body": true,
+      "source_full_body_unchanged": true,
+      "source_owner_equals_editor": false,
+      "selected_draft_owner_equals_editor": true,
+      "mutation_dispatches": 0,
+      "attempt_consumed": false
+    }
+  ],
+  "no_target_bind": {
+    "error": "DATASET_PROPOSAL_BINDING_PREPARATION_INVALID",
+    "output_created": false,
+    "target_fabricated": false
+  },
+  "actual_bound_process_proposal_validation": {
+    "four_layers": "passed",
+    "allocation": "passed",
+    "candidate_zod": "4.4.3",
+    "unchanged_default_maintenance_zod": "4.6.7"
+  },
+  "independent_runtime_checks": {
+    "delivery_bindings": 15,
+    "archive_files": 600,
+    "production_dependency_files": 1754,
+    "internal_links": 32,
+    "node_and_native_runtime_hashes": "matched",
+    "three_worktrees": "clean"
+  },
+  "remote_data_writes": 0,
+  "new_dataset_versions": 0,
+  "default_runtime_changed": false,
+  "private_source_material": "Account identifiers, dataset identifiers/bodies, request files and execution originals are retained privately and are deliberately not included.",
+  "limits": [
+    "Live original-workflow qualification covers read-only state-100 selection, negative bind and offline native validation only.",
+    "Positive creation/recovery/binding evidence is separate synthetic local CLI/Edge/PostgreSQL integration.",
+    "Production new-backend availability, actual successor/save/adoption and final engineering-dependency closure remain unverified.",
+    "No state-200/commercial authority is inferred from these live observations."
+  ]
+}

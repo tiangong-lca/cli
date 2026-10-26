@@ -1,0 +1,55 @@
+{
+  "kind": "Sanitized Root qualification and original-workflow acceptance summary, not raw operational evidence",
+  "product_commit": "fd12bf27ee691d86571df585ff99c4513eeb1695",
+  "runtime_content_sha256": "3c8e97aa7322b8decbd8af98bc24e5c8761638e0bc7bffc31e5696669ef046e5",
+  "qualification": {
+    "independently_qualified_actual_runtime": true,
+    "archive_files": 600,
+    "dependency_files": 1754,
+    "internal_links": 32,
+    "node_version": "24.19.0",
+    "executor": "Independent original-data validator"
+  },
+  "offline_public_cli": {
+    "checks": 23,
+    "positive_original_derived_isolated_examples": {
+      "count": 2,
+      "construction": "Only version/permanent URI were reversed and an exact predecessor composed for isolated binding inputs; all scientific values and Flow bodies were unchanged",
+      "unchanged_positive_originals": false,
+      "fresh_online_target_observations": false
+    },
+    "malformed_input_rejections": 8,
+    "raw_drift_rejections": 8,
+    "leading_bom_rejections": 4,
+    "actual_unchanged_zero_target_original_rejections": 1,
+    "network_attempts": 0,
+    "credentials_used": false,
+    "remote_writes": 0,
+    "original_bytes_preserved": true,
+    "executor": "Independent original-data validator"
+  },
+  "prior_evidence_reuse": {
+    "historical_product_commit": "7a81eb1eed13176cd8197cca00fdd8695f627439",
+    "explicitly_accepted_by_root": true,
+    "basis": "Source and packaged-byte equality for unaffected prepare/read-only selection/recovery and SDK paths",
+    "reused": "Prior actual read-only selection, recovery and SDK evidence",
+    "fresh_state_claim": false
+  },
+  "non_author_review": {
+    "focused_passes": 15,
+    "material_findings_remaining": 0,
+    "scope": "Four captured binding input roles, fatal UTF-8 decoding, raw-byte hashes and both raw-byte recheck checkpoints"
+  },
+  "limits": [
+    "Two positive examples are explicitly original-derived isolated examples, not unchanged positive originals or fresh online state",
+    "Production target availability and positive save qualification remain absent",
+    "No backend adoption, default-runtime switch, merge, release or data-side closure",
+    "No real dataset/account identifiers, body digests, original case labels or private paths are published"
+  ],
+  "root_acceptance": {
+    "production_diff_inspected": true,
+    "delivery_facts_verified": 26,
+    "report_bindings_verified": 13,
+    "decision": "Accepted fd12 for the existing PR442 update only"
+  }
+}

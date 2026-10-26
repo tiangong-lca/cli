@@ -1,0 +1,124 @@
+{
+  "scope": "synthetic local integration; not production deployment or data/scientific acceptance",
+  "candidate": "<candidate-package>",
+  "source_unchanged": true,
+  "draft_count": 1,
+  "assigned_version_observed_from_server": "01.00.001",
+  "new_draft_rule_verification": false,
+  "review_family_new_draft_count": 0,
+  "prepare_receipt_count": 1,
+  "gateway_before": {
+    "prepare": 0,
+    "recovery": 0,
+    "save": 0,
+    "dropped": 0
+  },
+  "gateway_after": {
+    "prepare": 1,
+    "recovery": 2,
+    "save": 0,
+    "dropped": 1
+  },
+  "original_request_unchanged": true,
+  "commands": [
+    {
+      "label": "observe",
+      "argv": [
+        "dataset",
+        "prepare-draft",
+        "--type",
+        "process",
+        "--id",
+        "f6d6d71c-dd60-4b4e-8249-371f78627e0f",
+        "--source-version",
+        "01.00.000",
+        "--target-user-id",
+        "c1473749-02b5-49f0-a01a-0bfb9d848eed",
+        "--project-ref",
+        "127.0.0.1",
+        "--out-dir",
+        "<synthetic-fixture>/observe",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "prepare-lost-response",
+      "argv": [
+        "dataset",
+        "prepare-draft",
+        "--input",
+        "<synthetic-fixture>/observe/request.json",
+        "--out-dir",
+        "<synthetic-fixture>/prepare",
+        "--commit",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "same-request-other-directory",
+      "argv": [
+        "dataset",
+        "prepare-draft",
+        "--input",
+        "<synthetic-fixture>/observe/request.json",
+        "--out-dir",
+        "<synthetic-fixture>/recovery-other-dir",
+        "--commit",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "review-conflict",
+      "argv": [
+        "dataset",
+        "prepare-draft",
+        "--type",
+        "process",
+        "--id",
+        "d0ba65e3-edf9-4db7-a85e-c3d57b555abd",
+        "--source-version",
+        "01.00.000",
+        "--target-user-id",
+        "c1473749-02b5-49f0-a01a-0bfb9d848eed",
+        "--project-ref",
+        "127.0.0.1",
+        "--out-dir",
+        "<synthetic-fixture>/review",
+        "--json"
+      ],
+      "exit_code": 1
+    },
+    {
+      "label": "bind-candidate",
+      "argv": [
+        "dataset",
+        "prepare-draft",
+        "bind",
+        "--input",
+        "<synthetic-fixture>/proposal.json",
+        "--proposal-sha256",
+        "48046d91fa6011d48f0c318b86bc4a5c8a80e8457ec78ff879ff33a96e6d172f",
+        "--source-sha256",
+        "49eb9d2f3d228129c2b461bd636664a416e66924b29f06bc3375b65d8dea3905",
+        "--preparation-report",
+        "<synthetic-fixture>/prepare/report.json",
+        "--predecessor-file",
+        "<synthetic-fixture>/predecessor.json",
+        "--predecessor-sha256",
+        "a5e52757455cf738cc4814726a78a223d0c1232d7542db2c1499fc006a8b820b",
+        "--semantic-context-file",
+        "<synthetic-fixture>/semantic-context.json",
+        "--semantic-context-sha256",
+        "006dff975f00fea4b2b2503673ea9a798b9e0d0bed7c412aae969b3d762b92fe",
+        "--out-dir",
+        "<synthetic-fixture>/bound",
+        "--json"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "offline_binding": "passed; inspect bound artifacts; save_ready remains false"
+}

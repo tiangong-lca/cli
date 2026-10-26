@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: 2026-10-21
+lastReviewedCommit: 6986319877ff874f86884b5b619b437d614c65da
+lastReviewedNote: 'CLI #372: reviewed complete draft/review census, immutable requests, readback-only recovery and offline identity-only proposal/context binding with valid same-proposal review reuse. Initial/bundle scope and native business gates remain separate; package, dependencies and release authority are unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -1422,3 +1422,11 @@ Model activity multiplier 要求显式 finite nonnegative numeric scalar，缺�
 Flow-only `dataset save-draft --execution-contract` 可在 dry-run／commit 中显式传入一个 `--reference-intent-file`，沿用 #289 的完整 consumer、每个引用 occurrence、selected/latest 正文与 review 文件绑定。CLI 在前检和真正 dispatch 前重新检查认证账号、引用正文、before image 和本地字节；异步 gate 完成后才写 attempt 并发请求。原 v1 execution contract 无新增字段，普通路径保持默认规则。
 
 `reference_intent_admission` 随 prepared/executed 行与原 action ledger 保存；consumed 恢复必须匹配原选择，缺失或变更只能报告 consumed 阻断／UNKNOWN，不能新建 ledger 或重放。字段、哈希域和 caller snapshot 约束见 [exact-reference contract](agents/exact-reference-intent-contract.md#guarded-flow-owner-drafts)。Foundry 的原 Task 状态、授权和候选准入须由其自己的公开接口证明。
+
+## 稳定当前编辑草稿准备
+
+`dataset prepare-draft` 默认仅通过已有公开 CLI 读取当前 actor、精确公开来源及完整 typed UUID/state-0 草稿集合，并冻结 `request.json`。零份允许后续显式服务端准入，一份固定复用，多份返回完整冲突并要求显式选择；普通准备不清理数据。独立目录锁与不可覆盖的请求文件保护恢复材料；发出前全局项目/actor/request UUID claim 落盘，失联只能原请求只读查询，换输出目录不允许重发。新后端或 RPC 不可用时明确失败，无旧 create 回退。输入若与 report/target 输出具有相同 bigint dev/ino 文件身份，须在 transport 前及后续输入复核时拒绝，原 request.json 仍可复用。该规则覆盖大小写别名、父目录链接与 Windows 数据流，并保守拒绝硬链接；不以统一大小写拒绝大小写敏感文件系统上的独立文件。成功 POST 已验证的回执应立即保留；后续只读查询失败或无效仍保留该历史回执，但目标不可用。查询回执与其固定目标合同冲突时保留原回执并返回 unknown，仅 replayed 上下文标志可不同。服务端回执须与独立精确目标读回一致，创建仅改版本和永久 URI。仅 Contact、Source、Product/Waste Flow 及 standalone Process 进入此切片；初始创建、Elementary Flow 和 Model/resulting 整体派生合同保留依赖。后续科学内容修订仍使用已有 guarded `dataset save-draft --execution-contract` 的完整 before-image 与验证门禁。
+
+审核中的同 owner/typed UUID（20≤state<100）完整返回原 dataset/version/reviewId 位置，并阻止新准入；不会为绕过审核建立另一个草稿或队列。`dataset prepare-draft bind` 是独立离线路径，绑定审定 proposal/source canonical hash、prepared target/receipt 与显式已审定的前驱引用。仅版本、永久 URI 和前驱引用三字段可改变；UUID 与科学 projection 保持一致，所有输出 `save_ready=false`。缺少正确 exact-source 前驱时，必须提供 predecessor file/hash，不生成短描述或猜测 #348 语义。有效且绑定相同 proposal 的科学评审可复用；身份 rebind 不强制完整科学重审，实质科学修改才重开相关评审，既有 identity diff/native schema/refs/fresh owner/preimage 业务门禁继续适用。
+
+Process 原生 `semantic_context` 可通过显式 context file/canonical hash 一并传递；仅接受与已审 proposal hash 完全一致的 candidate 绑定和完整 Flow documents。仅在三字段 identity-only 证明成立后把 candidate hash 绑定到 desired hash，Flow 正文原样保留，并记录 context 前后摘要；未提供则明确 not_supplied。allocation_transformation、invalid_bindings 等生成派生证明交回 native owner，不能通过更新 hash 伪造。绑定不会自动报告 schema/allocation 通过。

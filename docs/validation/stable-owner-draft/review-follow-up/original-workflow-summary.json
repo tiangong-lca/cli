@@ -1,0 +1,33 @@
+{
+  "kind": "Sanitized original-workflow acceptance summary, not raw operational evidence",
+  "product_commit": "7a81eb1eed13176cd8197cca00fdd8695f627439",
+  "runtime_content_sha256": "c9be1d28e7230c2da26a2194fdd1577e2988b2168fd6ab6766e2b8678f53550e",
+  "qualification": {
+    "bound_file_facts": 25,
+    "archive_files": 600,
+    "production_files": 1754,
+    "production_links": 32,
+    "production_packages": 15,
+    "node_version": "24.19.0",
+    "node_hash_verified": true
+  },
+  "live_read_only": {
+    "zero_draft": "needs_creation; target null; source unchanged; zero mutation and consumed attempts",
+    "unique_draft": "fixed version selected; complete body unchanged; source-owner and target-owner distinction preserved; zero mutation and consumed attempts"
+  },
+  "actual_frozen_input": "Report-path alias rejected without credentials or commit, preserving bytes; original request succeeds read-only in a fresh output directory",
+  "native_validation": "Actual proposal passed four-layer and allocation validation; zero-target binding refused without fabricated target/output",
+  "root_decision": "Accepted for existing PR update after final non-author/fresh-base gates; not production backend adoption",
+  "review": {
+    "non_author_source_hash": "b3b32586a5f79c61ec14aea17020bc5e0d83404a123bf9f3b519fa6243e1f602",
+    "independent_focused_passes": 41,
+    "material_findings_remaining": 0,
+    "scope": "Final physical-alias and same-invocation receipt repair; earlier realpath-only candidate superseded"
+  },
+  "limits": [
+    "New-head Windows ADS/hosted CI remains to run after publication",
+    "Cross-invocation trusted receipt caching is outside the mutable-report contract",
+    "Backend availability and positive production prepare/bind/save remain unqualified",
+    "No merge, release, manual deployment, default switch or data-side closure"
+  ]
+}

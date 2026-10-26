@@ -1,0 +1,202 @@
+{
+  "kind": "Sanitized projection of installed public CLI offline UTF-8 qualification; synthetic inputs only",
+  "product_commit": "fd12bf27ee691d86571df585ff99c4513eeb1695",
+  "runtime_content_sha256": "3c8e97aa7322b8decbd8af98bc24e5c8761638e0bc7bffc31e5696669ef046e5",
+  "cases": [
+    {
+      "kind": "valid",
+      "role": null,
+      "byte": null,
+      "exit": 0,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "actualByteHashMatches": {
+        "scientific_proposal": true,
+        "preparation_report": true,
+        "native_semantic_context": true,
+        "reviewed_predecessor": true
+      },
+      "scientificProjectionUnchanged": true,
+      "saveReady": false
+    },
+    {
+      "kind": "malformed",
+      "role": "scientific_proposal",
+      "byte": 128,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "bindingPublished": false
+    },
+    {
+      "kind": "malformed",
+      "role": "scientific_proposal",
+      "byte": 129,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "bindingPublished": false
+    },
+    {
+      "kind": "malformed",
+      "role": "preparation_report",
+      "byte": 128,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "bindingPublished": false
+    },
+    {
+      "kind": "malformed",
+      "role": "preparation_report",
+      "byte": 129,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "bindingPublished": false
+    },
+    {
+      "kind": "malformed",
+      "role": "reviewed_predecessor",
+      "byte": 128,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "bindingPublished": false
+    },
+    {
+      "kind": "malformed",
+      "role": "reviewed_predecessor",
+      "byte": 129,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "bindingPublished": false
+    },
+    {
+      "kind": "malformed",
+      "role": "native_semantic_context",
+      "byte": 128,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "bindingPublished": false
+    },
+    {
+      "kind": "malformed",
+      "role": "native_semantic_context",
+      "byte": 129,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "bindingPublished": false
+    },
+    {
+      "kind": "drift",
+      "role": "scientific_proposal",
+      "byte": null,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": true,
+      "inputsUnchanged": false,
+      "bindingPublished": false
+    },
+    {
+      "kind": "drift",
+      "role": "preparation_report",
+      "byte": null,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": true,
+      "inputsUnchanged": false,
+      "bindingPublished": false
+    },
+    {
+      "kind": "drift",
+      "role": "reviewed_predecessor",
+      "byte": null,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": true,
+      "inputsUnchanged": false,
+      "bindingPublished": false
+    },
+    {
+      "kind": "drift",
+      "role": "native_semantic_context",
+      "byte": null,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": true,
+      "inputsUnchanged": false,
+      "bindingPublished": false
+    },
+    {
+      "kind": "bom",
+      "role": "scientific_proposal",
+      "byte": null,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "bindingPublished": false
+    },
+    {
+      "kind": "bom",
+      "role": "preparation_report",
+      "byte": null,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "bindingPublished": false
+    },
+    {
+      "kind": "bom",
+      "role": "reviewed_predecessor",
+      "byte": null,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "bindingPublished": false
+    },
+    {
+      "kind": "bom",
+      "role": "native_semantic_context",
+      "byte": null,
+      "exit": 1,
+      "networkAttempts": 0,
+      "driftInjected": false,
+      "inputsUnchanged": true,
+      "bindingPublished": false
+    }
+  ],
+  "counts": {
+    "valid_multibyte_and_intentional_replacement": 1,
+    "malformed_input_rejections": 8,
+    "raw_drift_rejections": 4,
+    "leading_bom_rejections": 4,
+    "total": 17
+  },
+  "network_attempts": 0,
+  "database_access": false,
+  "credentials_used": false,
+  "remote_writes": 0,
+  "fixture_scope": "Synthetic transport and repository Flow fixtures; no original dataset/account identifiers, payloads or body digests",
+  "drift_scope": "The harness intentionally changed synthetic copies immediately after capture. No binding was published for those cases; post-awaited-application drift is additionally covered by focused source tests.",
+  "limitations": [
+    "No fresh online target observation or production scientific/save qualification",
+    "This projection omits private execution paths and retains no original data"
+  ],
+  "passed": true
+}

@@ -25,6 +25,7 @@ export type CorePublicRelation = (typeof CORE_PUBLIC_RELATIONS)[number];
 
 export const DATA_API_RELATION_CONSUMERS = {
   contacts: [
+    'src/lib/dataset-prepare-draft-remote.ts',
     'src/lib/dataset-save-draft-run.ts',
     'src/lib/dataset-remote-verify.ts',
     'src/lib/dataset-maintenance-remote.ts',
@@ -40,6 +41,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/process-refresh-references.ts',
   ],
   flows: [
+    'src/lib/dataset-prepare-draft-remote.ts',
     'src/lib/process-allocation-write-admission.ts',
     'src/lib/flow-read.ts',
     'src/lib/flow-list.ts',
@@ -66,6 +68,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/dataset-maintenance-clear-account.ts',
   ],
   processes: [
+    'src/lib/dataset-prepare-draft-remote.ts',
     'src/lib/process-get.ts',
     'src/lib/process-list.ts',
     'src/lib/process-save-draft.ts',
@@ -80,6 +83,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/dataset-maintenance-clear-account.ts',
   ],
   sources: [
+    'src/lib/dataset-prepare-draft-remote.ts',
     'src/lib/dataset-save-draft-run.ts',
     'src/lib/dataset-remote-verify.ts',
     'src/lib/dataset-maintenance-remote.ts',

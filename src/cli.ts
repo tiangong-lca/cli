@@ -290,6 +290,16 @@ import {
   type RunDatasetSaveDraftOptions,
 } from './lib/dataset-save-draft-run.js';
 import {
+  runDatasetPrepareDraft,
+  type DatasetPrepareDraftReport,
+  type RunDatasetPrepareDraftOptions,
+} from './lib/dataset-prepare-draft-run.js';
+import {
+  runDatasetBindPreparedProposal,
+  type DatasetPreparedProposalBinding,
+  type RunDatasetBindPreparedProposalOptions,
+} from './lib/dataset-prepare-draft-bind.js';
+import {
   runDatasetClassificationApply,
   runDatasetClassificationAudit,
   runDatasetClassificationChildren,
@@ -509,6 +519,12 @@ export type CliDeps = {
   runDatasetPatchApplyImpl?: (
     options: RunDatasetPatchApplyOptions,
   ) => Promise<DatasetPatchApplyReport>;
+  runDatasetBindPreparedProposalImpl?: (
+    options: RunDatasetBindPreparedProposalOptions,
+  ) => Promise<DatasetPreparedProposalBinding>;
+  runDatasetPrepareDraftImpl?: (
+    options: RunDatasetPrepareDraftOptions,
+  ) => Promise<DatasetPrepareDraftReport>;
   runDatasetSaveDraftImpl?: (
     options: RunDatasetSaveDraftOptions,
   ) => Promise<DatasetSaveDraftReport>;
@@ -581,7 +597,7 @@ Implemented Commands:
   auth       login | status | whoami | doctor-auth | logout | identity-receipt
   search     flow | process | lifecyclemodel
   process    get | list | identity-preflight | build-plan | scope-statistics | dedup-review | auto-build | resume-build | publish-build | complete-required-fields | save-draft | batch-build | refresh-references | verify-rows
-  dataset    support-cache export | contract get | context-pack | classification children/path/audit/apply | curation-queue build/next/verify | import-lca convert | author | patch apply | save-draft | source upload-attachments | validate | verify-remote | bilingual extract/apply/validate | evidence-search plan/run | references rewrite/refresh-remote | maintenance clear-account/plan/apply/verify/flow-identity
+  dataset    support-cache export | contract get | context-pack | classification children/path/audit/apply | curation-queue build/next/verify | import-lca convert | author | patch apply | prepare-draft | save-draft | source upload-attachments | validate | verify-remote | bilingual extract/apply/validate | evidence-search plan/run | references rewrite/refresh-remote | maintenance clear-account/plan/apply/verify/flow-identity
   flow       get | list | identity-preflight | build-plan | fetch-rows | materialize-decisions | remediate | publish-version | publish-reviewed-data | build-alias-map | scan-process-flow-refs | plan-process-flow-repairs | apply-process-flow-repairs | regen-product | validate-processes
   lifecyclemodel auto-build | validate-build | publish-build | save-draft | graph | build-resulting-process | publish-resulting-process | orchestrate
   qa         process | flow | lifecyclemodel
@@ -962,6 +978,7 @@ Implemented Subcommands:
   import-lca convert  Import supported external LCA packages through the unified Rust tidas binary
   author              Extract source evidence and prepare TIDAS context packs for AI authoring
   patch apply          Apply AI-authored structured dataset patches deterministically
+  prepare-draft        Select a stable current-owner draft or atomically prepare its successor
   save-draft           Save contact/source/support or other canonical dataset rows through the platform dataset command path
   source upload-attachments Upload source referenceToDigitalFile binaries to storage and rewrite their @uri
   validate             Validate local flow / process / lifecyclemodel rows with the TIDAS SDK
@@ -1606,6 +1623,238 @@ Outputs written under --out-dir:
   - outputs/remote-verification.jsonl
   - outputs/blockers.jsonl
 `.trim();
+}
+
+function renderDatasetBindPreparedProposalHelp(): string {
+  return `Usage:
+  tiangong-lca dataset prepare-draft bind --input <proposal.json> --proposal-sha256 <canonical-sha256> --source-sha256 <canonical-sha256> --preparation-report <report.json> --out-dir <new-dir> [options]
+
+Options:
+  --input <file>               Reviewed single canonical scientific proposal, still carrying public identity
+  --proposal-sha256 <sha256>    Independently frozen proposal canonical digest
+  --source-sha256 <sha256>      Independently frozen exact public source canonical digest
+  --preparation-report <file>  Successful fixed-target preparation or current read-only selected report
+  --predecessor-file <file>    Explicit reviewed single GlobalReferenceType reference to the exact public source
+  --predecessor-sha256 <sha256> Canonical predecessor digest; required with --predecessor-file
+  --semantic-context-file <file>
+                              Optional Process-only native context: original candidate hash and complete Flow docs
+  --semantic-context-sha256 <sha256>
+                              Canonical original context digest; required with the context file
+  --out-dir <dir>              New private binding directory; existing artifacts cannot be overwritten
+  --json                       Print compact JSON
+  -h, --help
+
+Offline only. Reuses dataset patch apply for version, permanent URI and an explicitly reviewed
+predecessor reference; the dataset UUID and all scientific content stay unchanged. An existing
+correct exact-source predecessor may be retained; otherwise the reviewed file/hash is mandatory.
+No short description or publication lineage is invented. Read-only selections remain observed_only.
+Outputs desired.json, identity-patch.json, evidence.json and binding.json all retain save_ready=false.
+Identity-diff review and existing schema/reference/current-owner/fresh-before-image gates remain required.
+A valid scientific review bound to the same proposal digest may be reused; hashes do not assert review acceptance.
+Explicit Process semantic context preserves Flow documents and only rebinds candidate_sha256 after
+scientific-projection equality. Generated allocation provenance requires its native owner.
+No context supplied is recorded explicitly; allocation/schema acceptance is never inferred.
+`.trim();
+}
+function parseDatasetBindPreparedProposalFlags(
+  args: string[],
+): RunDatasetBindPreparedProposalOptions & { help: boolean; json: boolean } {
+  const required = ['input', 'proposal-sha256', 'source-sha256', 'preparation-report', 'out-dir'];
+  const stringFlags = [
+    ...required,
+    'predecessor-file',
+    'predecessor-sha256',
+    'semantic-context-file',
+    'semantic-context-sha256',
+  ];
+  const seen = new Set<string>();
+  for (const arg of args) {
+    const name = arg.split('=')[0]!;
+    if (![...stringFlags.map((key) => `--${key}`), '--json'].includes(name)) continue;
+    if (seen.has(name))
+      throw new CliError(`Duplicate option ${name}.`, { code: 'INVALID_ARGS', exitCode: 2 });
+    seen.add(name);
+  }
+  let values: ReturnType<typeof parseArgs>['values'];
+  try {
+    ({ values } = parseArgs({
+      args,
+      allowPositionals: false,
+      strict: true,
+      options: {
+        help: { type: 'boolean', short: 'h' },
+        json: { type: 'boolean' },
+        input: { type: 'string' },
+        'proposal-sha256': { type: 'string' },
+        'source-sha256': { type: 'string' },
+        'preparation-report': { type: 'string' },
+        'predecessor-file': { type: 'string' },
+        'predecessor-sha256': { type: 'string' },
+        'semantic-context-file': { type: 'string' },
+        'semantic-context-sha256': { type: 'string' },
+        'out-dir': { type: 'string' },
+      },
+    }));
+  } catch (error) {
+    throw new CliError(String(error), { code: 'INVALID_ARGS', exitCode: 2 });
+  }
+  if (
+    !values.help &&
+    (required.some((key) => typeof values[key] !== 'string' || !(values[key] as string).trim()) ||
+      stringFlags.some((key) => values[key] !== undefined && !(values[key] as string).trim()) ||
+      Boolean(values['predecessor-file']) !== Boolean(values['predecessor-sha256']) ||
+      Boolean(values['semantic-context-file']) !== Boolean(values['semantic-context-sha256']))
+  )
+    throw new CliError(
+      'Binding requires proposal/source digests, preparation report and a new output directory; predecessor file/hash travel together.',
+      { code: 'INVALID_ARGS', exitCode: 2 },
+    );
+  return {
+    help: Boolean(values.help),
+    json: Boolean(values.json),
+    inputPath: typeof values.input === 'string' ? values.input : '',
+    proposalSha256: typeof values['proposal-sha256'] === 'string' ? values['proposal-sha256'] : '',
+    sourceSha256: typeof values['source-sha256'] === 'string' ? values['source-sha256'] : '',
+    preparationReportPath:
+      typeof values['preparation-report'] === 'string' ? values['preparation-report'] : '',
+    outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : '',
+    ...(typeof values['predecessor-file'] === 'string'
+      ? { predecessorFile: values['predecessor-file'] }
+      : {}),
+    ...(typeof values['predecessor-sha256'] === 'string'
+      ? { predecessorSha256: values['predecessor-sha256'] }
+      : {}),
+    ...(typeof values['semantic-context-file'] === 'string'
+      ? { semanticContextFile: values['semantic-context-file'] }
+      : {}),
+    ...(typeof values['semantic-context-sha256'] === 'string'
+      ? { semanticContextSha256: values['semantic-context-sha256'] }
+      : {}),
+  };
+}
+
+function renderDatasetPrepareDraftHelp(): string {
+  return `Usage:
+  tiangong-lca dataset prepare-draft --type <type> --id <UUID> --source-version <version> --out-dir <dir> [options]
+  tiangong-lca dataset prepare-draft --input <request.json> --out-dir <dir> [--commit | --status-only] [options]
+  tiangong-lca dataset prepare-draft bind --help
+
+Options:
+  --type <type>        contact, source, flow or standalone process (read-only scope)
+  --id <UUID>          Typed dataset family (read-only scope)
+  --source-version <version>
+                       Exact public state-100/200 source (read-only scope)
+  --target-user-id <UUID> Require this authenticated current owner (read-only scope)
+  --project-ref <ref>   Require this project (read-only scope)
+  --input <file>        Original strict preparation request JSON
+  --out-dir <dir>       Private preparation artifacts directory
+  --commit              Emit at most one atomic server create-or-reuse request
+  --status-only         Look up the original request only; never create or replay
+  --selected-version <version>
+                        Explicit conflict selection, bound to the full expected draft set and before image
+  --json                Print compact JSON
+  -h, --help
+
+Default mode reads the complete current-owner state-0 draft set, review-state 20..99 set and exact public source.
+Any in-progress review returns its exact dataset/review return points and blocks preparation. All
+preparation reports keep save_ready=false; a source clone is not a reviewed scientific candidate.
+It writes request.json, report.json and target.json without creating a dataset version.
+Commit requires the frozen request from that observation. Multiple drafts require explicit
+selection; none are silently chosen or deleted. Initial creation and LifecycleModel/resulting
+Process groups require their native contracts. A consumed attempt, even in another output
+directory, permits original-request lookup only. A missing backend is a capability failure,
+never permission to guess or insert a version. Target content changes remain the existing
+guarded dataset save-draft contract, which requires fresh target before-image verification.
+`.trim();
+}
+
+function parseDatasetPrepareDraftFlags(
+  args: string[],
+): Omit<RunDatasetPrepareDraftOptions, 'env' | 'fetchImpl'> & { help: boolean; json: boolean } {
+  const scopeFlags = ['type', 'id', 'source-version', 'target-user-id', 'project-ref'];
+  const stringFlags = ['input', 'out-dir', 'selected-version', ...scopeFlags];
+  const booleanFlags = ['commit', 'status-only', 'json'];
+  const unique = new Set([...stringFlags, ...booleanFlags].map((flag) => `--${flag}`));
+  const seen = new Set<string>();
+  for (const arg of args) {
+    const flag = arg.split('=')[0]!;
+    if (!unique.has(flag)) continue;
+    if (seen.has(flag))
+      throw new CliError(`Duplicate option ${flag}.`, { code: 'INVALID_ARGS', exitCode: 2 });
+    seen.add(flag);
+  }
+  let values: ReturnType<typeof parseArgs>['values'];
+  try {
+    ({ values } = parseArgs({
+      args,
+      allowPositionals: false,
+      strict: true,
+      options: {
+        help: { type: 'boolean', short: 'h' },
+        json: { type: 'boolean' },
+        input: { type: 'string' },
+        'out-dir': { type: 'string' },
+        type: { type: 'string' },
+        id: { type: 'string' },
+        'source-version': { type: 'string' },
+        'target-user-id': { type: 'string' },
+        'project-ref': { type: 'string' },
+        commit: { type: 'boolean' },
+        'status-only': { type: 'boolean' },
+        'selected-version': { type: 'string' },
+      },
+    }));
+  } catch (error) {
+    throw new CliError(String(error), { code: 'INVALID_ARGS', exitCode: 2 });
+  }
+  if (values.commit && values['status-only'])
+    throw new CliError('Cannot pass both --commit and --status-only.', {
+      code: 'INVALID_ARGS',
+      exitCode: 2,
+    });
+  if (!values.help) {
+    if (
+      stringFlags.some((key) => values[key] !== undefined && !(values[key] as string).trim()) ||
+      !values['out-dir']
+    )
+      throw new CliError('Preparation requires non-empty options and --out-dir.', {
+        code: 'INVALID_ARGS',
+        exitCode: 2,
+      });
+    if (
+      values.input
+        ? scopeFlags.some((key) => values[key] !== undefined)
+        : !values.type ||
+          !values.id ||
+          !values['source-version'] ||
+          values.commit ||
+          values['status-only']
+    )
+      throw new CliError(
+        'Select read-only --type/--id/--source-version, or frozen --input for commit/status-only.',
+        { code: 'INVALID_ARGS', exitCode: 2 },
+      );
+  }
+  return {
+    help: Boolean(values.help),
+    json: Boolean(values.json),
+    ...(typeof values.input === 'string' ? { inputPath: values.input } : {}),
+    ...(typeof values.type === 'string' ? { type: values.type } : {}),
+    ...(typeof values.id === 'string' ? { id: values.id } : {}),
+    ...(typeof values['source-version'] === 'string'
+      ? { sourceVersion: values['source-version'] }
+      : {}),
+    ...(typeof values['target-user-id'] === 'string'
+      ? { targetUserId: values['target-user-id'] }
+      : {}),
+    ...(typeof values['project-ref'] === 'string' ? { projectRef: values['project-ref'] } : {}),
+    outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : '',
+    commit: Boolean(values.commit),
+    statusOnly: Boolean(values['status-only']),
+    ...(typeof values['selected-version'] === 'string'
+      ? { selectedVersion: values['selected-version'] }
+      : {}),
+  };
 }
 
 function renderDatasetSaveDraftHelp(): string {
@@ -7424,6 +7673,9 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
       deps.runDatasetImportLcaConvertImpl ?? runDatasetImportLcaConvert;
     const datasetAuthorImpl = deps.runDatasetAuthorImpl ?? runDatasetAuthor;
     const datasetPatchApplyImpl = deps.runDatasetPatchApplyImpl ?? runDatasetPatchApply;
+    const datasetBindPreparedProposalImpl =
+      deps.runDatasetBindPreparedProposalImpl ?? runDatasetBindPreparedProposal;
+    const datasetPrepareDraftImpl = deps.runDatasetPrepareDraftImpl ?? runDatasetPrepareDraft;
     const datasetSaveDraftImpl = deps.runDatasetSaveDraftImpl ?? runDatasetSaveDraft;
     const datasetClassificationChildrenImpl =
       deps.runDatasetClassificationChildrenImpl ?? runDatasetClassificationChildren;
@@ -7989,6 +8241,29 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
       return {
         exitCode: report.status === 'completed_with_failures' ? 1 : 0,
         stdout: stringifyJson(report, datasetFlags.json),
+        stderr: '',
+      };
+    }
+
+    if (command === 'dataset' && subcommand === 'prepare-draft' && commandArgs[0] === 'bind') {
+      const { help, json, ...flags } = parseDatasetBindPreparedProposalFlags(commandArgs.slice(1));
+      if (help)
+        return { exitCode: 0, stdout: `${renderDatasetBindPreparedProposalHelp()}\n`, stderr: '' };
+      const report = await datasetBindPreparedProposalImpl(flags);
+      return { exitCode: 0, stdout: stringifyJson(report, json), stderr: '' };
+    }
+
+    if (command === 'dataset' && subcommand === 'prepare-draft') {
+      const { help, json, ...flags } = parseDatasetPrepareDraftFlags(commandArgs);
+      if (help) return { exitCode: 0, stdout: `${renderDatasetPrepareDraftHelp()}\n`, stderr: '' };
+      const report = await datasetPrepareDraftImpl({
+        ...flags,
+        env: deps.env,
+        fetchImpl: deps.fetchImpl,
+      });
+      return {
+        exitCode: ['selected', 'prepared', 'needs_creation'].includes(report.status) ? 0 : 1,
+        stdout: stringifyJson(report, json),
         stderr: '',
       };
     }

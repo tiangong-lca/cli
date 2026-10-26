@@ -1,0 +1,90 @@
+{
+  "source_revision": "fd12bf27ee691d86571df585ff99c4513eeb1695",
+  "independent_review": {
+    "scope": "Offline binding raw-byte and strict UTF-8 repair",
+    "targeted_tests_passed": 15,
+    "remaining_material_findings": 0,
+    "separate_from_hosted_re_review": true
+  },
+  "redaction": "Actual full-gate execution output retained with local absolute paths replaced by descriptive placeholders. Native UTF-8 and Root JSON files are sanitized allowlisted projections, not raw operational evidence. No real dataset/account identifiers, bodies, body digests, private paths or original case labels are published.",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "087b73ee77dc247ad703d422c64a2dd13abec3b2c6629b2d91a4bb0ccbd63527",
+      "bytes": 12971
+    },
+    {
+      "path": "independent-spec-tests.txt",
+      "sha256": "81c06a55364298d32bf0d3cfc294a39ad1f13a86f4fb2756c9fe07584ad63ace",
+      "bytes": 1964
+    },
+    {
+      "path": "local-integration.json",
+      "sha256": "cebc71344d339c0b1de1c446089c4ed2f7f916221c11a5b062e7d577d7529f2b",
+      "bytes": 3255
+    },
+    {
+      "path": "original-workflow-summary.json",
+      "sha256": "42783c77bcd6815bd228b676c6b480e96fa8b4b4e6c071003e0f731ec8389118",
+      "bytes": 2494
+    },
+    {
+      "path": "prepush.txt",
+      "sha256": "71da83b6e50dfc480fb0c34461588e75085b219892a1efa306bd930bafa61308",
+      "bytes": 200954
+    },
+    {
+      "path": "review-follow-up/full-gate.txt",
+      "sha256": "d35b46af769037c4a6e0baef575395efab231e471662a5d8b8ca5f36136a5214",
+      "bytes": 202610
+    },
+    {
+      "path": "review-follow-up/native-regressions.json",
+      "sha256": "3e49e77b22937be901e0e96b27f370d8657cf9d8987ec37fc05f1a8d521c3fdb",
+      "bytes": 3388
+    },
+    {
+      "path": "review-follow-up/original-workflow-summary.json",
+      "sha256": "4ce4ca19ce2e3e9cad058a6e4ab15792a7fba66264e558c88d148742194ba91a",
+      "bytes": 1872
+    },
+    {
+      "path": "utf8-follow-up/full-gate.txt",
+      "sha256": "7eb2e3bd521a6815936b888ac6ad991d59ea3b9d279601507515f39aa3877133",
+      "bytes": 203070
+    },
+    {
+      "path": "utf8-follow-up/native-regressions.json",
+      "sha256": "f0b9bdc42b829113131623a0e3a5d7e246afb5df698c67b7664b84f07c5cc299",
+      "bytes": 5323
+    },
+    {
+      "path": "utf8-follow-up/original-workflow-summary.json",
+      "sha256": "45baed88001a5403652c8884e0afc238ddecb806788e2abdd27aedbd3ce3e3ec",
+      "bytes": 2492
+    }
+  ],
+  "current_review_follow_up": {
+    "source_revision": "fd12bf27ee691d86571df585ff99c4513eeb1695",
+    "runtime_content_sha256": "3c8e97aa7322b8decbd8af98bc24e5c8761638e0bc7bffc31e5696669ef046e5",
+    "packed_archive_sha256": "889d842f9a5a67c6a8613a4d66f8a7c8dc0f4cbea93dc210444d7569b6ddc785",
+    "evidence_directory": "utf8-follow-up",
+    "installed_synthetic_native_checks": 17,
+    "root_decision": "Existing PR442 update only; no production target/save qualification",
+    "historical_evidence": "Existing d053 and 7a files are retained unchanged. Root explicitly reused unaffected 7a read-only selection/recovery/SDK evidence after source and packaged-byte equality checks; this is not fresh state.",
+    "independent_original_workflow_offline_public_cli_checks": 23
+  },
+  "historical_source_revision": "d053d6dcac55f7bfa8a089344c37ee0bc9075ad9",
+  "historical_independent_review": {
+    "standards_remaining_material_findings": 0,
+    "spec_initial_p2": 2,
+    "spec_resolved_p2": 2,
+    "spec_remaining_material_findings": 0,
+    "independent_targeted_tests": 9
+  },
+  "historical_review_follow_up": {
+    "source_revision": "7a81eb1eed13176cd8197cca00fdd8695f627439",
+    "runtime_content_sha256": "c9be1d28e7230c2da26a2194fdd1577e2988b2168fd6ab6766e2b8678f53550e",
+    "historical_files": "Existing d053 result files remain historical; review-follow-up contains separately bound current evidence."
+  }
+}

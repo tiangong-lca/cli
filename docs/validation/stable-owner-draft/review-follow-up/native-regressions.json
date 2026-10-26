@@ -1,0 +1,144 @@
+{
+  "scope": "Sanitized projection of installed CLI -> real authenticated Edge -> owned local PostgreSQL execution; no production data writes or scientific acceptance",
+  "product_commit": "7a81eb1eed13176cd8197cca00fdd8695f627439",
+  "runtime_content_sha256": "c9be1d28e7230c2da26a2194fdd1577e2988b2168fd6ab6766e2b8678f53550e",
+  "aliases": [
+    {
+      "path": "report.json",
+      "mode": "read_only",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "report.json",
+      "mode": "commit",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "report.json",
+      "mode": "status_only",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "target.json",
+      "mode": "read_only",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "target.json",
+      "mode": "commit",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "target.json",
+      "mode": "status_only",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "report.json",
+      "alias": "case",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "report.json",
+      "alias": "hardlink",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "report.json",
+      "alias": "relative",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "report.json",
+      "alias": "parent-link",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "target.json",
+      "alias": "case",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "target.json",
+      "alias": "hardlink",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "target.json",
+      "alias": "relative",
+      "input_unchanged": true,
+      "http_calls": 0
+    },
+    {
+      "path": "target.json",
+      "alias": "parent-link",
+      "input_unchanged": true,
+      "http_calls": 0
+    }
+  ],
+  "request_json_reuse": true,
+  "lookup_failures": [
+    {
+      "fault": "lookup_http_failure",
+      "validated_post_receipt_retained": true,
+      "status_on_fault": "unknown",
+      "target_on_fault": null,
+      "save_ready": false,
+      "resume": "read-only lookup; same target; no prepare replay"
+    },
+    {
+      "fault": "lookup_malformed",
+      "validated_post_receipt_retained": true,
+      "status_on_fault": "unknown",
+      "target_on_fault": null,
+      "save_ready": false,
+      "resume": "read-only lookup; same target; no prepare replay"
+    }
+  ],
+  "domain_rows_unchanged_during_reuse_tests": true,
+  "audit": {
+    "native_writes": 1,
+    "prepare_receipts": 4
+  },
+  "counts": {
+    "prepare": 4,
+    "recovery": 7,
+    "save": 0,
+    "dropped": 1,
+    "auth": 24,
+    "relation": 35,
+    "recoveryFaults": 2
+  },
+  "receipt_readback": {
+    "passed": true,
+    "cases": [
+      {
+        "case": "lookup_http_failure",
+        "reported_receipt_equals_committed_database_receipt": true,
+        "status": "unknown",
+        "target": null,
+        "save_ready": false
+      },
+      {
+        "case": "lookup_malformed",
+        "reported_receipt_equals_committed_database_receipt": true,
+        "status": "unknown",
+        "target": null,
+        "save_ready": false
+      }
+    ]
+  },
+  "passed": true
+}

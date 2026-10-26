@@ -1,0 +1,29 @@
+Source: preserved original functions.exec / exec_command output from the independent Spec reviewer; no test rerun was performed to create this log.
+Reviewed HEAD: d053d6dcac55f7bfa8a089344c37ee0bc9075ad9
+Working directory: <cli-worktree>
+Command:
+<node-24.19.0> --import tsx --test --test-name-pattern='frozen first commit|validated receipt|invalid receipt|lost prepare response|prepared target entering a model/result|prepared target entering review|review race server|read-only recovery reports invalid' test/dataset-prepare-draft.test.ts
+Exit code: 0
+Original execution chunk_id: 928d78
+Original execution wall_time_seconds: 0.615034667
+
+Original output:
+✔ read-only recovery reports invalid receipts/current target disagreement without creating (37.761208ms)
+✔ a prepared target entering a model/result or elementary domain cannot read back as prepared (23.536167ms)
+✔ prepared target entering review retains original receipt but cannot authorize another draft or save (20.477459ms)
+✔ review race server response preserves complete fenced return points without hidden retry (11.216542ms)
+✔ frozen first commit returns fresh review points when its selected draft entered review (10.947667ms)
+✔ validated receipt survives independent current-target network and response failures (36.515917ms)
+✔ invalid receipt is never retained even if its current-target response would match (12.962917ms)
+✔ validated receipt remains immutable when a current target becomes a Result or unknown Flow (23.592ms)
+✔ lost prepare response plus unavailable current read retains its validated receipt without replay (12.141667ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 696.5905
+
+Conclusion: At HEAD d053d6dcac55f7bfa8a089344c37ee0bc9075ad9, both prior Spec P2 findings are resolved; no remaining material Spec findings were identified in the bounded re-review, including the invalid-receipt boundary.
