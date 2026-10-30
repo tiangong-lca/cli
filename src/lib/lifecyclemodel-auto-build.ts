@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { writeJsonArtifact, writeTextArtifact } from './artifacts.js';
 import { CliError } from './errors.js';
+import { collectDatasetNameIssues } from './dataset-name-validation.js';
 import { TIDAS_LANGUAGE_CODE_SET } from './tidas-languages.js';
 import { readJsonInput } from './io.js';
 import {
@@ -1644,6 +1645,14 @@ function buildLocalModels(
       factors,
       finalProcessId,
     );
+    const nameIssues = collectDatasetNameIssues(model, 'lifecyclemodel');
+    if (nameIssues.length > 0) {
+      throw new CliError('Lifecyclemodel name fields must use commas instead of semicolons.', {
+        code: 'LIFECYCLEMODEL_AUTO_BUILD_NAME_INVALID',
+        exitCode: 2,
+        details: { runName, issues: nameIssues },
+      });
+    }
     const runOut = path.join(layout.modelsDir, runName);
     const bundleOut = path.join(runOut, 'tidas_bundle', 'lifecyclemodels');
     mkdirSync(bundleOut, { recursive: true });

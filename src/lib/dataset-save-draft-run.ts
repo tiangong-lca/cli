@@ -1,3 +1,4 @@
+import { collectDatasetNameIssues } from './dataset-name-validation.js';
 import {
   semanticContextFromInput,
   type ProcessSemanticContext,
@@ -899,7 +900,10 @@ function validatePayload(
   // isolated so execution-contract hashing, dispatch, and readback all use the exact input.
   const validationPayload = structuredClone(payload);
   const outcome = validateSchemaWithDeepFallback(schema, validationPayload, createEntity);
-  const contentIssues = collectImportContentIssues(payload);
+  const contentIssues = [
+    ...collectImportContentIssues(payload),
+    ...collectDatasetNameIssues(payload, type),
+  ];
   const { additional_multilingual_issues, ...evidence } = buildDatasetValidationLayers(
     payload,
     outcome,

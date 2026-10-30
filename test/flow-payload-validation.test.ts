@@ -83,3 +83,55 @@ test('flow payload validation internals detect optional SDK factory support', ()
   assert.equal(__testInternals.getFlowFactory({ createFlow: 'not-a-function' }), null);
   assert.equal(typeof __testInternals.getFlowFactory({ createFlow: () => ({}) }), 'function');
 });
+
+test('flow payload validation rejects semicolons in every name segment and language without rewriting synonyms', () => {
+  const schema = { safeParse: () => ({ success: true as const }) };
+  for (const field of [
+    'baseName',
+    'treatmentStandardsRoutes',
+    'mixAndLocationTypes',
+    'flowProperties',
+  ]) {
+    for (const punctuation of [';', '；']) {
+      const payload = {
+        flowDataSet: {
+          flowInformation: {
+            dataSetInformation: {
+              name: {
+                baseName: { '@xml:lang': 'en', '#text': 'Battery' },
+                [field]: [
+                  { '@xml:lang': 'en', '#text': 'Battery' },
+                  { '@xml:lang': 'de', '#text': `Batterie${punctuation} Prüfung` },
+                ],
+              },
+              'common:synonyms': { '@xml:lang': 'en', '#text': 'battery; accumulator；cell' },
+            },
+          },
+        },
+      };
+      const before = structuredClone(payload);
+      const result = validateFlowPayload(payload, schema, null);
+      assert.equal(result.ok, false, `${field}: ${punctuation}`);
+      assert.equal(result.issue_count, 1);
+      assert.equal(result.issues[0]?.code, 'dataset_name_semicolon');
+      assert.equal(
+        result.issues[0]?.path,
+        `flowDataSet.flowInformation.dataSetInformation.name.${field}.1.#text`,
+      );
+      assert.deepEqual(payload, before);
+    }
+  }
+  const synonymsOnly = {
+    flowDataSet: {
+      flowInformation: {
+        dataSetInformation: {
+          name: { baseName: { '@xml:lang': 'de', '#text': 'Batterie, wiederaufladbar' } },
+          'common:synonyms': { '@xml:lang': 'en', '#text': 'battery; accumulator；cell' },
+        },
+      },
+    },
+  };
+  const before = structuredClone(synonymsOnly);
+  assert.equal(validateFlowPayload(synonymsOnly, schema, null).ok, true);
+  assert.deepEqual(synonymsOnly, before);
+});

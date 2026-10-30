@@ -50,6 +50,7 @@ import {
 import { maintenanceProjectedReferenceFingerprint } from './dataset-maintenance-plan.js';
 import { isSnapshotCompletenessCompatible } from './dataset-maintenance-pagination.js';
 import {
+  assertMaintenanceDraftName,
   applyMaintenanceDerivativeRebuild,
   deleteMaintenanceRow,
   fetchMaintenanceAccountRows,
@@ -1302,6 +1303,9 @@ function assertApplyPreconditions(options: {
       });
     }
     const currentSnapshot = snapshotRemoteRow(currentRow);
+    if (action.action === 'save_draft' && !alreadySucceeded) {
+      assertMaintenanceDraftName(loadDesiredPayload(options.planDir, action), action.table);
+    }
     if (action.action === 'update_json_ordered') {
       aliasBatchStates.get(action.batch_id!)!;
       continue;

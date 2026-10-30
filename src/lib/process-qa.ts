@@ -1,3 +1,4 @@
+import { collectDatasetNameIssues } from './dataset-name-validation.js';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { writeJsonArtifact, writeJsonLinesArtifact, writeTextArtifact } from './artifacts.js';
@@ -1176,6 +1177,17 @@ export async function runProcessQa(options: RunProcessQaOptions): Promise<Proces
     const fileName = path.basename(filePath);
     baseRows.push([fileName, base]);
     ruleFindings.push(...reviewFindingsForBase(fileName, base));
+    for (const issue of collectDatasetNameIssues(processPayload, 'process')) {
+      ruleFindings.push(
+        createProcessQaFinding({
+          processFile: fileName,
+          severity: 'blocker',
+          code: issue.code,
+          message: issue.message,
+          evidence: { path: issue.path },
+        }),
+      );
+    }
 
     exchanges.forEach((exchange) => {
       const classified = classifyExchange(exchange, referenceFlowId);

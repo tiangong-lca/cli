@@ -20,9 +20,9 @@ checkPaths:
   - src/cli.ts
   - test/dataset-exact-reference-intent.test.ts
   - test/dataset-save-draft-exact-reference.test.ts
-lastReviewedAt: 2026-09-11
-lastReviewedCommit: 577d6fdf6ffb9de594b098a166c6b1f2ac3657f1
-lastReviewedNote: 'Reviewed for CLI #289: explicit consumer/reference/review binding, fresh actor identity, current latest payload observations and unchanged root/default policies.'
+lastReviewedAt: 2026-10-30
+lastReviewedCommit: 67f9eba655ea56fd352a6df795feeec6536a59a9
+lastReviewedNote: 'Reviewed the dataset save-draft name-content gate against 67f9eba: exact-reference intent/review fields, consumer hashes, actor/project checks, reference eligibility, predispatch binding and consumed-attempt recovery remain unchanged.'
 related:
   - ../../AGENTS.md
   - ./repo-validation.md

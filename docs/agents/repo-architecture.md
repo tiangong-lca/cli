@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: 2026-10-30
+lastReviewedCommit: 67f9eba655ea56fd352a6df795feeec6536a59a9
+lastReviewedNote: 'Reviewed the working-tree name punctuation change against this base: shared four-field/all-language checks, build/save/QA and remediation/maintenance coverage, synonyms preserved; dependency, auth and release contracts remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -251,6 +251,12 @@ Ordinary V1 maintenance only permits current-user, `state_code=0`, exact-version
 `rebuild-derivatives` is a third, non-primary-write profile and is bidirectionally bound to `action=rebuild_derivatives`. V1 requires exactly one exact-version `processes` row, `target_mode=owner_draft`, current actor ownership, `state_code=0`, and exactly the `extracted_md` plus `embedding_ft` components. Multiple actions, another table or component set, public/foreign/non-draft state, and primary-payload drift all fail closed. The process primary payload, owner/state, and `modified_at` are invariants rather than mutation targets.
 
 All mutation or asynchronous work admission continues through the public platform dataset command path. Direct SQL, service-role access, raw REST mutation, direct Edge calls, `admin embedding-run`, raw queue access, and Foundry-local delete/update/rebuild implementations are outside this architecture; Foundry may only prepare scope, invoke the CLI, and retain its artifacts.
+
+### Shared name punctuation validation
+
+`dataset-name-validation.ts` owns the CLI-local deterministic punctuation check for Flow, Process and LifecycleModel names. It inspects only `baseName`, `treatmentStandardsRoutes`, `mixAndLocationTypes` and the entity's fourth name field (`flowProperties` for Flow; `functionalUnitFlowProperties` for Process/Model). Every localized entry, in singleton or array form, rejects both `;` and `；`; language tags do not select or exempt entries. `common:synonyms`, comments and reference descriptions are outside this check. The helper reports `dataset_name_semicolon` with the exact field/index path and never rewrites content.
+
+BuildPlan validation and materialization, Model auto-build, payload/save gates, dataset validation, package validation and QA reuse this helper. Process resulting builds inherit it through `validateProcessPayload`. Model auto-build retains deferred full schema validation but rejects invalid name punctuation before emitting the affected model. Flow build plans preserve an explicitly supplied fourth name field. Existing schema/language/required-field rules stay separate; validation reports with content layers record name issues in `content`. Flow QA retains the historical `methodology_basename_semicolon` finding for base names; other name fields use the shared issue code and also block the gate. Flow remediation retains invalid names in its manual queue. Ordinary maintenance save plans report name blockers; pending saves recheck during apply preflight before approval/attempt writes and again before RPC dispatch, so previously prepared plans cannot bypass the check. Completed actions retain their existing readback-only recovery behavior.
 
 ### Artifact and filesystem behavior
 

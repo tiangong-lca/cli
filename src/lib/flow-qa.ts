@@ -1,3 +1,4 @@
+import { collectDatasetNameIssues } from './dataset-name-validation.js';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { writeJsonArtifact, writeJsonLinesArtifact, writeTextArtifact } from './artifacts.js';
@@ -575,22 +576,19 @@ function applyMethodologyChecks(
     );
   }
 
-  if (
-    baseNameItems.some((item) => {
-      const text = isRecord(item) ? coerceText(item['#text']) : coerceText(item);
-      return text.includes(';');
-    })
-  ) {
+  for (const issue of collectDatasetNameIssues(flow, 'flow')) {
+    const isBaseName = issue.path.includes('.name.baseName');
     findings.push(
       createRuleFinding(
         flowUuidValue,
         baseVersion,
-        'warning',
-        'methodology_basename_semicolon',
-        'baseName contains semicolon; methodology requires comma-separated descriptors.',
+        isBaseName ? 'warning' : 'error',
+        isBaseName ? 'methodology_basename_semicolon' : issue.code,
+        issue.message,
         {
           fixability: 'auto',
           ruleSource,
+          evidence: { path: issue.path },
         },
       ),
     );

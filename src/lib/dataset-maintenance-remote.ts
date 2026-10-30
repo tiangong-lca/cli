@@ -1,5 +1,6 @@
 // data-api-relations: contacts, flowproperties, flows, lciamethods, lifecyclemodels, processes, sources, unitgroups
 import { CliError } from './errors.js';
+import { collectDatasetNameIssues } from './dataset-name-validation.js';
 import type { FetchLike, ResponseLike } from './http.js';
 import {
   buildSnapshotCompleteness,
@@ -25,6 +26,7 @@ import {
   isJsonObject,
   MAINTENANCE_SCAN_TABLES,
   type DatasetMaintenanceMutableTable,
+  type DatasetMaintenanceActionTable,
   type DatasetMaintenanceRemoteRow,
   type DatasetMaintenanceScanTable,
   type JsonObject,
@@ -915,6 +917,31 @@ export async function attestMaintenanceFlowIdentityCapture(options: {
   });
 }
 
+export function collectMaintenanceDraftNameIssues(
+  payload: unknown,
+  table: DatasetMaintenanceActionTable,
+): ReturnType<typeof collectDatasetNameIssues> {
+  const kinds: Partial<Record<DatasetMaintenanceActionTable, string>> = {
+    flows: 'flow',
+    processes: 'process',
+  };
+  return collectDatasetNameIssues(payload, kinds[table] ?? table);
+}
+
+export function assertMaintenanceDraftName(
+  payload: unknown,
+  table: DatasetMaintenanceActionTable,
+): void {
+  const issues = collectMaintenanceDraftNameIssues(payload, table);
+  if (issues.length > 0) {
+    throw new CliError('Maintenance draft name fields must use commas instead of semicolons.', {
+      code: 'DATASET_MAINTENANCE_NAME_INVALID',
+      exitCode: 1,
+      details: { table, issues },
+    });
+  }
+}
+
 export async function saveDraftMaintenanceRow(options: {
   context: DatasetMaintenanceRemoteContext;
   table: DatasetMaintenanceMutableTable;
@@ -925,6 +952,7 @@ export async function saveDraftMaintenanceRow(options: {
   ruleVerification: boolean | null;
   audit: JsonObject;
 }): Promise<JsonObject> {
+  assertMaintenanceDraftName(options.payload, options.table);
   return invokeMaintenanceRpc({
     context: options.context,
     rpc: 'cmd_dataset_save_draft',

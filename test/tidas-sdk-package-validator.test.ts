@@ -97,6 +97,64 @@ test('createTidasSdkPackageValidator resolves complete schema exports and reject
   );
 });
 
+test('package validation checks structured names alongside successful SDK schemas and preserves synonyms', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-package-names-'));
+  const definitions = [
+    ['flows', 'flowDataSet', 'flowInformation', 'flowProperties'],
+    ['processes', 'processDataSet', 'processInformation', 'functionalUnitFlowProperties'],
+    [
+      'lifecyclemodels',
+      'lifeCycleModelDataSet',
+      'lifeCycleModelInformation',
+      'functionalUnitFlowProperties',
+    ],
+  ] as const;
+  try {
+    const validator = createTidasSdkPackageValidator(makeSchemas(), 'test-sdk');
+    assert.ok(validator);
+    for (const [category, rootKey, infoKey, fourthField] of definitions) {
+      writeJson(path.join(dir, category, 'bad.json'), {
+        [rootKey]: {
+          [infoKey]: {
+            dataSetInformation: {
+              name: {
+                [fourthField]: [
+                  { '@xml:lang': 'en', '#text': 'Capacity, specified' },
+                  { '@xml:lang': 'zh', '#text': '额定容量；储能' },
+                ],
+              },
+            },
+          },
+        },
+      });
+      writeJson(path.join(dir, category, 'good.json'), {
+        [rootKey]: {
+          [infoKey]: {
+            dataSetInformation: {
+              name: { baseName: { '@xml:lang': 'en', '#text': 'Battery, storage' } },
+              'common:synonyms': { '@xml:lang': 'en', '#text': 'Battery; accumulator' },
+            },
+          },
+        },
+      });
+    }
+    const report = validator.validatePackageDir(dir);
+    assert.equal(report.ok, false);
+    assert.equal(report.issues.length, 3);
+    for (const issue of report.issues) {
+      assert.equal(issue.issue_code, 'dataset_name_semicolon');
+      assert.equal(issue.severity, 'error');
+      assert.match(issue.file_path, /bad\.json$/u);
+      assert.match(
+        issue.location,
+        /name\/(flowProperties|functionalUnitFlowProperties)\/1\/#text$/u,
+      );
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('validator helper utilities normalize issues and locations consistently', () => {
   const issue = __testInternals.makeIssue('flows', '/tmp/flow.json', '<root>', 'Broken flow');
   const warningIssue = {

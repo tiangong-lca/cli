@@ -8,6 +8,7 @@ import {
 } from './tidas-sdk-validation.js';
 import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 import { TIDAS_LANGUAGE_CODE_SET } from './tidas-languages.js';
+import { collectDatasetNameIssues } from './dataset-name-validation.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -105,6 +106,12 @@ const CATEGORY_FACTORY_EXPORTS: Record<SupportedCategory, keyof TidasSdkPublicMo
   processes: 'createProcess',
   sources: 'createSource',
   unitgroups: 'createUnitGroup',
+};
+
+const CATEGORY_NAME_KINDS: Partial<Record<SupportedCategory, string>> = {
+  flows: 'flow',
+  processes: 'process',
+  lifecyclemodels: 'lifecyclemodel',
 };
 
 const CHINESE_CHARACTER_RE = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/u;
@@ -738,6 +745,10 @@ function categoryValidate(
       ...collectFlowSchemaGapIssues(jsonItem, category, fullPath),
       ...collectLocalizedTextIssues(jsonItem, category, fullPath),
       ...collectClassificationIssues(jsonItem, category, fullPath),
+      ...collectDatasetNameIssues(jsonItem, CATEGORY_NAME_KINDS[category] ?? category).map(
+        (issue) =>
+          makeIssue(category, fullPath, issue.path.replaceAll('.', '/'), issue.message, issue.code),
+      ),
     ]);
 
     issues.push(...itemIssues);

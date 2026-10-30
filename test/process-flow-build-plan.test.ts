@@ -1621,3 +1621,210 @@ test('build plan preserves an explicit annual-supply language array and the unkn
   assert.deepEqual(annualSupplyOf(emptyPlanPayload), []);
   assert.equal(ProcessSchema.safeParse(structuredClone(emptyPlanPayload)).success, true);
 });
+
+test('build-plan name gates reject both semicolons in all four planned fields and every language', async () => {
+  const variants = [
+    {
+      kind: 'flow',
+      create: flowPlan,
+      validate: runFlowBuildPlanValidate,
+      materialize: runFlowBuildPlanMaterialize,
+      fourth: ['flow_properties', 'flowProperties'],
+    },
+    {
+      kind: 'process',
+      create: processPlan,
+      validate: runProcessBuildPlanValidate,
+      materialize: runProcessBuildPlanMaterialize,
+      fourth: ['functional_unit_flow_properties', 'functionalUnitFlowProperties'],
+    },
+  ] as const;
+  for (const variant of variants) {
+    for (const style of ['snake', 'camel'] as const) {
+      const keys =
+        style === 'snake'
+          ? ['base_name', 'treatment_standards_routes', 'mix_and_location_types', variant.fourth[0]]
+          : ['baseName', 'treatmentStandardsRoutes', 'mixAndLocationTypes', variant.fourth[1]];
+      const planKey = style === 'snake' ? 'name_plan' : 'namePlan';
+      for (const field of keys) {
+        for (const punctuation of [';', '；']) {
+          for (const value of [
+            `Battery${punctuation} storage`,
+            { '@xml:lang': 'fr', '#text': `Batterie${punctuation} stockage` },
+            [
+              { '@xml:lang': 'en', '#text': 'Battery, storage' },
+              { '@xml:lang': 'ja', '#text': `蓄電池${punctuation}保管` },
+              { '@xml:lang': 'de', '#text': 'Batterie, Lagerung' },
+            ],
+          ]) {
+            const plan = variant.create({
+              name_plan: undefined,
+              namePlan: undefined,
+              [planKey]: { [keys[0]!]: 'Battery', [field]: value },
+            });
+            const before = JSON.stringify(plan);
+            for (const run of [variant.validate, variant.materialize]) {
+              const report = await run({ inputPath: '/tmp/name-plan.json', rawInput: plan });
+              assert.equal(report.status, 'blocked', `${variant.kind} ${style} ${field}`);
+              const nameIssues = report.blockers.filter(
+                (finding) => finding.code === 'dataset_name_semicolon',
+              );
+              assert.equal(nameIssues.length, 1);
+              assert.equal(nameIssues[0]?.path, `${planKey}.${field}`);
+              assert.equal(report.next_action, 'fix_build_plan');
+              assert.equal(report.schema_validation.status, 'not_applicable');
+            }
+            assert.equal(JSON.stringify(plan), before);
+          }
+        }
+      }
+    }
+  }
+});
+
+test('build-plan name gates inspect embedded payloads before materialization and preserve synonyms', async () => {
+  const variants = [
+    {
+      kind: 'flow',
+      root: 'flowDataSet',
+      information: 'flowInformation',
+      fourth: 'flowProperties',
+      create: flowPlan,
+      build: __testInternals.buildCanonicalFlowPayload,
+      validate: runFlowBuildPlanValidate,
+      materialize: runFlowBuildPlanMaterialize,
+    },
+    {
+      kind: 'process',
+      root: 'processDataSet',
+      information: 'processInformation',
+      fourth: 'functionalUnitFlowProperties',
+      create: processPlan,
+      build: __testInternals.buildCanonicalProcessPayload,
+      validate: runProcessBuildPlanValidate,
+      materialize: runProcessBuildPlanMaterialize,
+    },
+  ] as const;
+  for (const variant of variants) {
+    for (const alias of ['payload', 'materialized_payload', 'materializedPayload']) {
+      for (const field of [
+        'baseName',
+        'treatmentStandardsRoutes',
+        'mixAndLocationTypes',
+        variant.fourth,
+      ]) {
+        for (const punctuation of [';', '；']) {
+          const payload = variant.build(variant.create(), '/tmp/name-plan.json');
+          const information = (payload[variant.root] as Record<string, unknown>)[
+            variant.information
+          ] as Record<string, unknown>;
+          const dataSetInformation = information.dataSetInformation as Record<string, unknown>;
+          const name = dataSetInformation.name as Record<string, unknown>;
+          name[field] = [
+            { '@xml:lang': 'en', '#text': 'Battery, storage' },
+            { '@xml:lang': 'de', '#text': `Batterie${punctuation} Lagerung` },
+          ];
+          for (const run of [variant.validate, variant.materialize]) {
+            const report = await run({
+              inputPath: '/tmp/name-plan.json',
+              rawInput: variant.create({ [alias]: payload }),
+            });
+            assert.equal(report.status, 'blocked');
+            assert.deepEqual(
+              report.blockers
+                .filter((finding) => finding.code === 'dataset_name_semicolon')
+                .map((finding) => finding.path),
+              [`${variant.root}.${variant.information}.dataSetInformation.name.${field}.1.#text`],
+            );
+          }
+        }
+      }
+      const payload = variant.build(variant.create(), '/tmp/name-plan.json');
+      const information = (payload[variant.root] as Record<string, unknown>)[
+        variant.information
+      ] as Record<string, unknown>;
+      const dataSetInformation = information.dataSetInformation as Record<string, unknown>;
+      dataSetInformation['common:synonyms'] = [
+        { '@xml:lang': 'en', '#text': 'Battery; storage；cell' },
+      ];
+      const before = JSON.stringify(payload);
+      const outDir = mkdtempSync(path.join(os.tmpdir(), 'build-plan-name-positive-'));
+      try {
+        for (const run of [variant.validate, variant.materialize]) {
+          const report = await run({
+            inputPath: '/tmp/name-plan.json',
+            outDir,
+            rawInput: variant.create({ [alias]: payload }),
+          });
+          assert.equal(report.status, 'passed');
+        }
+        assert.equal(
+          readFileSync(path.join(outDir, 'outputs', `materialized-${variant.kind}.json`), 'utf8'),
+          `${JSON.stringify(payload, null, 2)}\n`,
+        );
+        assert.equal(JSON.stringify(payload), before);
+      } finally {
+        rmSync(outDir, { recursive: true, force: true });
+      }
+    }
+  }
+});
+
+test('flow materialization retains a fourth name segment in every supplied language', async () => {
+  for (const [planKey, field] of [
+    ['name_plan', 'flow_properties'],
+    ['namePlan', 'flowProperties'],
+  ]) {
+    const value = [
+      { '@xml:lang': 'en', '#text': 'Rated capacity, 100 Ah' },
+      { '@xml:lang': 'de', '#text': 'Nennkapazität, 100 Ah' },
+      { '@xml:lang': 'ja', '#text': '定格容量, 100 Ah' },
+    ];
+    const plan = flowPlan({
+      name_plan: undefined,
+      namePlan: undefined,
+      [planKey!]: {
+        [planKey === 'name_plan' ? 'base_name' : 'baseName']: 'Battery',
+        [field!]: value,
+      },
+    });
+    const outDir = mkdtempSync(path.join(os.tmpdir(), 'flow-fourth-name-'));
+    try {
+      const report = await runFlowBuildPlanMaterialize({
+        inputPath: '/tmp/flow-name-plan.json',
+        outDir,
+        rawInput: plan,
+      });
+      assert.equal(report.status, 'passed');
+      const payload = JSON.parse(
+        readFileSync(path.join(outDir, 'outputs', 'materialized-flow.json'), 'utf8'),
+      ) as {
+        flowDataSet: {
+          flowInformation: { dataSetInformation: { name: { flowProperties: unknown } } };
+        };
+      };
+      assert.deepEqual(
+        payload.flowDataSet.flowInformation.dataSetInformation.name.flowProperties,
+        value,
+      );
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('materialized name checks catch punctuation introduced by generated fallback qualifiers', async () => {
+  const report = await runProcessBuildPlanMaterialize({
+    inputPath: '/tmp/process-fallback-name.json',
+    rawInput: processPlan({ target: { geography: 'CN', technology_route: 'Route；A' } }),
+  });
+  assert.equal(report.status, 'blocked');
+  assert.equal(report.schema_validation.status, 'failed');
+  assert.ok(
+    report.schema_validation.issues.some(
+      (issue) =>
+        issue.code === 'dataset_name_semicolon' && issue.path.includes('treatmentStandardsRoutes'),
+    ),
+  );
+  assert.equal(report.blockers.at(-1)?.code, 'materialized_schema_failed');
+});

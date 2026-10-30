@@ -2,6 +2,7 @@ import path from 'node:path';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
 import { CliError } from './errors.js';
+import { collectDatasetNameIssues } from './dataset-name-validation.js';
 import type { FetchLike } from './http.js';
 import {
   firstNonEmpty,
@@ -132,8 +133,9 @@ export function validateLifecyclemodelPayload(
   const activeSchema = schema ?? getLifecyclemodelSchema();
   const activeCreateEntity =
     createEntity === undefined && schema === undefined ? getLifecyclemodelFactory() : createEntity;
+  const nameIssues = collectDatasetNameIssues(payload, 'lifecyclemodel');
   const outcome = validateSchemaWithDeepFallback(activeSchema, payload, activeCreateEntity);
-  if (outcome.success) {
+  if (outcome.success && nameIssues.length === 0) {
     return {
       ok: true,
       validator: VALIDATOR_NAME,
@@ -142,11 +144,14 @@ export function validateLifecyclemodelPayload(
     };
   }
 
-  const issues = outcome.issues.map((issue) => ({
-    path: normalizeIssuePath(issue.path),
-    message: issue.message ?? 'Validation failed',
-    code: issue.code ?? 'custom',
-  }));
+  const issues = [
+    ...outcome.issues.map((issue) => ({
+      path: normalizeIssuePath(issue.path),
+      message: issue.message ?? 'Validation failed',
+      code: issue.code ?? 'custom',
+    })),
+    ...nameIssues,
+  ];
 
   return {
     ok: false,

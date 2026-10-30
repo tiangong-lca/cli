@@ -1,3 +1,4 @@
+import { processTransportFixture } from './helpers/process-allocation-fixture.js';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
@@ -992,6 +993,129 @@ test('runDatasetSaveDraft allows product flow inserts when reference-only suppor
     );
     assert.deepEqual((bodies[0] as { table?: string; ruleVerification?: boolean })?.table, 'flows');
     assert.equal((bodies[0] as { ruleVerification?: boolean })?.ruleVerification, true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('dataset save-draft blocks every Flow name segment before remote dispatch and preserves synonyms', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-name-save-'));
+  try {
+    for (const field of [
+      'baseName',
+      'treatmentStandardsRoutes',
+      'mixAndLocationTypes',
+      'flowProperties',
+    ]) {
+      for (const punctuation of [';', '；']) {
+        const payload = makeFlow();
+        const root = payload.flowDataSet as Record<string, unknown>;
+        const information = root.flowInformation as Record<string, unknown>;
+        const dataset = information.dataSetInformation as Record<string, unknown>;
+        const name = dataset.name as Record<string, unknown>;
+        name[field] = [
+          { '@xml:lang': 'en', '#text': 'Battery' },
+          { '@xml:lang': 'de', '#text': `Batterie${punctuation} Prüfung` },
+        ];
+        dataset['common:synonyms'] = localized('battery; accumulator；cell');
+        const before = structuredClone(payload);
+        const urls: string[] = [];
+        const report = await runDatasetSaveDraft({
+          inputPath: path.join(dir, 'flows.json'),
+          rawInput: payload,
+          type: 'flow',
+          outDir: path.join(dir, `${field}-${punctuation === ';' ? 'ascii' : 'fullwidth'}`),
+          commit: true,
+          env: buildSupabaseTestEnv(),
+          fetchImpl: makeSaveDraftFetch({ observedUrls: urls }),
+        });
+        assert.equal(report.status, 'completed_with_failures');
+        assert.equal(report.counts.executed, 0);
+        assert.equal(report.rows[0]?.validation?.validation_layers?.schema.status, 'passed');
+        assert.equal(report.rows[0]?.validation?.validation_layers?.content.status, 'failed');
+        assert.equal(report.rows[0]?.validation?.issues[0]?.code, 'dataset_name_semicolon');
+        assert.deepEqual(urls, []);
+        assert.deepEqual(payload, before);
+      }
+    }
+    const payload = makeFlow();
+    const root = payload.flowDataSet as Record<string, unknown>;
+    const information = root.flowInformation as Record<string, unknown>;
+    const dataset = information.dataSetInformation as Record<string, unknown>;
+    dataset['common:synonyms'] = localized('battery; accumulator；cell');
+    const before = structuredClone(payload);
+    const report = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'synonyms.json'),
+      rawInput: payload,
+      type: 'flow',
+      outDir: path.join(dir, 'synonyms'),
+      commit: false,
+    });
+    assert.equal(report.rows[0]?.validation?.ok, true);
+    assert.equal(report.rows[0]?.operation, 'would_sync');
+    assert.deepEqual(payload, before);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('dataset save-draft applies the same name guard to complete Process payloads before dispatch', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-process-name-save-'));
+  try {
+    for (const field of [
+      'baseName',
+      'treatmentStandardsRoutes',
+      'mixAndLocationTypes',
+      'functionalUnitFlowProperties',
+    ]) {
+      for (const punctuation of [';', '；']) {
+        const payload = processTransportFixture();
+        const root = payload.processDataSet as Record<string, unknown>;
+        const information = root.processInformation as Record<string, unknown>;
+        const dataset = information.dataSetInformation as Record<string, unknown>;
+        const name = dataset.name as Record<string, unknown>;
+        name[field] = [
+          { '@xml:lang': 'en', '#text': 'Battery' },
+          { '@xml:lang': 'fr', '#text': `Batterie${punctuation} essai` },
+        ];
+        dataset['common:synonyms'] = localized('battery; accumulator；cell');
+        const before = structuredClone(payload);
+        const urls: string[] = [];
+        const report = await runDatasetSaveDraft({
+          inputPath: path.join(dir, 'processes.json'),
+          rawInput: payload,
+          type: 'process',
+          outDir: path.join(dir, `${field}-${punctuation === ';' ? 'ascii' : 'fullwidth'}`),
+          commit: true,
+          env: buildSupabaseTestEnv(),
+          fetchImpl: makeSaveDraftFetch({ observedUrls: urls }),
+        });
+        assert.equal(report.status, 'completed_with_failures');
+        assert.equal(report.counts.executed, 0);
+        assert.equal(report.rows[0]?.validation?.validation_layers?.schema.status, 'passed');
+        assert.equal(report.rows[0]?.validation?.validation_layers?.content.status, 'failed');
+        assert.equal(report.rows[0]?.validation?.issue_count, 1);
+        assert.equal(report.rows[0]?.validation?.issues[0]?.code, 'dataset_name_semicolon');
+        assert.deepEqual(urls, []);
+        assert.deepEqual(payload, before);
+      }
+    }
+    const payload = processTransportFixture();
+    const root = payload.processDataSet as Record<string, unknown>;
+    const information = root.processInformation as Record<string, unknown>;
+    const dataset = information.dataSetInformation as Record<string, unknown>;
+    dataset['common:synonyms'] = localized('battery; accumulator；cell');
+    const before = structuredClone(payload);
+    const report = await runDatasetSaveDraft({
+      inputPath: path.join(dir, 'synonyms.json'),
+      rawInput: payload,
+      type: 'process',
+      outDir: path.join(dir, 'synonyms'),
+      commit: false,
+    });
+    assert.equal(report.rows[0]?.validation?.ok, true);
+    assert.equal(report.rows[0]?.operation, 'would_sync');
+    assert.deepEqual(payload, before);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

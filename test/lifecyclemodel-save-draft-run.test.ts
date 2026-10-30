@@ -8,6 +8,7 @@ import type { FetchLike } from '../src/lib/http.js';
 import {
   __testInternals,
   runLifecyclemodelSaveDraft,
+  validateLifecyclemodelPayload,
 } from '../src/lib/lifecyclemodel-save-draft-run.js';
 import {
   buildSupabaseTestEnv,
@@ -172,6 +173,57 @@ function withSupabaseAuthBootstrap(fetchImpl: FetchLike): FetchLike {
     return fetchImpl(String(url), init);
   };
 }
+
+test('lifecyclemodel name validation rejects non-English semicolons before save dispatch', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-lifecyclemodel-name-'));
+  const payload = makeSchemaValidLifecyclemodel();
+  const root = payload.lifeCycleModelDataSet as Record<string, unknown>;
+  const info = root.lifeCycleModelInformation as Record<string, unknown>;
+  const datasetInfo = info.dataSetInformation as Record<string, unknown>;
+  const name = datasetInfo.name as Record<string, unknown>;
+  name.baseName = [makeMultilangText('Battery'), { '@xml:lang': 'zh', '#text': '蓄电池；储能' }];
+  const successSchema = { safeParse: () => ({ success: true as const }) };
+  const validation = validateLifecyclemodelPayload(payload, successSchema);
+  assert.equal(validation.ok, false);
+  assert.deepEqual(
+    validation.issues.map(({ code, path: issuePath }) => ({ code, issuePath })),
+    [
+      {
+        code: 'dataset_name_semicolon',
+        issuePath:
+          'lifeCycleModelDataSet.lifeCycleModelInformation.dataSetInformation.name.baseName.1.#text',
+      },
+    ],
+  );
+
+  let dispatchCount = 0;
+  try {
+    const report = await runLifecyclemodelSaveDraft({
+      inputPath: path.join(dir, 'models.json'),
+      outDir: path.join(dir, 'out'),
+      rawInput: [{ json_ordered: payload }],
+      commit: true,
+      env: buildSupabaseTestEnv(),
+      fetchImpl: async () => {
+        dispatchCount += 1;
+        throw new Error('Invalid names must not reach transport.');
+      },
+    });
+    assert.equal(report.counts.failed, 1);
+    assert.equal(report.counts.executed, 0);
+    assert.equal(dispatchCount, 0);
+    assert.ok(
+      report.lifecyclemodels[0]?.validation?.issues.some(
+        (issue) => issue.code === 'dataset_name_semicolon',
+      ),
+    );
+    name.baseName = [makeMultilangText('Battery, storage')];
+    datasetInfo['common:synonyms'] = [makeMultilangText('Battery; accumulator')];
+    assert.equal(validateLifecyclemodelPayload(payload, successSchema).ok, true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('runLifecyclemodelSaveDraft prepares dry-run bundle artifacts from local rows', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-lifecyclemodel-save-draft-'));

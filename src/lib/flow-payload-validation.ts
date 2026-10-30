@@ -1,3 +1,4 @@
+import { collectDatasetNameIssues } from './dataset-name-validation.js';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
 import {
   normalizeIssuePath,
@@ -62,8 +63,9 @@ export function validateFlowPayload(
   schema: SafeParseSchema = getFlowSchema(),
   createEntity: SdkValidationFactory | null = getFlowFactory(),
 ): FlowPayloadValidationResult {
+  const nameIssues = collectDatasetNameIssues(payload, 'flow');
   const outcome = validateSchemaWithDeepFallback(schema, payload, createEntity);
-  if (outcome.success) {
+  if (outcome.success && nameIssues.length === 0) {
     return {
       ok: true,
       validator: FLOW_SCHEMA_VALIDATOR,
@@ -72,11 +74,14 @@ export function validateFlowPayload(
     };
   }
 
-  const issues = outcome.issues.map((issue) => ({
-    path: normalizeIssuePath(issue.path),
-    message: issue.message ?? 'Validation failed',
-    code: issue.code ?? 'custom',
-  }));
+  const issues = [
+    ...outcome.issues.map((issue) => ({
+      path: normalizeIssuePath(issue.path),
+      message: issue.message ?? 'Validation failed',
+      code: issue.code ?? 'custom',
+    })),
+    ...nameIssues,
+  ];
 
   return {
     ok: false,

@@ -1002,3 +1002,58 @@ test('remediate_row covers missing payload and empty preceding-reference fallbac
   assert.equal('referenceToTechnicalSpecification' in technology, false);
   assert.ok(result.appliedFixes.includes('remove_invalid_reference_to_technical_specification'));
 });
+
+test('flow remediation keeps invalid names in the manual queue even when the SDK accepts them', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'flow-name-remediate-'));
+  try {
+    for (const field of [
+      'baseName',
+      'treatmentStandardsRoutes',
+      'mixAndLocationTypes',
+      'flowProperties',
+    ]) {
+      for (const punctuation of [';', '；', ',']) {
+        const row = makeFlowEnvelope({ id: '11111111-1111-4111-8111-111111111111' });
+        const payload = row.json_ordered as JsonRecord;
+        const root = payload.flowDataSet as JsonRecord;
+        const info = (root.flowInformation as JsonRecord).dataSetInformation as JsonRecord;
+        const name = info.name as JsonRecord;
+        name[field] = [
+          { '@xml:lang': 'en', '#text': 'Battery' },
+          { '@xml:lang': 'de', '#text': `Batterie${punctuation} Speicher` },
+        ];
+        const synonyms = [{ '@xml:lang': 'en', '#text': 'Battery; accumulator；storage' }];
+        info['common:synonyms'] = synonyms;
+        row.reason = [];
+        const inputFile = path.join(dir, 'input.jsonl');
+        writeJsonl(inputFile, [row]);
+        const report = await runFlowRemediate(
+          { inputFile, outDir: path.join(dir, `${field}-${punctuation.codePointAt(0)}`) },
+          { loadSdkModule: makeSdkLoader() },
+        );
+        assert.equal(report.counts.ready_for_mcp_rows, punctuation === ',' ? 1 : 0);
+        assert.equal(report.counts.residual_manual_rows, punctuation === ',' ? 0 : 1);
+        const output = JSON.parse(
+          readFileSync(report.files.all_remediated, 'utf8').trim(),
+        ) as JsonRecord;
+        const resultInfo = (
+          ((output.json_ordered as JsonRecord).flowDataSet as JsonRecord)
+            .flowInformation as JsonRecord
+        ).dataSetInformation as JsonRecord;
+        assert.deepEqual(resultInfo['common:synonyms'], synonyms);
+        if (punctuation !== ',') {
+          const reasons = output.reason as JsonRecord[];
+          assert.ok(
+            reasons.some(
+              (issue) =>
+                issue.code === 'dataset_name_semicolon' &&
+                String(issue.path).includes(`name.${field}.1.#text`),
+            ),
+          );
+        }
+      }
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

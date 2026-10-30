@@ -1,3 +1,4 @@
+import { collectDatasetNameIssues } from './dataset-name-validation.js';
 import { validateProcessPayload } from './process-payload-validation.js';
 import {
   semanticContextFromInput,
@@ -301,7 +302,10 @@ function validateRow(
     createEntity,
   );
   const requiredFieldIssues: DatasetValidateIssue[] = [];
-  const placeholderIssues = collectImportContentIssues(row.payload);
+  const placeholderIssues = [
+    ...collectImportContentIssues(row.payload),
+    ...collectDatasetNameIssues(row.payload, kind),
+  ];
   const { additional_multilingual_issues, ...evidence } = buildDatasetValidationLayers(
     row.payload,
     outcome,

@@ -44,6 +44,7 @@ import {
 } from '../src/lib/dataset-maintenance-plan.js';
 import {
   __testInternals as remoteInternals,
+  collectMaintenanceDraftNameIssues,
   deleteMaintenanceRow,
   fetchMaintenanceAccountRows,
   fetchMaintenanceExactRows,
@@ -1480,6 +1481,140 @@ function stripMaintenanceContentRange(fetchImpl: FetchLike): FetchLike {
     };
   };
 }
+
+test('maintenance plans and direct saves reject every-language name semicolons while preserving synonyms', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-name-'));
+  try {
+    for (const table of ['flows', 'processes'] as const) {
+      const scenarioRoot = path.join(root, table);
+      mkdirSync(scenarioRoot, { recursive: true });
+      const remote = new FakeMaintenanceRemote(`maintenance-name-${table}`);
+      const id = '22222222-2222-4222-8222-222222222222';
+      const payload =
+        table === 'flows' ? flowPayload(id) : processPayload({ id, version: '01.00.000' });
+      remote.add(table, id, structuredClone(payload));
+      const rootKey = table === 'flows' ? 'flowDataSet' : 'processDataSet';
+      const informationKey = table === 'flows' ? 'flowInformation' : 'processInformation';
+      const information = (payload[rootKey] as JsonObject)[informationKey] as JsonObject;
+      const datasetInfo = information.dataSetInformation as JsonObject;
+      datasetInfo.name = {
+        baseName: [
+          { '@xml:lang': 'en', '#text': 'Battery' },
+          { '@xml:lang': 'de', '#text': 'Batterie; Speicher' },
+          { '@xml:lang': 'zh', '#text': '蓄电池；储能' },
+        ],
+      };
+      const scopePath = path.join(scenarioRoot, 'scope.json');
+      writeFileSync(path.join(scenarioRoot, 'desired.json'), JSON.stringify(payload));
+      writeFileSync(
+        scopePath,
+        JSON.stringify(
+          scopeValue(
+            remote,
+            [
+              scopeAction(remote, {
+                action_id: 'save-name',
+                action: 'save_draft',
+                table,
+                id,
+                desired_payload_path: 'desired.json',
+              }),
+            ],
+            { operation: 'repair-references' },
+          ),
+        ),
+      );
+      const plan = await runDatasetMaintenancePlan({
+        scopePath,
+        operation: 'repair-references',
+        outDir: path.join(scenarioRoot, 'plan'),
+        env: remote.env,
+        fetchImpl: remote.fetch,
+      });
+      assert.equal(plan.status, 'blocked');
+      assert.equal(plan.actions[0]?.status, 'blocked');
+      assert.equal(plan.actions[0]?.blockers.length, 2);
+      assert.ok(
+        plan.actions[0]?.blockers.every(
+          (entry) => entry.code === 'DATASET_MAINTENANCE_NAME_INVALID',
+        ),
+      );
+      const context = await resolveMaintenanceRemoteContext({
+        env: remote.env,
+        fetchImpl: remote.fetch,
+      });
+      const saveOptions = {
+        context,
+        table,
+        id,
+        version: '01.00.000',
+        payload,
+        modelId: null,
+        ruleVerification: null,
+        audit: { source: 'test' },
+      };
+      await assert.rejects(saveDraftMaintenanceRow(saveOptions), (error: unknown) => {
+        assert.ok(error instanceof CliError);
+        assert.equal(error.code, 'DATASET_MAINTENANCE_NAME_INVALID');
+        return true;
+      });
+      assert.deepEqual(remote.rpcOrder, []);
+      datasetInfo.name = { baseName: { '@xml:lang': 'en', '#text': 'Battery, storage' } };
+      datasetInfo['common:synonyms'] = { '@xml:lang': 'en', '#text': 'Battery; accumulator' };
+      await saveDraftMaintenanceRow(saveOptions);
+      assert.deepEqual(remote.rpcOrder, ['cmd_dataset_save_draft']);
+      assert.deepEqual(collectMaintenanceDraftNameIssues(payload, 'sources'), []);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('maintenance apply rechecks legacy ready-plan names before consuming an attempt', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-name-legacy-'));
+  try {
+    const { remote, files, plan } = await prepareSeededScenario(root, 'legacy-ready-names');
+    assert.equal(plan.status, 'ready');
+    const saveAction = plan.actions.find((action) => action.action === 'save_draft')!;
+    const desiredPath = path.join(files.outDir, saveAction.desired_payload!.path);
+    const payload = readJsonFile(desiredPath, 'Legacy desired payload') as JsonObject;
+    const info = (payload.processDataSet as JsonObject).processInformation as JsonObject;
+    (info.dataSetInformation as JsonObject).name = {
+      treatmentStandardsRoutes: [{ '@xml:lang': 'zh', '#text': '储能；固定式' }],
+    };
+    writeFileSync(desiredPath, JSON.stringify(payload));
+    saveAction.desired_payload!.sha256 = sha256Json(payload);
+    plan.plan_sha256 = computePlanSha256(plan);
+    const planPath = path.join(files.outDir, 'maintenance-plan.json');
+    writeFileSync(planPath, JSON.stringify(plan));
+    assert.equal(parseMaintenancePlan(plan).status, 'ready');
+    await assert.rejects(
+      runDatasetMaintenanceApply({
+        planPath,
+        approvePlan: plan.plan_sha256,
+        confirm: remote.email,
+        commit: true,
+        env: remote.env,
+        fetchImpl: remote.fetch,
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof CliError);
+        assert.equal(error.code, 'DATASET_MAINTENANCE_NAME_INVALID');
+        return true;
+      },
+    );
+    assert.deepEqual(remote.rpcOrder, []);
+    for (const artifact of [
+      'apply-progress.jsonl',
+      'approval-record.json',
+      'commit-report.attempt-0001.json',
+    ]) {
+      assert.equal(existsSync(path.join(files.outDir, artifact)), false, artifact);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('row-level maintenance plans update-first closure, resumes failure, and verifies readback', async () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-row-'));

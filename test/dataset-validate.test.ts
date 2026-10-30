@@ -669,3 +669,77 @@ test('support schema diagnostics preserve fallback message and code through the 
     code: 'custom',
   });
 });
+
+test('dataset validate shares language-independent name checks across Flow, Process and Model content layers', async () => {
+  for (const [kind, rootKey, informationKey, fourthField] of [
+    ['flow', 'flowDataSet', 'flowInformation', 'flowProperties'],
+    ['process', 'processDataSet', 'processInformation', 'functionalUnitFlowProperties'],
+    [
+      'lifecyclemodel',
+      'lifeCycleModelDataSet',
+      'lifeCycleModelInformation',
+      'functionalUnitFlowProperties',
+    ],
+  ] as const) {
+    for (const field of [
+      'baseName',
+      'treatmentStandardsRoutes',
+      'mixAndLocationTypes',
+      fourthField,
+    ]) {
+      for (const punctuation of [';', '；']) {
+        const payload: Record<string, unknown> =
+          kind === 'process' ? validProcessPayload() : { [rootKey]: {} };
+        const root = payload[rootKey] as Record<string, unknown>;
+        const information = (root[informationKey] ?? {}) as Record<string, unknown>;
+        root[informationKey] = information;
+        information.dataSetInformation = {
+          name: {
+            baseName: { '@xml:lang': 'en', '#text': 'Battery' },
+            [field]: [
+              { '@xml:lang': 'en', '#text': 'Battery' },
+              { '@xml:lang': 'de', '#text': `Batterie${punctuation} Prüfung` },
+            ],
+          },
+          'common:synonyms': { '@xml:lang': 'en', '#text': 'battery; accumulator；cell' },
+        };
+        const before = structuredClone(payload);
+        const report = await runDatasetValidate({
+          inputPath: 'name-punctuation-fixture',
+          rawInput: payload,
+          type: kind,
+          schemas,
+        });
+        const row = report.rows[0];
+        assert.equal(row?.status, 'invalid', `${kind}.${field}: ${punctuation}`);
+        assert.equal(row?.issue_count, 1);
+        assert.equal(row?.issues[0]?.code, 'dataset_name_semicolon');
+        assert.equal(
+          row?.issues[0]?.path,
+          `${rootKey}.${informationKey}.dataSetInformation.name.${field}.1.#text`,
+        );
+        assert.equal(row?.validation_layers?.schema.status, 'passed');
+        assert.equal(row?.validation_layers?.content.status, 'failed');
+        assert.deepEqual(payload, before);
+      }
+    }
+    const payload: Record<string, unknown> =
+      kind === 'process' ? validProcessPayload() : { [rootKey]: {} };
+    const root = payload[rootKey] as Record<string, unknown>;
+    const information = (root[informationKey] ?? {}) as Record<string, unknown>;
+    root[informationKey] = information;
+    information.dataSetInformation = {
+      name: { baseName: { '@xml:lang': 'de', '#text': 'Batterie, wiederaufladbar' } },
+      'common:synonyms': { '@xml:lang': 'en', '#text': 'battery; accumulator；cell' },
+    };
+    const before = structuredClone(payload);
+    const report = await runDatasetValidate({
+      inputPath: 'synonyms-fixture',
+      rawInput: payload,
+      type: kind,
+      schemas,
+    });
+    assert.equal(report.rows[0]?.status, 'valid');
+    assert.deepEqual(payload, before);
+  }
+});

@@ -1,3 +1,4 @@
+import { collectDatasetNameIssues } from './dataset-name-validation.js';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -42,7 +43,7 @@ const GENERIC_MASS_HINTS = new Set([
 ]);
 
 type FlowValidationIssue = {
-  validator: 'tidas_sdk';
+  validator: 'tidas_sdk' | 'tiangong/name';
   path: string;
   message: string;
   code: string;
@@ -689,6 +690,13 @@ function validate_flow_payload(
   payload: JsonRecord,
   deps: FlowRemediationDeps,
 ): FlowValidationResult {
+  const nameIssues = collectDatasetNameIssues(payload, 'flow');
+  if (nameIssues.length > 0) {
+    return {
+      success: false,
+      issues: nameIssues.map((issue) => ({ validator: 'tiangong/name', ...issue })),
+    };
+  }
   const sdkModule = (deps.loadSdkModule ?? resolve_local_sdk_module)();
   if (typeof sdkModule.createFlow !== 'function') {
     throw new CliError('Resolved tidas-sdk core module does not expose createFlow.', {

@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: 2026-10-30
+lastReviewedCommit: 67f9eba655ea56fd352a6df795feeec6536a59a9
+lastReviewedNote: 'Reviewed the working-tree name punctuation change against this base: shared four-field/all-language checks, build/save/QA and remediation/maintenance coverage, synonyms preserved; dependency, auth and release contracts remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -381,6 +381,8 @@ tiangong-lca
 - 已实现的 `flow get` 保留 deterministic direct-read 边界，但内部执行已经收口到原生 `@supabase/supabase-js`；支持 `id` + 可选 `version/user_id/state_code` 读取；若精确版本 miss，则回退到最新可见版本；若出现多个同版本可见候选，则直接报 ambiguous
 - 已实现的 `flow list` 保留 deterministic direct-read 边界，但内部执行已经收口到原生 `@supabase/supabase-js`；支持稳定 `id/state_code/type_of_dataset` 过滤、显式 `order=id.asc,version.asc` 默认值，以及 `--all --page-size` 的 offset 分页
 - 已实现的 `flow identity-preflight` 是本地只读、artifact-first 的生成前 gate；输入为 target + embedded candidates，并可通过 repeatable `--candidate-input` 读取 JSON/JSONL 文件或递归扫描本地目录。需要查正式库时，输入可设置 `remote_candidate_search`，CLI 也可传 `--remote-candidates --remote-query ... --remote-limit ...`，通过 `flow_hybrid_search` 拉取远程候选；若 target 有 flow type，CLI 会作为 remote filter 写入请求。CLI 传给 Edge Function 的是 fielded `query`、`filter`、`data_source`、`match_count`/`page_size` 和 hybrid search 权重；`remote_candidate_search.profile_hints` 只在本地补强 target profile 与候选评分，不会送入 Edge Function。输出 `identity-decision.json` / `identity-candidates.jsonl` / `identity-candidate-sources.json`；对 type、reference property、unit、CAS/category 和 alias/name 等价的 flow 输出 `block_duplicate`，避免 process 引用新建同义 flow。
+- 名称四段统一复用 `dataset-name-validation.ts`：Flow 的 `baseName`、`treatmentStandardsRoutes`、`mixAndLocationTypes`、`flowProperties`，以及 Process/Model 对应的前三段与 `functionalUnitFlowProperties`，均在每一个语言条目中拒绝英文分号 `;` 和中文分号 `；`。这条标点规则不区分语言，不改变既有语言代码、必填与结构约束；字段内部使用逗号，完整展示名由平台分段拼接。`common:synonyms` 等其他文本不在检查范围，保持原值。
+- BuildPlan validate/materialize、Model auto-build、dataset validate、各保存/发布 payload gate、package validation 与 QA 共用上述检查；错误包含 `dataset_name_semicolon` 和字段/数组索引路径。含 content layer 的报告将其列入 content，schema 通过不能覆盖该失败。Flow QA 的 baseName 保留历史 finding code `methodology_basename_semicolon`，其他三段使用共享 code，均阻断。Model auto-build 只新增名称检查，完整 schema 校验继续由 validate-build 承担。Flow BuildPlan 支持并保留 `name_plan.flow_properties` / `namePlan.flowProperties`。Flow remediation 将违规名称保留在 manual queue；普通 maintenance save_draft 在 plan、apply 的 approval/attempt 前预检及 RPC 前复验，旧计划也不能绕过，已完成动作仍按原 readback 恢复。
 - 已实现的 `flow build-plan` 是 flow 生成前的本地 BuildPlan gate；输入为 BuildPlan，输出 `build-plan-gate-report.json`，并在 `materialize` 时输出 canonical `materialized-flow.json`。如果 plan 内没有 payload，必须先提供 exact locked taxonomy `classification_path` objects：Product/Waste 使用 `@classId`，Elementary 使用 `@catId` 并生成 `common:elementaryFlowCategorization`；CLI 不再从任意文本生成 UUID 分类。随后 CLI 才从 name plan、flow type、reference property、source evidence、admin/compliance 字段确定性生成 `flowDataSet` 并立即跑 `FlowSchema` 校验。
 - 已实现的 `flow remediate` 保留旧 invalid-flow 输入与 round1 artifact 契约，但运行时已经收口到 CLI，不再需要 skill 私有 Python remediation 入口
 - 已实现的 `flow publish-version` 先用 `FlowSchema` 执行本地 gate 并输出 `flow-publish-version-gate-report.json`，通过后再做 `/rest/v1/flows` 精确版本可见性预检，并通过 `app_dataset_create` / `app_dataset_save_draft` 提交远端写入；`TIANGONG_LCA_API_BASE_URL` 可传 project root、`/functions/v1` 或 `/rest/v1`，同时继续保留 `mcp_success_list`、`remote_validation_failed`、`mcp_sync_report` 这些历史文件名

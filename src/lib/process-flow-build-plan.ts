@@ -12,6 +12,7 @@ import {
   type JsonObject,
 } from './dataset-local.js';
 import { readJsonInput } from './io.js';
+import { collectDatasetNameIssues } from './dataset-name-validation.js';
 import {
   normalizeIssuePath,
   validateSchemaWithDeepFallback,
@@ -832,6 +833,16 @@ function buildCanonicalFlowPayload(plan: JsonObject, inputPath: string): JsonObj
               ['name_plan.mix_and_location_types', 'namePlan.mixAndLocationTypes'],
               location ?? 'Global',
             ),
+            ...(firstValue(plan, ['name_plan.flow_properties', 'namePlan.flowProperties']) !==
+            undefined
+              ? {
+                  flowProperties: firstMultiLang(
+                    plan,
+                    ['name_plan.flow_properties', 'namePlan.flowProperties'],
+                    '',
+                  ),
+                }
+              : {}),
           },
           classificationInformation: flowClassificationInformation(plan, flowType),
           ...(firstToken(plan, ['target.cas_number', 'target.CASNumber'])
@@ -1291,6 +1302,64 @@ function evaluateUnitOfAnalysis(plan: JsonObject): {
   return { findings, blockers, decision };
 }
 
+function plannedNameFindings(plan: JsonObject, kind: BuildPlanKind): GateFinding[] {
+  const informationKey = kind === 'flow' ? 'flowInformation' : 'processInformation';
+  const fields = [
+    { field: 'baseName', aliases: ['name_plan.base_name', 'namePlan.baseName'] },
+    {
+      field: 'treatmentStandardsRoutes',
+      aliases: ['name_plan.treatment_standards_routes', 'namePlan.treatmentStandardsRoutes'],
+    },
+    {
+      field: 'mixAndLocationTypes',
+      aliases: ['name_plan.mix_and_location_types', 'namePlan.mixAndLocationTypes'],
+    },
+    kind === 'flow'
+      ? {
+          field: 'flowProperties',
+          aliases: ['name_plan.flow_properties', 'namePlan.flowProperties'],
+        }
+      : {
+          field: 'functionalUnitFlowProperties',
+          aliases: [
+            'name_plan.functional_unit_flow_properties',
+            'namePlan.functionalUnitFlowProperties',
+          ],
+        },
+  ];
+  const findings: GateFinding[] = [];
+  for (const { field, aliases } of fields) {
+    const sourcePath = aliases.find((candidate) => {
+      const value = valueAtPath(plan, candidate);
+      return value !== undefined && value !== null;
+    });
+    if (!sourcePath) continue;
+    const payload = {
+      [informationKey]: {
+        dataSetInformation: { name: { [field]: firstMultiLang(plan, aliases, '') } },
+      },
+    };
+    findings.push(
+      ...collectDatasetNameIssues(payload, kind).map((issue) =>
+        makeFinding(issue.code, 'blocker', issue.message, sourcePath),
+      ),
+    );
+  }
+  const embeddedPayload = firstValue(plan, [
+    'payload',
+    'materialized_payload',
+    'materializedPayload',
+  ]);
+  if (isRecord(embeddedPayload)) {
+    findings.push(
+      ...collectDatasetNameIssues(unwrapDatasetPayload(embeddedPayload), kind).map((issue) =>
+        makeFinding(issue.code, 'blocker', issue.message, issue.path),
+      ),
+    );
+  }
+  return findings;
+}
+
 function evaluateBuildPlan(plan: JsonObject, kind: BuildPlanKind): Evaluation {
   const findings: GateFinding[] = [];
   const blockers: GateFinding[] = [];
@@ -1341,6 +1410,7 @@ function evaluateBuildPlan(plan: JsonObject, kind: BuildPlanKind): Evaluation {
   const unitOfAnalysis = evaluateUnitOfAnalysis(plan);
   findings.push(...unitOfAnalysis.findings);
   blockers.push(...unitOfAnalysis.blockers);
+  blockers.push(...plannedNameFindings(plan, kind));
 
   const bindingPaths = evidenceBindingPaths(plan);
   const required = requiredFieldSpecs(kind);
@@ -1481,6 +1551,7 @@ function validateMaterializedSchema(
   const outcome = validateSchemaWithDeepFallback(schema, payload, createEntity);
   const issues = [
     ...outcome.issues.map(normalizeSchemaIssue),
+    ...collectDatasetNameIssues(payload, kind),
     ...collectClassificationIssues(
       payload,
       kind === 'process' ? 'processes' : 'flows',

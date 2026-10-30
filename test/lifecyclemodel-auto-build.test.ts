@@ -1721,6 +1721,40 @@ test('runLifecyclemodelAutoBuild writes local lifecyclemodel artifacts and repor
   }
 });
 
+test('lifecyclemodel auto-build rejects inherited non-English name semicolons before model output', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-lifecyclemodel-auto-name-'));
+  const runDir = createProcessRunFixture(dir, 'process-run');
+  const statePath = path.join(runDir, 'cache', 'process_from_flow_state.json');
+  const state = readJson<JsonRecord>(statePath);
+  const wrapped = state.flow_dataset as JsonRecord;
+  const flow = wrapped.flowDataSet as JsonRecord;
+  const info = flow.flowInformation as JsonRecord;
+  const datasetInfo = info.dataSetInformation as JsonRecord;
+  const name = datasetInfo.name as JsonRecord;
+  name.treatmentStandardsRoutes = [textItem('Storage route'), textItem('储能；固定式', 'zh')];
+  writeJson(statePath, state);
+  const requestPath = path.join(dir, 'request.json');
+  writeJson(requestPath, { local_runs: ['./process-run'] });
+
+  try {
+    await assert.rejects(
+      runLifecyclemodelAutoBuild({ inputPath: requestPath, outDir: './build-root' }),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.equal(
+          (error as Error & { code: string }).code,
+          'LIFECYCLEMODEL_AUTO_BUILD_NAME_INVALID',
+        );
+        assert.match(error.message, /commas instead of semicolons/u);
+        return true;
+      },
+    );
+    assert.equal(existsSync(path.join(dir, 'build-root', 'models', 'process-run')), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('lifecyclemodel auto-build internals can assemble a single-process lifecyclemodel', () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-lifecyclemodel-auto-build-single-'));
   const runDir = createProcessRunFixture(dir, 'single-run', {

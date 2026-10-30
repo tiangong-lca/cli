@@ -36,6 +36,7 @@ import {
   type DatasetMaintenanceSupportSchemas,
 } from './dataset-maintenance-support-validation.js';
 import {
+  collectMaintenanceDraftNameIssues,
   fetchMaintenanceAccountRows,
   fetchMaintenanceDerivativeSnapshot,
   fetchMaintenanceExactRows,
@@ -409,6 +410,11 @@ export async function runDatasetMaintenancePlan(
           code: 'DATASET_MAINTENANCE_DESIRED_PAYLOAD_INVALID',
           exitCode: 2,
         });
+      }
+      for (const issue of collectMaintenanceDraftNameIssues(rawPayload, action.table)) {
+        actionBlockers.push(
+          blocker(action, 'DATASET_MAINTENANCE_NAME_INVALID', issue.message, issue),
+        );
       }
       const payloadPath = path.join(
         outDir,

@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: 2026-10-30
+lastReviewedCommit: 67f9eba655ea56fd352a6df795feeec6536a59a9
+lastReviewedNote: 'Reviewed the working-tree name punctuation change against this base: shared four-field/all-language checks, build/save/QA and remediation/maintenance coverage, synonyms preserved; dependency, auth and release contracts remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -217,3 +217,7 @@ Use the actual pinned SDK, complete Process and Flow documents and the public ge
 Resulting-process proof must validate the emitted payload unchanged, assert the real report, preserve source-instance/exchange identity through renumbering, and prove weighted allocation conservation (10 at 60/40 plus 20 at 30/70 produces 30 at 40/60). Include source reorder, compatible target merges, multipliers, legacy whole-inventory shares, unrepresentable default-one legacy conversion, deterministic cancellation and ambiguous cancellation. Helper coverage supplements the public command evidence. Candidate-package qualification is distinct from released CLI/SDK and Foundry managed-runtime adoption; record the exact published dependency and runtime binding before claiming that acceptance.
 
 Allocation serialization follows the public three-decimal `Perc` boundary using deterministic largest remainder, tied by stable final target numbering. The sidecar reports actual percentage/amount error per target and bounds error below 0.001 percentage points, or inventory amount × 0.00001; conservation is qualified within this tolerance.
+
+## Name punctuation regression boundary
+
+Name checks must cover all four fields of Flow, Process and LifecycleModel, ASCII and fullwidth semicolons, singleton and array text, and non-English entries after a valid first entry. Test the actual BuildPlan, dataset validate/save and Model build/save entrypoints; SDK success must not mask a name failure, and invalid saves must not dispatch a mutation. Preserve payload bytes and prove semicolons remain accepted in `common:synonyms` and other non-name prose. Shared-helper tests supplement these entrypoint tests. QA must report the same offending field/index, including without a previous package-validation report. This is a CLI content rule, not a replacement for schema or semantic naming review.

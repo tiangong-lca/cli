@@ -338,3 +338,48 @@ test('process payload validation rejects placeholder authoring content', () => {
     },
   ]);
 });
+
+test('process payload validation reports name punctuation as content independently of schema and language', () => {
+  const schema = { safeParse: () => ({ success: true as const }) };
+  for (const field of [
+    'baseName',
+    'treatmentStandardsRoutes',
+    'mixAndLocationTypes',
+    'functionalUnitFlowProperties',
+  ]) {
+    for (const punctuation of [';', '；']) {
+      const payload = validProcessPayload();
+      const information = payload.processDataSet.processInformation as Record<string, unknown>;
+      information.dataSetInformation = {
+        name: {
+          baseName: { '@xml:lang': 'en', '#text': 'Battery' },
+          [field]: [
+            { '@xml:lang': 'en', '#text': 'Battery' },
+            { '@xml:lang': 'fr', '#text': `Batterie${punctuation} essai` },
+          ],
+        },
+        'common:synonyms': { '@xml:lang': 'en', '#text': 'battery; accumulator；cell' },
+      };
+      const before = structuredClone(payload);
+      const result = validateProcessPayload(payload, schema, null);
+      assert.equal(result.ok, false, `${field}: ${punctuation}`);
+      assert.equal(result.issue_count, 1);
+      assert.equal(result.issues[0]?.code, 'dataset_name_semicolon');
+      assert.equal(
+        result.issues[0]?.path,
+        `processDataSet.processInformation.dataSetInformation.name.${field}.1.#text`,
+      );
+      assert.equal(result.validation_layers?.schema.status, 'passed');
+      assert.equal(result.validation_layers?.content.status, 'failed');
+      assert.deepEqual(payload, before);
+    }
+  }
+  const payload = validProcessPayload();
+  (payload.processDataSet.processInformation as Record<string, unknown>).dataSetInformation = {
+    name: { baseName: { '@xml:lang': 'fr', '#text': 'Batterie, rechargeable' } },
+    'common:synonyms': { '@xml:lang': 'en', '#text': 'battery; accumulator；cell' },
+  };
+  const before = structuredClone(payload);
+  assert.equal(validateProcessPayload(payload, schema, null).ok, true);
+  assert.deepEqual(payload, before);
+});

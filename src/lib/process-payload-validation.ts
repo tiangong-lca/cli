@@ -1,3 +1,4 @@
+import { collectDatasetNameIssues } from './dataset-name-validation.js';
 import {
   analyzeProcessPayloadSemantics,
   type ProcessSemanticContext,
@@ -90,7 +91,10 @@ export function validateProcessPayload(
   const allocation_semantics = analyzeProcessPayloadSemantics(payload, context);
   const outcome = validateSchemaWithDeepFallback(schema, structuredClone(payload), createEntity);
   const requiredFieldIssues = collectProcessRequiredFieldIssues(payload);
-  const placeholderIssues = collectProcessPlaceholderIssues(payload);
+  const placeholderIssues = [
+    ...collectProcessPlaceholderIssues(payload),
+    ...collectDatasetNameIssues(payload, 'process'),
+  ];
   const { additional_multilingual_issues, ...evidence } = buildDatasetValidationLayers(
     payload,
     outcome,

@@ -1,3 +1,4 @@
+import { collectDatasetNameIssues, type DatasetNameIssue } from './dataset-name-validation.js';
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -22,6 +23,7 @@ type ModelEntry = {
 };
 
 type ModelFileReviewInfo = {
+  nameIssues: DatasetNameIssue[];
   modelFile: string;
   modelUuid: string;
   modelVersion: string;
@@ -759,6 +761,7 @@ function readModelFileReviewInfo(filePath: string): ModelFileReviewInfo {
   ).length;
 
   return {
+    nameIssues: collectDatasetNameIssues(payload, 'lifecyclemodel'),
     modelFile: filePath,
     modelUuid:
       nonEmptyString(
@@ -843,6 +846,15 @@ function buildModelReview(
   };
 
   const findings: LifecyclemodelQaFinding[] = [];
+  for (const info of modelFileInfos) {
+    for (const issue of info.nameIssues) {
+      findings.push(
+        makeFinding(entry.runName, info.modelFile, 'error', issue.code, 'qa', issue.message, {
+          path: issue.path,
+        }),
+      );
+    }
+  }
   validation.issues.forEach((issue) => {
     findings.push(
       makeFinding(
