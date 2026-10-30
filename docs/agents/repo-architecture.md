@@ -130,6 +130,12 @@ The preferred interactive path is `auth login`: a registered public OAuth client
 
 `dataset-support-cache.ts` owns the OAuth-only `dataset support-cache export` adapter. It reuses current-user identity and Data API/exact-count pagination owners, performs two bounded observations, and publishes private raw row artifacts with an atomic completion marker. Foundry owns cache summarization and mappings; this adapter makes no transaction-snapshot or write-authority claim.
 
+### Object reads
+
+`object-get-command.ts` owns parsing/help for five object-level get commands; `object-get.ts` selects one Contact, Source, LifecycleModel, FlowProperty or UnitGroup body. These are independent public nouns over a shared reader, not a public `dataset get`. `object-read-transport.ts` bounds requests, bytes and deadlines while reusing the existing session, identity receipt and Data API adapter. New body queries enforce public state 100 or current-owner state 0 before retrieval and recheck the response; account changes invalidate the read. No write transport, attachment fetch or implicit graph expansion is admitted.
+
+`object-read-result.ts` validates canonical body and row identities and projects truthful requested/resolved versions and fallback warnings for all seven getters. The existing process/flow report keys and scopes remain compatible. Process get opts into a unique-row lookup without changing other process lookup consumers. Exact-version verification remains independently strict; a get fallback is an observation, not permission to retarget a dependency.
+
 ### Workflow command families
 
 The widest feature families currently live in:

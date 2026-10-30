@@ -360,7 +360,20 @@ tiangong-lca flow get --id <flow-id> --version <version> --json
 tiangong-lca flow list --id <flow-id> --state-code 100 --limit 20 --json
 tiangong-lca process get --id <process-id> --version <version> --json
 tiangong-lca process list --state-code 100 --limit 20 --json
+tiangong-lca contact get --id <UUID> --version <version> --json
+tiangong-lca source get --id <UUID> --version <version> --json
+tiangong-lca lifecyclemodel get --id <UUID> --version <version> --json
+tiangong-lca flowproperty get --id <UUID> --version <version> --json
+tiangong-lca unitgroup get --id <UUID> --version <version> --json
 ```
+
+All seven getters return the requested version when visible. Only an empty exact selection falls back to the latest visible version; omitting `--version` requests latest directly. Latest is ordered by dataset version, not modification time, and can be lower than an unavailable requested version. Authentication, transport, ambiguous identity or invalid-body errors do not trigger fallback. A missing or inconsistent returned identity/version is an error, never a reason to fill in the requested version.
+
+Use the returned `id` (or the existing `process_id` / `flow_id`) and **`resolved_version`** when referring to the returned object. `requested_version` records intent only. The report also contains `resolution`, `version_fallback` and a structured `VERSION_FALLBACK` warning. A stdout-only agent can distinguish an exact result from a fallback; an exact-version dependency must explicitly reject fallback rather than treating command success as proof that the requested version exists. No consumer references are rewritten.
+
+The five new getters return the complete native wrapper in `payload` and identify the selected column in `payload_source`: object-valued `json_ordered` takes precedence, otherwise `json` is parsed. They preserve multilingual fields, model structure, attachment references, unit references and conversion factors without synthesis. Source attachments are not fetched and models do not expand their related processes. Existing process/flow payload keys and normal resolution values remain unchanged. There is no public `dataset get` or short `model` / `unit` / `property` alias.
+
+For the five new getters, `--scope` accepts `public` (state 100), `owner-draft` (the authenticated actor's state 0), or the default `public-or-owner-draft`. Predicates fence bodies before retrieval and returned rows are rechecked. Exact and latest share this scope and actor. Optional `--expected-project-ref` and `--expected-user-id` assert identity; token refresh rechecks the actor. Reads are bounded to two selection requests, up to two rows each, 8 MiB per response, 32 MiB total, 16 requests including authentication/refresh, and a 30-second total deadline. `--timeout-ms` selects a per-request limit of 1–30,000 ms (default 10,000). Failures return no successful report. Scope and metadata observation do not grant exact-reference eligibility, scientific acceptance or mutation authority. Existing process/flow visibility rules are unchanged.
 
 ## Identity Preflight
 

@@ -58,6 +58,10 @@ The local pre-push hook skips Docpact and `pnpm prepush:gate` only when `scripts
 
 `node --test test/pre-push-hook.test.mjs` checks the real hook in disposable Git fixtures with gate transports stubbed; the existing full test/coverage entrypoints run it too. Its real bare Git remote is confined to the disposable local fixture; it does not build packages or contact an external remote. Terminal rejection is additionally checked during hook changes with an actual open POSIX PTY and a guard-removal negative control; no new Python runtime dependency is added to the canonical gate. Source-push quality, 100% coverage, the independent package case and four-platform release gates remain mandatory. This exception changes neither the direct `pnpm prepush:gate` command nor tag/release qualification.
 
+## Object get regressions
+
+Run `node --import tsx --test test/object-get.test.ts test/object-get-cli.test.ts test/object-read-result.test.ts test/process-get.test.ts test/flow-get.test.ts test/supabase-rest.test.ts` with the pinned runtime. Use authenticated mock GETs only. Cover all five new nouns, exact/latest/fallback, a requested version above latest, complete native body preservation, stdout-only actual-version consumption, missing row versions, conflicting embedded identity, ambiguity, scope escapes, actor changes during refresh, bounded streams and deadlines. Existing process/flow keys, filters and other process lookup consumers must remain compatible. The mandatory source-free package test also invokes the installed launcher for exact and fallback reads across all seven types with synthetic GET-only transport. It stays in the existing separate package-test lane; source coverage and its thresholds are unchanged. The full package/coverage and Docpact gates below remain required; synthetic reads do not establish live data or release qualification.
+
 ## Default Baseline
 
 Unless the change is doc-only, the minimum local baseline is:

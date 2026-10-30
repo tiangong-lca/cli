@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, join, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 
@@ -726,6 +726,7 @@ maybePackTest(
       );
       assertRootBinBehavior(installedBinPath, consumerRoot, installedManifest.version);
       assertProductionBootstrap(installedBinPath, consumerRoot);
+      assertPackedObjectReads(installedBinPath, consumerRoot);
       assertModuleHostBehavior(consumerRoot, cleanRepository, installedManifest.version);
 
       const consumerTree = pnpmList(consumerRoot, 'typescript');
@@ -1075,6 +1076,147 @@ function assertProductionBootstrap(binPath, cwd) {
     TIANGONG_LCA_API_BASE_URL: 'https://custom.supabase.co',
   });
   assert.equal(invalid.status, 2, invalid.stderr || invalid.stdout);
+}
+
+function assertPackedObjectReads(binPath, cwd) {
+  const actorId = '22222222-2222-4222-8222-222222222222';
+  const fixturePath = join(cwd, 'object-read-fixture.json');
+  const preloadPath = join(cwd, 'object-read-transport.mjs');
+  writeFileSync(
+    preloadPath,
+    [
+      "import assert from 'node:assert/strict';",
+      "import { readFileSync } from 'node:fs';",
+      "const fixture = JSON.parse(readFileSync(process.env.TIANGONG_PACK_OBJECT_FIXTURE, 'utf8'));",
+      'let authReads = 0;',
+      'let rowReads = 0;',
+      'globalThis.fetch = async (input, init) => {',
+      "  const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);",
+      "  assert.equal(init?.method ?? (input instanceof Request ? input.method : 'GET'), 'GET');",
+      "  assert.equal(url.origin, 'https://example.supabase.co');",
+      '  const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));',
+      "  assert.equal(headers.get('authorization'), 'Bearer synthetic-pack-access-token');",
+      "  if (url.pathname === '/auth/v1/user') {",
+      '    authReads++;',
+      "    return Response.json({ id: fixture.actorId, email: 'pack@example.com', role: 'authenticated', aud: 'authenticated' });",
+      '  }',
+      "  assert.equal(url.pathname, '/rest/v1/' + fixture.table);",
+      "  assert.equal(url.searchParams.get('id'), 'eq.' + fixture.row.id);",
+      "  assert.ok(url.searchParams.get('select').includes('json'));",
+      "  const version = url.searchParams.get('version');",
+      '  if (rowReads++ === 0) {',
+      "    assert.equal(version, 'eq.' + fixture.requestedVersion);",
+      '    if (fixture.fallback) return Response.json([]);',
+      '  } else {',
+      '    assert.equal(fixture.fallback, true);',
+      '    assert.equal(version, null);',
+      "    assert.equal(url.searchParams.get('order'), 'version.desc');",
+      '  }',
+      '  return Response.json([fixture.row]);',
+      '};',
+      "process.once('beforeExit', () => {",
+      "  assert.ok(authReads > 0, 'the packed reader must resolve its authenticated user');",
+      '  assert.equal(rowReads, fixture.fallback ? 2 : 1);',
+      '});',
+      '',
+    ].join('\n'),
+    { encoding: 'utf8', flag: 'wx' },
+  );
+  const descriptors = [
+    ['process', 'processes', 'processDataSet', 'processInformation'],
+    ['flow', 'flows', 'flowDataSet', 'flowInformation'],
+    ['flowproperty', 'flowproperties', 'flowPropertyDataSet', 'flowPropertiesInformation'],
+    ['unitgroup', 'unitgroups', 'unitGroupDataSet', 'unitGroupInformation'],
+    ['contact', 'contacts', 'contactDataSet', 'contactInformation'],
+    ['source', 'sources', 'sourceDataSet', 'sourceInformation'],
+    ['lifecyclemodel', 'lifecyclemodels', 'lifeCycleModelDataSet', 'lifeCycleModelInformation'],
+  ];
+  for (const [index, [command, table, wrapper, information]] of descriptors.entries()) {
+    const id = `11111111-1111-4111-8111-${String(index + 1).padStart(12, '0')}`;
+    for (const fallback of [false, true]) {
+      const requestedVersion = fallback ? '99.99.999' : '01.00.001';
+      const resolvedVersion = fallback ? '01.00.003' : requestedVersion;
+      const payload = {
+        [wrapper]: {
+          [information]: {
+            dataSetInformation: {
+              'common:UUID': id,
+              name: [
+                { '@xml:lang': 'zh', '#text': '完整原生正文' },
+                { '@xml:lang': 'en', '#text': 'Complete native body' },
+              ],
+            },
+          },
+          administrativeInformation: {
+            publicationAndOwnership: { 'common:dataSetVersion': resolvedVersion },
+          },
+          native: {
+            referenceUnit: '7',
+            units: [
+              { '@dataSetInternalID': '7', factor: '1.0' },
+              { '@dataSetInternalID': '9', factor: '0.001' },
+            ],
+            reference: {
+              '@refObjectId': actorId,
+              '@version': '00.00.001',
+              '@uri': '../sources/unfetched-reference.xml',
+            },
+          },
+        },
+      };
+      writeFileSync(
+        fixturePath,
+        JSON.stringify({
+          actorId,
+          table,
+          fallback,
+          requestedVersion,
+          row: {
+            id,
+            version: resolvedVersion,
+            user_id: actorId,
+            state_code: 100,
+            modified_at: '2026-10-29T00:00:00.000Z',
+            json_ordered: payload,
+            json: payload,
+          },
+        }),
+      );
+      const result = runBin(
+        binPath,
+        [command, 'get', '--id', id, '--version', requestedVersion, '--json'],
+        cwd,
+        {
+          NODE_OPTIONS: [process.env.NODE_OPTIONS, `--import=${pathToFileURL(preloadPath).href}`]
+            .filter(Boolean)
+            .join(' '),
+          TIANGONG_PACK_OBJECT_FIXTURE: fixturePath,
+          TIANGONG_LCA_API_BASE_URL: 'https://example.supabase.co/functions/v1',
+          TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: 'synthetic-pack-publishable-key',
+          TIANGONG_LCA_AUTH_MODE: 'access-token',
+          TIANGONG_LCA_ACCESS_TOKEN: 'synthetic-pack-access-token',
+        },
+      );
+      assertSuccessfulExit(result);
+      assert.equal(result.stderr, '');
+      const report = JSON.parse(result.stdout);
+      assert.equal(report.id ?? report.process_id ?? report.flow_id, id);
+      assert.equal(report.requested_version, requestedVersion);
+      assert.equal(report.resolved_version, resolvedVersion);
+      assert.equal(
+        report.resolution,
+        fallback ? 'remote_supabase_latest_fallback' : 'remote_supabase_exact',
+      );
+      assert.equal(report.version_fallback, fallback);
+      assert.deepEqual(report.payload ?? report.process ?? report.flow, payload);
+      assert.equal(report.warnings.length, fallback ? 1 : 0);
+      if (fallback) {
+        assert.equal(report.warnings[0].code, 'VERSION_FALLBACK');
+        assert.equal(report.warnings[0].requested_version, requestedVersion);
+        assert.equal(report.warnings[0].resolved_version, resolvedVersion);
+      }
+    }
+  }
 }
 
 function runBin(binPath, args, cwd, env = {}) {

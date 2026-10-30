@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
+lastReviewedAt: 2026-10-29
+lastReviewedCommit: 67f9eba655ea56fd352a6df795feeec6536a59a9
 lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
 related:
   - AGENTS.md
@@ -141,6 +141,11 @@ Review note, 2026-07-17: Issue #157 COMMON 收紧要求两个 Issue #29 derivati
 - `tiangong-lca search flow`
 - `tiangong-lca search process`
 - `tiangong-lca search lifecyclemodel`
+- `tiangong-lca contact get`
+- `tiangong-lca source get`
+- `tiangong-lca lifecyclemodel get`
+- `tiangong-lca flowproperty get`
+- `tiangong-lca unitgroup get`
 - `tiangong-lca process get`
 - `tiangong-lca process list`
 - `tiangong-lca process identity-preflight`

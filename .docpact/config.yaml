@@ -1,7 +1,7 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-10-18"
-lastReviewedCommit: "de62442b665701e72910d35150aacb1ee3d38d46"
+lastReviewedAt: '2026-10-18'
+lastReviewedCommit: 'de62442b665701e72910d35150aacb1ee3d38d46'
 lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
 
 catalog:
@@ -61,6 +61,8 @@ ownership:
           - src/lib/dataset-*.ts
           - src/lib/errors.ts
           - src/lib/flow-*.ts
+          - src/lib/object-get*.ts
+          - src/lib/object-read*.ts
           - src/lib/identity-preflight.ts
           - src/lib/io.ts
           - src/lib/lifecyclemodel-*.ts
@@ -229,6 +231,8 @@ routing:
         - src/lib/dataset-*.ts
         - src/lib/errors.ts
         - src/lib/flow-*.ts
+        - src/lib/object-get*.ts
+        - src/lib/object-read*.ts
         - src/lib/identity-preflight.ts
         - src/lib/io.ts
         - src/lib/lifecyclemodel-*.ts
@@ -476,6 +480,10 @@ rules:
       - path: src/lib/errors.ts
         kind: shared-runtime
       - path: src/lib/flow-*.ts
+        kind: command-logic
+      - path: src/lib/object-get*.ts
+        kind: command-logic
+      - path: src/lib/object-read*.ts
         kind: command-logic
       - path: src/lib/identity-preflight.ts
         kind: command-logic

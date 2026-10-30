@@ -1,5 +1,6 @@
 // data-api-relations: flows
 import { CliError } from './errors.js';
+import { validateObjectReadRows } from './object-read-result.js';
 import type { FetchLike } from './http.js';
 import {
   buildSupabaseAuthHeaders,
@@ -236,6 +237,7 @@ async function listFlowRows(options: {
   filters: FlowListQueryFilters;
   timeoutMs: number;
   fetchImpl: FetchLike;
+  requireArray?: boolean;
 }): Promise<{ rows: SupabaseFlowRow[]; sourceUrl: string }> {
   const { client, restBaseUrl } = createSupabaseDataClient(
     options.runtime,
@@ -292,7 +294,10 @@ async function listFlowRows(options: {
     query = query.limit(limit);
   }
 
-  const rows = parseFlowRows(await runSupabaseArrayQuery(query, sourceUrl), sourceUrl);
+  const rows = parseFlowRows(
+    await runSupabaseArrayQuery(query, sourceUrl, { requireArray: options.requireArray }),
+    sourceUrl,
+  );
   return { rows, sourceUrl };
 }
 
@@ -323,6 +328,7 @@ async function fetchOneFlowRow(options: {
   timeoutMs: number;
   fetchImpl: FetchLike;
   fallbackToLatest?: boolean;
+  validateGetResponse?: boolean;
 }): Promise<SupabaseFlowLookup | null> {
   const stateCodes =
     Number.isInteger(options.stateCode) && (options.stateCode as number) >= 0
@@ -346,7 +352,9 @@ async function fetchOneFlowRow(options: {
       },
       timeoutMs: options.timeoutMs,
       fetchImpl: options.fetchImpl,
+      requireArray: options.validateGetResponse,
     });
+    if (options.validateGetResponse) validateGetRows(exact.rows, options.id, options.version);
 
     if (exact.rows.length === 1) {
       return {
@@ -387,7 +395,9 @@ async function fetchOneFlowRow(options: {
     },
     timeoutMs: options.timeoutMs,
     fetchImpl: options.fetchImpl,
+    requireArray: options.validateGetResponse,
   });
+  if (options.validateGetResponse) validateGetRows(latest.rows, options.id, null);
 
   if (latest.rows.length === 0) {
     return null;
@@ -414,6 +424,19 @@ async function fetchOneFlowRow(options: {
     sourceUrl: latest.sourceUrl,
     resolution: options.version ? 'remote_supabase_latest_fallback' : 'remote_supabase_latest',
   };
+}
+
+function validateGetRows(rows: SupabaseFlowRow[], id: string, version: string | null): void {
+  validateObjectReadRows({
+    datasetType: 'flow',
+    requestedId: id,
+    requestedVersion: version,
+    rows: rows.map((row) => ({
+      id: row.id,
+      version: row.version,
+      payload: normalizeSupabaseFlowPayload(row.json, id),
+    })),
+  });
 }
 
 export {

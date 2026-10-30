@@ -30,10 +30,20 @@ function jsonFetch(responses: unknown[], observedUrls: string[] = []): FetchLike
   }) as FetchLike;
 }
 
+function payload(id: string, version: string, latest = false) {
+  return {
+    flowDataSet: {
+      flowInformation: { dataSetInformation: { 'common:UUID': id } },
+      administrativeInformation: { publicationAndOwnership: { 'common:dataSetVersion': version } },
+      ...(latest ? { latest: true } : {}),
+    },
+  };
+}
+
 test('runFlowGet resolves the exact requested flow version', async () => {
   const observedUrls: string[] = [];
   const report = await runFlowGet({
-    flowId: ' flow-1 ',
+    flowId: ' 11111111-1111-4111-8111-111111111111 ',
     version: '01.00.001',
     userId: ' user-1 ',
     stateCode: 100,
@@ -46,12 +56,12 @@ test('runFlowGet resolves the exact requested flow version', async () => {
       [
         [
           {
-            id: 'flow-1',
+            id: '11111111-1111-4111-8111-111111111111',
             version: '01.00.001',
             user_id: 'user-1',
             state_code: 100,
             modified_at: '2026-03-29T00:00:00.000Z',
-            json: { flowDataSet: { id: 'flow-1' } },
+            json: payload('11111111-1111-4111-8111-111111111111', '01.00.001'),
           },
         ],
       ],
@@ -63,18 +73,20 @@ test('runFlowGet resolves the exact requested flow version', async () => {
     schema_version: 1,
     generated_at_utc: '2026-03-30T00:00:00.000Z',
     status: 'resolved_remote_flow',
-    flow_id: 'flow-1',
+    flow_id: '11111111-1111-4111-8111-111111111111',
     requested_version: '01.00.001',
     requested_user_id: 'user-1',
     requested_state_code: 100,
     resolved_version: '01.00.001',
     resolution: 'remote_supabase_exact',
+    version_fallback: false,
+    warnings: [],
     source_url:
-      'https://example.supabase.co/rest/v1/flows?select=id%2Cversion%2Cuser_id%2Cstate_code%2Cmodified_at%2Cjson&id=eq.flow-1&version=eq.01.00.001&user_id=eq.user-1&state_code=eq.100&order=version.desc&limit=2&offset=0',
+      'https://example.supabase.co/rest/v1/flows?select=id%2Cversion%2Cuser_id%2Cstate_code%2Cmodified_at%2Cjson&id=eq.11111111-1111-4111-8111-111111111111&version=eq.01.00.001&user_id=eq.user-1&state_code=eq.100&order=version.desc&limit=2&offset=0',
     modified_at: '2026-03-29T00:00:00.000Z',
     user_id: 'user-1',
     state_code: 100,
-    flow: { flowDataSet: { id: 'flow-1' } },
+    flow: payload('11111111-1111-4111-8111-111111111111', '01.00.001'),
   });
   assert.equal(observedUrls.length, 1);
 });
@@ -110,12 +122,12 @@ test('runFlowGet can fall back to process.env and global fetch', async () => {
       text: async () =>
         JSON.stringify([
           {
-            id: '',
-            version: '',
+            id: '22222222-2222-4222-8222-222222222222',
+            version: '01.00.004',
             user_id: null,
             state_code: null,
             modified_at: null,
-            json: { flowDataSet: { id: 'flow-2', latest: true } },
+            json: payload('22222222-2222-4222-8222-222222222222', '01.00.004', true),
           },
         ]),
     };
@@ -123,13 +135,14 @@ test('runFlowGet can fall back to process.env and global fetch', async () => {
 
   try {
     const report = await runFlowGet({
-      flowId: 'flow-2',
+      flowId: '22222222-2222-4222-8222-222222222222',
+      version: null,
     });
 
-    assert.equal(report.flow_id, 'flow-2');
+    assert.equal(report.flow_id, '22222222-2222-4222-8222-222222222222');
     assert.equal(report.requested_version, null);
     assert.equal(report.resolution, 'remote_supabase_latest');
-    assert.equal(report.resolved_version, '');
+    assert.equal(report.resolved_version, '01.00.004');
   } finally {
     globalThis.fetch = originalFetch;
     if (originalBaseUrl === undefined) {
@@ -163,7 +176,7 @@ test('runFlowGet can fall back to process.env and global fetch', async () => {
 test('runFlowGet falls back to the latest reachable version when exact lookup misses', async () => {
   const observedUrls: string[] = [];
   const report = await runFlowGet({
-    flowId: 'flow-1',
+    flowId: '11111111-1111-4111-8111-111111111111',
     version: '01.00.001',
     env: buildSupabaseTestEnv({
       TIANGONG_LCA_API_BASE_URL: 'https://example.supabase.co/rest/v1',
@@ -173,12 +186,14 @@ test('runFlowGet falls back to the latest reachable version when exact lookup mi
         [],
         [
           {
-            id: 'flow-1',
+            id: '11111111-1111-4111-8111-111111111111',
             version: '01.00.003',
             user_id: 'user-1',
             state_code: 100,
             modified_at: null,
-            json: '{"flowDataSet":{"id":"flow-1","latest":true}}',
+            json: JSON.stringify(
+              payload('11111111-1111-4111-8111-111111111111', '01.00.003', true),
+            ),
           },
         ],
       ],
@@ -188,12 +203,7 @@ test('runFlowGet falls back to the latest reachable version when exact lookup mi
 
   assert.equal(report.resolution, 'remote_supabase_latest_fallback');
   assert.equal(report.resolved_version, '01.00.003');
-  assert.deepEqual(report.flow, {
-    flowDataSet: {
-      id: 'flow-1',
-      latest: true,
-    },
-  });
+  assert.deepEqual(report.flow, payload('11111111-1111-4111-8111-111111111111', '01.00.003', true));
   assert.equal(observedUrls.length, 2);
   assert.match(observedUrls[0] as string, /version=eq\.01\.00\.001/u);
   assert.match(observedUrls[1] as string, /order=version.desc/u);
@@ -201,19 +211,19 @@ test('runFlowGet falls back to the latest reachable version when exact lookup mi
 
 test('runFlowGet loads the latest row when no version is requested', async () => {
   const report = await runFlowGet({
-    flowId: 'flow-1',
+    flowId: '11111111-1111-4111-8111-111111111111',
     env: buildSupabaseTestEnv({
       TIANGONG_LCA_API_BASE_URL: 'https://example.supabase.co',
     }),
     fetchImpl: jsonFetch([
       [
         {
-          id: 'flow-1',
+          id: '11111111-1111-4111-8111-111111111111',
           version: '01.00.004',
           user_id: 'user-1',
           state_code: 100,
           modified_at: null,
-          json: { flowDataSet: { id: 'flow-1', latest: true } },
+          json: payload('11111111-1111-4111-8111-111111111111', '01.00.004', true),
         },
       ],
     ]),
@@ -242,7 +252,7 @@ test('runFlowGet rejects missing flows after fallback', async () => {
   await assert.rejects(
     () =>
       runFlowGet({
-        flowId: 'flow-missing',
+        flowId: '33333333-3333-4333-8333-333333333333',
         version: '01.00.001',
         env: buildSupabaseTestEnv({
           TIANGONG_LCA_API_BASE_URL: 'https://example.supabase.co',
@@ -257,7 +267,7 @@ test('runFlowGet rejects missing flows when only the latest lookup is requested'
   await assert.rejects(
     () =>
       runFlowGet({
-        flowId: 'flow-missing',
+        flowId: '33333333-3333-4333-8333-333333333333',
         env: buildSupabaseTestEnv({
           TIANGONG_LCA_API_BASE_URL: 'https://example.supabase.co',
         }),
@@ -271,7 +281,7 @@ test('runFlowGet rejects ambiguous exact matches', async () => {
   await assert.rejects(
     () =>
       runFlowGet({
-        flowId: 'flow-1',
+        flowId: '11111111-1111-4111-8111-111111111111',
         version: '01.00.001',
         env: buildSupabaseTestEnv({
           TIANGONG_LCA_API_BASE_URL: 'https://example.supabase.co',
@@ -279,20 +289,20 @@ test('runFlowGet rejects ambiguous exact matches', async () => {
         fetchImpl: jsonFetch([
           [
             {
-              id: 'flow-1',
+              id: '11111111-1111-4111-8111-111111111111',
               version: '01.00.001',
               user_id: 'user-1',
               state_code: 0,
               modified_at: null,
-              json: { flowDataSet: { id: 'flow-1' } },
+              json: payload('11111111-1111-4111-8111-111111111111', '01.00.001'),
             },
             {
-              id: 'flow-1',
+              id: '11111111-1111-4111-8111-111111111111',
               version: '01.00.001',
               user_id: 'user-2',
               state_code: 100,
               modified_at: null,
-              json: { flowDataSet: { id: 'flow-1' } },
+              json: payload('11111111-1111-4111-8111-111111111111', '01.00.001'),
             },
           ],
         ]),
@@ -305,27 +315,27 @@ test('runFlowGet rejects ambiguous latest matches', async () => {
   await assert.rejects(
     () =>
       runFlowGet({
-        flowId: 'flow-1',
+        flowId: '11111111-1111-4111-8111-111111111111',
         env: buildSupabaseTestEnv({
           TIANGONG_LCA_API_BASE_URL: 'https://example.supabase.co',
         }),
         fetchImpl: jsonFetch([
           [
             {
-              id: 'flow-1',
+              id: '11111111-1111-4111-8111-111111111111',
               version: '01.00.003',
               user_id: 'user-1',
               state_code: 0,
               modified_at: null,
-              json: { flowDataSet: { id: 'flow-1' } },
+              json: payload('11111111-1111-4111-8111-111111111111', '01.00.003'),
             },
             {
-              id: 'flow-1',
+              id: '11111111-1111-4111-8111-111111111111',
               version: '01.00.003',
               user_id: 'user-2',
               state_code: 100,
               modified_at: null,
-              json: { flowDataSet: { id: 'flow-1' } },
+              json: payload('11111111-1111-4111-8111-111111111111', '01.00.003'),
             },
           ],
         ]),
@@ -335,7 +345,185 @@ test('runFlowGet rejects ambiguous latest matches', async () => {
 });
 
 test('flow-get internals normalize optional tokens', () => {
-  assert.equal(__testInternals.normalizeToken(' flow-1 '), 'flow-1');
+  assert.equal(
+    __testInternals.normalizeToken(' 11111111-1111-4111-8111-111111111111 '),
+    '11111111-1111-4111-8111-111111111111',
+  );
   assert.equal(__testInternals.normalizeToken('   '), null);
   assert.equal(__testInternals.normalizeToken(undefined), null);
+});
+
+test('runFlowGet rejects missing returned metadata after fallback without reusing the request', async () => {
+  for (const metadata of [
+    { version: '' },
+    { version: 'bad' },
+    { version: undefined },
+    { id: '' },
+    { id: '22222222-2222-4222-8222-222222222222' },
+  ]) {
+    const urls: string[] = [];
+    await assert.rejects(
+      () =>
+        runFlowGet({
+          flowId: '11111111-1111-4111-8111-111111111111',
+          version: '01.00.001',
+          env: buildSupabaseTestEnv(),
+          fetchImpl: jsonFetch(
+            [
+              [],
+              [
+                {
+                  id: '11111111-1111-4111-8111-111111111111',
+                  version: '01.00.001',
+                  json: payload('11111111-1111-4111-8111-111111111111', '01.00.001'),
+                  ...metadata,
+                },
+              ],
+            ],
+            urls,
+          ),
+        }),
+      (error) => error instanceof CliError && error.code === 'OBJECT_GET_RESPONSE_INVALID',
+    );
+    assert.equal(urls.length, 2);
+  }
+});
+
+test('runFlowGet does not retry a malformed exact response or HTTP failure as latest', async () => {
+  const urls: string[] = [];
+  await assert.rejects(
+    () =>
+      runFlowGet({
+        flowId: '11111111-1111-4111-8111-111111111111',
+        version: '01.00.001',
+        env: buildSupabaseTestEnv(),
+        fetchImpl: jsonFetch(
+          [
+            [
+              {
+                id: '11111111-1111-4111-8111-111111111111',
+                version: '01.00.001',
+                json: { wrongDataSet: {} },
+              },
+            ],
+          ],
+          urls,
+        ),
+      }),
+    (error) => error instanceof CliError && error.code === 'OBJECT_GET_RESPONSE_INVALID',
+  );
+  assert.equal(urls.length, 1);
+  let dataReads = 0;
+  await assert.rejects(
+    () =>
+      runFlowGet({
+        flowId: '11111111-1111-4111-8111-111111111111',
+        version: '01.00.001',
+        env: buildSupabaseTestEnv(),
+        fetchImpl: (async (input) => {
+          if (isSupabaseAuthTokenUrl(String(input))) return makeSupabaseAuthResponse();
+          dataReads++;
+          return {
+            ok: false,
+            status: 400,
+            headers: { get: () => 'application/json' },
+            text: async () => JSON.stringify({ code: 'BAD_READ', message: 'Mock rejection' }),
+          };
+        }) as FetchLike,
+      }),
+    (error) => error instanceof CliError && error.code === 'REMOTE_REQUEST_FAILED',
+  );
+  assert.equal(dataReads, 1);
+});
+
+test('runFlowGet reports a fallback even when the latest visible version is lower than requested', async () => {
+  const report = await runFlowGet({
+    flowId: '11111111-1111-4111-8111-111111111111',
+    version: '99.99.999',
+    env: buildSupabaseTestEnv(),
+    fetchImpl: jsonFetch([
+      [],
+      [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          version: '01.00.001',
+          json: payload('11111111-1111-4111-8111-111111111111', '01.00.001'),
+        },
+      ],
+    ]),
+  });
+  assert.equal(report.requested_version, '99.99.999');
+  assert.equal(report.resolved_version, '01.00.001');
+  assert.equal(report.version_fallback, true);
+  assert.equal(report.warnings[0].code, 'VERSION_FALLBACK');
+  assert.equal(report.warnings[0].requested_version, '99.99.999');
+  assert.equal(report.warnings[0].resolved_version, '01.00.001');
+});
+
+test('runFlowGet rejects HTTP-success JSON null in exact, latest and fallback reads', async () => {
+  for (const [version, responses] of [
+    ['01.00.001', [null]],
+    [undefined, [null]],
+    ['01.00.001', [[], null]],
+  ] as const) {
+    const urls: string[] = [];
+    await assert.rejects(
+      () =>
+        runFlowGet({
+          flowId: '11111111-1111-4111-8111-111111111111',
+          version,
+          env: buildSupabaseTestEnv(),
+          fetchImpl: jsonFetch([...responses], urls),
+        }),
+      (error) => error instanceof CliError && error.code === 'SUPABASE_REST_RESPONSE_INVALID',
+    );
+    assert.equal(urls.length, responses.length);
+  }
+});
+
+test('runFlowGet validates the whole latest row set and descending version order', async () => {
+  const id = '11111111-1111-4111-8111-111111111111';
+  const row = { id, version: '01.00.003', json: payload(id, '01.00.003') };
+  const malformedSeconds = [
+    { ...row, id: '22222222-2222-4222-8222-222222222222', version: '01.00.002' },
+    { ...row, version: '' },
+    { ...row, version: '01.00.002', json: {} },
+    { ...row, version: '01.00.004', json: payload(id, '01.00.004') },
+  ];
+  for (const second of malformedSeconds) {
+    const urls: string[] = [];
+    await assert.rejects(
+      () =>
+        runFlowGet({
+          flowId: id,
+          env: buildSupabaseTestEnv(),
+          fetchImpl: jsonFetch([[row, second]], urls),
+        }),
+      (error) => error instanceof CliError && error.code === 'OBJECT_GET_RESPONSE_INVALID',
+    );
+    assert.equal(urls.length, 1);
+  }
+});
+
+test('runFlowGet rejects explicit invalid versions before authentication or data reads', async () => {
+  for (const version of ['', ' ', '1.00.001', '01.0.001', '01.00.01', '99.99.9999']) {
+    let reads = 0;
+    await assert.rejects(
+      () =>
+        runFlowGet({
+          flowId: '11111111-1111-4111-8111-111111111111',
+          version,
+          env: {},
+          fetchImpl: async () => {
+            reads++;
+            throw new Error('Unexpected network');
+          },
+        }),
+      (error) =>
+        error instanceof CliError &&
+        error.code === 'FLOW_GET_VERSION_INVALID' &&
+        error.exitCode === 2,
+    );
+    assert.equal(reads, 0);
+  }
 });

@@ -1,4 +1,10 @@
 import { parseArgs } from 'node:util';
+import {
+  isObjectGetType,
+  renderObjectGetHelp,
+  runObjectGetCommand,
+} from './lib/object-get-command.js';
+import type { runObjectGet } from './lib/object-get.js';
 import { runRuntimeCommand } from './lib/runtime/command.js';
 import { runPcrCommand } from './lib/pcr-snapshot-command.js';
 import { buildDoctorReport, readRuntimeEnv } from './lib/env.js';
@@ -345,6 +351,7 @@ import {
 } from './lib/dataset-source-upload-attachments.js';
 
 export type CliDeps = {
+  runObjectGetImpl?: typeof runObjectGet;
   runDatasetSupportCacheExportImpl?: (
     options: RunDatasetSupportCacheExportOptions,
   ) => Promise<DatasetSupportCacheExportReport>;
@@ -583,7 +590,11 @@ Implemented Commands:
   process    get | list | identity-preflight | build-plan | scope-statistics | dedup-review | auto-build | resume-build | publish-build | complete-required-fields | save-draft | batch-build | refresh-references | verify-rows
   dataset    support-cache export | contract get | context-pack | classification children/path/audit/apply | curation-queue build/next/verify | import-lca convert | author | patch apply | save-draft | source upload-attachments | validate | verify-remote | bilingual extract/apply/validate | evidence-search plan/run | references rewrite/refresh-remote | maintenance clear-account/plan/apply/verify/flow-identity
   flow       get | list | identity-preflight | build-plan | fetch-rows | materialize-decisions | remediate | publish-version | publish-reviewed-data | build-alias-map | scan-process-flow-refs | plan-process-flow-repairs | apply-process-flow-repairs | regen-product | validate-processes
-  lifecyclemodel auto-build | validate-build | publish-build | save-draft | graph | build-resulting-process | publish-resulting-process | orchestrate
+  contact    get
+  source     get
+  flowproperty get
+  unitgroup  get
+  lifecyclemodel get | auto-build | validate-build | publish-build | save-draft | graph | build-resulting-process | publish-resulting-process | orchestrate
   qa         process | flow | lifecyclemodel
   publish    run
   validation run
@@ -1948,6 +1959,7 @@ function renderFlowGetHelp(): string {
 Options:
   --id <flow-id>        Flow UUID
   --version <version>   Optional requested dataset version; if absent or missing, the latest reachable row is returned
+  Returned resolved_version is authoritative; version_fallback/warnings disclose fallback.
   --user-id <user-id>   Optional owner filter for private rows
   --state-code <code>   Optional visibility filter such as 0 or 100
   --json                Print compact JSON
@@ -2434,6 +2446,7 @@ function renderLifecyclemodelHelp(): string {
   tiangong-lca lifecyclemodel <subcommand> [options]
 
 Implemented Subcommands:
+  get                       Read one complete model with visible-latest fallback
   auto-build                Build native lifecyclemodel json_ordered artifacts from local process run exports
   validate-build            Re-run local validation on one lifecyclemodel build run
   publish-build             Prepare lifecyclemodel publish handoff artifacts from one local build run
@@ -2445,6 +2458,7 @@ Implemented Subcommands:
 
 Examples:
   tiangong-lca lifecyclemodel --help
+  tiangong-lca lifecyclemodel get --help
   tiangong-lca lifecyclemodel auto-build --help
   tiangong-lca lifecyclemodel validate-build --help
   tiangong-lca lifecyclemodel publish-build --help
@@ -2561,6 +2575,7 @@ function renderProcessGetHelp(): string {
 Options:
   --id <process-id>    Process UUID
   --version <version>  Optional requested dataset version; if absent or missing, the latest reachable row is returned
+  Returned resolved_version is authoritative; version_fallback/warnings disclose fallback.
   --json               Print compact JSON
   -h, --help
 
@@ -7475,6 +7490,21 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
 
     if (command === 'pcr')
       return await runPcrCommand(subcommand, commandArgs, deps.fetchImpl, deps.env);
+
+    if (isObjectGetType(command) && subcommand === 'get')
+      return await runObjectGetCommand(command, commandArgs, deps);
+
+    if (isObjectGetType(command) && command !== 'lifecyclemodel' && !subcommand) {
+      if (
+        commandArgs.length === 0 ||
+        (commandArgs.length === 1 && ['--help', '-h'].includes(commandArgs[0]!))
+      )
+        return { exitCode: 0, stdout: renderObjectGetHelp(command) + '\n', stderr: '' };
+      throw new CliError('Use the object get subcommand; see --help.', {
+        code: 'INVALID_ARGS',
+        exitCode: 2,
+      });
+    }
 
     if (command === 'doctor') {
       const doctorFlags = parseDoctorFlags(commandArgs);

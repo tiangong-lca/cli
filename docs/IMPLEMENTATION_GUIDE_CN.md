@@ -1422,3 +1422,11 @@ Model activity multiplier 要求显式 finite nonnegative numeric scalar，缺�
 Flow-only `dataset save-draft --execution-contract` 可在 dry-run／commit 中显式传入一个 `--reference-intent-file`，沿用 #289 的完整 consumer、每个引用 occurrence、selected/latest 正文与 review 文件绑定。CLI 在前检和真正 dispatch 前重新检查认证账号、引用正文、before image 和本地字节；异步 gate 完成后才写 attempt 并发请求。原 v1 execution contract 无新增字段，普通路径保持默认规则。
 
 `reference_intent_admission` 随 prepared/executed 行与原 action ledger 保存；consumed 恢复必须匹配原选择，缺失或变更只能报告 consumed 阻断／UNKNOWN，不能新建 ledger 或重放。字段、哈希域和 caller snapshot 约束见 [exact-reference contract](agents/exact-reference-intent-contract.md#guarded-flow-owner-drafts)。Foundry 的原 Task 状态、授权和候选准入须由其自己的公开接口证明。
+
+## 对象读取与版本回退（CLI #390）
+
+新增 `contact get`、`source get`、`lifecyclemodel get`、`flowproperty get`、`unitgroup get`，复用内部读取模块，不增加公共 `dataset get`。`--id` 必填，`--version` 可选；精确查询为空才在相同账号和范围内回退最新版本。认证、传输、重复记录或正文身份异常不能触发回退。
+
+五个新命令返回完整原生 `payload` 及 `payload_source`，不抓取 Source 附件、不展开 Model 关系、不改写单位或消费者引用。默认 scope 为公开 state 100 与当前账号 state 0 草稿的并集，也可显式选 `public` 或 `owner-draft`。复用 OAuth、身份核验和 Data API；刷新后的账号变化、范围逃逸、请求/字节/超时超限均失败。
+
+七种 get 的 `resolved_version` 都必须来自实际返回行，并与正文版本一致；不能用请求参数补值。`version_fallback` 和 `warnings` 明确回退。Agent 引用返回对象时使用实际 ID 和 `resolved_version`；若原任务必须获得指定版本，则自行识别并拒绝回退。现有 process/flow 的正文键、正常回退行为和可见性保持；保存权限、独立精确引用校验、发布和部署均不在此次变更范围。

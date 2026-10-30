@@ -66,7 +66,10 @@ test('executeCli prints main help when no command is given', async () => {
   assert.match(result.stdout, /flow\s+get \| list \| identity-preflight \| build-plan/u);
   assert.match(result.stdout, /process\s+auto-build/u);
   assert.match(result.stdout, /lifecyclemodel auto-build/u);
-  assert.match(result.stdout, /lifecyclemodel auto-build \| validate-build \| publish-build/u);
+  assert.match(
+    result.stdout,
+    /lifecyclemodel get \| auto-build \| validate-build \| publish-build/u,
+  );
   assert.match(result.stdout, /publish-resulting-process/u);
   assert.match(result.stdout, /qa\s+process \| flow \| lifecyclemodel/u);
   assert.match(result.stdout, /maintenance clear-account\/plan\/apply\/verify/u);
@@ -3010,6 +3013,8 @@ test('executeCli executes process get with injected implementation', async () =>
         schema_version: 1,
         generated_at_utc: '2026-03-30T00:00:00.000Z',
         status: 'resolved_remote_process',
+        version_fallback: false,
+        warnings: [],
         process_id: 'proc-1',
         requested_version: '00.00.001',
         resolved_version: '00.00.001',
@@ -3593,6 +3598,8 @@ test('executeCli executes flow get with injected implementation', async () => {
           schema_version: 1,
           generated_at_utc: '2026-03-30T00:00:00.000Z',
           status: 'resolved_remote_flow',
+          version_fallback: false,
+          warnings: [],
           flow_id: 'flow-1',
           requested_version: '00.00.001',
           requested_user_id: 'user-1',

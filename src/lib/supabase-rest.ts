@@ -1,6 +1,7 @@
 // data-api-relations: processes
 import { CliError } from './errors.js';
 import type { FetchLike } from './http.js';
+import { validateObjectReadRows } from './object-read-result.js';
 import {
   createSupabaseDataClient,
   deriveSupabaseRestBaseUrl,
@@ -36,6 +37,7 @@ function buildProcessUrl(
     id: string;
     version?: string | null;
     latestOnly?: boolean;
+    requireUnique?: boolean;
   },
 ): string {
   const url = new URL(`${restBaseUrl.replace(/\/+$/u, '')}/processes`);
@@ -44,9 +46,10 @@ function buildProcessUrl(
 
   if (options.version) {
     url.searchParams.set('version', `eq.${options.version}`);
+    if (options.requireUnique) url.searchParams.set('limit', '2');
   } else if (options.latestOnly) {
     url.searchParams.set('order', 'version.desc');
-    url.searchParams.set('limit', '1');
+    url.searchParams.set('limit', options.requireUnique ? '2' : '1');
   }
 
   return url.toString();
@@ -123,6 +126,7 @@ async function fetchExactOrLatestProcessRow(options: {
   timeoutMs: number;
   fetchImpl: FetchLike;
   fallbackToLatest?: boolean;
+  requireUnique?: boolean;
 }): Promise<SupabaseProcessLookup | null> {
   const { client, restBaseUrl } = createSupabaseDataClient(
     options.runtime,
@@ -134,6 +138,7 @@ async function fetchExactOrLatestProcessRow(options: {
     const latestUrl = buildProcessUrl(restBaseUrl, {
       id: options.id,
       latestOnly: true,
+      requireUnique: options.requireUnique,
     });
     const latestRows = parseRows(
       await runSupabaseArrayQuery(
@@ -142,15 +147,26 @@ async function fetchExactOrLatestProcessRow(options: {
           .select('id,version,json,modified_at,state_code')
           .eq('id', options.id)
           .order('version', { ascending: false })
-          .limit(1),
+          .limit(options.requireUnique ? 2 : 1),
         latestUrl,
+        { requireArray: options.requireUnique },
       ),
       latestUrl,
     );
+    if (options.requireUnique) validateGetRows(latestRows, options.id, null);
 
     if (latestRows.length === 0) {
       return null;
     }
+    if (
+      options.requireUnique &&
+      latestRows.length > 1 &&
+      latestRows[0].version === latestRows[1].version
+    )
+      throw new CliError('Multiple visible process rows matched the latest version.', {
+        code: 'PROCESS_GET_AMBIGUOUS',
+        exitCode: 2,
+      });
 
     return {
       row: latestRows[0] as SupabaseProcessRow,
@@ -162,20 +178,28 @@ async function fetchExactOrLatestProcessRow(options: {
   const exactUrl = buildProcessUrl(restBaseUrl, {
     id: options.id,
     version: options.version,
+    requireUnique: options.requireUnique,
   });
+  const exactQuery = client
+    .from('processes')
+    .select('id,version,json,modified_at,state_code')
+    .eq('id', options.id)
+    .eq('version', options.version);
+  if (options.requireUnique) {
+    exactQuery.limit(2);
+  }
   const exactRows = parseRows(
-    await runSupabaseArrayQuery(
-      client
-        .from('processes')
-        .select('id,version,json,modified_at,state_code')
-        .eq('id', options.id)
-        .eq('version', options.version),
-      exactUrl,
-    ),
+    await runSupabaseArrayQuery(exactQuery, exactUrl, { requireArray: options.requireUnique }),
     exactUrl,
   );
+  if (options.requireUnique) validateGetRows(exactRows, options.id, options.version);
 
   if (exactRows.length > 0) {
+    if (options.requireUnique && exactRows.length > 1)
+      throw new CliError('Multiple visible process rows matched the requested version.', {
+        code: 'PROCESS_GET_AMBIGUOUS',
+        exitCode: 2,
+      });
     return {
       row: exactRows[0] as SupabaseProcessRow,
       sourceUrl: exactUrl,
@@ -190,6 +214,7 @@ async function fetchExactOrLatestProcessRow(options: {
   const latestUrl = buildProcessUrl(restBaseUrl, {
     id: options.id,
     latestOnly: true,
+    requireUnique: options.requireUnique,
   });
   const latestRows = parseRows(
     await runSupabaseArrayQuery(
@@ -198,21 +223,45 @@ async function fetchExactOrLatestProcessRow(options: {
         .select('id,version,json,modified_at,state_code')
         .eq('id', options.id)
         .order('version', { ascending: false })
-        .limit(1),
+        .limit(options.requireUnique ? 2 : 1),
       latestUrl,
+      { requireArray: options.requireUnique },
     ),
     latestUrl,
   );
+  if (options.requireUnique) validateGetRows(latestRows, options.id, null);
 
   if (latestRows.length === 0) {
     return null;
   }
+  if (
+    options.requireUnique &&
+    latestRows.length > 1 &&
+    latestRows[0].version === latestRows[1].version
+  )
+    throw new CliError('Multiple visible process rows matched the latest version.', {
+      code: 'PROCESS_GET_AMBIGUOUS',
+      exitCode: 2,
+    });
 
   return {
     row: latestRows[0] as SupabaseProcessRow,
     sourceUrl: latestUrl,
     resolution: 'remote_supabase_latest_fallback',
   };
+}
+
+function validateGetRows(rows: SupabaseProcessRow[], id: string, version: string | null): void {
+  validateObjectReadRows({
+    datasetType: 'process',
+    requestedId: id,
+    requestedVersion: version,
+    rows: rows.map((row) => ({
+      id: row.id,
+      version: row.version,
+      payload: normalizeSupabaseProcessPayload(row.json, id),
+    })),
+  });
 }
 
 export {

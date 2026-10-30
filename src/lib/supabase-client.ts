@@ -379,8 +379,14 @@ function postgrestInvalidJsonDetails(error: PostgrestError): string {
 export async function runSupabaseArrayQuery<T>(
   queryPromise: PromiseLike<SupabaseQueryResult<T[]>>,
   sourceUrl: string,
+  options: { requireArray?: boolean } = {},
 ): Promise<T[]> {
   const data = await runSupabaseQuery(queryPromise, sourceUrl);
+  if (options.requireArray && !Array.isArray(data))
+    throw new CliError('Supabase REST response was not a JSON array.', {
+      code: 'SUPABASE_REST_RESPONSE_INVALID',
+      exitCode: 1,
+    });
   return (data ?? []) as T[];
 }
 

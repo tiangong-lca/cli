@@ -8,6 +8,11 @@ import {
   type SupabaseProcessLookup,
 } from './supabase-rest.js';
 import { createSupabaseDataRuntime } from './supabase-session.js';
+import {
+  isObjectReadVersion,
+  validateObjectReadResult,
+  type ObjectReadWarning,
+} from './object-read-result.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -30,6 +35,8 @@ export type ProcessGetReport = {
   requested_version: string | null;
   resolved_version: string;
   resolution: SupabaseProcessLookup['resolution'];
+  version_fallback: boolean;
+  warnings: ObjectReadWarning[];
   source_url: string;
   modified_at: string | null;
   state_code: number | null;
@@ -58,7 +65,13 @@ export async function runProcessGet(options: RunProcessGetOptions): Promise<Proc
     });
   }
 
-  const requestedVersion = normalizeToken(options.version ?? null);
+  const requestedVersion =
+    options.version === undefined || options.version === null ? null : options.version.trim();
+  if (requestedVersion !== null && !isObjectReadVersion(requestedVersion))
+    throw new CliError('The optional --version must use NN.NN.NNN format.', {
+      code: 'PROCESS_GET_VERSION_INVALID',
+      exitCode: 2,
+    });
   const fetchImpl = options.fetchImpl ?? (fetch as FetchLike);
   const timeoutMs = options.timeoutMs ?? PROCESS_GET_TIMEOUT_MS;
   const runtime = createSupabaseDataRuntime({
@@ -74,6 +87,7 @@ export async function runProcessGet(options: RunProcessGetOptions): Promise<Proc
     timeoutMs,
     fetchImpl,
     fallbackToLatest: requestedVersion !== null,
+    requireUnique: true,
   });
 
   if (!lookup) {
@@ -92,20 +106,28 @@ export async function runProcessGet(options: RunProcessGetOptions): Promise<Proc
     );
   }
 
+  const result = validateObjectReadResult({
+    datasetType: 'process',
+    requestedId: processId,
+    requestedVersion,
+    rowId: lookup.row.id,
+    rowVersion: lookup.row.version,
+    payload: normalizeSupabaseProcessPayload(lookup.row.json, processId),
+    resolution: lookup.resolution,
+  });
   return {
     schema_version: 1,
     generated_at_utc: nowIso(options.now),
     status: 'resolved_remote_process',
-    process_id: lookup.row.id || processId,
-    requested_version: requestedVersion,
-    resolved_version: lookup.row.version || requestedVersion || '',
-    resolution: lookup.resolution,
+    process_id: result.id,
+    requested_version: result.requested_version,
+    resolved_version: result.resolved_version,
+    resolution: result.resolution,
+    version_fallback: result.version_fallback,
+    warnings: result.warnings,
     source_url: lookup.sourceUrl,
     modified_at: lookup.row.modified_at,
     state_code: lookup.row.state_code,
-    process: normalizeSupabaseProcessPayload(
-      lookup.row.json,
-      requestedVersion ? `${processId}@${requestedVersion}` : processId,
-    ),
+    process: result.payload,
   };
 }

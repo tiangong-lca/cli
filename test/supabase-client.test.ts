@@ -479,6 +479,26 @@ test('createSupabaseFetch never refreshes or replays a mutation RPC', async () =
   assert.equal(refreshCount, 0);
 });
 
+test('strict array queries reject HTTP-success null without changing default null compatibility', async () => {
+  await assert.rejects(
+    () =>
+      runSupabaseArrayQuery(
+        Promise.resolve({ data: null, error: null, status: 200 }),
+        'https://example.supabase.co/rest/v1/flows',
+        { requireArray: true },
+      ),
+    (error) => error instanceof CliError && error.code === 'SUPABASE_REST_RESPONSE_INVALID',
+  );
+  assert.deepEqual(
+    await runSupabaseArrayQuery(
+      Promise.resolve({ data: [], error: null, status: 200 }),
+      'https://example.supabase.co/rest/v1/flows',
+      { requireArray: true },
+    ),
+    [],
+  );
+});
+
 test('runSupabaseQuery and runSupabaseArrayQuery cover success, null arrays, and wrapped failures', async () => {
   assert.deepEqual(
     await runSupabaseQuery(

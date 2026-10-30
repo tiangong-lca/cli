@@ -7,6 +7,11 @@ import {
 } from './flow-read.js';
 import { requireSupabaseRestRuntime } from './supabase-rest.js';
 import { createSupabaseDataRuntime } from './supabase-session.js';
+import {
+  isObjectReadVersion,
+  validateObjectReadResult,
+  type ObjectReadWarning,
+} from './object-read-result.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -33,6 +38,8 @@ export type FlowGetReport = {
   requested_state_code: number | null;
   resolved_version: string;
   resolution: SupabaseFlowLookup['resolution'];
+  version_fallback: boolean;
+  warnings: ObjectReadWarning[];
   source_url: string;
   modified_at: string | null;
   user_id: string | null;
@@ -62,7 +69,13 @@ export async function runFlowGet(options: RunFlowGetOptions): Promise<FlowGetRep
     });
   }
 
-  const requestedVersion = normalizeToken(options.version ?? null);
+  const requestedVersion =
+    options.version === undefined || options.version === null ? null : options.version.trim();
+  if (requestedVersion !== null && !isObjectReadVersion(requestedVersion))
+    throw new CliError('The optional --version must use NN.NN.NNN format.', {
+      code: 'FLOW_GET_VERSION_INVALID',
+      exitCode: 2,
+    });
   const requestedUserId = normalizeToken(options.userId ?? null);
   const requestedStateCode =
     Number.isInteger(options.stateCode) && (options.stateCode as number) >= 0
@@ -86,6 +99,7 @@ export async function runFlowGet(options: RunFlowGetOptions): Promise<FlowGetRep
     timeoutMs,
     fetchImpl,
     fallbackToLatest: requestedVersion !== null,
+    validateGetResponse: true,
   });
 
   if (!lookup) {
@@ -106,24 +120,32 @@ export async function runFlowGet(options: RunFlowGetOptions): Promise<FlowGetRep
     );
   }
 
+  const result = validateObjectReadResult({
+    datasetType: 'flow',
+    requestedId: flowId,
+    requestedVersion,
+    rowId: lookup.row.id,
+    rowVersion: lookup.row.version,
+    payload: normalizeSupabaseFlowPayload(lookup.row.json, flowId),
+    resolution: lookup.resolution,
+  });
   return {
     schema_version: 1,
     generated_at_utc: nowIso(options.now),
     status: 'resolved_remote_flow',
-    flow_id: lookup.row.id || flowId,
-    requested_version: requestedVersion,
+    flow_id: result.id,
+    requested_version: result.requested_version,
     requested_user_id: requestedUserId,
     requested_state_code: requestedStateCode,
-    resolved_version: lookup.row.version || requestedVersion || '',
-    resolution: lookup.resolution,
+    resolved_version: result.resolved_version,
+    resolution: result.resolution,
+    version_fallback: result.version_fallback,
+    warnings: result.warnings,
     source_url: lookup.sourceUrl,
     modified_at: lookup.row.modified_at,
     user_id: lookup.row.user_id,
     state_code: lookup.row.state_code,
-    flow: normalizeSupabaseFlowPayload(
-      lookup.row.json,
-      requestedVersion ? `${flowId}@${requestedVersion}` : flowId,
-    ),
+    flow: result.payload,
   };
 }
 

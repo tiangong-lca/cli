@@ -25,6 +25,7 @@ export type CorePublicRelation = (typeof CORE_PUBLIC_RELATIONS)[number];
 
 export const DATA_API_RELATION_CONSUMERS = {
   contacts: [
+    'src/lib/object-get.ts',
     'src/lib/dataset-save-draft-run.ts',
     'src/lib/dataset-remote-verify.ts',
     'src/lib/dataset-maintenance-remote.ts',
@@ -32,6 +33,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/dataset-maintenance-clear-account.ts',
   ],
   flowproperties: [
+    'src/lib/object-get.ts',
     'src/lib/dataset-support-cache.ts',
     'src/lib/dataset-save-draft-run.ts',
     'src/lib/dataset-remote-verify.ts',
@@ -58,6 +60,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/process-refresh-references.ts',
   ],
   lifecyclemodels: [
+    'src/lib/object-get.ts',
     'src/lib/lifecyclemodel-bundle-save.ts',
     'src/lib/process-dedup-review.ts',
     'src/lib/dataset-remote-verify.ts',
@@ -80,6 +83,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/dataset-maintenance-clear-account.ts',
   ],
   sources: [
+    'src/lib/object-get.ts',
     'src/lib/dataset-save-draft-run.ts',
     'src/lib/dataset-remote-verify.ts',
     'src/lib/dataset-maintenance-remote.ts',
@@ -88,6 +92,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/dataset-maintenance-clear-account.ts',
   ],
   unitgroups: [
+    'src/lib/object-get.ts',
     'src/lib/dataset-support-cache.ts',
     'src/lib/dataset-save-draft-run.ts',
     'src/lib/dataset-remote-verify.ts',
