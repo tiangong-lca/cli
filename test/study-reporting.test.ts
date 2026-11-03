@@ -5,13 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { executeCli } from '../src/cli.js';
 import { CliError } from '../src/lib/errors.js';
-import {
-  STUDY_CODEC_CANDIDATE_ENV,
-  STUDY_CODEC_MANIFEST_SHA256,
-  STUDY_V3_CODEC_CANDIDATE_ENV,
-  STUDY_V3_CODEC_MANIFEST_SHA256,
-  loadStudyCodec,
-} from '../src/lib/study-codec.js';
+import { loadStudyCodec } from '../src/lib/study-codec.js';
 import { readStudyIntent } from '../src/lib/study-intent.js';
 import { runStudyRequest } from '../src/lib/study-transport.js';
 import { STUDY_REPORT_SCHEMA, studyObject } from '../src/lib/study-protocol.js';
@@ -40,8 +34,6 @@ function environment(): NodeJS.ProcessEnv {
     TIANGONG_LCA_AUTH_MODE: 'access-token',
     TIANGONG_LCA_ACCESS_TOKEN: `eyJhbGciOiJub25lIn0.${Buffer.from(JSON.stringify({ sub: ACTOR })).toString('base64url')}.synthetic-signature`,
     TIANGONG_LCA_DISABLE_SESSION_CACHE: '1',
-    [STUDY_CODEC_CANDIDATE_ENV]: STUDY_CODEC_MANIFEST_SHA256,
-    [STUDY_V3_CODEC_CANDIDATE_ENV]: STUDY_V3_CODEC_MANIFEST_SHA256,
   };
 }
 function json(value: unknown) {

@@ -14,7 +14,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { executeCli } from '../src/cli.js';
 import { CliError } from '../src/lib/errors.js';
-import { STUDY_CODEC_CANDIDATE_ENV, STUDY_CODEC_MANIFEST_SHA256 } from '../src/lib/study-codec.js';
+import {
+  admitStudyCodecCandidate,
+  STUDY_CODEC_CANDIDATE_ENV,
+  STUDY_CODEC_MANIFEST_SHA256,
+} from '../src/lib/study-codec.js';
 import { readStudyIntent } from '../src/lib/study-intent.js';
 import {
   STUDY_COMMANDS,
@@ -51,7 +55,6 @@ function env(actor = ACTOR, client = CLIENT): NodeJS.ProcessEnv {
     TIANGONG_LCA_AUTH_MODE: 'access-token',
     TIANGONG_LCA_ACCESS_TOKEN: token(actor, client),
     TIANGONG_LCA_DISABLE_SESSION_CACHE: '1',
-    [STUDY_CODEC_CANDIDATE_ENV]: STUDY_CODEC_MANIFEST_SHA256,
   };
 }
 function json(value: unknown, status = 200): Response {
@@ -588,26 +591,33 @@ test('Existing OAuth cache selection retains its configured client and tolerates
   );
 });
 
-test('Codec candidate requires explicit development provenance and cannot select Production', async () => {
+test('Clean bundled codecs need no candidate override while synthetic worktree artifacts retain the development boundary', async () => {
   const remote = server();
-  const missing = { ...env() };
-  delete missing[STUDY_CODEC_CANDIDATE_ENV];
-  await rejected(
-    runStudyRequest('capability.read', {}, { ...options(remote.fetchImpl), env: missing }),
-    'STUDY_CONTRACT_CANDIDATE_REQUIRED',
+  const clean = { ...env() };
+  delete clean[STUDY_CODEC_CANDIDATE_ENV];
+  assert.equal(
+    (await runStudyRequest('capability.read', {}, { ...options(remote.fetchImpl), env: clean }))
+      .data.type,
+    'capabilities',
   );
-  await rejected(
-    runStudyRequest(
-      'capability.read',
-      {},
-      {
-        ...options(remote.fetchImpl),
-        env: { [STUDY_CODEC_CANDIDATE_ENV]: STUDY_CODEC_MANIFEST_SHA256 },
-      },
-    ),
-    'STUDY_CONTRACT_CANDIDATE_REQUIRED',
-  );
-  assert.equal(remote.requests.length, 0);
+  for (const candidateEnv of [
+    clean,
+    {
+      TIANGONG_LCA_API_BASE_URL: 'https://production.supabase.co',
+      [STUDY_CODEC_CANDIDATE_ENV]: STUDY_CODEC_MANIFEST_SHA256,
+    },
+  ]) {
+    assert.throws(
+      () =>
+        admitStudyCodecCandidate(
+          { sourceStatus: 'worktree' },
+          candidateEnv,
+          STUDY_CODEC_MANIFEST_SHA256,
+        ),
+      (error: unknown) =>
+        error instanceof CliError && error.code === 'STUDY_CONTRACT_CANDIDATE_REQUIRED',
+    );
+  }
 });
 
 test('Transport deadline keeps a dispatched unknown mutation recoverable without retry', async () => {

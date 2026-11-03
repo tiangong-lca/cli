@@ -40,8 +40,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-03
-lastReviewedCommit: 67f9eba655ea56fd352a6df795feeec6536a59a9
-lastReviewedNote: 'CLI #454: reviewed core v2 and reporting v3 installed transport, private recovery, contained owner artifacts and detached export validation. No package version, dependency, release workflow, credential or grant change; worktree candidates remain development-only and full/runtime qualification is separate.'
+lastReviewedCommit: 3baad6961b148422c1520bd45a55c539fb2d311c
+lastReviewedNote: 'CLI #454: repinned clean committed Edge c878457 and Platform a4c0aab owner artifacts. Private verified-byte graph and safe staged publication remain; package 0.1.28 is development source, not public release or actual runtime qualification.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -69,7 +69,7 @@ Review note, 2026-09-24: CLI #368 synchronizes the 0.2.3 Process reference schem
 
 ## Specialized contracts
 
-Study commands follow `docs/agents/study-cli-contract.md`. Edge owns the contained portable wire codec; CLI owns private pre-dispatch intent and actor/client/destination recovery binding. A worktree codec is task-local development evidence only, never a Production/release trust claim. Study installation grants no remote capability. P2 analysis/report/export selects v3 independently, with detached signature/view binding and the fixed owner renderer; current candidate packages remain loopback development-only until their owner artifacts qualify.
+Study commands follow `docs/agents/study-cli-contract.md`. Edge owns the contained portable wire codec; CLI owns private pre-dispatch intent and actor/client/destination recovery binding. A worktree codec is task-local development evidence only, never a Production/release trust claim. Study installation grants no remote capability. P2 analysis/report/export selects v3 independently, with detached signature/view binding and the fixed owner renderer; bundled artifacts pin clean committed Edge/Platform source. Future worktree candidates remain loopback development-only, and source provenance does not grant hosted activation, permission or public-release trust.
 
 Private live-account testing is maintainer-only and requires explicit account authorization. Follow [the live case guide](docs/agents/live-case-testing.md); public CLI authentication remains OAuth-only and personal credentials never enter public CI.
 

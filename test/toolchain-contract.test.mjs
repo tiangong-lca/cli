@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
-import { createHash } from 'node:crypto';
 import {
   cpSync,
   existsSync,
@@ -864,9 +863,6 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
   try {
     const address = server.address();
     assert.ok(address && typeof address === 'object');
-    const digest = createHash('sha256')
-      .update(readFileSync(join(packageRoot, 'assets/study-contract/v2/manifest.json')))
-      .digest('hex');
     const environment = {
       ...runtimeEnvironment(),
       TIANGONG_LCA_API_BASE_URL: `http://127.0.0.1:${address.port}`,
@@ -874,10 +870,6 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
       TIANGONG_LCA_ACCESS_TOKEN: token,
       TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: 'fixture-public-key',
       TIANGONG_LCA_DISABLE_SESSION_CACHE: '1',
-      TIANGONG_LCA_STUDY_CONTRACT_CANDIDATE_SHA256: digest,
-      TIANGONG_LCA_STUDY_REPORT_CONTRACT_CANDIDATE_SHA256: createHash('sha256')
-        .update(readFileSync(join(packageRoot, 'assets/study-contract/v3/manifest.json')))
-        .digest('hex'),
     };
     const input = join(cwd, 'study-request.json');
     writeFileSync(
@@ -949,8 +941,6 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
     );
     assert.equal(generator.status, 0, generator.stderr);
     const detached = JSON.parse(generator.stdout);
-    environment.TIANGONG_LCA_STUDY_RENDERER_CANDIDATE_SHA256 =
-      detached.env.TIANGONG_LCA_STUDY_RENDERER_CANDIDATE_SHA256;
     writeFileSync(join(cwd, 'bundle.json'), Buffer.from(detached.bundleBase64, 'base64'));
     for (const name of ['anchors', 'expected'])
       writeFileSync(join(cwd, `${name}.json`), JSON.stringify(detached[name]));

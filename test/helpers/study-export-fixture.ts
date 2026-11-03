@@ -1,21 +1,11 @@
 import { generateKeyPairSync, sign } from 'node:crypto';
-import {
-  loadStudyRenderer,
-  STUDY_RENDERER_ARCHIVE_SHA256,
-  STUDY_RENDERER_CANDIDATE_ENV,
-} from '../../src/lib/study-renderer.js';
-import {
-  STUDY_V3_CODEC_CANDIDATE_ENV,
-  STUDY_V3_CODEC_MANIFEST_SHA256,
-} from '../../src/lib/study-codec.js';
+import { loadStudyRenderer } from '../../src/lib/study-renderer.js';
 import { studyDigest, studyJson } from '../../src/lib/study-protocol.js';
 
 export const EXPORT_TIME = '2026-11-03T00:00:00Z';
 export function exportEnvironment(): NodeJS.ProcessEnv {
   return {
     TIANGONG_LCA_API_BASE_URL: 'http://127.0.0.1:56421',
-    [STUDY_V3_CODEC_CANDIDATE_ENV]: STUDY_V3_CODEC_MANIFEST_SHA256,
-    [STUDY_RENDERER_CANDIDATE_ENV]: STUDY_RENDERER_ARCHIVE_SHA256,
   };
 }
 export function exportView() {

@@ -23,6 +23,7 @@ import {
   studyRendererRoot,
   verifyStudyRenderer,
   STUDY_RENDERER_ARCHIVE_SHA256,
+  STUDY_RENDERER_CANDIDATE_ENV,
   STUDY_RENDERER_MANIFEST_SHA256,
 } from '../src/lib/study-renderer.js';
 import { importStudyModule } from '../src/lib/study-codec.js';
@@ -153,19 +154,25 @@ test('Renderer ABI, layout and explicit development policy cannot select arbitra
   }
   for (const env of [
     {},
-    { ...exportEnvironment(), TIANGONG_LCA_API_BASE_URL: 'not-a-url' },
-    { ...exportEnvironment(), TIANGONG_LCA_API_BASE_URL: 'https://production.supabase.co' },
+    { TIANGONG_LCA_API_BASE_URL: 'not-a-url' },
+    {
+      TIANGONG_LCA_API_BASE_URL: 'https://production.supabase.co',
+      [STUDY_RENDERER_CANDIDATE_ENV]: STUDY_RENDERER_ARCHIVE_SHA256,
+    },
   ])
-    await assert.rejects(
-      loadStudyRenderer(env),
-      (error: unknown) =>
-        error instanceof CliError && error.code === 'STUDY_RENDERER_CANDIDATE_REQUIRED',
+    fails(
+      () => admitStudyRendererCandidate({ sourceDirty: true }, env),
+      'STUDY_RENDERER_CANDIDATE_REQUIRED',
     );
+  assert.equal((await loadStudyRenderer({})).artifactHash, STUDY_RENDERER_ARCHIVE_SHA256);
 });
 
 test('Qualified clean renderer policy is distinct from explicit dirty candidate admission', () => {
   admitStudyRendererCandidate({ sourceDirty: false }, {});
-  admitStudyRendererCandidate({ sourceDirty: true }, exportEnvironment());
+  admitStudyRendererCandidate(
+    { sourceDirty: true },
+    { ...exportEnvironment(), [STUDY_RENDERER_CANDIDATE_ENV]: STUDY_RENDERER_ARCHIVE_SHA256 },
+  );
 });
 
 test('Runtime renderer inventory rejects unexpected files and nonregular package paths before importing', async () => {
@@ -219,7 +226,7 @@ test('Renderer execution uses the complete verified memory graph after entry and
       (name) => readFileSync(path.join(root, name)),
     );
     const sentinel = '__studyUnverifiedRendererExecuted';
-    for (const file of ['index.js', 'render.js', 'viewModel.js']) {
+    for (const file of ['index.js', 'render.js', 'viewModel.js', 'documentLanguage.js']) {
       rmSync(path.join(root, file));
       writeFileSync(
         path.join(root, file),

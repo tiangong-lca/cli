@@ -10,6 +10,7 @@ import {
   studyCodecRoot,
   verifyStudyCodecArtifact,
   STUDY_CODEC_CANDIDATE_ENV,
+  STUDY_V3_CODEC_CANDIDATE_ENV,
 } from '../src/lib/study-codec.js';
 import { studyDigest } from '../src/lib/study-protocol.js';
 import { CliError } from '../src/lib/errors.js';
@@ -109,6 +110,28 @@ test('Worktree candidates require an external expected digest and an explicit lo
       () => admitStudyCodecCandidate(development, env, 'expected'),
       'STUDY_CONTRACT_CANDIDATE_REQUIRED',
     );
+  admitStudyCodecCandidate(
+    development,
+    {
+      TIANGONG_LCA_API_BASE_URL: 'http://127.0.0.1:56421',
+      [STUDY_V3_CODEC_CANDIDATE_ENV]: 'expected-v3',
+    },
+    'expected-v3',
+    'v3',
+  );
+  codeError(
+    () =>
+      admitStudyCodecCandidate(
+        development,
+        {
+          TIANGONG_LCA_API_BASE_URL: 'http://127.0.0.1:56421',
+          [STUDY_CODEC_CANDIDATE_ENV]: 'expected-v3',
+        },
+        'expected-v3',
+        'v3',
+      ),
+    'STUDY_CONTRACT_CANDIDATE_REQUIRED',
+  );
   codeError(
     () => admitStudyCodecCandidate({ ...development, sourceStatus: 'unknown' }, {}, 'expected'),
     'STUDY_CONTRACT_INVALID',

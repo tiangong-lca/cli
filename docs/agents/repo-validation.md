@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-03
-lastReviewedCommit: 67f9eba655ea56fd352a6df795feeec6536a59a9
-lastReviewedNote: 'CLI #454: reviewed core v2 and reporting v3 installed transport, private recovery, contained owner artifacts and detached export validation. No package version, dependency, release workflow, credential or grant change; worktree candidates remain development-only and full/runtime qualification is separate.'
+lastReviewedCommit: 3baad6961b148422c1520bd45a55c539fb2d311c
+lastReviewedNote: 'CLI #454: repinned clean committed Edge c878457 and Platform a4c0aab owner artifacts. Private verified-byte graph and safe staged publication remain; package 0.1.28 is development source, not public release or actual runtime qualification.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml

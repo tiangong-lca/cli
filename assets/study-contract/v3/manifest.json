@@ -3,8 +3,8 @@
   "apiSchema": "lca.study-api.v3",
   "contractVersion": "3.0.0",
   "sourceRepository": "tiangong-lca/edge-functions",
-  "sourceCommit": "a5e1103ba5158db6dfe08af9cae73eec9e5f6b21",
-  "sourceStatus": "worktree",
+  "sourceCommit": "c8784576377b4ab156e89dc4eac81014a87880f6",
+  "sourceStatus": "committed",
   "toolchain": {
     "node": "24.19.0",
     "esbuild": "0.28.2",

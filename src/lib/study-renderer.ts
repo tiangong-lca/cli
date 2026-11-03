@@ -8,9 +8,9 @@ import { readStudyBytes } from './study-intent.js';
 import { studyDigest, studyFailure, studyObject, type StudyObject } from './study-protocol.js';
 
 export const STUDY_RENDERER_ARCHIVE_SHA256 =
-  '9adc1007342b7cdeed1df419adcd19daff79f642f86058f61de96fdb20fc144a';
+  '0eeb0ff800efed0936c221c5d68603c46d5362ff3aa1b36051c4308610a1f885';
 export const STUDY_RENDERER_MANIFEST_SHA256 =
-  '7ab4271bc1a2819ad70ce529adc4b7b03554f717212004f8868ae6b44698701a';
+  'be659faa2869edfe1bca735e1509f7118c44a6312c8dbef143ff461bdc6c85bd';
 export const STUDY_RENDERER_CANDIDATE_ENV = 'TIANGONG_LCA_STUDY_RENDERER_CANDIDATE_SHA256';
 const ARCHIVE = 'study-report-renderer-1.0.0.tgz';
 export type StudyRenderer = {
