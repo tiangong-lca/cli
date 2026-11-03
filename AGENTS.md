@@ -16,6 +16,8 @@ whenToUpdate:
   - when docpact routing, retained source docs, or repo-local governance rules change
 checkPaths:
   - AGENTS.md
+  - assets/study-contract/**
+  - assets/study-renderer/**
   - README.md
   - DEV_CN.md
   - docs/IMPLEMENTATION_GUIDE_CN.md
@@ -37,9 +39,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: 2026-11-03
+lastReviewedCommit: 67f9eba655ea56fd352a6df795feeec6536a59a9
+lastReviewedNote: 'CLI #454: reviewed core v2 and reporting v3 installed transport, private recovery, contained owner artifacts and detached export validation. No package version, dependency, release workflow, credential or grant change; worktree candidates remain development-only and full/runtime qualification is separate.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -66,6 +68,8 @@ Review note, 2026-09-24: CLI #368 synchronizes the 0.2.3 Process reference schem
 `tiangong-lca/cli` owns the checked-in public `tiangong-lca` CLI contract: command nouns and verbs, launcher behavior, local artifact workflow, remote session/auth handling, and the repo-level release gate. Start here when the task may change what the CLI does or how it is validated.
 
 ## Specialized contracts
+
+Study commands follow `docs/agents/study-cli-contract.md`. Edge owns the contained portable wire codec; CLI owns private pre-dispatch intent and actor/client/destination recovery binding. A worktree codec is task-local development evidence only, never a Production/release trust claim. Study installation grants no remote capability. P2 analysis/report/export selects v3 independently, with detached signature/view binding and the fixed owner renderer; current candidate packages remain loopback development-only until their owner artifacts qualify.
 
 Private live-account testing is maintainer-only and requires explicit account authorization. Follow [the live case guide](docs/agents/live-case-testing.md); public CLI authentication remains OAuth-only and personal credentials never enter public CI.
 

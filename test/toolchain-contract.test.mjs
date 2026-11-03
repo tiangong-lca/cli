@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { createServer } from 'node:http';
+import { createHash } from 'node:crypto';
 import {
   cpSync,
   existsSync,
@@ -652,7 +654,7 @@ const maybePackTest = process.env.TIANGONG_LCA_COVERAGE === '1' ? test.skip : te
 maybePackTest(
   'a clean pnpm tarball preserves bin plus typed ESM public subpaths without runtime build tools',
   { timeout: 180_000 },
-  () => {
+  async () => {
     const fixtureRoot = mkdtempSync(join(tmpdir(), 'tiangong-cli-pack-contract-'));
 
     try {
@@ -727,6 +729,8 @@ maybePackTest(
       assertRootBinBehavior(installedBinPath, consumerRoot, installedManifest.version);
       assertProductionBootstrap(installedBinPath, consumerRoot);
       assertModuleHostBehavior(consumerRoot, cleanRepository, installedManifest.version);
+      rmSync(cleanRepository, { recursive: true, force: true });
+      await assertInstalledStudyRecovery(installedPackageRoot, consumerRoot);
 
       const consumerTree = pnpmList(consumerRoot, 'typescript');
       assert.deepEqual(
@@ -792,6 +796,184 @@ function assertRootBinBehavior(binPath, cwd, expectedVersion) {
       message: 'Unknown root option: --definitely-unknown',
     },
   });
+}
+
+/** Installed/new-process protocol proof against owned synthetic HTTP, not real Auth/DB qualification. */
+async function assertInstalledStudyRecovery(packageRoot, cwd) {
+  const actor = '11111111-1111-4111-8111-111111111111';
+  const client = '33333333-3333-4333-8333-333333333333';
+  const token = `eyJhbGciOiJub25lIn0.${Buffer.from(JSON.stringify({ sub: actor, client_id: client })).toString('base64url')}.synthetic-signature`;
+  const requests = [];
+  let committed;
+  let drop = true;
+  const server = createServer(async (request, response) => {
+    const send = (body) => {
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(body));
+    };
+    if (request.url === '/auth/v1/user') {
+      send({ id: actor, email: 'installed-fixture@example.test', role: 'authenticated' });
+      return;
+    }
+    let body = '';
+    for await (const chunk of request) body += chunk;
+    const value = JSON.parse(body);
+    const envelope = (data) => ({
+      schemaVersion: value.schemaVersion,
+      requestId: value.requestId,
+      ok: true,
+      data,
+    });
+    if (value.operation === 'capability.read') {
+      send(
+        envelope({
+          type: 'capabilities',
+          contractVersion: value.schemaVersion === 'lca.study-api.v3' ? '3.0.0' : '2.0.0',
+          runtimeEnabled: true,
+          operations:
+            value.schemaVersion === 'lca.study-api.v3'
+              ? ['capability.read']
+              : ['capability.read', 'study.create'],
+          ...(value.schemaVersion === 'lca.study-api.v3'
+            ? { analysisProfiles: [], reportTemplates: [] }
+            : { profiles: [] }),
+        }),
+      );
+      return;
+    }
+    requests.push(value);
+    committed ??= {
+      type: 'study',
+      value: {
+        studyId: 'installed-study',
+        revision: 1,
+        scope: { kind: 'user', id: actor },
+        title: value.title,
+        status: 'active',
+        currentRevisionId: null,
+      },
+    };
+    if (drop) {
+      drop = false;
+      response.destroy();
+      return;
+    }
+    send(envelope(committed));
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === 'object');
+    const digest = createHash('sha256')
+      .update(readFileSync(join(packageRoot, 'assets/study-contract/v2/manifest.json')))
+      .digest('hex');
+    const environment = {
+      ...runtimeEnvironment(),
+      TIANGONG_LCA_API_BASE_URL: `http://127.0.0.1:${address.port}`,
+      TIANGONG_LCA_AUTH_MODE: 'access-token',
+      TIANGONG_LCA_ACCESS_TOKEN: token,
+      TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: 'fixture-public-key',
+      TIANGONG_LCA_DISABLE_SESSION_CACHE: '1',
+      TIANGONG_LCA_STUDY_CONTRACT_CANDIDATE_SHA256: digest,
+      TIANGONG_LCA_STUDY_REPORT_CONTRACT_CANDIDATE_SHA256: createHash('sha256')
+        .update(readFileSync(join(packageRoot, 'assets/study-contract/v3/manifest.json')))
+        .digest('hex'),
+    };
+    const input = join(cwd, 'study-request.json');
+    writeFileSync(
+      input,
+      JSON.stringify({ title: 'Installed synthetic proof', scope: { kind: 'personal' } }),
+    );
+    const invoke = (args) =>
+      new Promise((resolve, reject) => {
+        const child = spawn(
+          process.execPath,
+          [join(packageRoot, 'bin/tiangong-lca.js'), 'study', ...args],
+          { cwd, env: environment, shell: false, stdio: ['ignore', 'pipe', 'pipe'] },
+        );
+        const timer = setTimeout(() => child.kill(), 15_000);
+        let stdout = '',
+          stderr = '';
+        child.stdout.on('data', (chunk) => {
+          stdout += chunk;
+        });
+        child.stderr.on('data', (chunk) => {
+          stderr += chunk;
+        });
+        child.once('error', (error) => {
+          clearTimeout(timer);
+          reject(error);
+        });
+        child.once('close', (code) => {
+          clearTimeout(timer);
+          resolve({ code, stdout, stderr });
+        });
+      });
+    const first = await invoke([
+      'create',
+      '--input',
+      input,
+      '--state-dir',
+      join(cwd, 'retained-study-state'),
+      '--json',
+    ]);
+    assert.equal(first.code, 1, first.stderr);
+    const failure = JSON.parse(first.stderr).error;
+    assert.equal(failure.code, 'STUDY_TRANSPORT_UNKNOWN');
+    const intent = failure.details.intentFile;
+    assert.ok(!readFileSync(intent, 'utf8').includes(token));
+    const recovered = await invoke(['request', 'recover', '--intent-file', intent, '--json']);
+    assert.equal(recovered.code, 0, recovered.stderr);
+    assert.equal(JSON.parse(recovered.stdout).data.value.studyId, 'installed-study');
+    assert.equal(requests.length, 2);
+    assert.deepEqual(requests[0], requests[1]);
+    const reporting = await invoke(['capabilities', '--api-version', '3', '--json']);
+    assert.equal(reporting.code, 0, reporting.stderr);
+    assert.equal(JSON.parse(reporting.stdout).apiSchema, 'lca.study-api.v3');
+    // Fixture generation is test-only; the installed verifier below has no source/compiler import.
+    const generator = spawnSync(
+      process.execPath,
+      [
+        '--import',
+        'tsx',
+        '--input-type=module',
+        '--eval',
+        `import { signedExportFixture, exportEnvironment } from ${JSON.stringify(new URL('./helpers/study-export-fixture.ts', import.meta.url).href)}; const f=await signedExportFixture(); process.stdout.write(JSON.stringify({bundleBase64:f.bytes.toString('base64'),anchors:f.anchors,expected:f.expected,env:exportEnvironment()}));`,
+      ],
+      {
+        cwd: REPOSITORY_ROOT,
+        env: runtimeEnvironment(),
+        encoding: 'utf8',
+        maxBuffer: 8 * 1024 * 1024,
+      },
+    );
+    assert.equal(generator.status, 0, generator.stderr);
+    const detached = JSON.parse(generator.stdout);
+    environment.TIANGONG_LCA_STUDY_RENDERER_CANDIDATE_SHA256 =
+      detached.env.TIANGONG_LCA_STUDY_RENDERER_CANDIDATE_SHA256;
+    writeFileSync(join(cwd, 'bundle.json'), Buffer.from(detached.bundleBase64, 'base64'));
+    for (const name of ['anchors', 'expected'])
+      writeFileSync(join(cwd, `${name}.json`), JSON.stringify(detached[name]));
+    const verified = await invoke([
+      'export',
+      'verify',
+      '--bundle',
+      join(cwd, 'bundle.json'),
+      '--anchors',
+      join(cwd, 'anchors.json'),
+      '--expected',
+      join(cwd, 'expected.json'),
+      '--json',
+    ]);
+    assert.equal(verified.code, 0, verified.stderr);
+    assert.equal(JSON.parse(verified.stdout).rendererMatched, true);
+    assert.equal(JSON.parse(verified.stdout).currentAccess, 'not-checked-offline');
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
 }
 
 function assertModuleHostBehavior(consumerRoot, compilerRoot, expectedVersion) {
@@ -1017,6 +1199,18 @@ function assertPackedFiles(fileMetadata) {
     'assets/runtime/runtime-manifest.schema.json',
     'assets/runtime/runtime-command-result.schema.json',
     'assets/runtime/runtime-bootstrap-lock.schema.json',
+    'assets/study-contract/v2/index.mjs',
+    'assets/study-contract/v2/index.d.ts',
+    'assets/study-contract/v2/manifest.json',
+    'assets/study-contract/v2/LICENSE.zod',
+    'assets/study-contract/v3/index.mjs',
+    'assets/study-contract/v3/index.d.ts',
+    'assets/study-contract/v3/manifest.json',
+    'assets/study-contract/v3/LICENSE.zod',
+    'assets/study-renderer/v1/study-report-renderer-1.0.0.tgz',
+    'assets/study-renderer/v1/package/manifest.json',
+    'assets/study-renderer/v1/package/index.js',
+    'assets/study-renderer/v1/package/LICENSE',
   ])
     assert.ok(packedFiles.includes(file), 'the packed runtime contract is missing: ' + file);
   assert.deepEqual(

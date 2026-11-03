@@ -126,6 +126,8 @@ Review note, 2026-07-25: Bounded flow deletion can instead accept an explicitly 
 
 ## Run
 
+The initial `tiangong-lca study --help` namespace exposes authenticated Study/source/preparation/revision/Scenario/Run lifecycle, scoped task recovery and verified artifact downloads. Mutation requests are retained before dispatch; recover an unknown reply with `study request recover --intent-file <saved-file>`. This source slice requires the explicitly authorized non-Production contract candidate; it does not enable a hosted Study deployment. Analysis/report/export actions explicitly select the separate v3 contract. Detached HTML export verifies independent issuer/renderer anchors, exact file bytes and renderer consistency; offline verification does not claim current access or review. See [the Study CLI contract](docs/agents/study-cli-contract.md) for exact boundaries and installation/recovery requirements.
+
 One-off published run:
 
 ```bash

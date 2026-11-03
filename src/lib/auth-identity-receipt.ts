@@ -440,7 +440,10 @@ async function readBoundedResponseText(response: {
   }
 }
 
-async function fetchCurrentUser(options: {
+// Internal CLI consumers may bind their already selected session to this bounded
+// live lookup, including an explicitly configured loopback test project. This
+// does not change the public receipt's canonical project restrictions.
+export async function fetchCurrentUser(options: {
   projectBaseUrl: string;
   publishableKey: string;
   accessToken: string;

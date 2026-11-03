@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: 2026-11-03
+lastReviewedCommit: 67f9eba655ea56fd352a6df795feeec6536a59a9
+lastReviewedNote: 'CLI #454: reviewed core v2 and reporting v3 installed transport, private recovery, contained owner artifacts and detached export validation. No package version, dependency, release workflow, credential or grant change; worktree candidates remain development-only and full/runtime qualification is separate.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -134,6 +134,8 @@ For runtime-rule composition changes, run `pnpm verify:tidas-public-rules`, the 
 `test/oauth-session.test.ts` verifies terminal rejection across independent source/built session loads, a single token request for concurrent rejected-session callers, prewarmed independent ESM clients honoring disk retirement before reuse or forced refresh, and rotation followed by a transient UserInfo failure. The recovery checkpoint stays expired until profile verification succeeds. Network, 429, 5xx, malformed responses and unrelated OAuth rejection retain recovery state with fixed redacted error categories. Late token or profile responses cannot replace a newer login, resurrect logout state, delete a foreign-client record, publish obsolete actor state, or recreate a retired memory-only record. Native Supabase legacy (`code: 400`, `error_code`) and versioned (`code`, `message`) fixtures prove `refresh_token_not_found` retirement across independent/concurrent callers while unknown or mixed envelopes remain recoverable. Token-stage and HTTP-400 fences also exclude native UserInfo, 401, 429 and 5xx failures; stale rejections preserve newer and foreign-client records. Direct protocol tests keep provider text and unknown native codes out of error payloads. `test/supabase-session.test.ts` retains private-file permission, atomic-write and existing lock coverage. These deterministic tests establish CLI behavior; production logs without an OAuth client identity do not establish which client generated incident traffic.
 
 ## Coverage Notes
+
+Study tests must exercise the contained owner codec, pre-dispatch private intent visibility, restart/lost-response exact-key recovery, actor/client/destination drift, current capability refusal, bounded/redacted Auth and domain transport, typed task polling/cancellation, and atomic exact-byte artifact output. `node --import tsx --test test/study-*.test.ts` is focused synthetic transport proof only. The full hard coverage/package gate and an installed consumer against the task-owned actual Auth/API/DB/Worker remain mandatory; worktree codec tests do not qualify a release or Production. Detached export tests use an independent native Ed25519 issuer and actual owner codecs/renderer, reject edited bytes, transplanted scope and arbitrary package selection, and exercise final-path replacement, retained failed staging, and entry/dependency replacement after renderer verification. Execution is bound to the captured complete module graph; publication does no final-path write/rollback. The [Study CLI contract](study-cli-contract.md) keeps candidate/release and remaining runtime qualification boundaries explicit.
 
 Facts that matter:
 

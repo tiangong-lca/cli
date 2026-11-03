@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "lca.study-renderer-archive.v1",
+  "archiveName": "study-report-renderer-1.0.0.tgz",
+  "byteSize": 12680,
+  "sha256": "9adc1007342b7cdeed1df419adcd19daff79f642f86058f61de96fdb20fc144a",
+  "manifestSha256": "7ab4271bc1a2819ad70ce529adc4b7b03554f717212004f8868ae6b44698701a",
+  "sourceCommit": "2f965bd77ecf8aa5c1ac3915b38ff52326701748",
+  "sourceDirty": true
+}

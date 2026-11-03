@@ -1,6 +1,7 @@
 import { parseArgs } from 'node:util';
 import { runRuntimeCommand } from './lib/runtime/command.js';
 import { runPcrCommand } from './lib/pcr-snapshot-command.js';
+import { runStudyCommand } from './lib/study-command.js';
 import { buildDoctorReport, readRuntimeEnv } from './lib/env.js';
 import type { DotEnvLoadResult } from './lib/dotenv.js';
 import { CliError, toErrorPayload } from './lib/errors.js';
@@ -578,6 +579,7 @@ Implemented Commands:
   doctor     show environment diagnostics
   runtime    describe | ensure | status | prune | lease-release | exec
   pcr        snapshot ensure | snapshot status | exec
+  study      capabilities | create | get | list | resources | model | revision | scenario | run | task | artifact | request
   auth       login | status | whoami | doctor-auth | logout | identity-receipt
   search     flow | process | lifecyclemodel
   process    get | list | identity-preflight | build-plan | scope-statistics | dedup-review | auto-build | resume-build | publish-build | complete-required-fields | save-draft | batch-build | refresh-references | verify-rows
@@ -7475,6 +7477,9 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
 
     if (command === 'pcr')
       return await runPcrCommand(subcommand, commandArgs, deps.fetchImpl, deps.env);
+
+    if (command === 'study')
+      return await runStudyCommand(subcommand, commandArgs, deps.fetchImpl, deps.env);
 
     if (command === 'doctor') {
       const doctorFlags = parseDoctorFlags(commandArgs);
