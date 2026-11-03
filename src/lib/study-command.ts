@@ -6,6 +6,7 @@ import { readStudyIntent, readStudyJson } from './study-intent.js';
 import {
   STUDY_COMMANDS,
   STUDY_REPORT_COMMANDS,
+  STUDY_REVIEW_COMMANDS,
   studyFailure,
   studyObject,
   type StudyApiVersion,
@@ -27,7 +28,14 @@ Actions:
   request recover --intent-file /absolute/path/to/intent.json
   analysis request | get | task get | task wait | task cancel
   report create | save | get | freeze | resources
-  export request | get
+  export request | get [--api-version 4 for finalized v4 exports]
+  actions --input resource-selector.json
+  member set --api-version 4 --input reviewer-grant.json
+  comment append | list
+  review record | list | delegation issue | delegation revoke | delegation list
+  report current | view | finalize
+  share create | get | view | list | revoke
+  share download --input share-request.json --output-dir report --anchors trusted-keys.json --expected selected-export.json
   export download --input artifact-request.json --output-dir report --anchors trusted-keys.json --expected selected-export.json
   export verify (--directory report | --bundle bundle.json) --anchors trusted-keys.json --expected selected-export.json
 
@@ -41,7 +49,11 @@ A wait budget can return waiting:true; HTTP success is not computation completio
 --timeout-ms defaults to 30000 (max 60000). No automatic mutation retry.
 Use auth login/status/doctor-auth for the existing configured OAuth session.
 Installing this CLI grants no Study rights or runtime activation.
-Analysis/report actions explicitly use v3; core lifecycle stays v2.
+P2 analysis/report actions use v3; core lifecycle stays v2.
+P3 actions/comments/reviews/current/view/finalize/share use v4; report view returns safe JSON.
+--api-version 4 explicitly selects v4 member/export/capability operations.
+Review decisions require the actual server-issued bound delegation in OAuth context.
+CLI never issues first-party authority or switches credentials to obtain it.
 --api-version 3 selects v3 for capabilities/resources/task/artifact commands.
 No automatic downgrade; current rights/capabilities still govern every operation.
 Official HTML export additionally requires qualified receipt/renderer verification.
@@ -97,10 +109,16 @@ export async function runStudyCommand(
   const action = positionals.join(' ');
   if (values.help || !action) return { exitCode: 0, stdout: HELP, stderr: '' };
   const versionFlag = values['api-version'];
-  if (versionFlag !== undefined && versionFlag !== '2' && versionFlag !== '3')
+  if (
+    versionFlag !== undefined &&
+    versionFlag !== '2' &&
+    versionFlag !== '3' &&
+    versionFlag !== '4'
+  )
     studyFailure('INVALID_ARGS');
-  if (action === 'export verify' || action === 'export download') {
-    if (versionFlag === '2') studyFailure('UNSUPPORTED_SCHEMA');
+  if (action === 'export verify' || action === 'export download' || action === 'share download') {
+    if (versionFlag === '2' || (action === 'share download' && versionFlag === '3'))
+      studyFailure('UNSUPPORTED_SCHEMA');
     if (
       !values.anchors ||
       !values.expected ||
@@ -132,6 +150,8 @@ export async function runStudyCommand(
         inputFile: values.input,
         outputDirectory: values['output-dir'],
         timeoutMs: integer(values['timeout-ms'], 30_000, 1),
+        apiVersion: action === 'share download' || versionFlag === '4' ? 'v4' : 'v3',
+        downloadKind: action === 'share download' ? 'share' : 'export',
       },
       fetchImpl,
       env,
@@ -153,18 +173,31 @@ export async function runStudyCommand(
   )
     studyFailure('INVALID_ARGS');
   if (
-    ['analysis', 'report', 'export'].includes(positionals[0]) &&
-    !Object.hasOwn(STUDY_REPORT_COMMANDS, action)
+    ['analysis', 'report', 'export', 'review', 'comment', 'share'].includes(positionals[0]) &&
+    !Object.hasOwn(STUDY_REPORT_COMMANDS, action) &&
+    !Object.hasOwn(STUDY_REVIEW_COMMANDS, action)
   )
     studyFailure('CAPABILITY_UNAVAILABLE');
   const recovering = action === 'request recover';
   const waiting = action === 'task wait' || action === 'analysis task wait';
   const reporting = Object.hasOwn(STUDY_REPORT_COMMANDS, action);
+  const reviewing =
+    Object.hasOwn(STUDY_REVIEW_COMMANDS, action) && !Object.hasOwn(STUDY_COMMANDS, action);
   if (recovering && versionFlag !== undefined) studyFailure('INVALID_ARGS');
+  if (reviewing && versionFlag !== undefined && versionFlag !== '4')
+    studyFailure('UNSUPPORTED_SCHEMA');
   if (reporting && versionFlag === '2') studyFailure('UNSUPPORTED_SCHEMA');
   if (
+    versionFlag === '4' &&
+    action !== 'capabilities' &&
+    !Object.hasOwn(STUDY_REVIEW_COMMANDS, action)
+  )
+    studyFailure('UNSUPPORTED_SCHEMA');
+  if (
     versionFlag !== undefined &&
+    versionFlag !== '4' &&
     !reporting &&
+    !reviewing &&
     ![
       'capabilities',
       'resources',
@@ -177,10 +210,17 @@ export async function runStudyCommand(
     studyFailure('INVALID_ARGS');
   const apiVersion: StudyApiVersion | undefined = recovering
     ? undefined
-    : reporting || versionFlag === '3'
-      ? 'v3'
-      : 'v2';
-  const operation = STUDY_COMMANDS[action];
+    : reviewing || versionFlag === '4'
+      ? 'v4'
+      : reporting || versionFlag === '3'
+        ? 'v3'
+        : 'v2';
+  const operation =
+    apiVersion === 'v4'
+      ? action === 'capabilities'
+        ? 'capability.read'
+        : STUDY_REVIEW_COMMANDS[action]
+      : STUDY_COMMANDS[action];
   if (!operation && !recovering) studyFailure('INVALID_ARGS');
   if (
     (recovering && (!values['intent-file'] || values.input || values.output || values.force)) ||

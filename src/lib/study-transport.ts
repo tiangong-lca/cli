@@ -408,7 +408,10 @@ export async function runStudyRequest(
   }
   if (recovered && recovered.binding.endpoint !== destination.endpoint)
     studyFailure('STUDY_RECOVERY_BINDING_MISMATCH');
-  if (request.operation === 'artifact.read') {
+  if (
+    request.operation === 'artifact.read' ||
+    ['export.download', 'share.download'].includes(request.operation)
+  ) {
     if (!options.outputPath) studyFailure('STUDY_OUTPUT_REQUIRED');
     if (!options.force && existsSync(options.outputPath)) studyFailure('STUDY_OUTPUT_EXISTS');
   } else if (options.outputPath !== undefined) studyFailure('INVALID_ARGS');
@@ -475,15 +478,66 @@ export async function runStudyRequest(
         !(capabilities.reportTemplates as string[]).includes(String(request.templateId))
       )
         studyFailure('CAPABILITY_UNAVAILABLE');
+      if (version === 'v4') {
+        for (const [field, admitted] of [
+          ['profileId', 'finalizationProfiles'],
+          ['reviewClass', 'reviewClasses'],
+          ['disclosurePolicyId', 'disclosurePolicies'],
+        ] as const) {
+          if (
+            request[field] !== undefined &&
+            !(capabilities[admitted] as string[]).includes(String(request[field]))
+          )
+            studyFailure('CAPABILITY_UNAVAILABLE');
+        }
+      }
     }
     if (codec.operationMetadata[request.operation].kind === 'mutation' && !recovered)
       intentFile = persistStudyIntent(request, binding, options.env, options.stateDir);
     const execute = async (): Promise<StudyCommandReport> => {
       const data = await dispatch(request);
-      if (request.operation === 'artifact.read') {
+      if (version === 'v4' && studyObject(data.value)) {
+        if (
+          [
+            'comment.append',
+            'review.record',
+            'review.delegation.issue',
+            'report.finalize',
+          ].includes(request.operation) &&
+          data.value.actorId !== binding.actorId
+        )
+          studyFailure('STUDY_RESPONSE_ACTOR_BINDING');
+        if (
+          ['comment.append', 'review.record'].includes(request.operation) &&
+          data.value.clientId !== binding.clientId
+        )
+          studyFailure('STUDY_RESPONSE_ACTOR_BINDING');
+        if (request.operation === 'share.create' && data.value.issuerId !== binding.actorId)
+          studyFailure('STUDY_RESPONSE_ACTOR_BINDING');
+      }
+      if (
+        request.operation === 'artifact.read' ||
+        ['export.download', 'share.download'].includes(request.operation)
+      ) {
+        const record = (
+          request.operation === 'export.download' ? data.export : data.share
+        ) as StudyObject;
+        const selected =
+          request.operation === 'artifact.read'
+            ? request
+            : { ...request, studyId: record.studyId, artifactRef: record.bundleRef };
+        const payload =
+          request.operation === 'artifact.read'
+            ? data
+            : {
+                studyId: record.studyId,
+                artifactRef: record.bundleRef,
+                encoding: data.encoding,
+                bytes: data.bytes,
+              };
         const output = artifactOutput(
-          request,
-          data,
+          selected,
+          payload,
           options.outputPath as string,
           options.force ?? false,
           secrets,
@@ -493,7 +547,13 @@ export async function runStudyRequest(
           operation: request.operation,
           requestId: request.requestId,
           apiSchema: request.schemaVersion,
-          data: { type: 'artifact', studyId: data.studyId, artifactRef: data.artifactRef },
+          data:
+            request.operation === 'artifact.read'
+              ? { type: 'artifact', studyId: data.studyId, artifactRef: data.artifactRef }
+              : {
+                  type: data.type,
+                  [request.operation === 'export.download' ? 'export' : 'share']: record,
+                },
           output,
         };
       }

@@ -64,16 +64,24 @@ export function exportView() {
       validity: 'current',
       checkedAt: EXPORT_TIME,
       review: 'unreviewed',
-      reviewIds: [],
+      reviewIds: [] as string[],
       finalization: 'not_finalized',
     },
   };
 }
 
 /** Independent native-crypto test issuer; its private key never enters the export. */
-export async function signedExportFixture(change?: (view: ReturnType<typeof exportView>) => void) {
+export async function signedExportFixture(
+  change?: (view: ReturnType<typeof exportView>) => void,
+  finalized?: { reviewed: boolean },
+) {
   const loaded = await loadStudyRenderer(exportEnvironment());
   const view = exportView();
+  if (finalized) {
+    view.snapshot.finalization = 'finalized';
+    view.snapshot.review = finalized.reviewed ? 'reviewed' : 'unreviewed';
+    view.snapshot.reviewIds = finalized.reviewed ? ['review-fixture'] : [];
+  }
   change?.(view);
   const projection = Buffer.from(studyJson(view));
   const html = Buffer.from(
@@ -85,7 +93,7 @@ export async function signedExportFixture(change?: (view: ReturnType<typeof expo
   );
   const key = generateKeyPairSync('ed25519');
   const manifest = {
-    schemaVersion: 'lca.study-export-manifest.v1',
+    schemaVersion: finalized ? 'lca.study-export-manifest.v2' : 'lca.study-export-manifest.v1',
     issuerId: 'fixture-issuer',
     exportId: 'export-fixture',
     studyId: 'study-export',
@@ -98,7 +106,24 @@ export async function signedExportFixture(change?: (view: ReturnType<typeof expo
     disclosureContextHash: 'e'.repeat(64),
     generatedAt: EXPORT_TIME,
     validitySnapshot: { status: 'current', checkedAt: EXPORT_TIME, reasonCodes: [] },
-    reviewIds: [],
+    reviewIds: view.snapshot.reviewIds,
+    ...(finalized
+      ? {
+          finalization: {
+            studyId: view.report.studyId,
+            reportRevisionId: view.report.reportRevisionId,
+            reportContentHash: view.report.contentHash,
+            finalizationId: 'finalization-fixture',
+            actorId: '11111111-1111-4111-8111-111111111111',
+            profileId: finalized.reviewed
+              ? 'lca.study-report-internal-review.v1'
+              : 'lca.study-report-unreviewed.v1',
+            expectedReviewStateHash: 'f'.repeat(64),
+            acceptedReviewIds: view.snapshot.reviewIds,
+            finalizedAt: EXPORT_TIME,
+          },
+        }
+      : {}),
     renderer: {
       version: '1.0.0',
       viewModelVersion: 'lca.study-report-view.v1',
@@ -130,7 +155,7 @@ export async function signedExportFixture(change?: (view: ReturnType<typeof expo
       signature: sign(null, signed, key.privateKey).toString('base64url'),
     };
     const bundle = {
-      schemaVersion: 'lca.study-export-bundle.v1',
+      schemaVersion: finalized ? 'lca.study-export-bundle.v2' : 'lca.study-export-bundle.v1',
       manifestBase64: manifestBytes.toString('base64'),
       receipt,
       files: [

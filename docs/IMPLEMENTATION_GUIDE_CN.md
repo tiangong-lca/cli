@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: af7668e8e24a51cd8e14ff4f28bb5d195f963654
-lastReviewedNote: 'CLI #454: distinct explicit-loopback doctor uses bounded live actor/client verification and reports current validated callback only. Canonical identity-receipt/whoami and Production/default doctor remain unchanged; no historical callback or account grant claim.'
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
+lastReviewedNote: 'CLI #455: exact committed V4 owner codec, explicit review/finalization/share commands, original outcome/current-state recovery and independently anchored versioned downloads. V2/V3 and historical signatures remain; no public release, hosted grant or actual P3 acceptance is inferred.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

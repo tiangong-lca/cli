@@ -88,7 +88,7 @@ function scopeHash(binding: StudyActorBinding, request: StudyRequest): string {
       binding,
       operation: request.operation,
       idempotencyKey: request.idempotencyKey,
-      ...(request.schemaVersion === 'lca.study-api.v3' ? { apiSchema: request.schemaVersion } : {}),
+      ...(request.schemaVersion !== 'lca.study-api.v2' ? { apiSchema: request.schemaVersion } : {}),
     }),
   );
 }

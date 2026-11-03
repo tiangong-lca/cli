@@ -31,9 +31,9 @@ checkPaths:
   - test/auth-identity*.test.ts
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: af7668e8e24a51cd8e14ff4f28bb5d195f963654
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
+lastReviewedNote: 'CLI #455: exact committed V4 owner codec, explicit review/finalization/share commands, original outcome/current-state recovery and independently anchored versioned downloads. V2/V3 and historical signatures remain; no public release, hosted grant or actual P3 acceptance is inferred.'
 ---
 
 Review note, 2026-10-07: CLI #407 prepares the separate version-only 0.1.26 release from reviewed allocation/reference PR #406 at main `0a476fee7569af67f4197a1469bb97666d9911e9`. The existing helper selected 0.1.26 from repository and npm latest 0.1.25, proved the target unpublished, and the canonical tag read found no cli-v0.1.26. Package identity and eight directly bound fixture values advance; runtime, exact SDK 0.5.1 dependency, pnpm lock, exports, authentication and workflows remain unchanged. Publication and installed/Foundry managed acceptance still require the existing exact-head four-platform gate, automatic merge tag, native pnpm Trusted Publishing/provenance, credential-free consumers and exact workspace integration.
@@ -126,7 +126,7 @@ Review note, 2026-07-25: Bounded flow deletion can instead accept an explicitly 
 
 ## Run
 
-The initial `tiangong-lca study --help` namespace exposes authenticated Study/source/preparation/revision/Scenario/Run lifecycle, scoped task recovery and verified artifact downloads. Mutation requests are retained before dispatch; recover an unknown reply with `study request recover --intent-file <saved-file>`. The bundled contracts and renderer pin clean committed owner source; this development CLI tarball does not enable a hosted Study deployment or imply a public release. Analysis/report/export actions explicitly select the separate v3 contract. Detached HTML export verifies independent issuer/renderer anchors, exact file bytes and renderer consistency; offline verification does not claim current access or review. See [the Study CLI contract](docs/agents/study-cli-contract.md) for exact boundaries and installation/recovery requirements.
+The initial `tiangong-lca study --help` namespace exposes authenticated Study/source/preparation/revision/Scenario/Run lifecycle, scoped task recovery and verified artifact downloads. Mutation requests are retained before dispatch; recover an unknown reply with `study request recover --intent-file <saved-file>`. The bundled contracts and renderer pin clean committed owner source; this development CLI tarball does not enable a hosted Study deployment or imply a public release. Analysis/report/export actions explicitly select the separate v3 contract. Detached HTML export verifies independent issuer/renderer anchors, exact file bytes and renderer consistency; offline verification does not claim current access or review. P3 actions/comments/reviews/current views/finalization/named shares use v4; pass `--api-version 4` explicitly for member/export upgrades. OAuth decisions require a server-issued bound delegation, while offline signed snapshots remain separate from current authorization/review. See [the Study CLI contract](docs/agents/study-cli-contract.md) for exact boundaries and installation/recovery requirements.
 
 One-off published run:
 

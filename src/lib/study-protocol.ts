@@ -4,13 +4,14 @@ import type { StudyCodec } from './study-codec.js';
 
 export const STUDY_API_SCHEMA = 'lca.study-api.v2' as const;
 export const STUDY_REPORT_SCHEMA = 'lca.study-api.v3' as const;
-export type StudyApiVersion = 'v2' | 'v3';
+export const STUDY_REVIEW_SCHEMA = 'lca.study-api.v4' as const;
+export type StudyApiVersion = 'v2' | 'v3' | 'v4';
 export const STUDY_REQUEST_LIMIT = 256 * 1024;
 export const STUDY_RESPONSE_LIMIT = 6 * 1024 * 1024;
 export const STUDY_ARTIFACT_LIMIT = 4 * 1024 * 1024;
 export type StudyObject = Record<string, unknown>;
 export type StudyRequest = StudyObject & {
-  schemaVersion: typeof STUDY_API_SCHEMA | typeof STUDY_REPORT_SCHEMA;
+  schemaVersion: typeof STUDY_API_SCHEMA | typeof STUDY_REPORT_SCHEMA | typeof STUDY_REVIEW_SCHEMA;
   requestId: string;
   operation: string;
 };
@@ -58,10 +59,32 @@ export const STUDY_REPORT_COMMANDS: Readonly<Record<string, string>> = Object.fr
   'export get': 'export.read',
   'report resources': 'study.resources.list',
 });
+export const STUDY_REVIEW_COMMANDS: Readonly<Record<string, string>> = Object.freeze({
+  actions: 'resource.actions',
+  'member set': 'member.set',
+  'comment append': 'comment.append',
+  'comment list': 'comment.list',
+  'review record': 'review.record',
+  'review list': 'review.list',
+  'review delegation issue': 'review.delegation.issue',
+  'review delegation revoke': 'review.delegation.revoke',
+  'review delegation list': 'review.delegation.list',
+  'report current': 'report.current',
+  'report view': 'report.view',
+  'report finalize': 'report.finalize',
+  'export request': 'export.request',
+  'export get': 'export.read',
+  'share create': 'share.create',
+  'share get': 'share.read',
+  'share view': 'share.view',
+  'share revoke': 'share.revoke',
+  'share list': 'share.list',
+});
 export const STUDY_COMMANDS = Object.freeze({ ...STUDY_CORE_COMMANDS, ...STUDY_REPORT_COMMANDS });
 export function studyApiVersion(schema: unknown): StudyApiVersion {
   if (schema === STUDY_API_SCHEMA) return 'v2';
   if (schema === STUDY_REPORT_SCHEMA) return 'v3';
+  if (schema === STUDY_REVIEW_SCHEMA) return 'v4';
   return studyFailure('UNSUPPORTED_SCHEMA');
 }
 
@@ -137,7 +160,18 @@ export function assertStudySafe(value: unknown, secrets: readonly string[] = [],
 }
 
 export function studyQuery(operation: string): boolean {
-  return operation.endsWith('.read') || operation.endsWith('.list');
+  return (
+    operation.endsWith('.read') ||
+    operation.endsWith('.list') ||
+    [
+      'resource.actions',
+      'report.current',
+      'report.view',
+      'share.view',
+      'export.download',
+      'share.download',
+    ].includes(operation)
+  );
 }
 
 /** Construct only the transport envelope; the owner codec validates domain fields. */
@@ -146,11 +180,18 @@ export function prepareStudyRequest(
   value: unknown,
   version: StudyApiVersion = 'v2',
 ): StudyRequest {
-  const schema = version === 'v2' ? STUDY_API_SCHEMA : STUDY_REPORT_SCHEMA;
+  const schema = `lca.study-api.${version}` as StudyRequest['schemaVersion'];
   const operations =
     version === 'v2'
       ? Object.values(STUDY_CORE_COMMANDS)
-      : [...Object.values(STUDY_REPORT_COMMANDS), 'capability.read', 'artifact.read'];
+      : version === 'v3'
+        ? [...Object.values(STUDY_REPORT_COMMANDS), 'capability.read', 'artifact.read']
+        : [
+            ...Object.values(STUDY_REVIEW_COMMANDS),
+            'capability.read',
+            'export.download',
+            'share.download',
+          ];
   if (!operations.includes(operation) || !studyObject(value)) studyFailure('STUDY_REQUEST_INVALID');
   assertStudySafe(value);
   if (value.schemaVersion !== undefined && value.schemaVersion !== schema)
