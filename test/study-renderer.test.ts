@@ -176,6 +176,10 @@ test('Qualified clean renderer policy is distinct from explicit dirty candidate 
 });
 
 test('Runtime renderer inventory rejects unexpected files and nonregular package paths before importing', async () => {
+  const packageRoot = realpathSync(path.join(studyRendererRoot(), 'package'));
+  const entry = path.join(packageRoot, 'index.js');
+  let inventoryInjections = 0,
+    entryInjections = 0;
   const fs = createRequire(import.meta.url)('node:fs') as {
     readdirSync: typeof import('node:fs').readdirSync;
     lstatSync: typeof import('node:fs').lstatSync;
@@ -185,24 +189,39 @@ test('Runtime renderer inventory rejects unexpected files and nonregular package
   try {
     fs.readdirSync = ((filename: string, options: unknown) => {
       const result = list(filename, options as never);
-      return filename.endsWith('/assets/study-renderer/v1/package')
-        ? [...result, 'foreign.js']
-        : result;
+      if (filename === packageRoot) {
+        inventoryInjections++;
+        return [...result, 'foreign.js'];
+      }
+      return result;
     }) as typeof fs.readdirSync;
     syncBuiltinESMExports();
     await assert.rejects(
       loadStudyRenderer(exportEnvironment()),
       (error: unknown) => error instanceof CliError && error.code === 'STUDY_RENDERER_INTEGRITY',
     );
+    assert.equal(
+      inventoryInjections,
+      1,
+      'the native package directory must receive the inventory injection',
+    );
     fs.readdirSync = list;
-    fs.lstatSync = ((filename: string, options: unknown) =>
-      filename.endsWith('/assets/study-renderer/v1/package/index.js')
-        ? { isFile: () => false }
-        : stat(filename, options as never)) as typeof fs.lstatSync;
+    fs.lstatSync = ((filename: string, options: unknown) => {
+      if (filename === entry) {
+        entryInjections++;
+        return { isFile: () => false };
+      }
+      return stat(filename, options as never);
+    }) as typeof fs.lstatSync;
     syncBuiltinESMExports();
     await assert.rejects(
       loadStudyRenderer(exportEnvironment()),
       (error: unknown) => error instanceof CliError && error.code === 'STUDY_RENDERER_INTEGRITY',
+    );
+    assert.equal(
+      entryInjections,
+      1,
+      'the native entry path must receive the nonregular-file injection',
     );
   } finally {
     fs.readdirSync = list;

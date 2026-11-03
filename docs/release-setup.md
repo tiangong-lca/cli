@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-03
-lastReviewedCommit: af7668e8e24a51cd8e14ff4f28bb5d195f963654
-lastReviewedNote: 'CLI #454: distinct explicit-loopback doctor uses bounded live actor/client verification and reports current validated callback only. Canonical identity-receipt/whoami and Production/default doctor remain unchanged; no historical callback or account grant claim.'
+lastReviewedCommit: 947f944a558cae895850fef6c2c2ba41bea64312
+lastReviewedNote: 'CLI #454: renderer fault-injection fixtures now match canonical native paths and assert the injections ran on each host. Runtime bytes, owner pins and archived 947f944 E2E package are unchanged; fresh Windows CI qualification remains required.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
