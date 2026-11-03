@@ -16,6 +16,8 @@ whenToUpdate:
   - when docpact routing, retained source docs, or repo-local governance rules change
 checkPaths:
   - AGENTS.md
+  - assets/study-contract/**
+  - assets/study-renderer/**
   - README.md
   - DEV_CN.md
   - docs/IMPLEMENTATION_GUIDE_CN.md
@@ -37,9 +39,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: 0d40fff1c0f82b7ab2c040a58f0253e8dbc7bf29
+lastReviewedNote: 'CLI #454: explicit filesystem-error and platform/stat fixtures cover preflight failure, private intent policy and non-directory refusal on every host. Runtime bytes and the 947f944 business-E2E archive remain unchanged; native Windows exact coverage requires fresh CI.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -66,6 +68,8 @@ Review note, 2026-09-24: CLI #368 synchronizes the 0.2.3 Process reference schem
 `tiangong-lca/cli` owns the checked-in public `tiangong-lca` CLI contract: command nouns and verbs, launcher behavior, local artifact workflow, remote session/auth handling, and the repo-level release gate. Start here when the task may change what the CLI does or how it is validated.
 
 ## Specialized contracts
+
+Study commands follow `docs/agents/study-cli-contract.md`. Edge owns the contained portable wire codec; CLI owns private pre-dispatch intent and actor/client/destination recovery binding. A worktree codec is task-local development evidence only, never a Production/release trust claim. Study installation grants no remote capability. P2 analysis/report/export selects v3 independently, with detached signature/view binding and the fixed owner renderer; bundled artifacts pin clean committed Edge/Platform source. Future worktree candidates remain loopback development-only, and source provenance does not grant hosted activation, permission or public-release trust.
 
 Private live-account testing is maintainer-only and requires explicit account authorization. Follow [the live case guide](docs/agents/live-case-testing.md); public CLI authentication remains OAuth-only and personal credentials never enter public CI.
 
@@ -135,7 +139,7 @@ Route those tasks to:
 - Public batch safety: all item identity/content/policy/resource projections validate before work and again before resumed acceptance or fresh claim; identity drift or getter failure has an explicit error/event and zero execution, and every in-flight worker drains before return. Escaping scheduler/event/stop infrastructure errors synchronously close new claims, drain only already-claimed workers through settled aggregation, and rethrow the first recorded cause. Exclusive keys must be runtime strings; per-resource FIFO cursors expose only the earliest ready heads through a private ordered min-heap, so same keys serialize, blocked keys remain unclaimed without occupying workers, later free keys retain bounded concurrency, and ordinary scheduling stays near `O(n log k)`. Mutation retry is rejected, incomplete attempts require explicit readback recovery, resume requires exact run/item contracts, every pre-claim result can trigger stop before its same-key successor becomes ready, and event delivery is monotonic plus awaited. Retry policy/backoff delays cannot exceed Node's timer maximum.
 - Public run-lock safety: one canonical run directory is one file-lock domain across identities and processes. Reentrancy is limited to a live nested scope owned by the current holder; completed async contexts and siblings contend. The top-level promise remains pending until every nested scope drains, foreign-host or live locks are never stale-deleted, and local waiters wake only after physical lock cleanup. PID, host, and ownership time are internal facts, not public options; timeout/poll inputs are non-negative safe integers within Node's timer maximum.
 - `auth identity-receipt` belongs to `src/cli.ts` plus `src/lib/auth-identity-receipt.ts`. It is read-only and must live-verify `/auth/v1/user`; cache email, local JWT decode, raw response bodies, and credential-derived fingerprints are not identity evidence. Production callers must supply both expected assertions and accept only `intent-bound` receipts. Offline consumers parse that exact safe projection through the public `./auth-identity-receipt` entry rather than an internal path.
-- `auth login|status|whoami|doctor-auth|logout`, `src/lib/oauth-pkce.ts`, `src/lib/oauth-loopback.ts`, and `src/lib/supabase-session.ts` own the CLI OAuth boundary. OAuth client IDs and redirect URIs are public configuration; authorization codes and PKCE verifiers never enter argv or disk; access/refresh tokens never enter stdout, reports, or command artifacts. Status is local and non-mutating; whoami/doctor-auth use the live redacted identity receipt. Logout deletes only the matching local session; grant revocation remains the Connected applications action in Next.
+- `auth login|status|whoami|doctor-auth|logout`, `src/lib/oauth-pkce.ts`, `src/lib/oauth-loopback.ts`, and `src/lib/supabase-session.ts` own the CLI OAuth boundary. OAuth client IDs and redirect URIs are public configuration; authorization codes and PKCE verifiers never enter argv or disk; access/refresh tokens never enter stdout, reports, or command artifacts. Status is local and non-mutating; whoami uses the live redacted identity receipt; doctor-auth keeps that canonical path for Production/default and uses the distinct local-only diagnostic for an explicit complete loopback tuple. Logout deletes only the matching local session; grant revocation remains the Connected applications action in Next.
 - `src/lib/env.ts` owns the single official Production public profile (URL, publishable key, CLI client, registered callback, region). A clean installed consumer needs only `auth login`; missing local sessions produce `login-required`, not missing-client setup. Blank public fields and exact Production URL aliases can use defaults. Custom URL/key/client/callback values disable profile completion; complete project-matching custom configuration is required, and known Production key/client values with a foreign URL are rejected before browser/network access. Skills must not copy this profile.
 - Auth selection is deterministic: explicit `TIANGONG_LCA_AUTH_MODE` wins; otherwise a short-lived access token or the resolved OAuth client selects the mode. No legacy API-key path remains. Headless access-token mode requires an explicit destination and publishable key, has no disk cache, and has no refresh replay. Configured-only remote-executor detection must not inherit the Production defaults or silently enable remote publish.
 - Newly added process-maintenance commands such as `process identity-preflight`, `process build-plan`, `process scope-statistics`, `process dedup-review`, `process refresh-references`, and `process verify-rows` still belong to the native CLI command surface in `src/cli.ts` and `src/lib/process-*.ts` / shared CLI-native helpers.

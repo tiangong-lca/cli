@@ -25,9 +25,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: 0d40fff1c0f82b7ab2c040a58f0253e8dbc7bf29
+lastReviewedNote: 'CLI #454: explicit filesystem-error and platform/stat fixtures cover preflight failure, private intent policy and non-directory refusal on every host. Runtime bytes and the 947f944 business-E2E archive remain unchanged; native Windows exact coverage requires fresh CI.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

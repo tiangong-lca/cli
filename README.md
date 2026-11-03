@@ -31,8 +31,8 @@ checkPaths:
   - test/auth-identity*.test.ts
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
+lastReviewedAt: 2026-11-03
+lastReviewedCommit: af7668e8e24a51cd8e14ff4f28bb5d195f963654
 lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
 ---
 
@@ -126,6 +126,8 @@ Review note, 2026-07-25: Bounded flow deletion can instead accept an explicitly 
 
 ## Run
 
+The initial `tiangong-lca study --help` namespace exposes authenticated Study/source/preparation/revision/Scenario/Run lifecycle, scoped task recovery and verified artifact downloads. Mutation requests are retained before dispatch; recover an unknown reply with `study request recover --intent-file <saved-file>`. The bundled contracts and renderer pin clean committed owner source; this development CLI tarball does not enable a hosted Study deployment or imply a public release. Analysis/report/export actions explicitly select the separate v3 contract. Detached HTML export verifies independent issuer/renderer anchors, exact file bytes and renderer consistency; offline verification does not claim current access or review. See [the Study CLI contract](docs/agents/study-cli-contract.md) for exact boundaries and installation/recovery requirements.
+
 One-off published run:
 
 ```bash
@@ -144,6 +146,8 @@ tiangong-lca auth login
 tiangong-lca auth doctor-auth --json
 tiangong-lca flow --help
 ```
+
+For an explicitly configured complete loopback environment, `auth doctor-auth` returns a distinct local-only diagnostic with the current origin, live actor/client and configured callback. It does not produce a canonical Supabase project receipt or prove the historical callback. Production/default doctor, `whoami`, and `identity-receipt` retain the canonical identity contract. See [the Study CLI contract](docs/agents/study-cli-contract.md) before using a local Skill.
 
 Run from this repository:
 

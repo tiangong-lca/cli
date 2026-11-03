@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: 2026-11-03
+lastReviewedCommit: af7668e8e24a51cd8e14ff4f28bb5d195f963654
+lastReviewedNote: 'CLI #454: distinct explicit-loopback doctor uses bounded live actor/client verification and reports current validated callback only. Canonical identity-receipt/whoami and Production/default doctor remain unchanged; no historical callback or account grant claim.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -1422,3 +1422,9 @@ Model activity multiplier 要求显式 finite nonnegative numeric scalar，缺�
 Flow-only `dataset save-draft --execution-contract` 可在 dry-run／commit 中显式传入一个 `--reference-intent-file`，沿用 #289 的完整 consumer、每个引用 occurrence、selected/latest 正文与 review 文件绑定。CLI 在前检和真正 dispatch 前重新检查认证账号、引用正文、before image 和本地字节；异步 gate 完成后才写 attempt 并发请求。原 v1 execution contract 无新增字段，普通路径保持默认规则。
 
 `reference_intent_admission` 随 prepared/executed 行与原 action ledger 保存；consumed 恢复必须匹配原选择，缺失或变更只能报告 consumed 阻断／UNKNOWN，不能新建 ledger 或重放。字段、哈希域和 caller snapshot 约束见 [exact-reference contract](agents/exact-reference-intent-contract.md#guarded-flow-owner-drafts)。Foundry 的原 Task 状态、授权和候选准入须由其自己的公开接口证明。
+
+### Study 研究命令与导出
+
+`study` 的研究生命周期使用 Edge v2，分析、报告和导出显式使用 v3；CLI 不重算模型或计算算法身份。变更请求在发送前保存私有 intent，未知结果只通过原键显式恢复。独立锚定的签名、投影绑定及同一固定渲染器的精确 HTML 重现共同构成离线验证；它不代表当前访问权或评审状态。候选 owner artifact 的三项 digest 开关列于 `.env.example`，仅允许明确的 loopback 任务环境；正式发行需替换为合格产物。字段、命令与安装验证以 [Study CLI contract](agents/study-cli-contract.md) 为准。
+
+本地 loopback 的 doctor 诊断在网络前独立选择，复用 Study 有界 live-user/token-client 校验；Skill 只在当前 origin/client/callback 与独立任务 tuple 一致时接受。它不放宽 Production 身份回执，也不证明缓存登录的历史 callback。参见 [Study CLI contract](agents/study-cli-contract.md)。

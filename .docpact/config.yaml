@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-10-18"
-lastReviewedCommit: "de62442b665701e72910d35150aacb1ee3d38d46"
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: "2026-11-04"
+lastReviewedCommit: "0d40fff1c0f82b7ab2c040a58f0253e8dbc7bf29"
+lastReviewedNote: 'CLI #454: explicit filesystem-error and platform/stat fixtures cover preflight failure, private intent policy and non-directory refusal on every host. Runtime bytes and the 947f944 business-E2E archive remain unchanged; native Windows exact coverage requires fresh CI.'
 
 catalog:
   repos:
@@ -14,6 +14,7 @@ catalog:
         - docs/agents/live-case-testing.md
         - docs/agents/repo-validation.md
         - docs/agents/repo-architecture.md
+        - docs/agents/study-cli-contract.md
         - DEV_CN.md
         - docs/IMPLEMENTATION_GUIDE_CN.md
         - docs/release-runbook.md
@@ -65,6 +66,9 @@ ownership:
           - src/lib/io.ts
           - src/lib/lifecyclemodel-*.ts
           - src/lib/lca-release.ts
+          - src/lib/study-*.ts
+          - assets/study-contract/**
+          - assets/study-renderer/**
           - src/lib/package-version.ts
           - src/lib/process-*.ts
           - src/lib/publish.ts
@@ -158,6 +162,8 @@ coverage:
     - bin/**
     - src/**
     - assets/runtime/**
+    - assets/study-contract/**
+    - assets/study-renderer/**
     - test/**
     - scripts/**
     - .github/workflows/ai-doc-lint.yml
@@ -182,6 +188,14 @@ freshness:
 
 routing:
   intents:
+    study-commands:
+      paths:
+        - src/lib/study-*.ts
+        - assets/study-contract/**
+        - assets/study-renderer/**
+        - test/study-*.test.ts
+        - test/auth-loopback-diagnostic.test.ts
+        - docs/agents/study-cli-contract.md
     dependency-maintenance:
       paths:
         - .github/dependabot.yml
@@ -334,6 +348,7 @@ routing:
 
 docInventory:
   include:
+    - docs/agents/study-cli-contract.md
     - docs/agents/dependency-maintenance.md
     - docs/agents/exact-reference-intent-contract.md
     - docs/agents/runtime-distribution-contract.md
@@ -355,6 +370,34 @@ repo:
   owner: cli
 
 rules:
+  - id: cli-study-consumer-contract
+    scope: repo
+    repo: cli
+    triggers:
+      - path: src/lib/study-*.ts
+        kind: study-consumer
+      - path: assets/study-contract/**
+        kind: owner-contract-artifact
+      - path: assets/study-renderer/**
+        kind: owner-renderer-artifact
+      - path: test/study-*.test.ts
+        kind: study-validation
+      - path: test/auth-loopback-diagnostic.test.ts
+        kind: auth-preflight-validation
+      - path: docs/agents/study-cli-contract.md
+        kind: study-contract
+    requiredDocs:
+      - path: docs/agents/study-cli-contract.md
+        mode: review_or_update
+      - path: .docpact/config.yaml
+        mode: review_or_update
+      - path: AGENTS.md
+        mode: review_or_update
+      - path: docs/agents/repo-architecture.md
+        mode: review_or_update
+      - path: docs/agents/repo-validation.md
+        mode: review_or_update
+    reason: Study wire artifact provenance, private pre-dispatch recovery and installed consumer boundaries must remain separate from remote domain and future report/renderer authority.
   - id: cli-bootstrap-contract
     scope: repo
     repo: cli

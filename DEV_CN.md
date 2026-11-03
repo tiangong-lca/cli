@@ -22,9 +22,9 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
-lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
+lastReviewedAt: 2026-11-03
+lastReviewedCommit: af7668e8e24a51cd8e14ff4f28bb5d195f963654
+lastReviewedNote: 'CLI #454: distinct explicit-loopback doctor uses bounded live actor/client verification and reports current validated callback only. Canonical identity-receipt/whoami and Production/default doctor remain unchanged; no historical callback or account grant claim.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -932,3 +932,5 @@ Review note, 2026-09-21: independently reviewed CLI #283 annual-volume commit d4
 ### Guarded Flow exact-reference 开发验证
 
 `dataset save-draft --execution-contract --reference-intent-file` 仅在 Flow-only 合约中消费 #289 的显式选择。前检与 dispatch 前鲜检由 CLI 承担；Foundry 只绑定并传递 snapshot，不复制 eligibility。新增用例位于 `test/dataset-save-draft-exact-reference.test.ts`，覆盖同一完整 consumer 的 public dry-run／commit、正文和账号漂移、async gate、原 admission ledger 与 UNKNOWN 不重放。执行 `pnpm prepush:gate` 的全量证明后，仍须由原调用方资格通路完成实际 Task 回验；合成 transport 成功不代表生产或正式 runtime 采用。字段定义见 [exact-reference contract](docs/agents/exact-reference-intent-contract.md#guarded-flow-owner-drafts)。
+
+显式完整 loopback 环境的 `auth doctor-auth` 使用独立本地诊断 schema，返回当前 origin/client/callback 与在线 actor；不得将它视作规范 Supabase project 身份回执或历史 callback 证明。Production/default、whoami 与 identity-receipt 保持规范回执规则。字段和 tuple 核对要求见 [Study CLI contract](docs/agents/study-cli-contract.md)。
