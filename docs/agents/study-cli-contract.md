@@ -20,8 +20,8 @@ checkPaths:
   - test/study-*.test.ts
   - docs/agents/study-cli-contract.md
 lastReviewedAt: 2026-11-03
-lastReviewedCommit: 3baad6961b148422c1520bd45a55c539fb2d311c
-lastReviewedNote: 'CLI #454: repinned clean committed Edge c878457 and Platform a4c0aab owner artifacts. Private verified-byte graph and safe staged publication remain; package 0.1.28 is development source, not public release or actual runtime qualification.'
+lastReviewedCommit: af7668e8e24a51cd8e14ff4f28bb5d195f963654
+lastReviewedNote: 'CLI #454: distinct explicit-loopback doctor uses bounded live actor/client verification and reports current validated callback only. Canonical identity-receipt/whoami and Production/default doctor remain unchanged; no historical callback or account grant claim.'
 related:
   - ../../AGENTS.md
   - repo-architecture.md
@@ -57,6 +57,10 @@ The existing package `files` inventory includes `assets/` and `dist/src/`, so bu
 Use the existing CLI OAuth session and official/custom profile selection. Explicit headless tokens remain process-only with an explicit destination/key. No token, password, authorization code or refresh token is accepted as a Study argument. Before domain calls the CLI selects one session and performs the existing bounded live `/auth/v1/user` read for that exact token. Its actor ID is server-observed. Only after this successful read does the CLI read the token's public subject/client metadata to bind recovery; that metadata alone is neither authentication nor a permission grant. OAuth sessions must retain the configured client identity; headless recovery binds the actual token client identity when present. Rotation within the same actor/client scope remains possible.
 
 Domain POSTs send `x-study-schema` equal to the request schema so pre-body auth/transport errors retain the selected version. All Study authentication/domain traffic rejects redirects and shares a bounded operation deadline; Auth response bytes are bounded separately from Study responses. A non-TLS destination is permitted only for an explicitly selected literal loopback host. The high-level auth identity receipt's canonical Production/project restrictions remain unchanged; this module only reuses its internal bounded current-user reader for an explicit task fixture.
+
+For an explicit complete loopback configuration, `auth doctor-auth --json` uses the distinct `tiangong.cli-loopback-auth-doctor.v1` with `scope: explicit-loopback`. Its `live` value is `tiangong.cli-loopback-identity.v1` containing exact `origin`, server-observed `actorId`, actual token `clientId` (or null), current configured `callbackUri` (or null for headless), `authMethod` and `onlineVerified: true`. OAuth needs an explicit callback accepted by the existing loopback validator; local session selection still binds origin/key/client. The same bounded live-user and actual token/client check used by Study runs before success. Failures provide no identity result; remote diagnostic failure uses stable `AUTH_LOOPBACK_DIAGNOSTIC_FAILED`.
+
+A local Skill must compare origin/client/current callback with its independently selected owned tuple. This diagnostic has no canonical project reference, signature, credential-derived fingerprint or Production receipt authority. The existing session schema does not record the historical login callback: the field reports current validated configuration, while actual callback execution belongs to the independent OAuth driver evidence. Production/default doctor keeps its original canonical receipt path; `whoami` and `identity-receipt` keep rejecting noncanonical loopback project identities. Selection happens before I/O, without fallback from a failed canonical receipt.
 
 Authenticated capability read precedes an ordinary domain operation. The selected runtime must admit the operation and any requested exact profile/calculation identity. This check is advisory admission discovery, not a cached permission: Edge/Database reauthorize the actual operation. Package installation, a parsed schema or an existing token never grants `STUDY-READ-01/WRITE-01`, enables runtime flags, or authorizes a source. Task-fixture client grants and activation are separately owner-controlled; no Production/global grant changes belong here.
 

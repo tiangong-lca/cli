@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-03
-lastReviewedCommit: 3baad6961b148422c1520bd45a55c539fb2d311c
-lastReviewedNote: 'CLI #454: repinned clean committed Edge c878457 and Platform a4c0aab owner artifacts. Private verified-byte graph and safe staged publication remain; package 0.1.28 is development source, not public release or actual runtime qualification.'
+lastReviewedCommit: af7668e8e24a51cd8e14ff4f28bb5d195f963654
+lastReviewedNote: 'CLI #454: distinct explicit-loopback doctor uses bounded live actor/client verification and reports current validated callback only. Canonical identity-receipt/whoami and Production/default doctor remain unchanged; no historical callback or account grant claim.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

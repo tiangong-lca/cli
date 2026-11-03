@@ -2,7 +2,7 @@ import { linkSync, mkdirSync, renameSync, rmSync, writeFileSync, existsSync } fr
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { withBatchRunLock } from '../batch.js';
-import { fetchCurrentUser } from './auth-identity-receipt.js';
+import { AUTH_IDENTITY_MAX_TIMEOUT_MS, fetchCurrentUser } from './auth-identity-receipt.js';
 import { loadStudyCodec } from './study-codec.js';
 import { CliError } from './errors.js';
 import type { FetchLike, ResponseLike } from './http.js';
@@ -10,8 +10,12 @@ import {
   buildSupabaseAuthHeaders,
   deriveSupabaseProjectBaseUrl,
   requireSupabaseRestRuntime,
+  type SupabaseRestRuntime,
 } from './supabase-client.js';
-import { resolveSupabaseUserSession } from './supabase-session.js';
+import {
+  resolveSupabaseUserSession,
+  type ResolvedSupabaseUserSession,
+} from './supabase-session.js';
 import {
   assertStudyBinding,
   persistStudyIntent,
@@ -272,6 +276,99 @@ export function createStudyAuthFetch(
   };
 }
 
+type VerifiedStudyActor = { session: ResolvedSupabaseUserSession; binding: StudyActorBinding };
+
+async function resolveVerifiedStudyActor(
+  runtime: SupabaseRestRuntime,
+  destination: { project: string; endpoint: string },
+  fetchImpl: FetchLike,
+  timeoutMs: number,
+  signal: AbortSignal,
+): Promise<VerifiedStudyActor> {
+  const authFetch = createStudyAuthFetch(destination.project, signal, fetchImpl);
+  const session = await abortable(
+    () => resolveSupabaseUserSession({ runtime, fetchImpl: authFetch, timeoutMs }),
+    signal,
+  );
+  const actor = await abortable(
+    () =>
+      fetchCurrentUser({
+        projectBaseUrl: destination.project,
+        publishableKey: runtime.publishableKey,
+        accessToken: session.accessToken,
+        timeoutMs,
+        fetchImpl: authFetch,
+      }),
+    signal,
+  );
+  return {
+    session,
+    binding: {
+      endpoint: destination.endpoint,
+      actorId: actor.userId,
+      clientId: clientBinding(session.accessToken, actor.userId, runtime.oauthClientId),
+    },
+  };
+}
+
+export type LoopbackAuthSelection = Readonly<{ runtime: SupabaseRestRuntime; origin: string }>;
+/** Selected before I/O. Nonlocal configuration keeps the canonical production doctor path. */
+export function selectLoopbackAuthDiagnostic(env: NodeJS.ProcessEnv): LoopbackAuthSelection | null {
+  const configured = env.TIANGONG_LCA_API_BASE_URL?.trim();
+  if (!configured) return null;
+  let url: URL;
+  try {
+    url = new URL(configured);
+  } catch {
+    return null;
+  }
+  if (
+    !['http:', 'https:'].includes(url.protocol) ||
+    !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)
+  )
+    return null;
+  const runtime = requireSupabaseRestRuntime(env, { allowProductionDefaults: false });
+  const origin = endpointFor(runtime.apiBaseUrl).project;
+  if (runtime.authMode === 'oauth' && !env.TIANGONG_LCA_OAUTH_REDIRECT_URI?.trim())
+    studyFailure('AUTH_LOOPBACK_CALLBACK_REQUIRED');
+  return Object.freeze({ runtime: Object.freeze(runtime), origin });
+}
+
+/** A current local diagnostic, never a canonical project/production identity receipt. */
+export async function runLoopbackAuthDiagnostic(
+  selection: LoopbackAuthSelection,
+  options: { fetchImpl: FetchLike; timeoutMs?: number },
+): Promise<StudyObject> {
+  const timeoutMs = options.timeoutMs ?? 10_000;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > AUTH_IDENTITY_MAX_TIMEOUT_MS)
+    studyFailure('INVALID_ARGS');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const { binding } = await resolveVerifiedStudyActor(
+      selection.runtime,
+      { project: selection.origin, endpoint: `${selection.origin}/functions/v1/app_lca_study` },
+      options.fetchImpl,
+      timeoutMs,
+      controller.signal,
+    );
+    return {
+      schemaVersion: 'tiangong.cli-loopback-identity.v1',
+      origin: selection.origin,
+      actorId: binding.actorId,
+      clientId: binding.clientId,
+      callbackUri: selection.runtime.oauthRedirectUri,
+      authMethod: selection.runtime.authMode,
+      onlineVerified: true,
+    };
+  } catch {
+    return studyFailure('AUTH_LOOPBACK_DIAGNOSTIC_FAILED');
+  } finally {
+    controller.abort();
+    clearTimeout(timer);
+  }
+}
+
 /** One selected actor/session, one bounded transport; no automatic mutation retry. */
 export async function runStudyRequest(
   operation: string,
@@ -319,31 +416,13 @@ export async function runStudyRequest(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   let intentFile = options.recoverFile ? path.resolve(options.recoverFile) : undefined;
   try {
-    const authFetch = createStudyAuthFetch(
-      destination.project,
-      controller.signal,
+    const { session, binding } = await resolveVerifiedStudyActor(
+      runtime,
+      destination,
       options.fetchImpl,
-    );
-    const session = await abortable(
-      () => resolveSupabaseUserSession({ runtime, fetchImpl: authFetch, timeoutMs }),
+      timeoutMs,
       controller.signal,
     );
-    const actor = await abortable(
-      () =>
-        fetchCurrentUser({
-          projectBaseUrl: destination.project,
-          publishableKey: runtime.publishableKey,
-          accessToken: session.accessToken,
-          timeoutMs,
-          fetchImpl: authFetch,
-        }),
-      controller.signal,
-    );
-    const binding: StudyActorBinding = {
-      endpoint: destination.endpoint,
-      actorId: actor.userId,
-      clientId: clientBinding(session.accessToken, actor.userId, runtime.oauthClientId),
-    };
     if (recovered) assertStudyBinding(recovered.binding, binding);
     const secrets = [session.accessToken, session.refreshToken].filter(Boolean);
     assertStudySafe(request, secrets);

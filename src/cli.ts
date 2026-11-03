@@ -2,6 +2,7 @@ import { parseArgs } from 'node:util';
 import { runRuntimeCommand } from './lib/runtime/command.js';
 import { runPcrCommand } from './lib/pcr-snapshot-command.js';
 import { runStudyCommand } from './lib/study-command.js';
+import { selectLoopbackAuthDiagnostic, runLoopbackAuthDiagnostic } from './lib/study-transport.js';
 import { buildDoctorReport, readRuntimeEnv } from './lib/env.js';
 import type { DotEnvLoadResult } from './lib/dotenv.js';
 import { CliError, toErrorPayload } from './lib/errors.js';
@@ -725,6 +726,9 @@ function renderAuthDoctorHelp(): string {
 
 First checks local readiness without network access. If ready, it performs the live redacted identity
 receipt. Missing OAuth authorization returns login-required without attempting password bootstrap.
+An explicit complete loopback configuration uses the distinct local-only diagnostic schema; it
+validates the current origin/client/callback and live actor without claiming a canonical project
+receipt or proving the historical login callback. Production/default behavior is unchanged.
 Run "tiangong-lca auth login" only in a trusted human-controlled terminal.
 `.trim();
 }
@@ -7561,13 +7565,19 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
       if (authFlags.help) {
         return { exitCode: 0, stdout: `${renderAuthDoctorHelp()}\n`, stderr: '' };
       }
-      const local = authStatusImpl({ runtime: requireSupabaseRestRuntime(deps.env) });
+      const loopback = selectLoopbackAuthDiagnostic(deps.env);
+      const local = authStatusImpl({
+        runtime: loopback?.runtime ?? requireSupabaseRestRuntime(deps.env),
+      });
+      const diagnosticIdentity = loopback
+        ? { schemaVersion: 'tiangong.cli-loopback-auth-doctor.v1', scope: 'explicit-loopback' }
+        : { schemaVersion: 'tiangong.cli-auth-doctor.v1' };
       if (local.status !== 'ready') {
         return {
           exitCode: 1,
           stdout: stringifyJson(
             {
-              schemaVersion: 'tiangong.cli-auth-doctor.v1',
+              ...diagnosticIdentity,
               status: 'login-required',
               local,
               live: null,
@@ -7577,19 +7587,24 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
           stderr: '',
         };
       }
-      const live = await authIdentityReceiptImpl({
-        env: deps.env,
-        fetchImpl: deps.fetchImpl,
-        cliVersion: loadCliPackageVersion(import.meta.url),
-        expectedProjectRef: null,
-        expectedUserId: null,
-        timeoutMs: authFlags.timeoutMs,
-      });
+      const live = loopback
+        ? await runLoopbackAuthDiagnostic(loopback, {
+            fetchImpl: deps.fetchImpl,
+            timeoutMs: authFlags.timeoutMs,
+          })
+        : await authIdentityReceiptImpl({
+            env: deps.env,
+            fetchImpl: deps.fetchImpl,
+            cliVersion: loadCliPackageVersion(import.meta.url),
+            expectedProjectRef: null,
+            expectedUserId: null,
+            timeoutMs: authFlags.timeoutMs,
+          });
       return {
         exitCode: 0,
         stdout: stringifyJson(
           {
-            schemaVersion: 'tiangong.cli-auth-doctor.v1',
+            ...diagnosticIdentity,
             status: 'passed',
             local,
             live,

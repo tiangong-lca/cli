@@ -876,11 +876,11 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
       input,
       JSON.stringify({ title: 'Installed synthetic proof', scope: { kind: 'personal' } }),
     );
-    const invoke = (args) =>
+    const invoke = (args, namespace = 'study') =>
       new Promise((resolve, reject) => {
         const child = spawn(
           process.execPath,
-          [join(packageRoot, 'bin/tiangong-lca.js'), 'study', ...args],
+          [join(packageRoot, 'bin/tiangong-lca.js'), namespace, ...args],
           { cwd, env: environment, shell: false, stdio: ['ignore', 'pipe', 'pipe'] },
         );
         const timer = setTimeout(() => child.kill(), 15_000);
@@ -901,6 +901,13 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
           resolve({ code, stdout, stderr });
         });
       });
+    const diagnosed = await invoke(['doctor-auth', '--json'], 'auth');
+    assert.equal(diagnosed.code, 0, diagnosed.stderr);
+    const localIdentity = JSON.parse(diagnosed.stdout);
+    assert.equal(localIdentity.schemaVersion, 'tiangong.cli-loopback-auth-doctor.v1');
+    assert.equal(localIdentity.live.origin, environment.TIANGONG_LCA_API_BASE_URL);
+    assert.equal(localIdentity.live.actorId, actor);
+    assert.equal(localIdentity.live.clientId, client);
     const first = await invoke([
       'create',
       '--input',

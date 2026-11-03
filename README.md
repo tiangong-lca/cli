@@ -31,8 +31,8 @@ checkPaths:
   - test/auth-identity*.test.ts
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: de62442b665701e72910d35150aacb1ee3d38d46
+lastReviewedAt: 2026-11-03
+lastReviewedCommit: af7668e8e24a51cd8e14ff4f28bb5d195f963654
 lastReviewedNote: 'CLI #438: reviewed pnpm/setup 3.1.1 at immutable a0881977 with exact current-version fixture and guidance; product 0.1.28, runtime, graph, source pins, full gates and release authority remain unchanged. Hosted qualification and root integration remain pending.'
 ---
 
@@ -146,6 +146,8 @@ tiangong-lca auth login
 tiangong-lca auth doctor-auth --json
 tiangong-lca flow --help
 ```
+
+For an explicitly configured complete loopback environment, `auth doctor-auth` returns a distinct local-only diagnostic with the current origin, live actor/client and configured callback. It does not produce a canonical Supabase project receipt or prove the historical callback. Production/default doctor, `whoami`, and `identity-receipt` retain the canonical identity contract. See [the Study CLI contract](docs/agents/study-cli-contract.md) before using a local Skill.
 
 Run from this repository:
 
