@@ -693,8 +693,39 @@ test('Publication setup failures are stable and do not clean unknown entries', a
   assert.equal(readFileSync(blocker, 'utf8'), 'foreign owner');
   const fs = createRequire(import.meta.url)('node:fs') as {
     mkdirSync: typeof import('node:fs').mkdirSync;
+    lstatSync: typeof import('node:fs').lstatSync;
   };
-  const mkdir = fs.mkdirSync;
+  const mkdir = fs.mkdirSync,
+    lstat = fs.lstatSync;
+  const deniedOutput = path.resolve(parent, 'denied-report');
+  let preflightFailures = 0;
+  try {
+    fs.lstatSync = ((filename: string, options: unknown) => {
+      if (filename === deniedOutput) {
+        preflightFailures++;
+        throw Object.assign(new Error('private filesystem diagnostic'), { code: 'EACCES' });
+      }
+      return lstat(filename, options as never);
+    }) as typeof fs.lstatSync;
+    syncBuiltinESMExports();
+    assert.throws(
+      () => publishStudyExport(deniedOutput, checked),
+      (error: unknown) =>
+        error instanceof CliError &&
+        error.code === 'STUDY_OUTPUT_WRITE_FAILED' &&
+        !error.message.includes('private filesystem diagnostic'),
+    );
+    assert.equal(
+      preflightFailures,
+      1,
+      'the final-path preflight must receive the injected access failure',
+    );
+    assert.deepEqual(readdirSync(parent), ['blocker']);
+    assert.equal(readFileSync(blocker, 'utf8'), 'foreign owner');
+  } finally {
+    fs.lstatSync = lstat;
+    syncBuiltinESMExports();
+  }
   try {
     fs.mkdirSync = (() => {
       throw new Error('simulated parent disk failure');

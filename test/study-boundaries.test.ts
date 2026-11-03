@@ -368,3 +368,80 @@ test('Auth response budgets reject oversized streams and fallback text even if c
     );
   }
 });
+
+test('Private intent policy distinguishes POSIX modes from Windows ACLs and rejects non-directory state on every host', () => {
+  const state = temporary();
+  const request = prepareStudyRequest('study.create', {
+    requestId: 'portable-private-intent',
+    idempotencyKey: 'portable-private-key',
+    title: 'private state',
+    scope: { kind: 'personal' },
+  });
+  const file = persistStudyIntent(request, selected, {}, state);
+  const parent = path.dirname(file);
+  const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
+  const fs = createRequire(import.meta.url)('node:fs') as {
+    lstatSync: typeof import('node:fs').lstatSync;
+    fstatSync: typeof import('node:fs').fstatSync;
+  };
+  const lstat = fs.lstatSync,
+    fstat = fs.fstatSync;
+  let parentMode = 0o700,
+    fileMode = 0o600,
+    parentIsDirectory = true;
+  let directoryObservations = 0,
+    fileObservations = 0;
+  try {
+    fs.lstatSync = ((filename: string, options: unknown) => {
+      const observed = lstat(filename, options as never);
+      if (filename !== parent) return observed;
+      directoryObservations++;
+      return Object.assign(Object.create(observed), {
+        mode: (Number(observed.mode) & ~0o777) | parentMode,
+        isDirectory: () => parentIsDirectory,
+      });
+    }) as typeof fs.lstatSync;
+    fs.fstatSync = ((fd: number) => {
+      const observed = fstat(fd);
+      fileObservations++;
+      return Object.assign(Object.create(observed), {
+        mode: (observed.mode & ~0o777) | fileMode,
+      });
+    }) as typeof fs.fstatSync;
+    syncBuiltinESMExports();
+    // This tests the policy for both platforms; native permissions/ACLs are not emulated.
+    for (const selectedPlatform of ['linux', 'win32']) {
+      Object.defineProperty(process, 'platform', { value: selectedPlatform });
+      parentMode = 0o700;
+      fileMode = 0o600;
+      parentIsDirectory = true;
+      assert.equal(readStudyIntent(file).request.requestId, request.requestId);
+      fileMode = 0o644;
+      if (selectedPlatform === 'linux') rejects(() => readStudyIntent(file), 'STUDY_INPUT_INVALID');
+      else assert.equal(readStudyIntent(file).request.requestId, request.requestId);
+      fileMode = 0o600;
+      parentMode = 0o755;
+      if (selectedPlatform === 'linux') {
+        rejects(() => readStudyIntent(file), 'STUDY_INTENT_INVALID');
+        rejects(() => persistStudyIntent(request, selected, {}, state), 'STUDY_STATE_INVALID');
+      } else {
+        assert.equal(readStudyIntent(file).request.requestId, request.requestId);
+        rejects(() => persistStudyIntent(request, selected, {}, state), 'STUDY_RECOVERY_REQUIRED');
+      }
+      parentMode = 0o700;
+      parentIsDirectory = false;
+      rejects(() => readStudyIntent(file), 'STUDY_INTENT_INVALID');
+      rejects(() => persistStudyIntent(request, selected, {}, state), 'STUDY_STATE_INVALID');
+    }
+    assert(
+      directoryObservations > 0,
+      'the selected intent directory must receive synthetic observations',
+    );
+    assert(fileObservations > 0, 'the opened private file must receive synthetic observations');
+  } finally {
+    Object.defineProperty(process, 'platform', platform);
+    fs.lstatSync = lstat;
+    fs.fstatSync = fstat;
+    syncBuiltinESMExports();
+  }
+});

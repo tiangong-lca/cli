@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: 947f944a558cae895850fef6c2c2ba41bea64312
-lastReviewedNote: 'CLI #454: renderer fault-injection fixtures now match canonical native paths and assert the injections ran on each host. Runtime bytes, owner pins and archived 947f944 E2E package are unchanged; fresh Windows CI qualification remains required.'
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: 0d40fff1c0f82b7ab2c040a58f0253e8dbc7bf29
+lastReviewedNote: 'CLI #454: explicit filesystem-error and platform/stat fixtures cover preflight failure, private intent policy and non-directory refusal on every host. Runtime bytes and the 947f944 business-E2E archive remain unchanged; native Windows exact coverage requires fresh CI.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -137,7 +137,7 @@ For runtime-rule composition changes, run `pnpm verify:tidas-public-rules`, the 
 
 Study tests must exercise the contained owner codec, pre-dispatch private intent visibility, restart/lost-response exact-key recovery, actor/client/destination drift, current capability refusal, bounded/redacted Auth and domain transport, typed task polling/cancellation, and atomic exact-byte artifact output. `node --import tsx --test test/study-*.test.ts` is focused synthetic transport proof only. The full hard coverage/package gate and an installed consumer against the task-owned actual Auth/API/DB/Worker remain mandatory; worktree codec tests do not qualify a release or Production. Detached export tests use an independent native Ed25519 issuer and actual owner codecs/renderer, reject edited bytes, transplanted scope and arbitrary package selection, and exercise final-path replacement, retained failed staging, and entry/dependency replacement after renderer verification. Execution is bound to the captured complete module graph; publication does no final-path write/rollback. The [Study CLI contract](study-cli-contract.md) keeps candidate/release and remaining runtime qualification boundaries explicit.
 
-Renderer filesystem fault injections must match the canonical native package/entry paths produced by the loader, rather than forward-slash suffixes. Assert that each injection actually ran as well as the integrity rejection. A local pass cannot replace native Windows qualification.
+Renderer filesystem fault injections must match the canonical native package/entry paths produced by the loader, rather than forward-slash suffixes. Assert that each injection actually ran as well as the integrity rejection. A local pass cannot replace native Windows qualification. Storage error fixtures must inject the intended failure explicitly instead of depending on platform-specific missing-entry/ENOTDIR handling. Scoped platform/stat observations exercise POSIX mode rejection and the distinct Windows policy on every host; synthetic mode bits do not emulate native ACLs.
 
 Facts that matter:
 

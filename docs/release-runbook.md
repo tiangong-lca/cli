@@ -25,9 +25,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: 947f944a558cae895850fef6c2c2ba41bea64312
-lastReviewedNote: 'CLI #454: renderer fault-injection fixtures now match canonical native paths and assert the injections ran on each host. Runtime bytes, owner pins and archived 947f944 E2E package are unchanged; fresh Windows CI qualification remains required.'
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: 0d40fff1c0f82b7ab2c040a58f0253e8dbc7bf29
+lastReviewedNote: 'CLI #454: explicit filesystem-error and platform/stat fixtures cover preflight failure, private intent policy and non-directory refusal on every host. Runtime bytes and the 947f944 business-E2E archive remain unchanged; native Windows exact coverage requires fresh CI.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
