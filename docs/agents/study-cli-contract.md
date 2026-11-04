@@ -19,9 +19,9 @@ checkPaths:
   - assets/study-renderer/**
   - test/study-*.test.ts
   - docs/agents/study-cli-contract.md
-lastReviewedAt: 2026-11-04
-lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
-lastReviewedNote: 'CLI #460: reviewed explicit contained V5/renderer2 consumption, preserved older journals and artifacts, owner-controlled rollback reads and offline/online family bindings. Package version, dependencies, publication authority and actual runtime qualification remain separate.'
+lastReviewedAt: 2026-11-05
+lastReviewedCommit: dde5327323eb67af0f5ac3c570bea8bb38697052
+lastReviewedNote: 'CLI #462: reviewed explicit V6 method evidence/assessment/report/review/share, immutable original-family recovery and export4/view3/renderer3 verification. Historical artifacts, dependencies and publication remain separate; actual producer/consumer qualification is pending.'
 related:
   - ../../AGENTS.md
   - repo-architecture.md
@@ -125,3 +125,17 @@ V5 saved intents use the existing immutable envelope and independent `study/v5/`
 Explicit v5 export/share download and offline verify consume manifest3/bundle3, view.v2 and renderer2.0.0. The new renderer archive pins Platform source `44da4e489dde1f9bbc2ae5cce96912fc0860fa87`, archive SHA-256 `dfbc7aa817996457b2d9a1c5c9d511f39c132e1523f9d1421a3ff1d74c7805fe`, manifest SHA-256 `b0c9bdd08a25b9a4ac22acf135f013602970049851725a9e612fe9e23ef6a50b`. It preserves characterization coverage independently of null numeric values and requires exact ordered reason codes. After signature and selected-identity verification, only a registered independently pinned renderer family can reproduce HTML. Historical manifests1/2 continue through their original renderer1 bytes. The versioned offline verifier can retain old evidence; online requested bundle/manifest/view families must match their typed source record exactly. A successful signature does not establish current source rights, review acceptance or scientific validity.
 
 These owner candidates are source/package proof. Main source delivery, public CLI release, actual installed OAuth/API/Database/native/Storage qualification and exact root integration remain separately tracked under CLI#460 and workspace#2181. No production capability is enabled by installing this source.
+
+## P4 method assessment consumer
+
+`--api-version 6` explicitly selects the separate method family. Use `study method evidence register|get`, `method assessment request|get|task get|task wait|task cancel`, the existing `artifact download` for exact method facts/evidence, and the supported report, comment, review, finalization, export and named-share commands. No method action defaults to V6; existing defaults and V2–V5 journals remain unchanged. V6 does not create Studies, manage members or run numerical analysis. `study schema request|response --api-version 6` returns the exact rehashed owner JSON schema locally, with no authentication or network. Runtime codec refinements remain authoritative over schema discovery.
+
+Method configuration identity uses the contained owner helper; every V6 success also passes its asynchronous response-content validator, which binds owner configuration identity and exact evidence digest/byteSize. The CLI does not derive source/model/factor/module identities, evaluate methodology, create Worker contexts or compute scientific results. Evidence registration retains `recorded_unverified`. The owner validates Unicode scalar text, exact versions, closed fields, bounds and selected records. Current capabilities and actor/client binding are rechecked for each dispatch. Owner-authorized historical operations remain readable during admission rollback; this never admits a new assessment/report. Private mutation intents retain the original `study/v6/` schema, key and request bytes across an unknown reply and explicit restart recovery.
+
+`assets/study-contract/v6/` pins the early committed Edge interface source `a33a5fbcc8f76f2cf29f68792d7124d6cce94615`, manifest SHA-256 `c1fee1ab2b990d96ff160d2a86f6d4f4690122c8ebb0af30d1a64bcf29c77f84`. This is source-bound interface evidence; it does not qualify unfinished handlers, hosted activation or actual producer/consumer execution. A future worktree candidate requires `TIANGONG_LCA_STUDY_METHOD_CONTRACT_CANDIDATE_SHA256` and an explicit loopback destination.
+
+Explicit V6 export/share download consumes manifest4/bundle4, view3 and renderer3. The renderer pins clean Platform source `94ce52a4c109f8097510913d826566f6ff139e59`, archive SHA-256 `3f195573d530d0342815114fb3e14a4856930270df2874883b364f1ea5bc9c58`, manifest SHA-256 `954c75dc016aa0ba833eb49643631e17eec09cf4bf2f74e50df17f32534614a3`. Its verified complete JS/MJS graph is snapshotted before execution. Receipt signatures and independently selected issuer/export/Study/report/content identities, typed bundle family, exact view bindings and byte-identical HTML re-rendering all remain required. Producer HTML must render the canonical-parsed exported projection; raw-object ordering cannot replace the projection bytes. Offline V6 verification retains manifests1–3 with their original renderer1/2, while online V6 cannot substitute an older family.
+
+The method summary retains all twenty requirements, twenty-five category rows and fifty-eight catalog facts. Missing factors remain unknown, null and unavailable. The currently pinned all-pairs CF coverage cannot produce complete sixteen-category normalization/weighting for any legal nonempty inventory. No absent CF becomes zero or not-applicable. PEF conformity, scientific ranking, business pilot and professional approval remain separate, unqualified states. Actual positive professional qualification remains P4 debt.
+
+CLI #462 and workspace #2181 retain separate source review/CI/Main/root and actual authorized non-production OAuth/native/Storage qualification. Synthetic HTTP/signing fixtures and an installed package prove consumer behavior only; package version, dependencies and publication remain unchanged.

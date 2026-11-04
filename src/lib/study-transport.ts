@@ -195,9 +195,17 @@ export function verifyStudyArtifact(
   const publicKinds =
     request.schemaVersion === 'lca.study-api.v2'
       ? ['modelInput', 'runResult']
-      : request.schemaVersion === 'lca.study-api.v5'
+      : ['lca.study-api.v5', 'lca.study-api.v6'].includes(request.schemaVersion)
         ? request.operation === 'artifact.read'
-          ? ['analysisFacts', 'reportContent']
+          ? request.schemaVersion === 'lca.study-api.v6'
+            ? [
+                'methodAssessmentFacts',
+                'methodEvidence',
+                'reportContent',
+                'modelInput',
+                'runResult',
+              ]
+            : ['analysisFacts', 'reportContent']
           : ['reportExportBundle']
         : [
             'analysisFacts',
@@ -405,6 +413,12 @@ export async function runStudyRequest(
         studyFailure('REFERENCE_MISMATCH');
       request.configHash = hash;
     }
+    if (version === 'v6' && request.operation === 'method.assessment.request') {
+      const hash = await codec.methodConfigHash!(request.config);
+      if (request.configHash !== undefined && request.configHash !== hash)
+        studyFailure('REFERENCE_MISMATCH');
+      request.configHash = hash;
+    }
     request = codec.parseRequest(request) as StudyRequest;
   } catch (error) {
     if (error instanceof CliError) throw error;
@@ -451,12 +465,20 @@ export async function runStudyRequest(
       );
       const value = await readResponse(reply, controller.signal);
       assertStudySafe(value, secrets);
-      return parseStudyResponse(value, selected, reply.status, codec);
+      const data = parseStudyResponse(value, selected, reply.status, codec);
+      if (version === 'v6') {
+        try {
+          await codec.validateResponseContentForRequest!(selected, value);
+        } catch {
+          studyFailure('STUDY_RESPONSE_SELECTION');
+        }
+      }
+      return data;
     };
     if (request.operation !== 'capability.read') {
       const capabilities = await dispatch(prepareStudyRequest('capability.read', {}, version));
       if (
-        (capabilities.runtimeEnabled !== true && version !== 'v5') ||
+        (capabilities.runtimeEnabled !== true && version !== 'v5' && version !== 'v6') ||
         !(capabilities.operations as string[]).includes(request.operation)
       )
         studyFailure('CAPABILITY_UNAVAILABLE');
@@ -483,7 +505,28 @@ export async function runStudyRequest(
         !(capabilities.reportTemplates as string[]).includes(String(request.templateId))
       )
         studyFailure('CAPABILITY_UNAVAILABLE');
-      if (version === 'v4' || (version === 'v5' && request.operation !== 'analysis.request')) {
+      if (version === 'v6') {
+        for (const [field, admitted] of [
+          ['templateId', 'reportTemplates'],
+          [
+            'profileId',
+            request.operation === 'method.assessment.request'
+              ? 'methodProfiles'
+              : 'finalizationProfiles',
+          ],
+        ] as const) {
+          if (
+            request[field] !== undefined &&
+            !(capabilities[admitted] as string[]).includes(String(request[field]))
+          )
+            studyFailure('CAPABILITY_UNAVAILABLE');
+        }
+      }
+      if (
+        version === 'v4' ||
+        (version === 'v5' && request.operation !== 'analysis.request') ||
+        (version === 'v6' && request.operation !== 'method.assessment.request')
+      ) {
         for (const [field, admitted] of [
           ['profileId', 'finalizationProfiles'],
           ['reviewClass', 'reviewClasses'],
@@ -501,7 +544,7 @@ export async function runStudyRequest(
       intentFile = persistStudyIntent(request, binding, options.env, options.stateDir);
     const execute = async (): Promise<StudyCommandReport> => {
       const data = await dispatch(request);
-      if ((version === 'v4' || version === 'v5') && studyObject(data.value)) {
+      if ((version === 'v4' || version === 'v5' || version === 'v6') && studyObject(data.value)) {
         if (
           [
             'comment.append',

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { studyRendererRoot } from '../../src/lib/study-renderer.js';
+import path from 'node:path';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { loadStudyRenderer } from '../../src/lib/study-renderer.js';
 import { studyDigest, studyJson } from '../../src/lib/study-protocol.js';
@@ -116,15 +119,37 @@ export async function signedAdvancedExportFixture(
   change?.(view);
   return { ...(await issueExportFixture(view, 'v2', finalized)), view };
 }
+export function methodExportView() {
+  return (
+    JSON.parse(
+      readFileSync(
+        path.join(studyRendererRoot(undefined, 'v3'), 'package/methodProtocol.fixture.json'),
+        'utf8',
+      ),
+    ) as {
+      view: ReturnType<typeof advancedExportView> & { methodAssessment: Record<string, unknown> };
+    }
+  ).view;
+}
+export async function signedMethodExportFixture(
+  change?: (view: ReturnType<typeof methodExportView>) => void,
+) {
+  const view = methodExportView();
+  view.snapshot.finalization = 'finalized';
+  view.snapshot.review = 'reviewed';
+  view.snapshot.reviewIds = ['review-fixture'];
+  change?.(view);
+  return { ...(await issueExportFixture(view, 'v3', { reviewed: true })), view };
+}
 async function issueExportFixture(
   view: ReturnType<typeof exportView> | ReturnType<typeof advancedExportView>,
-  version: 'v1' | 'v2',
+  version: 'v1' | 'v2' | 'v3',
   finalized?: { reviewed: boolean },
 ) {
   const loaded = await loadStudyRenderer(exportEnvironment(), version);
   const projection = Buffer.from(studyJson(view));
   const html = Buffer.from(
-    await loaded.renderer.renderReport(view, {
+    await loaded.renderer.renderReport(JSON.parse(projection.toString()) as unknown, {
       exportId: 'export-fixture',
       projectionHash: studyDigest(projection),
       verificationAtGeneration: 'verified_by_trusted_exporter',
@@ -133,22 +158,24 @@ async function issueExportFixture(
   const key = generateKeyPairSync('ed25519');
   const manifest = {
     schemaVersion:
-      version === 'v2'
-        ? 'lca.study-export-manifest.v3'
-        : finalized
-          ? 'lca.study-export-manifest.v2'
-          : 'lca.study-export-manifest.v1',
+      version === 'v3'
+        ? 'lca.study-export-manifest.v4'
+        : version === 'v2'
+          ? 'lca.study-export-manifest.v3'
+          : finalized
+            ? 'lca.study-export-manifest.v2'
+            : 'lca.study-export-manifest.v1',
     issuerId: 'fixture-issuer',
     exportId: 'export-fixture',
-    studyId: 'study-export',
-    reportRevisionId: 'report-export',
-    reportContentHash: 'a'.repeat(64),
+    studyId: version === 'v3' ? view.report.studyId : 'study-export',
+    reportRevisionId: version === 'v3' ? view.report.reportRevisionId : 'report-export',
+    reportContentHash: version === 'v3' ? view.report.contentHash : 'a'.repeat(64),
     actorId: 'actor-export',
     clientId: null,
     grantEpoch: 1,
     policyId: 'lca.study-report-disclosure.v1',
     disclosureContextHash: 'e'.repeat(64),
-    generatedAt: EXPORT_TIME,
+    generatedAt: view.report.generatedAt,
     validitySnapshot: { status: 'current', checkedAt: EXPORT_TIME, reasonCodes: [] },
     reviewIds: view.snapshot.reviewIds,
     ...(finalized
@@ -200,11 +227,13 @@ async function issueExportFixture(
     };
     const bundle = {
       schemaVersion:
-        version === 'v2'
-          ? 'lca.study-export-bundle.v3'
-          : finalized
-            ? 'lca.study-export-bundle.v2'
-            : 'lca.study-export-bundle.v1',
+        version === 'v3'
+          ? 'lca.study-export-bundle.v4'
+          : version === 'v2'
+            ? 'lca.study-export-bundle.v3'
+            : finalized
+              ? 'lca.study-export-bundle.v2'
+              : 'lca.study-export-bundle.v1',
       manifestBase64: manifestBytes.toString('base64'),
       receipt,
       files: [
@@ -227,9 +256,9 @@ async function issueExportFixture(
   const expected = {
     issuerId: 'fixture-issuer',
     exportId: 'export-fixture',
-    studyId: 'study-export',
-    reportRevisionId: 'report-export',
-    reportContentHash: 'a'.repeat(64),
+    studyId: version === 'v3' ? view.report.studyId : 'study-export',
+    reportRevisionId: version === 'v3' ? view.report.reportRevisionId : 'report-export',
+    reportContentHash: version === 'v3' ? view.report.contentHash : 'a'.repeat(64),
   };
   return { ...signManifest(), anchors, expected, view, manifest, html, projection, signManifest };
 }

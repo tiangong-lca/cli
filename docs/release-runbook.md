@@ -25,9 +25,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-04
-lastReviewedCommit: 71c58511560efffb5a7323507132f2c208fbbeaa
-lastReviewedNote: 'CLI #460: reviewed explicit contained V5/renderer2 consumption, preserved older journals and artifacts, owner-controlled rollback reads and offline/online family bindings. Package version, dependencies, publication authority and actual runtime qualification remain separate.'
+lastReviewedAt: 2026-11-05
+lastReviewedCommit: dde5327323eb67af0f5ac3c570bea8bb38697052
+lastReviewedNote: 'CLI #462: reviewed explicit V6 method evidence/assessment/report/review/share, immutable original-family recovery and export4/view3/renderer3 verification. Historical artifacts, dependencies and publication remain separate; actual producer/consumer qualification is pending.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

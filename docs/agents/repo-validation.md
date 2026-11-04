@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-04
-lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
-lastReviewedNote: 'CLI #460: reviewed explicit contained V5/renderer2 consumption, preserved older journals and artifacts, owner-controlled rollback reads and offline/online family bindings. Package version, dependencies, publication authority and actual runtime qualification remain separate.'
+lastReviewedAt: 2026-11-05
+lastReviewedCommit: dde5327323eb67af0f5ac3c570bea8bb38697052
+lastReviewedNote: 'CLI #462: reviewed explicit V6 method evidence/assessment/report/review/share, immutable original-family recovery and export4/view3/renderer3 verification. Historical artifacts, dependencies and publication remain separate; actual producer/consumer qualification is pending.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -225,3 +225,5 @@ Resulting-process proof must validate the emitted payload unchanged, assert the 
 Allocation serialization follows the public three-decimal `Perc` boundary using deterministic largest remainder, tied by stable final target numbering. The sidecar reports actual percentage/amount error per target and bounds error below 0.001 percentage points, or inventory amount × 0.00001; conservation is qualified within this tolerance.
 
 P4 Study proof additionally exercises the exact contained V5 codec, scientific-string/config-hash preservation, v5 journal recovery, server-authorized reads after new admission rollback, and source-supplied parameter metadata. New renderer/export cases must retain independent trusted anchors and selected identities, reject typed bundle/manifest family substitution online, and preserve historical formats offline. View2 null/coverage/reason semantics and exact renderer2 bytes must survive package installation without a sibling checkout. Keep exact full-source 100% coverage; synthetic HTTP/crypto fixtures do not replace actual installed cross-owner qualification.
+
+V6 method-consumer validation covers explicit selection, exact local schema discovery, owner config/evidence helpers, original-family unknown-outcome recovery, current denial, actor binding, strict Unicode and artifact bounds. Signed export4 tests retain twenty requirements, twenty-five categories and fifty-eight facts, independent trust anchors, exact renderer3 HTML and historical manifests1–3/renderer1–2. Installed package proof runs native separate-process recovery/schema/verification outside the repository without sibling imports. Canonical projection ordering must match producer-rendered HTML; tests must not weaken byte equality to accept a raw-object render. Full-source 100% and exact four-platform CI remain required. Actual authorized non-production OAuth/native/Storage and professional positive-case proof remain separately bound to the producer cohort, never inferred from fixtures.

@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-04
-lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
-lastReviewedNote: 'CLI #460: reviewed explicit contained V5/renderer2 consumption, preserved older journals and artifacts, owner-controlled rollback reads and offline/online family bindings. Package version, dependencies, publication authority and actual runtime qualification remain separate.'
+lastReviewedAt: 2026-11-05
+lastReviewedCommit: dde5327323eb67af0f5ac3c570bea8bb38697052
+lastReviewedNote: 'CLI #462: reviewed explicit V6 method evidence/assessment/report/review/share, immutable original-family recovery and export4/view3/renderer3 verification. Historical artifacts, dependencies and publication remain separate; actual producer/consumer qualification is pending.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -82,6 +82,8 @@ This repo is organized around one stable launcher plus a library-style `src/lib/
 ### Study lifecycle consumer
 
 `src/lib/study-{command,transport,intent,protocol,codec,export,renderer}.ts` owns the `study` namespace, bounded authenticated transport, immutable pre-dispatch request recovery and exact Edge-owned codec consumption. `assets/study-contract/v2/`, `v3/` and `v4/` are contained owner artifacts, with clean committed Edge source provenance and separate explicit gating for any future worktree candidate. It has no sibling/runtime install fallback. See [the Study contract](study-cli-contract.md); numerical rules, permissions and producer facts remain remote-owned, v3 analysis/report and v4 review/finalization/sharing keep independent negotiation. CLI transports exact current action projections and immutable-outcome/current-state pairs without deriving review or permission policy. V4 downloads bind the authorized export/share descriptor to the independently verified signed snapshot. Detached exports additionally consume the fixed `assets/study-renderer/v1/` package, independently pinned archive and issuer anchors; authenticity includes owner view bindings and exact HTML re-rendering from the captured verified complete module graph. Export files are completed in private staging before one final rename, with failed staging retained rather than path-based rollback; the Study contract states portable rename limits.
+
+V6 method assessment adds an explicit family in the same owners and `assets/study-contract/v6/`; its schema discovery uses captured verified bytes. Owner config/evidence helpers preserve domain authority. Method report export4/view3 selects the independently pinned `assets/study-renderer/v3/` with its complete JS/MJS graph. Historical verifiers retain their original family and renderer; online downloads bind the exact selected descriptor. CLI never evaluates method rules or creates Worker contexts. See the Study contract for immutable provenance, unavailable values and actual runtime qualification debt.
 
 ### Launcher and entry contract
 
