@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-05
-lastReviewedCommit: dde5327323eb67af0f5ac3c570bea8bb38697052
-lastReviewedNote: 'CLI #462: reviewed explicit V6 method evidence/assessment/report/review/share, immutable original-family recovery and export4/view3/renderer3 verification. Historical artifacts, dependencies and publication remain separate; actual producer/consumer qualification is pending.'
+lastReviewedCommit: 6126a870042ce61e57d5a109f5f9a3d3ca399206
+lastReviewedNote: 'CLI #462: reviewed deliberate qualified V2 archive correction, strict archived/CAS response binding and original-intent unknown recovery. V2 wire, valid journals, V3–V6/renderer bytes, dependencies and publication remain unchanged; final cohort/Main holds persist.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -227,3 +227,5 @@ Allocation serialization follows the public three-decimal `Perc` boundary using 
 P4 Study proof additionally exercises the exact contained V5 codec, scientific-string/config-hash preservation, v5 journal recovery, server-authorized reads after new admission rollback, and source-supplied parameter metadata. New renderer/export cases must retain independent trusted anchors and selected identities, reject typed bundle/manifest family substitution online, and preserve historical formats offline. View2 null/coverage/reason semantics and exact renderer2 bytes must survive package installation without a sibling checkout. Keep exact full-source 100% coverage; synthetic HTTP/crypto fixtures do not replace actual installed cross-owner qualification.
 
 V6 method-consumer validation covers explicit selection, exact local schema discovery, owner config/evidence helpers, original-family unknown-outcome recovery, current denial, actor binding, strict Unicode and artifact bounds. Signed export4 tests retain twenty requirements, twenty-five categories and fifty-eight facts, independent trust anchors, exact renderer3 HTML and historical manifests1–3/renderer1–2. Installed package proof runs native separate-process recovery/schema/verification outside the repository without sibling imports. Canonical projection ordering must match producer-rendered HTML; tests must not weaken byte equality to accept a raw-object render. Full-source 100% and exact four-platform CI remain required. Actual authorized non-production OAuth/native/Storage and professional positive-case proof remain separately bound to the producer cohort, never inferred from fixtures.
+
+The explicit V2 archive correction in CLI #462 requires red/green native-response and fresh-process recovery regressions. For expected revision7, reject active7/active8/archived7/archived10 and accept archived8. Every rejected-success case retains byte-identical original intent, performs no automatic replay, rejects the same wrong recovery response, then accepts only explicit recovery with the exact archived8 result and unchanged request/key/family. Installed-package proof repeats those boundaries outside the repository alongside the source-compatible V6 suite. Earlier source/package/CI evidence is retained as superseded; qualify only the new exact source/package.

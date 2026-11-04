@@ -805,6 +805,7 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
   const requests = [];
   let committed;
   let drop = true;
+  let archiveState = { status: 'active', revision: 7 };
   const server = createServer(async (request, response) => {
     const send = (body) => {
       response.writeHead(200, { 'Content-Type': 'application/json' });
@@ -844,7 +845,7 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
             ? ['capability.read', 'comment.append']
             : value.schemaVersion === 'lca.study-api.v3'
               ? ['capability.read']
-              : ['capability.read', 'study.create'],
+              : ['capability.read', 'study.create', 'study.archive'],
           ...(value.schemaVersion === 'lca.study-api.v6'
             ? {
                 methodProfiles: [],
@@ -877,6 +878,21 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
       return;
     }
     requests.push(value);
+    if (value.operation === 'study.archive') {
+      send(
+        envelope({
+          type: 'study',
+          value: {
+            studyId: value.target.id,
+            scope: { kind: 'user', id: actor },
+            title: 'Installed archive fixture',
+            currentRevisionId: null,
+            ...archiveState,
+          },
+        }),
+      );
+      return;
+    }
     if (value.operation === 'comment.append') {
       send(
         envelope({
@@ -980,6 +996,52 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
     assert.equal(JSON.parse(recovered.stdout).data.value.studyId, 'installed-study');
     assert.equal(requests.length, 2);
     assert.deepEqual(requests[0], requests[1]);
+    for (const [status, revision] of [
+      ['active', 7],
+      ['active', 8],
+      ['archived', 7],
+      ['archived', 10],
+    ]) {
+      archiveState = { status, revision };
+      writeFileSync(
+        input,
+        JSON.stringify({
+          requestId: `installed-archive-${status}-${revision}`,
+          idempotencyKey: `archive-${status}-${revision}`,
+          target: { type: 'study', id: 'installed-study', expectedRevision: 7 },
+        }),
+      );
+      const count = requests.filter((r) => r.operation === 'study.archive').length;
+      const invalid = await invoke([
+        'archive',
+        '--input',
+        input,
+        '--state-dir',
+        join(cwd, 'retained-archive-state'),
+        '--json',
+      ]);
+      assert.equal(invalid.code, 1, invalid.stdout);
+      const failure = JSON.parse(invalid.stderr).error;
+      assert.equal(failure.code, 'STUDY_RESPONSE_SELECTION');
+      const file = failure.details.intentFile,
+        original = readFileSync(file);
+      assert.equal(requests.filter((r) => r.operation === 'study.archive').length, count + 1);
+      const rejected = await invoke(['request', 'recover', '--intent-file', file, '--json']);
+      assert.equal(rejected.code, 1, rejected.stdout);
+      assert.equal(JSON.parse(rejected.stderr).error.code, 'STUDY_RESPONSE_SELECTION');
+      assert.deepEqual(readFileSync(file), original);
+      archiveState = { status: 'archived', revision: 8 };
+      const accepted = await invoke(['request', 'recover', '--intent-file', file, '--json']);
+      assert.equal(accepted.code, 0, accepted.stderr);
+      assert.equal(JSON.parse(accepted.stdout).data.value.revision, 8);
+      assert.equal(JSON.parse(accepted.stdout).data.value.status, 'archived');
+      assert.deepEqual(readFileSync(file), original);
+      const archiveRequests = requests.filter((r) => r.operation === 'study.archive').slice(count);
+      assert.equal(archiveRequests.length, 3);
+      assert.deepEqual(archiveRequests[0], archiveRequests[1]);
+      assert.deepEqual(archiveRequests[0], archiveRequests[2]);
+    }
+
     const reporting = await invoke(['capabilities', '--api-version', '3', '--json']);
     assert.equal(reporting.code, 0, reporting.stderr);
     assert.equal(JSON.parse(reporting.stdout).apiSchema, 'lca.study-api.v3');
