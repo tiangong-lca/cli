@@ -10,6 +10,7 @@ import {
 import path from 'node:path';
 import { writeJsonArtifact } from './artifacts.js';
 import { collectRemoteReferences } from './dataset-remote-verify.js';
+import { assertLocalizedTextLanguageUniqueness } from './dataset-localized-text.js';
 import { CliError } from './errors.js';
 import type { FetchLike } from './http.js';
 import { withStateFileLock } from './state-lock.js';
@@ -2515,6 +2516,17 @@ export async function runDatasetMaintenanceApply(
     progressPath,
     { reason: `dataset_maintenance_apply_${plan.operation_id}` },
     async () => {
+      const progress: ProgressState =
+        plan.operation === 'rebuild-derivatives'
+          ? { entries: [], successes: new Map(), latestFailures: new Map() }
+          : parseProgress(plan, progressPath);
+      // Historical ready plans still need current admission before an account
+      // request or approval artifact. Completed actions remain readback-only.
+      for (const action of plan.actions) {
+        if (action.action === 'save_draft' && !progress.successes.has(action.action_id)) {
+          assertLocalizedTextLanguageUniqueness(loadDesiredPayload(planDir, action));
+        }
+      }
       const context = await resolveMaintenanceRemoteContext({
         env: options.env,
         fetchImpl: options.fetchImpl,
@@ -2549,10 +2561,6 @@ export async function runDatasetMaintenanceApply(
         plan.operation === 'rebuild-derivatives'
           ? parseDerivativeSubmitProgress(plan, progressPath)
           : { entries: [], latest: null };
-      const progress: ProgressState =
-        plan.operation === 'rebuild-derivatives'
-          ? { entries: [], successes: new Map(), latestFailures: new Map() }
-          : parseProgress(plan, progressPath);
       const executionLogPath = path.join(planDir, 'apply-execution-log.jsonl');
       const parallelDeleteExecution: ParallelDeleteExecutionState = parallelDeleteMode
         ? parseParallelDeleteExecutionLog(plan, executionLogPath)

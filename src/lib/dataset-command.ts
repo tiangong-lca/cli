@@ -1,3 +1,4 @@
+import { assertLocalizedTextLanguageUniqueness } from './dataset-localized-text.js';
 import { assertProcessAllocationWriteAdmission } from './process-allocation-write-admission.js';
 import { semanticContextFromInput } from './process-semantic-validation.js';
 import { CliError } from './errors.js';
@@ -129,6 +130,7 @@ async function invokeDatasetCommand(options: {
       exitCode: 1,
     });
   }
+  assertLocalizedTextLanguageUniqueness(options.body.jsonOrdered);
   return requireCommandSuccessPayload(
     await postJson({
       url,
@@ -189,6 +191,7 @@ export async function createDatasetRecord(options: {
   extraData?: JsonObject;
   beforeDispatch?: () => void | Promise<void>;
 }): Promise<JsonObject> {
+  assertLocalizedTextLanguageUniqueness(options.payload);
   if (options.table === 'processes')
     await assertProcessAllocationWriteAdmission(
       options.payload,
@@ -236,6 +239,7 @@ export async function saveDraftDatasetRecord(options: {
   extraData?: JsonObject;
   beforeDispatch?: () => void | Promise<void>;
 }): Promise<JsonObject> {
+  assertLocalizedTextLanguageUniqueness(options.payload);
   if (options.table === 'processes')
     await assertProcessAllocationWriteAdmission(
       options.payload,

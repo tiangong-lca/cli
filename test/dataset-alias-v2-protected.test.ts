@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -36,9 +36,14 @@ import {
   aliasV2DerivativeTargets,
   aliasV2Sets,
   sealedAliasV2Execution,
+  sealProtectedExecution,
   type SealedAliasV2Execution,
 } from './helpers/alias-v2-artifacts.js';
-import { buildAliasV2Plan, type AliasV2Row } from '../src/lib/dataset-alias-v2-plan.js';
+import {
+  aliasV2CohortSha256,
+  buildAliasV2Plan,
+  type AliasV2Row,
+} from '../src/lib/dataset-alias-v2-plan.js';
 import { buildAliasV2CohortInput } from './fixtures/alias-v2-cohort.js';
 import { aliasV2StatusEnvelope, aliasV2TerminalProof } from './helpers/alias-v2-status.js';
 import {
@@ -272,6 +277,70 @@ function runOptions(
     ...overrides,
   } as Parameters<typeof runAliasV2Protected>[0];
 }
+
+test('alias v2 language admission rejects a fully sealed duplicate candidate before fetch but preserves recovery', async () => {
+  const input = buildAliasV2CohortInput();
+  const flowRoot = input.flows[0]!.json.flowDataSet as JsonObject;
+  const information = flowRoot.flowInformation as JsonObject;
+  const data = information.dataSetInformation as JsonObject;
+  data['common:generalComment'] = [
+    { '@xml:lang': 'en', '#text': 'Original description.' },
+    { '@xml:lang': 'en', '#text': 'Separate limitation.' },
+  ];
+  input.source_evidence.cohort_sha256 = aliasV2CohortSha256(input);
+  const sealed = sealProtectedExecution({
+    plan: buildAliasV2Plan(input).plan,
+    planFileName: ALIAS_V2_PROTECTED_ARTIFACTS.plan_file,
+    directoryPrefix: 'alias-v2-duplicate-language-',
+  });
+  try {
+    const before = readFileSync(sealed.planPath, 'utf8');
+    let requests = 0;
+    await assert.rejects(
+      runAliasV2Protected(
+        runOptions(sealed, {
+          fetchImpl: async () => {
+            requests += 1;
+            throw new Error('Unexpected network request');
+          },
+        }),
+      ),
+      { code: 'DATASET_DUPLICATE_LANGUAGE' },
+    );
+    assert.equal(requests, 0);
+    const marker = path.join(sealed.directory, ALIAS_V2_PROTECTED_ARTIFACTS.submission_marker);
+    assert.equal(existsSync(marker), false);
+    assert.equal(readFileSync(sealed.planPath, 'utf8'), before);
+
+    const calls: Call[] = [];
+    const readOnlyFetch = scriptedFetch(sealed, { calls, reads: [null] });
+    await runAliasV2Protected(
+      runOptions(sealed, {
+        commit: false,
+        statusOnly: true,
+        waitSeconds: 0,
+        fetchImpl: readOnlyFetch,
+      }),
+    );
+    assert.equal(calls.length, 1);
+    assert.ok(calls.every((call) => call.url.includes('/rpc/cmd_dataset_alias_execution_read_v2')));
+    calls.length = 0;
+    // An unreadable previous attempt is consumed and permits only observation,
+    // even if the historical candidate violates today's authoring admission.
+    writeFileSync(marker, 'unreadable historical attempt', { mode: 0o600 });
+    await runAliasV2Protected(
+      runOptions(sealed, {
+        waitSeconds: 0,
+        fetchImpl: readOnlyFetch,
+      }),
+    );
+    assert.equal(calls.length, 1);
+    assert.ok(calls.every((call) => call.url.includes('/rpc/cmd_dataset_alias_execution_read_v2')));
+    assert.equal(readFileSync(sealed.planPath, 'utf8'), before);
+  } finally {
+    rmSync(sealed.directory, { recursive: true, force: true });
+  }
+});
 
 function withSealed(
   body: (sealed: SealedAliasV2Execution) => void | Promise<void>,

@@ -538,6 +538,10 @@ function materializeExecutionScenario(root: string, processIds?: string[]) {
       template.process.version,
     );
     writePrivateImmutableJson(
+      path.join(root, input.plan.artifacts.desired_payload_dir, `${stem}.json`),
+      template.desired_payload,
+    );
+    writePrivateImmutableJson(
       path.join(root, input.plan.artifacts.process_request_dir, `${stem}.json`),
       {
         process: template.process,
@@ -1135,8 +1139,9 @@ function materializeRecoveryScenario(options: {
   root: string;
   baseline: (input: ReturnType<typeof materializeExecutionScenario>) => JsonObject;
   proofKind?: 'preflight' | 'lookup';
+  processIds?: string[];
 }) {
-  const input = materializeExecutionScenario(path.join(options.root, 'input'));
+  const input = materializeExecutionScenario(path.join(options.root, 'input'), options.processIds);
   const identity = buildFlowIdentityExecutionIdentity({
     plan: input.plan,
     freeze: input.freeze,
@@ -1566,6 +1571,163 @@ test('runner pure guards cover pending ledger and completed closure decisions', 
     runInternals.completedRunStatus({ ...parsedCompleted, derivatives_current: false }),
     'blocked',
   );
+});
+
+test('fresh flow identity admission rejects every bound desired candidate before any claim or transport', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tg-flow-language-admission-'));
+  try {
+    const input = materializeExecutionScenario(root, [PROCESS_ID, PROCESS_ID_2]);
+    const command = commandFor(input, 'run');
+    const prepared = runInternals.prepareRun(command);
+    const candidate = structuredClone(input.process_templates[1]!.desired_payload);
+    const process = candidate.processDataSet as JsonObject;
+    process.generalComment = [
+      { '@xml:lang': 'en', '#text': 'first', '@note': 'retained' },
+      { '@xml:lang': 'en', '#text': 'second' },
+    ];
+    prepared.plan.processes[1]!.desired_payload_sha256 = sha256Json(candidate);
+    const manifest = prepared.plan.processes[1]!;
+    const stem = runInternals.processStem(manifest.ordinal, manifest.id, manifest.version);
+    writeFileSync(
+      path.join(root, input.plan.artifacts.desired_payload_dir, `${stem}.json`),
+      `${stableJsonText(candidate)}\n`,
+      { mode: 0o600 },
+    );
+    const calls: string[] = [];
+    await assert.rejects(
+      runInternals.executeRun(
+        command,
+        {
+          resolveContext: async ({ fetchImpl }) => {
+            calls.push('auth');
+            return contextFor(input, fetchImpl);
+          },
+          claimApproval: () => {
+            calls.push('claim');
+            return '';
+          },
+          preflight: async () => {
+            calls.push('preflight');
+            throw new Error('unexpected preflight');
+          },
+          rewrite: async () => {
+            calls.push('rewrite');
+            return {};
+          },
+          read: async () => {
+            calls.push('read');
+            return {};
+          },
+          finalize: async () => {
+            calls.push('finalize');
+            return {};
+          },
+          sleep: async () => undefined,
+          now: () => new Date('2026-07-16T05:00:00.000Z'),
+        },
+        prepared,
+      ),
+      (error: unknown) => (error as { code?: string }).code === 'DATASET_DUPLICATE_LANGUAGE',
+    );
+    assert.deepEqual(calls, []);
+    assert.equal(existsSync(path.join(command.outDir, 'scope-preflight-attempt.json')), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('flow identity admission binds desired bytes and preserves historical readback and completed recovery rows', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tg-flow-language-history-'));
+  try {
+    const input = materializeExecutionScenario(path.join(root, 'initial'));
+    const command = commandFor(input, 'run');
+    const prepared = runInternals.prepareRun(command);
+    const process = input.plan.processes[0]!;
+    const stem = runInternals.processStem(process.ordinal, process.id, process.version);
+    const desiredPath = path.join(
+      path.dirname(input.planPath),
+      input.plan.artifacts.desired_payload_dir,
+      `${stem}.json`,
+    );
+    for (const desired of [null, { processDataSet: {} }]) {
+      writeFileSync(desiredPath, `${stableJsonText(desired)}\n`, { mode: 0o600 });
+      assert.throws(
+        () => runInternals.assertFreshDesiredProcessLanguages(command, prepared),
+        (error: unknown) =>
+          (error as { code?: string }).code === 'DATASET_FLOW_IDENTITY_DESIRED_PAYLOAD_INVALID',
+      );
+    }
+    rmSync(desiredPath);
+    writePrivateImmutableJson(
+      path.join(command.outDir, 'scope-preflight-proof.json'),
+      scopePreflightRaw(input),
+    );
+    command.commit = false;
+    command.statusOnly = true;
+    const result = await runInternals.executeRun(command, {
+      resolveContext: async ({ fetchImpl }) => contextFor(input, fetchImpl),
+      preflight: async () => {
+        throw new Error('historical admission');
+      },
+      rewrite: async () => {
+        throw new Error('historical rewrite');
+      },
+      read: async () => scopeStatusRaw({ input, phase: 'completed' }),
+      finalize: async () => {
+        throw new Error('historical finalize');
+      },
+      sleep: async () => undefined,
+      now: () => new Date('2026-07-16T05:00:00.000Z'),
+    });
+    assert.equal(result.status, 'passed');
+
+    const recovery = materializeRecoveryScenario({
+      root: path.join(root, 'recovery'),
+      processIds: [PROCESS_ID, PROCESS_ID_2],
+      baseline: (input) => scopeStatusRaw({ input, phase: 'pending', completedProcessCount: 1 }),
+    });
+    const recoveryPrepared = runInternals.prepareRun(recovery.command);
+    const complete = recovery.input.plan.processes[0]!;
+    rmSync(
+      path.join(
+        path.dirname(recovery.input.planPath),
+        recovery.input.plan.artifacts.desired_payload_dir,
+        `${runInternals.processStem(complete.ordinal, complete.id, complete.version)}.json`,
+      ),
+    );
+    assert.doesNotThrow(() =>
+      runInternals.assertFreshDesiredProcessLanguages(recovery.command, recoveryPrepared),
+    );
+    const pending = recovery.input.plan.processes[1]!;
+    const pendingPath = path.join(
+      path.dirname(recovery.input.planPath),
+      recovery.input.plan.artifacts.desired_payload_dir,
+      `${runInternals.processStem(pending.ordinal, pending.id, pending.version)}.json`,
+    );
+    const duplicate = {
+      processDataSet: {
+        generalComment: [
+          { '@xml:lang': 'en', '#text': 'one' },
+          { '@xml:lang': 'en', '#text': 'two' },
+        ],
+      },
+    };
+    recoveryPrepared.plan.processes[1]!.desired_payload_sha256 = sha256Json(duplicate);
+    writeFileSync(pendingPath, `${stableJsonText(duplicate)}\n`, { mode: 0o600 });
+    assert.throws(
+      () => runInternals.assertFreshDesiredProcessLanguages(recovery.command, recoveryPrepared),
+      (error: unknown) => (error as { code?: string }).code === 'DATASET_DUPLICATE_LANGUAGE',
+    );
+    writePrivateImmutableJson(
+      path.join(recovery.command.outDir, 'scope-recovery-attempt.json'),
+      {},
+    );
+    assert.doesNotThrow(() =>
+      runInternals.assertFreshDesiredProcessLanguages(recovery.command, recoveryPrepared),
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('runner wait helper applies its zero-second default', async () => {

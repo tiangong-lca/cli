@@ -1,4 +1,5 @@
 import { CliError } from './errors.js';
+import { assertLocalizedTextLanguageUniqueness } from './dataset-localized-text.js';
 import {
   isJsonObject,
   readJsonFile,
@@ -9,6 +10,28 @@ import {
   type DatasetMaintenancePlanAction,
   type JsonObject,
 } from './dataset-maintenance-contract.js';
+
+/** Check only pending wire candidates; frozen before-images remain byte-bound evidence. */
+export function assertAliasPlanLocalizedTextUniqueness(plan: unknown): void {
+  if (!isJsonObject(plan)) return;
+  const checkActions = (actions: unknown, prefix: Array<string | number>): void => {
+    if (!Array.isArray(actions)) return;
+    actions.forEach((action: unknown, actionIndex) => {
+      if (!isJsonObject(action)) return;
+      assertLocalizedTextLanguageUniqueness(action.desired_json_ordered, [
+        ...prefix,
+        actionIndex,
+        'desired_json_ordered',
+      ]);
+    });
+  };
+  checkActions(plan.actions, ['actions']);
+  if (Array.isArray(plan.batches)) {
+    plan.batches.forEach((batch: unknown, batchIndex) => {
+      if (isJsonObject(batch)) checkActions(batch.actions, ['batches', batchIndex, 'actions']);
+    });
+  }
+}
 
 export function loadMaintenanceDesiredPayload(
   planDir: string,

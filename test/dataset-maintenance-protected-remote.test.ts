@@ -5,9 +5,11 @@ import {
   captureMaintenanceAliasExecutionGate,
   fetchMaintenanceDerivativeTargetRows,
   preflightMaintenanceAliasExecution,
+  preflightMaintenanceAliasExecutionV2,
   readMaintenanceAliasExecution,
   type DatasetMaintenanceRemoteContext,
 } from '../src/lib/dataset-maintenance-remote.js';
+import { CliError } from '../src/lib/errors.js';
 import type { FetchLike } from '../src/lib/http.js';
 
 function response(value: unknown): Response {
@@ -32,6 +34,46 @@ function context(fetchImpl: FetchLike): DatasetMaintenanceRemoteContext {
     timeout_ms: 1_000,
   };
 }
+
+test('protected alias preflight checks only desired localized fields before either version dispatches', async () => {
+  const duplicate = {
+    'common:generalComment': [
+      { '@xml:lang': 'en', '#text': 'Original explanation.' },
+      { '@xml:lang': 'en', '#text': 'Additional limitation.', '@index': '2' },
+    ],
+  };
+  for (const preflight of [
+    preflightMaintenanceAliasExecution,
+    preflightMaintenanceAliasExecutionV2,
+  ]) {
+    const calls: unknown[] = [];
+    const remote = context(async (_input, init) => {
+      calls.push(JSON.parse(String(init?.body)));
+      return response({ ok: true });
+    });
+    const actions = [{ desired_json_ordered: duplicate }];
+    const request = {
+      plan:
+        preflight === preflightMaintenanceAliasExecution ? { batches: [{ actions }] } : { actions },
+    };
+    const original = JSON.stringify(request);
+    await assert.rejects(
+      preflight({ context: remote, request }),
+      (error: unknown) => error instanceof CliError && error.code === 'DATASET_DUPLICATE_LANGUAGE',
+    );
+    assert.deepEqual(calls, []);
+    assert.equal(JSON.stringify(request), original);
+    const repairedRequest = {
+      plan: {
+        batches: [
+          { actions: [null, { expected_json_ordered: duplicate, desired_json_ordered: {} }] },
+        ],
+      },
+    };
+    await preflight({ context: remote, request: repairedRequest });
+    assert.deepEqual(calls, [{ p_request: repairedRequest }]);
+  }
+});
 
 test('protected maintenance remote adapters call only the public guarded RPC surface', async () => {
   const calls: Array<{ url: string; body: unknown }> = [];

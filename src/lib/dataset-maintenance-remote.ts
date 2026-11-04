@@ -1,5 +1,7 @@
 // data-api-relations: contacts, flowproperties, flows, lciamethods, lifecyclemodels, processes, sources, unitgroups
 import { CliError } from './errors.js';
+import { assertLocalizedTextLanguageUniqueness } from './dataset-localized-text.js';
+import { assertAliasPlanLocalizedTextUniqueness } from './dataset-maintenance-alias-request.js';
 import type { FetchLike, ResponseLike } from './http.js';
 import {
   buildSnapshotCompleteness,
@@ -548,6 +550,7 @@ export async function preflightMaintenanceAliasExecution(options: {
   context: DatasetMaintenanceRemoteContext;
   request: JsonObject;
 }): Promise<JsonObject> {
+  assertAliasPlanLocalizedTextUniqueness(options.request.plan);
   return invokeMaintenanceRpc({
     context: options.context,
     rpc: 'cmd_dataset_alias_execution_preflight_guarded',
@@ -606,6 +609,7 @@ export async function preflightMaintenanceAliasExecutionV2(options: {
   context: DatasetMaintenanceRemoteContext;
   request: JsonObject;
 }): Promise<JsonObject> {
+  assertAliasPlanLocalizedTextUniqueness(options.request.plan);
   return invokeMaintenanceRpc({
     context: options.context,
     rpc: 'cmd_dataset_alias_execution_preflight_v2_guarded',
@@ -925,6 +929,7 @@ export async function saveDraftMaintenanceRow(options: {
   ruleVerification: boolean | null;
   audit: JsonObject;
 }): Promise<JsonObject> {
+  assertLocalizedTextLanguageUniqueness(options.payload);
   return invokeMaintenanceRpc({
     context: options.context,
     rpc: 'cmd_dataset_save_draft',

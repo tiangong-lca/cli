@@ -1,3 +1,4 @@
+import { collectLocalizedTextUniquenessIssues } from './dataset-localized-text.js';
 import path from 'node:path';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
@@ -132,8 +133,13 @@ export function validateLifecyclemodelPayload(
   const activeSchema = schema ?? getLifecyclemodelSchema();
   const activeCreateEntity =
     createEntity === undefined && schema === undefined ? getLifecyclemodelFactory() : createEntity;
-  const outcome = validateSchemaWithDeepFallback(activeSchema, payload, activeCreateEntity);
-  if (outcome.success) {
+  const outcome = validateSchemaWithDeepFallback(
+    activeSchema,
+    structuredClone(payload),
+    activeCreateEntity,
+  );
+  const languageIssues = collectLocalizedTextUniquenessIssues(payload);
+  if (outcome.success && languageIssues.length === 0) {
     return {
       ok: true,
       validator: VALIDATOR_NAME,
@@ -142,11 +148,14 @@ export function validateLifecyclemodelPayload(
     };
   }
 
-  const issues = outcome.issues.map((issue) => ({
-    path: normalizeIssuePath(issue.path),
-    message: issue.message ?? 'Validation failed',
-    code: issue.code ?? 'custom',
-  }));
+  const issues = [
+    ...outcome.issues.map((issue) => ({
+      path: normalizeIssuePath(issue.path),
+      message: issue.message ?? 'Validation failed',
+      code: issue.code ?? 'custom',
+    })),
+    ...languageIssues,
+  ];
 
   return {
     ok: false,

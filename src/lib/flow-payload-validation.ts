@@ -1,3 +1,4 @@
+import { collectLocalizedTextUniquenessIssues } from './dataset-localized-text.js';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
 import {
   normalizeIssuePath,
@@ -62,8 +63,9 @@ export function validateFlowPayload(
   schema: SafeParseSchema = getFlowSchema(),
   createEntity: SdkValidationFactory | null = getFlowFactory(),
 ): FlowPayloadValidationResult {
-  const outcome = validateSchemaWithDeepFallback(schema, payload, createEntity);
-  if (outcome.success) {
+  const outcome = validateSchemaWithDeepFallback(schema, structuredClone(payload), createEntity);
+  const languageIssues = collectLocalizedTextUniquenessIssues(payload);
+  if (outcome.success && languageIssues.length === 0) {
     return {
       ok: true,
       validator: FLOW_SCHEMA_VALIDATOR,
@@ -72,11 +74,14 @@ export function validateFlowPayload(
     };
   }
 
-  const issues = outcome.issues.map((issue) => ({
-    path: normalizeIssuePath(issue.path),
-    message: issue.message ?? 'Validation failed',
-    code: issue.code ?? 'custom',
-  }));
+  const issues = [
+    ...outcome.issues.map((issue) => ({
+      path: normalizeIssuePath(issue.path),
+      message: issue.message ?? 'Validation failed',
+      code: issue.code ?? 'custom',
+    })),
+    ...languageIssues,
+  ];
 
   return {
     ok: false,

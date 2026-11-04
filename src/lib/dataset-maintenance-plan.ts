@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { collectRemoteReferences } from './dataset-remote-verify.js';
+import { collectLocalizedTextUniquenessIssues } from './dataset-localized-text.js';
 import {
   buildAliasRewritePlan,
   type DatasetMaintenanceAliasSchemas,
@@ -523,6 +524,14 @@ export async function runDatasetMaintenancePlan(
         );
         action.status = 'blocked';
       }
+    }
+  }
+
+  for (const action of actionPlans) {
+    const rawPayload = desiredPayloads.get(action.action_id);
+    for (const issue of collectLocalizedTextUniquenessIssues(rawPayload)) {
+      action.blockers.push(blocker(action, issue.code, issue.message, { path: issue.path }));
+      action.status = 'blocked';
     }
   }
 

@@ -1,3 +1,4 @@
+import { assertLocalizedTextLanguageUniqueness } from './dataset-localized-text.js';
 // data-api-relations: lifecyclemodels
 import { CliError } from './errors.js';
 import type { FetchLike } from './http.js';
@@ -334,6 +335,22 @@ function normalizeProcessMutations(value: unknown): JsonObject[] {
   return cloneJson(mutations);
 }
 
+function assertBundleLanguages(
+  payload: JsonObject,
+  metadata: LifecyclemodelPublishMetadata | null | undefined,
+): void {
+  assertLocalizedTextLanguageUniqueness(payload);
+  ensureList(metadata?.processMutations).forEach((mutation, index) => {
+    if (isRecord(mutation)) {
+      assertLocalizedTextLanguageUniqueness(mutation.jsonOrdered, [
+        'processMutations',
+        index,
+        'jsonOrdered',
+      ]);
+    }
+  });
+}
+
 export function buildLifecyclemodelBundlePlan(options: {
   id: string;
   version: string;
@@ -341,6 +358,7 @@ export function buildLifecyclemodelBundlePlan(options: {
   metadata?: LifecyclemodelPublishMetadata | null;
   mode: 'create' | 'update';
 }): LifecyclemodelBundlePlan {
+  assertBundleLanguages(options.payload, options.metadata);
   const explicitJsonTg = isRecord(options.metadata?.json_tg) ? options.metadata?.json_tg : null;
   const derivedJsonTg = deriveLifecyclemodelJsonTg(options.payload);
 
@@ -527,6 +545,7 @@ export async function syncLifecyclemodelBundleRecord(options: {
   fetchImpl: FetchLike;
   timeoutMs?: number;
 }): Promise<LifecyclemodelBundleWriteResult> {
+  assertBundleLanguages(options.payload, options.metadata);
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const visibleRows = await exactVisibleRows({
     id: options.id,

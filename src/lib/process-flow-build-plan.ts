@@ -1,3 +1,7 @@
+import {
+  collectLocalizedTextUniquenessIssues,
+  mergeLocalizedTextParagraphs,
+} from './dataset-localized-text.js';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
@@ -318,7 +322,13 @@ function multiLangFromValue(value: unknown, fallback: string, fallbackLang = 'en
           if (!text) {
             return null;
           }
-          return localizedText(text, textToken(entry['@xml:lang'] ?? entry.lang) ?? fallbackLang);
+          const attributes = Object.fromEntries(
+            Object.entries(entry).filter(([key]) => !['text', 'value', 'lang'].includes(key)),
+          );
+          return {
+            ...attributes,
+            ...localizedText(text, textToken(entry['@xml:lang'] ?? entry.lang) ?? fallbackLang),
+          };
         }
         const text = textToken(entry);
         return text ? localizedText(text, fallbackLang) : null;
@@ -331,7 +341,15 @@ function multiLangFromValue(value: unknown, fallback: string, fallbackLang = 'en
   if (isRecord(value)) {
     const text = textToken(value['#text'] ?? value.text ?? value.value);
     if (text) {
-      return [localizedText(text, textToken(value['@xml:lang'] ?? value.lang) ?? fallbackLang)];
+      const attributes = Object.fromEntries(
+        Object.entries(value).filter(([key]) => !['text', 'value', 'lang'].includes(key)),
+      );
+      return [
+        {
+          ...attributes,
+          ...localizedText(text, textToken(value['@xml:lang'] ?? value.lang) ?? fallbackLang),
+        },
+      ];
     }
     const en = textToken(value.en);
     const zh = textToken(value.zh);
@@ -356,6 +374,11 @@ function firstMultiLang(plan: JsonObject, paths: string[], fallback: string): Js
   return multiLangFromValue(undefined, fallback);
 }
 
+/** Generated prose may combine paragraphs; metadata conflicts remain visible to admission. */
+function firstProseMultiLang(plan: JsonObject, paths: string[], fallback: string): JsonObject[] {
+  return mergeLocalizedTextParagraphs(firstMultiLang(plan, paths, fallback));
+}
+
 const INTENDED_APPLICATIONS_PATH = 'administrative_information.intended_applications';
 const INTENDED_APPLICATIONS_PATHS = [
   INTENDED_APPLICATIONS_PATH,
@@ -363,7 +386,7 @@ const INTENDED_APPLICATIONS_PATHS = [
 ];
 
 function plannedIntendedApplications(plan: JsonObject): JsonObject[] {
-  return firstMultiLang(plan, INTENDED_APPLICATIONS_PATHS, '').filter((entry) =>
+  return firstProseMultiLang(plan, INTENDED_APPLICATIONS_PATHS, '').filter((entry) =>
     Boolean(textToken(entry['#text'])),
   );
 }
@@ -837,7 +860,7 @@ function buildCanonicalFlowPayload(plan: JsonObject, inputPath: string): JsonObj
           ...(firstToken(plan, ['target.cas_number', 'target.CASNumber'])
             ? { CASNumber: firstToken(plan, ['target.cas_number', 'target.CASNumber']) }
             : {}),
-          'common:generalComment': firstMultiLang(
+          'common:generalComment': firstProseMultiLang(
             plan,
             ['target.general_comment', 'target.generalComment', 'evidence_manifest.summary'],
             `Flow materialized from build plan ${inputPath}.`,
@@ -939,7 +962,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
             ),
           },
           classificationInformation: processClassificationInformation(plan),
-          'common:generalComment': firstMultiLang(
+          'common:generalComment': firstProseMultiLang(
             plan,
             ['target.general_comment', 'target.generalComment', 'evidence_manifest.summary'],
             `Process materialized from build plan ${inputPath}.`,
@@ -957,7 +980,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
               'time.reference_year',
             ]),
           ),
-          'common:timeRepresentativenessDescription': firstMultiLang(
+          'common:timeRepresentativenessDescription': firstProseMultiLang(
             plan,
             ['time.description', 'time.timeRepresentativenessDescription'],
             'Reference year documented in build plan evidence.',
@@ -966,7 +989,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
         geography: {
           locationOfOperationSupplyOrProduction: {
             '@location': location,
-            descriptionOfRestrictions: firstMultiLang(
+            descriptionOfRestrictions: firstProseMultiLang(
               plan,
               ['target.geography_description', 'target.geographyDescription'],
               `Operation location: ${location}.`,
@@ -974,7 +997,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
           },
         },
         technology: {
-          technologyDescriptionAndIncludedProcesses: firstMultiLang(
+          technologyDescriptionAndIncludedProcesses: firstProseMultiLang(
             plan,
             ['technology.description', 'technology.technologyDescriptionAndIncludedProcesses'],
             firstToken(plan, ['target.technology_route', 'target.technologyRoute']) ??
@@ -997,7 +1020,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
             ]) ?? 'Attributional',
         },
         dataSourcesTreatmentAndRepresentativeness: {
-          dataCutOffAndCompletenessPrinciples: firstMultiLang(
+          dataCutOffAndCompletenessPrinciples: firstProseMultiLang(
             plan,
             ['modelling_and_validation.data_cutoff', 'modellingAndValidation.dataCutoff'],
             'Cut-off and completeness principles are documented in the build plan evidence.',
@@ -1478,9 +1501,10 @@ function validateMaterializedSchema(
 
   const { validator, schema, createEntity } = schemaForKind(kind, schemas);
   const payload = unwrapDatasetPayload(artifact);
-  const outcome = validateSchemaWithDeepFallback(schema, payload, createEntity);
+  const outcome = validateSchemaWithDeepFallback(schema, structuredClone(payload), createEntity);
   const issues = [
     ...outcome.issues.map(normalizeSchemaIssue),
+    ...collectLocalizedTextUniquenessIssues(payload),
     ...collectClassificationIssues(
       payload,
       kind === 'process' ? 'processes' : 'flows',

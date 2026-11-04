@@ -1,3 +1,4 @@
+import { mergeLocalizedTextParagraphs } from './dataset-localized-text.js';
 import { sha256Json } from './canonical-json-hash.js';
 import {
   analyzeProcessPayloadSemantics,
@@ -1629,14 +1630,14 @@ function buildResultingProcessPayload(options: {
   processInformation.dataSetInformation = dataInfo;
   dataInfo['common:UUID'] = options.processId;
   dataInfo.name = copyJson(options.sourceModelNameInfo);
-  const generalComment = ensureList<JsonObject>(dataInfo['common:generalComment']).filter(isRecord);
+  const generalComment = ensureList(dataInfo['common:generalComment']);
   generalComment.push(
     ...multilangFromText(
       `Local ${options.role} resulting process generated from lifecycle model ${options.sourceModelId}; exchanges are aggregated from included processes with internal linked flows cancelled.`,
       `本地为生命周期模型 ${options.sourceModelId} 生成的 ${options.role} resulting process；其 exchanges 由包含过程聚合并抵消内部连接 flow 后得到。`,
     ),
   );
-  dataInfo['common:generalComment'] = generalComment;
+  dataInfo['common:generalComment'] = mergeLocalizedTextParagraphs(generalComment);
 
   const quantitativeReference = isRecord(processInformation.quantitativeReference)
     ? (processInformation.quantitativeReference as JsonObject)

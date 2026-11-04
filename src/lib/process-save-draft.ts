@@ -1,3 +1,4 @@
+import { assertLocalizedTextLanguageUniqueness } from './dataset-localized-text.js';
 import { assertProcessAllocationWriteAdmission } from './process-allocation-write-admission.js';
 import { type ProcessSemanticContext } from './process-semantic-validation.js';
 // data-api-relations: processes
@@ -259,6 +260,7 @@ async function saveDraft(options: {
     apiBaseUrl: options.restBaseUrl,
     ...options,
   });
+  assertLocalizedTextLanguageUniqueness(options.payload);
   const capability = resolveDataApiCapability({
     kind: 'rpc',
     name: 'cmd_dataset_save_draft',
@@ -304,6 +306,7 @@ async function saveDraft(options: {
 export async function syncStateAwareProcessRecord(
   options: SyncStateAwareProcessRecordOptions,
 ): Promise<ProcessStateAwareWriteResult> {
+  assertLocalizedTextLanguageUniqueness(options.payload);
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const targetUserId = trimToken(options.targetUserId);
   const visible = await exactVisibleRows({

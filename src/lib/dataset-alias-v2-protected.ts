@@ -69,6 +69,7 @@ import {
   type AliasV2GateResult,
 } from './dataset-alias-v2-protected-contract.js';
 import { CliError } from './errors.js';
+import { assertAliasPlanLocalizedTextUniqueness } from './dataset-maintenance-alias-request.js';
 import type { FetchLike } from './http.js';
 
 type JsonValue = JsonObject;
@@ -1360,6 +1361,8 @@ export async function runAliasV2Protected(
         ? { ...state, phase: 'readback_required', admit_attempts: 1, code: ALIAS_V2_STAGE_UNKNOWN }
         : { ...state, phase: 'admitted', admit_attempts: 1 };
   }
+
+  if (options.commit && !admissionPosted) assertAliasPlanLocalizedTextUniqueness(plan);
 
   // ---- remote context, then the fresh actor/project match, before any stage call ----
   const context = await resolveMaintenanceRemoteContext({
