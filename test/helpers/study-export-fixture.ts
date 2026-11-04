@@ -70,12 +70,32 @@ export function exportView() {
   };
 }
 
+type AdvancedExportFact = Omit<
+  ReturnType<typeof exportView>['facts'][number],
+  'canonicalValue' | 'methodRef'
+> & {
+  methodRef: { id: string; version: string } | null;
+  canonicalValue: string | null;
+  reasonCodes: string[];
+};
+export function advancedExportView() {
+  const base = exportView();
+  return {
+    ...base,
+    schemaVersion: 'lca.study-report-view.v2',
+    rendererVersion: '2.0.0',
+    facts: base.facts.map((fact) => ({
+      ...fact,
+      reasonCodes: [] as string[],
+      canonicalValue: fact.canonicalValue as string | null,
+    })) as AdvancedExportFact[],
+  };
+}
 /** Independent native-crypto test issuer; its private key never enters the export. */
 export async function signedExportFixture(
   change?: (view: ReturnType<typeof exportView>) => void,
   finalized?: { reviewed: boolean },
 ) {
-  const loaded = await loadStudyRenderer(exportEnvironment());
   const view = exportView();
   if (finalized) {
     view.snapshot.finalization = 'finalized';
@@ -83,6 +103,25 @@ export async function signedExportFixture(
     view.snapshot.reviewIds = finalized.reviewed ? ['review-fixture'] : [];
   }
   change?.(view);
+  return { ...(await issueExportFixture(view, 'v1', finalized)), view };
+}
+export async function signedAdvancedExportFixture(
+  change?: (view: ReturnType<typeof advancedExportView>) => void,
+  finalized = { reviewed: true },
+) {
+  const view = advancedExportView();
+  view.snapshot.finalization = 'finalized';
+  view.snapshot.review = finalized.reviewed ? 'reviewed' : 'unreviewed';
+  view.snapshot.reviewIds = finalized.reviewed ? ['review-fixture'] : [];
+  change?.(view);
+  return { ...(await issueExportFixture(view, 'v2', finalized)), view };
+}
+async function issueExportFixture(
+  view: ReturnType<typeof exportView> | ReturnType<typeof advancedExportView>,
+  version: 'v1' | 'v2',
+  finalized?: { reviewed: boolean },
+) {
+  const loaded = await loadStudyRenderer(exportEnvironment(), version);
   const projection = Buffer.from(studyJson(view));
   const html = Buffer.from(
     await loaded.renderer.renderReport(view, {
@@ -93,7 +132,12 @@ export async function signedExportFixture(
   );
   const key = generateKeyPairSync('ed25519');
   const manifest = {
-    schemaVersion: finalized ? 'lca.study-export-manifest.v2' : 'lca.study-export-manifest.v1',
+    schemaVersion:
+      version === 'v2'
+        ? 'lca.study-export-manifest.v3'
+        : finalized
+          ? 'lca.study-export-manifest.v2'
+          : 'lca.study-export-manifest.v1',
     issuerId: 'fixture-issuer',
     exportId: 'export-fixture',
     studyId: 'study-export',
@@ -125,8 +169,8 @@ export async function signedExportFixture(
         }
       : {}),
     renderer: {
-      version: '1.0.0',
-      viewModelVersion: 'lca.study-report-view.v1',
+      version: view.rendererVersion,
+      viewModelVersion: view.schemaVersion,
       artifactHash: loaded.artifactHash,
     },
     files: [
@@ -155,7 +199,12 @@ export async function signedExportFixture(
       signature: sign(null, signed, key.privateKey).toString('base64url'),
     };
     const bundle = {
-      schemaVersion: finalized ? 'lca.study-export-bundle.v2' : 'lca.study-export-bundle.v1',
+      schemaVersion:
+        version === 'v2'
+          ? 'lca.study-export-bundle.v3'
+          : finalized
+            ? 'lca.study-export-bundle.v2'
+            : 'lca.study-export-bundle.v1',
       manifestBase64: manifestBytes.toString('base64'),
       receipt,
       files: [

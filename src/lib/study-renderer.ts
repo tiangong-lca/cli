@@ -12,7 +12,31 @@ export const STUDY_RENDERER_ARCHIVE_SHA256 =
 export const STUDY_RENDERER_MANIFEST_SHA256 =
   'be659faa2869edfe1bca735e1509f7118c44a6312c8dbef143ff461bdc6c85bd';
 export const STUDY_RENDERER_CANDIDATE_ENV = 'TIANGONG_LCA_STUDY_RENDERER_CANDIDATE_SHA256';
-const ARCHIVE = 'study-report-renderer-1.0.0.tgz';
+export const STUDY_V2_RENDERER_ARCHIVE_SHA256 =
+  'dfbc7aa817996457b2d9a1c5c9d511f39c132e1523f9d1421a3ff1d74c7805fe';
+export const STUDY_V2_RENDERER_MANIFEST_SHA256 =
+  'b0c9bdd08a25b9a4ac22acf135f013602970049851725a9e612fe9e23ef6a50b';
+export const STUDY_V2_RENDERER_CANDIDATE_ENV =
+  'TIANGONG_LCA_STUDY_ADVANCED_RENDERER_CANDIDATE_SHA256';
+export type StudyRendererVersion = 'v1' | 'v2';
+const RENDERERS = {
+  v1: {
+    archive: 'study-report-renderer-1.0.0.tgz',
+    version: '1.0.0',
+    view: 'lca.study-report-view.v1',
+    archiveSha256: STUDY_RENDERER_ARCHIVE_SHA256,
+    manifestSha256: STUDY_RENDERER_MANIFEST_SHA256,
+    candidate: STUDY_RENDERER_CANDIDATE_ENV,
+  },
+  v2: {
+    archive: 'study-report-renderer-2.0.0.tgz',
+    version: '2.0.0',
+    view: 'lca.study-report-view.v2',
+    archiveSha256: STUDY_V2_RENDERER_ARCHIVE_SHA256,
+    manifestSha256: STUDY_V2_RENDERER_MANIFEST_SHA256,
+    candidate: STUDY_V2_RENDERER_CANDIDATE_ENV,
+  },
+} as const;
 export type StudyRenderer = {
   RENDERER_VERSION: string;
   VIEW_SCHEMA: string;
@@ -28,6 +52,7 @@ export function verifyStudyRenderer(
   manifestBytes: Buffer,
   pin: RendererPin,
   readFile: (name: string) => Buffer,
+  version: StudyRendererVersion = 'v1',
 ): { manifest: StudyObject; files: string[]; sources: ReadonlyMap<string, Buffer> } {
   if (
     studyDigest(archive) !== pin.archiveSha256 ||
@@ -43,8 +68,8 @@ export function verifyStudyRenderer(
   if (
     !studyObject(manifest) ||
     manifest.schemaVersion !== 'lca.study-renderer-package.v1' ||
-    manifest.rendererVersion !== '1.0.0' ||
-    manifest.viewModelVersion !== 'lca.study-report-view.v1' ||
+    manifest.rendererVersion !== RENDERERS[version].version ||
+    manifest.viewModelVersion !== RENDERERS[version].view ||
     typeof manifest.sourceDirty !== 'boolean' ||
     !Array.isArray(manifest.files) ||
     manifest.files.length > 64
@@ -81,11 +106,14 @@ export function verifyStudyRenderer(
   return { manifest, files: names, sources };
 }
 
-export function assertStudyRenderer(value: unknown): StudyRenderer {
+export function assertStudyRenderer(
+  value: unknown,
+  version: StudyRendererVersion = 'v1',
+): StudyRenderer {
   if (
     !studyObject(value) ||
-    value.RENDERER_VERSION !== '1.0.0' ||
-    value.VIEW_SCHEMA !== 'lca.study-report-view.v1' ||
+    value.RENDERER_VERSION !== RENDERERS[version].version ||
+    value.VIEW_SCHEMA !== RENDERERS[version].view ||
     typeof value.validateReportView !== 'function' ||
     typeof value.validateRenderContext !== 'function' ||
     typeof value.renderReport !== 'function'
@@ -94,8 +122,14 @@ export function assertStudyRenderer(value: unknown): StudyRenderer {
   return value as unknown as StudyRenderer;
 }
 
-export function studyRendererRoot(moduleUrl = import.meta.url): string {
-  const root = ['../../assets/study-renderer/v1/', '../../../assets/study-renderer/v1/']
+export function studyRendererRoot(
+  moduleUrl = import.meta.url,
+  version: StudyRendererVersion = 'v1',
+): string {
+  const root = [
+    `../../assets/study-renderer/${version}/`,
+    `../../../assets/study-renderer/${version}/`,
+  ]
     .map((name) => new URL(name, moduleUrl))
     .find((candidate) => existsSync(new URL('package/manifest.json', candidate)));
   if (!root) studyFailure('STUDY_RENDERER_MISSING');
@@ -103,7 +137,11 @@ export function studyRendererRoot(moduleUrl = import.meta.url): string {
 }
 
 /** A clean issuer artifact needs no development override; dirty artifacts cannot select Production. */
-export function admitStudyRendererCandidate(manifest: StudyObject, env: NodeJS.ProcessEnv): void {
+export function admitStudyRendererCandidate(
+  manifest: StudyObject,
+  env: NodeJS.ProcessEnv,
+  version: StudyRendererVersion = 'v1',
+): void {
   if (manifest.sourceDirty) {
     let loopback = false;
     try {
@@ -113,7 +151,7 @@ export function admitStudyRendererCandidate(manifest: StudyObject, env: NodeJS.P
     } catch {
       /* Rejected below. */
     }
-    if (env[STUDY_RENDERER_CANDIDATE_ENV] !== STUDY_RENDERER_ARCHIVE_SHA256 || !loopback)
+    if (env[RENDERERS[version].candidate] !== RENDERERS[version].archiveSha256 || !loopback)
       studyFailure('STUDY_RENDERER_CANDIDATE_REQUIRED');
   }
 }
@@ -125,6 +163,7 @@ export function admitStudyRendererCandidate(manifest: StudyObject, env: NodeJS.P
  */
 export async function instantiateStudyRenderer(
   sources: ReadonlyMap<string, Buffer>,
+  version: StudyRendererVersion = 'v1',
 ): Promise<StudyRenderer> {
   const snapshot = new Map([...sources].map(([name, bytes]) => [name, Buffer.from(bytes)]));
   const prefix = `lca-study-renderer:///${randomUUID()}/`;
@@ -157,7 +196,7 @@ export async function instantiateStudyRenderer(
     },
   });
   try {
-    return assertStudyRenderer(await importStudyModule(`${prefix}index.js`));
+    return assertStudyRenderer(await importStudyModule(`${prefix}index.js`), version);
   } catch {
     return studyFailure('STUDY_RENDERER_INVALID');
   } finally {
@@ -167,8 +206,9 @@ export async function instantiateStudyRenderer(
 
 export async function loadStudyRenderer(
   env: NodeJS.ProcessEnv,
+  version: StudyRendererVersion = 'v1',
 ): Promise<{ renderer: StudyRenderer; artifactHash: string }> {
-  const root = studyRendererRoot();
+  const root = studyRendererRoot(import.meta.url, version);
   const packageRoot = realpathSync(path.join(root, 'package'));
   const read = (name: string): Buffer => {
     const file = path.join(packageRoot, name);
@@ -177,18 +217,19 @@ export async function loadStudyRenderer(
     return readStudyBytes(file, 2 * 1024 * 1024);
   };
   const verified = verifyStudyRenderer(
-    readStudyBytes(path.join(root, ARCHIVE), 2 * 1024 * 1024),
+    readStudyBytes(path.join(root, RENDERERS[version].archive), 2 * 1024 * 1024),
     read('manifest.json'),
     {
-      archiveSha256: STUDY_RENDERER_ARCHIVE_SHA256,
-      manifestSha256: STUDY_RENDERER_MANIFEST_SHA256,
+      archiveSha256: RENDERERS[version].archiveSha256,
+      manifestSha256: RENDERERS[version].manifestSha256,
     },
     read,
+    version,
   );
   const inventory = [...verified.files, 'manifest.json'].sort();
   if (JSON.stringify(readdirSync(packageRoot).sort()) !== JSON.stringify(inventory))
     studyFailure('STUDY_RENDERER_INTEGRITY');
-  admitStudyRendererCandidate(verified.manifest, env);
-  const renderer = await instantiateStudyRenderer(verified.sources);
-  return { renderer, artifactHash: STUDY_RENDERER_ARCHIVE_SHA256 };
+  admitStudyRendererCandidate(verified.manifest, env, version);
+  const renderer = await instantiateStudyRenderer(verified.sources, version);
+  return { renderer, artifactHash: RENDERERS[version].archiveSha256 };
 }

@@ -17,7 +17,10 @@ export const STUDY_V3_CODEC_CANDIDATE_ENV = 'TIANGONG_LCA_STUDY_REPORT_CONTRACT_
 export const STUDY_V4_CODEC_MANIFEST_SHA256 =
   'a590d3aa43fadf1693670af62d89b148953d7ac2e3ef82b2a5f39e33e03173dc';
 export const STUDY_V4_CODEC_CANDIDATE_ENV = 'TIANGONG_LCA_STUDY_REVIEW_CONTRACT_CANDIDATE_SHA256';
-const CONTRACT_VERSIONS = { v2: '2.0.0', v3: '3.0.0', v4: '4.0.0' } as const;
+export const STUDY_V5_CODEC_MANIFEST_SHA256 =
+  '3eea620ab4041f1a6fcfab34bd2afd275f8cbd3cbcf56ba6a187076e9bb3cf94';
+export const STUDY_V5_CODEC_CANDIDATE_ENV = 'TIANGONG_LCA_STUDY_ADVANCED_CONTRACT_CANDIDATE_SHA256';
+const CONTRACT_VERSIONS = { v2: '2.0.0', v3: '3.0.0', v4: '4.0.0', v5: '5.0.0' } as const;
 export type StudyCodec = {
   API_SCHEMA: string;
   CONTRACT_VERSION: string;
@@ -79,6 +82,7 @@ export type StudyReviewCodec = StudyCodec &
       | 'validateExportViewBindings'
     >
   >;
+export type StudyAdvancedCodec = StudyReviewCodec & Pick<StudyReportingCodec, 'analysisConfigHash'>;
 /** Generic verification receives its expected digest from a separate caller trust anchor. */
 export function verifyStudyCodecArtifact(
   manifestBytes: Buffer,
@@ -155,6 +159,7 @@ export function admitStudyCodecCandidate(
         v2: STUDY_CODEC_CANDIDATE_ENV,
         v3: STUDY_V3_CODEC_CANDIDATE_ENV,
         v4: STUDY_V4_CODEC_CANDIDATE_ENV,
+        v5: STUDY_V5_CODEC_CANDIDATE_ENV,
       }[version]
     ] !== expectedDigest ||
     !loopback
@@ -178,14 +183,14 @@ export function assertStudyCodecModule(
     studyFailure('STUDY_CONTRACT_INVALID');
   if (
     version !== 'v2' &&
-    ((version === 'v3' && typeof value.analysisConfigHash !== 'function') ||
+    (((version === 'v3' || version === 'v5') && typeof value.analysisConfigHash !== 'function') ||
       typeof value.parseExportBundle !== 'function' ||
       typeof value.verifyExport !== 'function' ||
       typeof value.canonicalReceiptBytes !== 'function' ||
       typeof value.validateExportViewBindings !== 'function')
   )
     studyFailure('STUDY_CONTRACT_INVALID');
-  if (version === 'v4' && typeof value.verifyVersionedExport !== 'function')
+  if ((version === 'v4' || version === 'v5') && typeof value.verifyVersionedExport !== 'function')
     studyFailure('STUDY_CONTRACT_INVALID');
   return value as unknown as StudyCodec;
 }
@@ -204,6 +209,7 @@ export function studyCodecRoot(moduleUrl = import.meta.url, version: StudyApiVer
 /** The command uses these pinned package artifacts only, never a sibling/custom codec. */
 export function loadStudyCodec(env: NodeJS.ProcessEnv, version: 'v3'): Promise<StudyReportingCodec>;
 export function loadStudyCodec(env: NodeJS.ProcessEnv, version: 'v4'): Promise<StudyReviewCodec>;
+export function loadStudyCodec(env: NodeJS.ProcessEnv, version: 'v5'): Promise<StudyAdvancedCodec>;
 export function loadStudyCodec(
   env: NodeJS.ProcessEnv,
   version?: StudyApiVersion,
@@ -217,6 +223,7 @@ export async function loadStudyCodec(
     v2: STUDY_CODEC_MANIFEST_SHA256,
     v3: STUDY_V3_CODEC_MANIFEST_SHA256,
     v4: STUDY_V4_CODEC_MANIFEST_SHA256,
+    v5: STUDY_V5_CODEC_MANIFEST_SHA256,
   }[version];
   const { manifest, code } = verifyStudyCodecArtifact(
     readFileSync(new URL('manifest.json', root)),

@@ -290,3 +290,71 @@ test('The memory renderer loader rejects missing modules and filesystem, built-i
     (error: unknown) => error instanceof CliError && error.code === 'STUDY_RENDERER_INVALID',
   );
 });
+
+test('Renderer2 is a separately pinned profile and never widens the original renderer ABI', async () => {
+  const {
+    STUDY_V2_RENDERER_ARCHIVE_SHA256,
+    STUDY_V2_RENDERER_MANIFEST_SHA256,
+    STUDY_V2_RENDERER_CANDIDATE_ENV,
+  } = await import('../src/lib/study-renderer.js');
+  const root = studyRendererRoot(
+    new URL('../src/lib/study-renderer.ts', import.meta.url).href,
+    'v2',
+  );
+  assert(root.endsWith(path.join('assets', 'study-renderer', 'v2')));
+  const archive = readFileSync(path.join(root, 'study-report-renderer-2.0.0.tgz'));
+  const manifest = readFileSync(path.join(root, 'package/manifest.json'));
+  const read = (name: string) => readFileSync(path.join(root, 'package', name));
+  const pin = {
+    archiveSha256: STUDY_V2_RENDERER_ARCHIVE_SHA256,
+    manifestSha256: STUDY_V2_RENDERER_MANIFEST_SHA256,
+  };
+  const verified = verifyStudyRenderer(archive, manifest, pin, read, 'v2');
+  fails(() => verifyStudyRenderer(archive, manifest, pin, read), 'STUDY_RENDERER_INVALID');
+  const loaded = await loadStudyRenderer({}, 'v2');
+  assert.equal(loaded.artifactHash, STUDY_V2_RENDERER_ARCHIVE_SHA256);
+  assert.equal(loaded.renderer.RENDERER_VERSION, '2.0.0');
+  assert.equal(loaded.renderer.VIEW_SCHEMA, 'lca.study-report-view.v2');
+  assert.equal(assertStudyRenderer(loaded.renderer, 'v2'), loaded.renderer);
+  fails(() => assertStudyRenderer(loaded.renderer), 'STUDY_RENDERER_INVALID');
+  const memory = await instantiateStudyRenderer(verified.sources, 'v2');
+  assert.equal(memory.RENDERER_VERSION, '2.0.0');
+  admitStudyRendererCandidate({ sourceDirty: false }, {}, 'v2');
+  fails(
+    () => admitStudyRendererCandidate({ sourceDirty: true }, exportEnvironment(), 'v2'),
+    'STUDY_RENDERER_CANDIDATE_REQUIRED',
+  );
+  fails(
+    () =>
+      admitStudyRendererCandidate(
+        { sourceDirty: true },
+        { ...exportEnvironment(), [STUDY_RENDERER_CANDIDATE_ENV]: STUDY_RENDERER_ARCHIVE_SHA256 },
+        'v2',
+      ),
+    'STUDY_RENDERER_CANDIDATE_REQUIRED',
+  );
+  admitStudyRendererCandidate(
+    { sourceDirty: true },
+    { ...exportEnvironment(), [STUDY_V2_RENDERER_CANDIDATE_ENV]: STUDY_V2_RENDERER_ARCHIVE_SHA256 },
+    'v2',
+  );
+});
+
+test('Renderer2 layout selection does not fall back to an existing v1 directory', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'study-renderer-v2-layout-'));
+  try {
+    const source = pathToFileURL(path.join(root, 'src/lib/study-renderer.ts')).href;
+    const built = pathToFileURL(path.join(root, 'dist/src/lib/study-renderer.js')).href;
+    const old = path.join(root, 'assets/study-renderer/v1/package');
+    mkdirSync(old, { recursive: true });
+    writeFileSync(path.join(old, 'manifest.json'), '{}');
+    fails(() => studyRendererRoot(source, 'v2'), 'STUDY_RENDERER_MISSING');
+    const current = path.join(root, 'assets/study-renderer/v2');
+    mkdirSync(path.join(current, 'package'), { recursive: true });
+    writeFileSync(path.join(current, 'package/manifest.json'), '{}');
+    assert.equal(studyRendererRoot(source, 'v2'), realpathSync(current));
+    assert.equal(studyRendererRoot(built, 'v2'), realpathSync(current));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

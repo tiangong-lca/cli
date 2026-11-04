@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-04
-lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
-lastReviewedNote: 'CLI #455: exact committed V4 owner codec, explicit review/finalization/share commands, original outcome/current-state recovery and independently anchored versioned downloads. V2/V3 and historical signatures remain; no public release, hosted grant or actual P3 acceptance is inferred.'
+lastReviewedCommit: 71c58511560efffb5a7323507132f2c208fbbeaa
+lastReviewedNote: 'CLI #460: reviewed explicit contained V5/renderer2 consumption, preserved older journals and artifacts, owner-controlled rollback reads and offline/online family bindings. Package version, dependencies, publication authority and actual runtime qualification remain separate.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

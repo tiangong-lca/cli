@@ -33,7 +33,7 @@ checkPaths:
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-04
 lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
-lastReviewedNote: 'CLI #455: exact committed V4 owner codec, explicit review/finalization/share commands, original outcome/current-state recovery and independently anchored versioned downloads. V2/V3 and historical signatures remain; no public release, hosted grant or actual P3 acceptance is inferred.'
+lastReviewedNote: 'CLI #460: reviewed explicit contained V5/renderer2 consumption, preserved older journals and artifacts, owner-controlled rollback reads and offline/online family bindings. Package version, dependencies, publication authority and actual runtime qualification remain separate.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -223,3 +223,5 @@ Use the actual pinned SDK, complete Process and Flow documents and the public ge
 Resulting-process proof must validate the emitted payload unchanged, assert the real report, preserve source-instance/exchange identity through renumbering, and prove weighted allocation conservation (10 at 60/40 plus 20 at 30/70 produces 30 at 40/60). Include source reorder, compatible target merges, multipliers, legacy whole-inventory shares, unrepresentable default-one legacy conversion, deterministic cancellation and ambiguous cancellation. Helper coverage supplements the public command evidence. Candidate-package qualification is distinct from released CLI/SDK and Foundry managed-runtime adoption; record the exact published dependency and runtime binding before claiming that acceptance.
 
 Allocation serialization follows the public three-decimal `Perc` boundary using deterministic largest remainder, tied by stable final target numbering. The sidecar reports actual percentage/amount error per target and bounds error below 0.001 percentage points, or inventory amount × 0.00001; conservation is qualified within this tolerance.
+
+P4 Study proof additionally exercises the exact contained V5 codec, scientific-string/config-hash preservation, v5 journal recovery, server-authorized reads after new admission rollback, and source-supplied parameter metadata. New renderer/export cases must retain independent trusted anchors and selected identities, reject typed bundle/manifest family substitution online, and preserve historical formats offline. View2 null/coverage/reason semantics and exact renderer2 bytes must survive package installation without a sibling checkout. Keep exact full-source 100% coverage; synthetic HTTP/crypto fixtures do not replace actual installed cross-owner qualification.

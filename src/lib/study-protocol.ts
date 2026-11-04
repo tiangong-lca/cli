@@ -5,13 +5,18 @@ import type { StudyCodec } from './study-codec.js';
 export const STUDY_API_SCHEMA = 'lca.study-api.v2' as const;
 export const STUDY_REPORT_SCHEMA = 'lca.study-api.v3' as const;
 export const STUDY_REVIEW_SCHEMA = 'lca.study-api.v4' as const;
-export type StudyApiVersion = 'v2' | 'v3' | 'v4';
+export const STUDY_ADVANCED_SCHEMA = 'lca.study-api.v5' as const;
+export type StudyApiVersion = 'v2' | 'v3' | 'v4' | 'v5';
 export const STUDY_REQUEST_LIMIT = 256 * 1024;
 export const STUDY_RESPONSE_LIMIT = 6 * 1024 * 1024;
 export const STUDY_ARTIFACT_LIMIT = 4 * 1024 * 1024;
 export type StudyObject = Record<string, unknown>;
 export type StudyRequest = StudyObject & {
-  schemaVersion: typeof STUDY_API_SCHEMA | typeof STUDY_REPORT_SCHEMA | typeof STUDY_REVIEW_SCHEMA;
+  schemaVersion:
+    | typeof STUDY_API_SCHEMA
+    | typeof STUDY_REPORT_SCHEMA
+    | typeof STUDY_REVIEW_SCHEMA
+    | typeof STUDY_ADVANCED_SCHEMA;
   requestId: string;
   operation: string;
 };
@@ -80,11 +85,27 @@ export const STUDY_REVIEW_COMMANDS: Readonly<Record<string, string>> = Object.fr
   'share revoke': 'share.revoke',
   'share list': 'share.list',
 });
+export const STUDY_ADVANCED_COMMANDS: Readonly<Record<string, string>> = Object.freeze({
+  ...STUDY_REPORT_COMMANDS,
+  ...Object.fromEntries(
+    Object.entries(STUDY_REVIEW_COMMANDS).filter(([name]) => name !== 'member set'),
+  ),
+  'analysis parameters': 'analysis.parameters.read',
+  'export download': 'export.download',
+  'share download': 'share.download',
+  capabilities: 'capability.read',
+  resources: 'study.resources.list',
+  'task get': 'task.read',
+  'task wait': 'task.read',
+  'task cancel': 'task.cancel',
+  'artifact download': 'artifact.read',
+});
 export const STUDY_COMMANDS = Object.freeze({ ...STUDY_CORE_COMMANDS, ...STUDY_REPORT_COMMANDS });
 export function studyApiVersion(schema: unknown): StudyApiVersion {
   if (schema === STUDY_API_SCHEMA) return 'v2';
   if (schema === STUDY_REPORT_SCHEMA) return 'v3';
   if (schema === STUDY_REVIEW_SCHEMA) return 'v4';
+  if (schema === STUDY_ADVANCED_SCHEMA) return 'v5';
   return studyFailure('UNSUPPORTED_SCHEMA');
 }
 
@@ -186,12 +207,14 @@ export function prepareStudyRequest(
       ? Object.values(STUDY_CORE_COMMANDS)
       : version === 'v3'
         ? [...Object.values(STUDY_REPORT_COMMANDS), 'capability.read', 'artifact.read']
-        : [
-            ...Object.values(STUDY_REVIEW_COMMANDS),
-            'capability.read',
-            'export.download',
-            'share.download',
-          ];
+        : version === 'v5'
+          ? Object.values(STUDY_ADVANCED_COMMANDS)
+          : [
+              ...Object.values(STUDY_REVIEW_COMMANDS),
+              'capability.read',
+              'export.download',
+              'share.download',
+            ];
   if (!operations.includes(operation) || !studyObject(value)) studyFailure('STUDY_REQUEST_INVALID');
   assertStudySafe(value);
   if (value.schemaVersion !== undefined && value.schemaVersion !== schema)

@@ -32,7 +32,7 @@ checkPaths:
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-04
 lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
-lastReviewedNote: 'CLI #455: exact committed V4 owner codec, explicit review/finalization/share commands, original outcome/current-state recovery and independently anchored versioned downloads. V2/V3 and historical signatures remain; no public release, hosted grant or actual P3 acceptance is inferred.'
+lastReviewedNote: 'CLI #460: reviewed explicit contained V5/renderer2 consumption, preserved older journals and artifacts, owner-controlled rollback reads and offline/online family bindings. Package version, dependencies, publication authority and actual runtime qualification remain separate.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -320,3 +320,5 @@ Remote process create, save-draft and state-aware save/publish routes share `pro
 The SDK owns compatibility interpretation. Whole-inventory legacy Output shares are projected uniformly before aggregation, including undeclared exchanges. A legacy share vector omitting the selected reference has Worker default-one semantics that an explicit sparse vector cannot conserve; that conversion is rejected. Mixing explicit declarations with undeclared inventory requires its verified unique reference fallback. The builder never chooses a new allocation recipient. Source lineage, contribution quantities and the final candidate hash are emitted alongside the unchanged payload; the projection report contains its real shared validation result.
 
 Allocation serialization follows the public three-decimal `Perc` boundary using deterministic largest remainder, tied by stable final target numbering. The sidecar reports actual percentage/amount error per target and bounds error below 0.001 percentage points, or inventory amount × 0.00001; conservation is qualified within this tolerance.
+
+Study P4 adds `assets/study-contract/v5/` and an independent `assets/study-renderer/v2/` package. Existing Study modules adapt explicit V5 commands and journals while preserving older codecs, renderer graphs and defaults. Scientific computation remains Worker-owned; current authorization and profile/finalization policy remain server-owned. The Study CLI contract owns exact source pins and rollback-safe historical-read semantics.
