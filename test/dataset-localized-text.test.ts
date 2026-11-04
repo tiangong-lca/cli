@@ -14,9 +14,12 @@ const en = (text: string) => ({ '@xml:lang': 'en', '#text': text });
 
 test('localized uniqueness scans each raw field independently without changing content or language variants', () => {
   const value = {
-    singleton: en('singleton'),
-    bilingual: [en('English'), { '@xml:lang': 'zh', '#text': '中文' }],
-    variants: [en('English'), { '@xml:lang': 'en-US', '#text': 'American English' }],
+    'common:name': en('singleton'),
+    generalComment: [en('English'), { '@xml:lang': 'zh', '#text': '中文' }],
+    'common:shortDescription': [
+      en('English'),
+      { '@xml:lang': 'en-US', '#text': 'American English' },
+    ],
     exchanges: [{ comment: [en('first')] }, { comment: [en('second')] }],
     classification: [
       { '@level': '0', '#text': 'First' },
@@ -33,18 +36,24 @@ test('localized uniqueness scans each raw field independently without changing c
 
 test('localized uniqueness detects duplicates with extra attributes, missing texts and canonical language spelling', () => {
   const value = {
-    comments: [
+    generalComment: [
       en('original'),
       { '@xml:lang': ' EN ', '#text': 'additional', '@source': 'extra' },
       en('third'),
     ],
-    nested: [{ caption: [{ '@xml:lang': 'zh' }, { '@xml:lang': 'zh', '#text': '' }] }],
+    nested: [
+      { 'common:shortDescription': [{ '@xml:lang': 'zh' }, { '@xml:lang': 'zh', '#text': '' }] },
+    ],
   };
   const before = JSON.stringify(value);
   const issues = collectLocalizedTextUniquenessIssues(value);
   assert.deepEqual(
     issues.map((issue) => issue.path),
-    ['comments.1.@xml:lang', 'comments.2.@xml:lang', 'nested.0.caption.1.@xml:lang'],
+    [
+      'generalComment.1.@xml:lang',
+      'generalComment.2.@xml:lang',
+      'nested.0.common:shortDescription.1.@xml:lang',
+    ],
   );
   assert.ok(issues.every((issue) => issue.code === 'duplicate_language_entry'));
   assert.match(issues[0]!.message, /index 0/u);
@@ -82,7 +91,7 @@ test('all validation policies report duplicate raw language fields even when sch
 test('opaque extensions and hierarchy entities do not become localized fields, while nested localized children remain independent', () => {
   const value = {
     'common:other': {
-      extension: [
+      'common:generalComment': [
         { ...en('first'), id: 'one' },
         { ...en('second'), id: 'two' },
       ],
@@ -101,9 +110,9 @@ test('opaque extensions and hierarchy entities do not become localized fields, w
   assert.deepEqual(collectLocalizedTextUniquenessIssues(value), []);
   assert.deepEqual(
     collectLocalizedTextUniquenessIssues({
-      caption: [en('one'), { ...en('two'), '@level': '0' }],
+      'common:shortDescription': [en('one'), { ...en('two'), '@level': '0' }],
     }).map((issue) => issue.path),
-    ['caption.1.@xml:lang'],
+    ['common:shortDescription.1.@xml:lang'],
   );
 });
 
@@ -131,5 +140,20 @@ test('prose authoring retains invalid and attributed entries for diagnosis, pres
       en('First includes fragment\n\nfragment\n\nFirst includes fragment'),
       { '@xml:lang': 'en-US', '#text': 'Regional' },
     ],
+  );
+});
+
+test('untyped arrays and unknown fields do not acquire a localized role from object attributes', () => {
+  const entries = [
+    en('Original value'),
+    { ...en('Additional value'), '@refObjectId': 'extra-attribute' },
+  ];
+  assert.deepEqual(collectLocalizedTextUniquenessIssues(entries), []);
+  assert.deepEqual(collectLocalizedTextUniquenessIssues({ caption: entries }), []);
+  assert.deepEqual(
+    collectLocalizedTextUniquenessIssues({ 'common:shortDescription': entries }).map(
+      (issue) => issue.path,
+    ),
+    ['common:shortDescription.1.@xml:lang'],
   );
 });

@@ -2,58 +2,78 @@ import { CliError } from './errors.js';
 
 export type LocalizedTextIssue = { path: string; code: string; message: string };
 
-/** GlobalReferenceType owners in the pinned SDK: their arrays contain entities, not translations. */
-export const GLOBAL_REFERENCE_ENTITY_FIELD_NAMES = Object.freeze([
-  'common:referenceToCommissioner',
-  'common:referenceToCompleteReviewReport',
-  'common:referenceToComplianceSystem',
-  'common:referenceToConvertedOriginalDataSetFrom',
-  'common:referenceToDataSetFormat',
-  'common:referenceToDataSetUseApproval',
-  'common:referenceToEntitiesWithExclusiveAccess',
-  'common:referenceToNameOfReviewerAndInstitution',
-  'common:referenceToOwnershipOfDataSet',
-  'common:referenceToPersonOrEntityEnteringTheData',
-  'common:referenceToPersonOrEntityGeneratingTheDataSet',
-  'common:referenceToPrecedingDataSetVersion',
-  'common:referenceToRegistrationAuthority',
-  'common:referenceToUnchangedRepublication',
-  'referenceQuantity',
-  'referenceToComplementingProcess',
-  'referenceToContact',
-  'referenceToDataHandlingPrinciples',
-  'referenceToDataSource',
-  'referenceToDiagram',
-  'referenceToEntity',
-  'referenceToExternalDocumentation',
-  'referenceToFlowDataSet',
-  'referenceToFlowPropertyDataSet',
-  'referenceToIncludedMethods',
-  'referenceToIncludedNormalisationDataSets',
-  'referenceToIncludedProcesses',
-  'referenceToIncludedWeightingDataSets',
-  'referenceToLCAMethodDetails',
-  'referenceToLCIAMethodDataSet',
-  'referenceToLogo',
-  'referenceToMethodologyFlowChart',
-  'referenceToModelSource',
-  'referenceToProcess',
-  'referenceToReferenceUnitGroup',
-  'referenceToResultingProcess',
-  'referenceToSupportedImpactAssessmentMethods',
-  'referenceToTechnicalSpecification',
-  'referenceToTechnologyFlowDiagrammOrPicture',
-  'referenceToTechnologyPictogramme',
-  'referenceToUsableNormalisationDataSets',
-  'referenceToUsableWeightingDataSets',
+/** Multilingual scalar field owners in the pinned SDK; entity arrays are not language lists. */
+export const LOCALIZED_TEXT_FIELD_NAMES = Object.freeze([
+  'annualSupplyOrProductionVolume',
+  'baseName',
+  'centralContactPoint',
+  'comment',
+  'common:accessRestrictions',
+  'common:generalComment',
+  'common:intendedApplications',
+  'common:name',
+  'common:otherReviewDetails',
+  'common:project',
+  'common:reviewDetails',
+  'common:shortDescription',
+  'common:shortName',
+  'common:synonyms',
+  'common:timeRepresentativenessDescription',
+  'completenessOtherProblemField',
+  'consideredMechanisms',
+  'contactAddress',
+  'contactDescriptionOrComment',
+  'dataCollectionPeriod',
+  'dataCutOffAndCompletenessPrinciples',
+  'dataSelectionAndCombinationPrinciples',
+  'dataTreatmentAndExtrapolationsPrinciples',
+  'descriptionOfRestrictions',
+  'deviationsFromCutOffAndCompletenessPrinciples',
+  'deviationsFromLCIAMethodPrinciple',
+  'deviationsFromLCIMethodApproaches',
+  'deviationsFromLCIMethodPrinciple',
+  'deviationsFromModellingConstants',
+  'deviationsFromSelectionAndCombinationPrinciples',
+  'deviationsFromTreatmentAndExtrapolationPrinciples',
+  'duration',
+  'flowProperties',
+  'functionalUnitFlowProperties',
+  'functionalUnitOrOther',
+  'generalComment',
+  'geographicalRepresentativenessDescription',
+  'groupName',
+  'meaning',
+  'mixAndLocationTypes',
+  'modelDescription',
+  'modellingConstants',
+  'normalisationDescription',
+  'referenceYear',
+  'samplingProcedure',
+  'sourceDescriptionOrComment',
+  'technologicalApplicability',
+  'technologyDescriptionAndIncludedProcesses',
+  'timeRepresentativenessDescription',
+  'treatmentStandardsRoutes',
+  'uncertaintyAdjustments',
+  'useAdviceForDataSet',
+  'weightingDescription',
 ] as const);
-const GLOBAL_REFERENCE_ENTITY_FIELDS = new Set<string>(GLOBAL_REFERENCE_ENTITY_FIELD_NAMES);
+const LOCALIZED_TEXT_FIELDS = new Set<string>(LOCALIZED_TEXT_FIELD_NAMES);
+
+function isLocalizedTextField(path: Array<string | number>): boolean {
+  const field = path.at(-1);
+  return (
+    typeof field === 'string' &&
+    LOCALIZED_TEXT_FIELDS.has(field) &&
+    (field !== 'flowProperties' || path.at(-2) === 'name')
+  );
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Inspect raw fields independently, including localized objects carrying additional attributes. */
+/** Inspect only declared multilingual scalar fields, preserving raw additional attributes. */
 export function collectLocalizedTextUniquenessIssues(
   value: unknown,
   prefix: Array<string | number> = [],
@@ -61,24 +81,10 @@ export function collectLocalizedTextUniquenessIssues(
   const issues: LocalizedTextIssue[] = [];
   const visit = (node: unknown, path: Array<string | number>): void => {
     if (Array.isArray(node)) {
-      // Hierarchy levels are separate entities, even when the SDK retains language metadata.
-      const fieldPath = path.filter((segment) => typeof segment === 'string').join('.');
-      const hierarchy =
-        fieldPath.endsWith('classificationInformation.common:classification.common:class') ||
-        fieldPath.endsWith(
-          'classificationInformation.common:elementaryFlowCategorization.common:category',
-        );
-      const fieldName = path.at(-1);
-      const referenceEntities =
-        typeof fieldName === 'string' && GLOBAL_REFERENCE_ENTITY_FIELDS.has(fieldName);
+      const localizedField = isLocalizedTextField(path);
       const seen = new Map<string, number>();
       node.forEach((entry: unknown, index) => {
-        if (
-          !hierarchy &&
-          !referenceEntities &&
-          isRecord(entry) &&
-          typeof entry['@xml:lang'] === 'string'
-        ) {
+        if (localizedField && isRecord(entry) && typeof entry['@xml:lang'] === 'string') {
           const language = entry['@xml:lang'].trim().toLowerCase();
           const first = seen.get(language);
           if (first !== undefined) {
