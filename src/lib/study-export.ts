@@ -41,7 +41,7 @@ export type VerifiedStudyExport = {
   receiptBytes: Buffer;
   files: Array<{ path: 'report.html' | 'projection.json'; bytes: Uint8Array }>;
 };
-export type StudyExportApiVersion = 'v3' | 'v4' | 'v5';
+export type StudyExportApiVersion = 'v3' | 'v4' | 'v5' | 'v6';
 const FILES = ['export-manifest.json', 'export-receipt.json', 'projection.json', 'report.html'];
 
 export function readStudyExportTrust(
@@ -72,7 +72,11 @@ async function verifyParts(
   originalReceiptBytes?: Uint8Array,
 ): Promise<VerifiedStudyExport> {
   const codec =
-    apiVersion === 'v5' ? await loadStudyCodec(env, 'v5') : await loadStudyCodec(env, 'v4');
+    apiVersion === 'v6'
+      ? await loadStudyCodec(env, 'v6')
+      : apiVersion === 'v5'
+        ? await loadStudyCodec(env, 'v5')
+        : await loadStudyCodec(env, 'v4');
   let manifest: StudyObject;
   try {
     if (
@@ -94,7 +98,11 @@ async function verifyParts(
   }
   const loaded = await loadStudyRenderer(
     env,
-    manifest.schemaVersion === 'lca.study-export-manifest.v3' ? 'v2' : 'v1',
+    manifest.schemaVersion === 'lca.study-export-manifest.v4'
+      ? 'v3'
+      : manifest.schemaVersion === 'lca.study-export-manifest.v3'
+        ? 'v2'
+        : 'v1',
   );
   const identity = manifest.renderer as { artifactHash: string };
   if (identity.artifactHash !== loaded.artifactHash) studyFailure('STUDY_EXPORT_RENDERER_MISMATCH');
@@ -110,7 +118,9 @@ async function verifyParts(
         ? await loadStudyCodec(env, 'v3')
         : manifest.schemaVersion === 'lca.study-export-manifest.v2'
           ? await loadStudyCodec(env, 'v4')
-          : codec;
+          : manifest.schemaVersion === 'lca.study-export-manifest.v3'
+            ? await loadStudyCodec(env, 'v5')
+            : codec;
     bindings.validateExportViewBindings(validated, manifest);
     const descriptor = (manifest.files as Array<{ path: string; sha256: string }>).find(
       (file) => file.path === 'projection.json',
@@ -142,7 +152,11 @@ export async function verifyStudyExportBundle(
   apiVersion: StudyExportApiVersion = 'v4',
 ): Promise<VerifiedStudyExport> {
   const codec =
-    apiVersion === 'v5' ? await loadStudyCodec(env, 'v5') : await loadStudyCodec(env, 'v4');
+    apiVersion === 'v6'
+      ? await loadStudyCodec(env, 'v6')
+      : apiVersion === 'v5'
+        ? await loadStudyCodec(env, 'v5')
+        : await loadStudyCodec(env, 'v4');
   let parts;
   try {
     parts = codec.parseExportBundle(bytes);
@@ -324,7 +338,7 @@ export async function runStudyExportFiles(
       studyFailure('STUDY_EXPORT_SELECTION');
     if (existsSync(options.outputDirectory)) studyFailure('STUDY_OUTPUT_EXISTS');
     await loadStudyCodec(env, version);
-    await loadStudyRenderer(env, version === 'v5' ? 'v2' : 'v1');
+    await loadStudyRenderer(env, version === 'v6' ? 'v3' : version === 'v5' ? 'v2' : 'v1');
     const scratch = mkdtempSync(path.join(os.tmpdir(), 'tiangong-study-export-'));
     try {
       const bundle = path.join(scratch, 'bundle.json');
@@ -347,7 +361,11 @@ export async function runStudyExportFiles(
         if (
           envelope.schemaVersion !== (record.bundleRef as StudyObject).schemaVersion ||
           verified.manifest.schemaVersion !==
-            (version === 'v5' ? 'lca.study-export-manifest.v3' : 'lca.study-export-manifest.v2')
+            (version === 'v6'
+              ? 'lca.study-export-manifest.v4'
+              : version === 'v5'
+                ? 'lca.study-export-manifest.v3'
+                : 'lca.study-export-manifest.v2')
         )
           studyFailure('STUDY_EXPORT_SELECTION');
         const finalizationId =
@@ -367,9 +385,11 @@ export async function runStudyExportFiles(
           (record.projectionRef as StudyObject).contentHash !== projection.sha256 ||
           (kind === 'export' &&
             !Buffer.from(
-              (version === 'v5'
-                ? await loadStudyCodec(env, 'v5')
-                : await loadStudyCodec(env, 'v4')
+              (version === 'v6'
+                ? await loadStudyCodec(env, 'v6')
+                : version === 'v5'
+                  ? await loadStudyCodec(env, 'v5')
+                  : await loadStudyCodec(env, 'v4')
               ).canonicalReceiptBytes(record.receipt),
             ).equals(verified.receiptBytes))
         )

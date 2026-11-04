@@ -9,7 +9,7 @@ import {
 } from './study-protocol.js';
 
 export const STUDY_CODEC_MANIFEST_SHA256 =
-  '6bdde9dcad10f2bfc474dd70f0bf3deb693cb7536137ef827a71fb879d792459';
+  '0cfe9a2d3c957a005a6b8045b3f8df0cea9b3e852af7a49f706e3b35a798b0c1';
 export const STUDY_CODEC_CANDIDATE_ENV = 'TIANGONG_LCA_STUDY_CONTRACT_CANDIDATE_SHA256';
 export const STUDY_V3_CODEC_MANIFEST_SHA256 =
   '983e4b9941e735e060dca3222d16c41018510def509615c94beaa79816e1a960';
@@ -20,7 +20,16 @@ export const STUDY_V4_CODEC_CANDIDATE_ENV = 'TIANGONG_LCA_STUDY_REVIEW_CONTRACT_
 export const STUDY_V5_CODEC_MANIFEST_SHA256 =
   '3eea620ab4041f1a6fcfab34bd2afd275f8cbd3cbcf56ba6a187076e9bb3cf94';
 export const STUDY_V5_CODEC_CANDIDATE_ENV = 'TIANGONG_LCA_STUDY_ADVANCED_CONTRACT_CANDIDATE_SHA256';
-const CONTRACT_VERSIONS = { v2: '2.0.0', v3: '3.0.0', v4: '4.0.0', v5: '5.0.0' } as const;
+export const STUDY_V6_CODEC_MANIFEST_SHA256 =
+  '003deb096baa38b7ff6cb5474815ea0eb92bb4c6d188bb6c27f81448026d0427';
+export const STUDY_V6_CODEC_CANDIDATE_ENV = 'TIANGONG_LCA_STUDY_METHOD_CONTRACT_CANDIDATE_SHA256';
+const CONTRACT_VERSIONS = {
+  v2: '2.0.0',
+  v3: '3.0.0',
+  v4: '4.0.0',
+  v5: '5.0.0',
+  v6: '6.0.0',
+} as const;
 export type StudyCodec = {
   API_SCHEMA: string;
   CONTRACT_VERSION: string;
@@ -35,6 +44,8 @@ export type StudyCodec = {
   operationMetadata: Readonly<
     Record<string, Readonly<{ operation: string; kind: 'query' | 'mutation' }>>
   >;
+  validateResponseContentForRequest?: (request: StudyRequest, response: unknown) => Promise<void>;
+  methodConfigHash?: (input: unknown) => Promise<string>;
   analysisConfigHash?: (input: unknown) => Promise<string>;
   parseExportBundle?: (bytes: Uint8Array) => {
     manifestBytes: Uint8Array;
@@ -83,6 +94,8 @@ export type StudyReviewCodec = StudyCodec &
     >
   >;
 export type StudyAdvancedCodec = StudyReviewCodec & Pick<StudyReportingCodec, 'analysisConfigHash'>;
+export type StudyMethodCodec = StudyReviewCodec &
+  Required<Pick<StudyCodec, 'methodConfigHash' | 'validateResponseContentForRequest'>>;
 /** Generic verification receives its expected digest from a separate caller trust anchor. */
 export function verifyStudyCodecArtifact(
   manifestBytes: Buffer,
@@ -160,6 +173,7 @@ export function admitStudyCodecCandidate(
         v3: STUDY_V3_CODEC_CANDIDATE_ENV,
         v4: STUDY_V4_CODEC_CANDIDATE_ENV,
         v5: STUDY_V5_CODEC_CANDIDATE_ENV,
+        v6: STUDY_V6_CODEC_CANDIDATE_ENV,
       }[version]
     ] !== expectedDigest ||
     !loopback
@@ -190,7 +204,16 @@ export function assertStudyCodecModule(
       typeof value.validateExportViewBindings !== 'function')
   )
     studyFailure('STUDY_CONTRACT_INVALID');
-  if ((version === 'v4' || version === 'v5') && typeof value.verifyVersionedExport !== 'function')
+  if (
+    version === 'v6' &&
+    (typeof value.methodConfigHash !== 'function' ||
+      typeof value.validateResponseContentForRequest !== 'function')
+  )
+    studyFailure('STUDY_CONTRACT_INVALID');
+  if (
+    (version === 'v4' || version === 'v5' || version === 'v6') &&
+    typeof value.verifyVersionedExport !== 'function'
+  )
     studyFailure('STUDY_CONTRACT_INVALID');
   return value as unknown as StudyCodec;
 }
@@ -210,6 +233,7 @@ export function studyCodecRoot(moduleUrl = import.meta.url, version: StudyApiVer
 export function loadStudyCodec(env: NodeJS.ProcessEnv, version: 'v3'): Promise<StudyReportingCodec>;
 export function loadStudyCodec(env: NodeJS.ProcessEnv, version: 'v4'): Promise<StudyReviewCodec>;
 export function loadStudyCodec(env: NodeJS.ProcessEnv, version: 'v5'): Promise<StudyAdvancedCodec>;
+export function loadStudyCodec(env: NodeJS.ProcessEnv, version: 'v6'): Promise<StudyMethodCodec>;
 export function loadStudyCodec(
   env: NodeJS.ProcessEnv,
   version?: StudyApiVersion,
@@ -224,6 +248,7 @@ export async function loadStudyCodec(
     v3: STUDY_V3_CODEC_MANIFEST_SHA256,
     v4: STUDY_V4_CODEC_MANIFEST_SHA256,
     v5: STUDY_V5_CODEC_MANIFEST_SHA256,
+    v6: STUDY_V6_CODEC_MANIFEST_SHA256,
   }[version];
   const { manifest, code } = verifyStudyCodecArtifact(
     readFileSync(new URL('manifest.json', root)),

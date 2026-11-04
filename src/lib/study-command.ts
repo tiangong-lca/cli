@@ -8,17 +8,27 @@ import {
   STUDY_REPORT_COMMANDS,
   STUDY_REVIEW_COMMANDS,
   STUDY_ADVANCED_COMMANDS,
+  STUDY_METHOD_COMMANDS,
   studyFailure,
   studyObject,
   type StudyApiVersion,
 } from './study-protocol.js';
 import { runStudyRequest, type StudyCommandReport } from './study-transport.js';
+import { readFileSync } from 'node:fs';
+import {
+  verifyStudyCodecArtifact,
+  STUDY_V6_CODEC_MANIFEST_SHA256,
+  studyCodecRoot,
+} from './study-codec.js';
 import { runStudyExportFiles } from './study-export.js';
 
 const HELP = `Usage: tiangong-lca study <action> [--input request.json] [--json]
 
 Actions:
   capabilities | create | get | list | resources | archive | select-revision
+  schema request | response --api-version 6
+  method evidence register | get --api-version 6
+  method assessment request | get | task get | task wait | task cancel --api-version 6
   member set
   model source resolve | model source get | model prepare | model get
   revision create | save | get | freeze
@@ -54,6 +64,8 @@ Installing this CLI grants no Study rights or runtime activation.
 P2 analysis/report actions use v3; core lifecycle stays v2.
 P3 actions/comments/reviews/current/view/finalize/share use v4; report view returns safe JSON.
 --api-version 4 explicitly selects v4 member/export/capability operations.
+--api-version 6 explicitly selects method evidence/assessment/report/review/share and export4/renderer3.
+Method evidence is recorded_unverified; unavailable results remain null. No scientific approval is implied.
 --api-version 5 selects advanced analysis/catalog/report/review/share/export and manifest3 verification.
 Only analysis parameters defaults to v5; existing command defaults and saved journals stay unchanged.
 V5 does not manage Study members. Canonical config strings and complete settings come from explicit input;
@@ -120,9 +132,34 @@ export async function runStudyCommand(
     versionFlag !== '2' &&
     versionFlag !== '3' &&
     versionFlag !== '4' &&
-    versionFlag !== '5'
+    versionFlag !== '5' &&
+    versionFlag !== '6'
   )
     studyFailure('INVALID_ARGS');
+  if (action === 'schema request' || action === 'schema response') {
+    if (
+      versionFlag !== '6' ||
+      Object.keys(values).some((key) => !['json', 'api-version'].includes(key))
+    )
+      studyFailure('INVALID_ARGS');
+    const root = studyCodecRoot(import.meta.url, 'v6');
+    const sources = new Map<string, Buffer>();
+    verifyStudyCodecArtifact(
+      readFileSync(new URL('manifest.json', root)),
+      STUDY_V6_CODEC_MANIFEST_SHA256,
+      (name) => {
+        const bytes = readFileSync(new URL(name, root));
+        sources.set(name, bytes);
+        return bytes;
+      },
+      'v6',
+    );
+    return {
+      exitCode: 0,
+      stdout: sources.get(`${positionals[1]}.schema.json`)!.toString('utf8'),
+      stderr: '',
+    };
+  }
   if (action === 'export verify' || action === 'export download' || action === 'share download') {
     if (versionFlag === '2' || (action === 'share download' && versionFlag === '3'))
       studyFailure('UNSUPPORTED_SCHEMA');
@@ -158,11 +195,13 @@ export async function runStudyCommand(
         outputDirectory: values['output-dir'],
         timeoutMs: integer(values['timeout-ms'], 30_000, 1),
         apiVersion:
-          versionFlag === '5'
-            ? 'v5'
-            : action === 'share download' || versionFlag === '4'
-              ? 'v4'
-              : 'v3',
+          versionFlag === '6'
+            ? 'v6'
+            : versionFlag === '5'
+              ? 'v5'
+              : action === 'share download' || versionFlag === '4'
+                ? 'v4'
+                : 'v3',
         downloadKind: action === 'share download' ? 'share' : 'export',
       },
       fetchImpl,
@@ -185,24 +224,39 @@ export async function runStudyCommand(
   )
     studyFailure('INVALID_ARGS');
   if (
-    ['analysis', 'report', 'export', 'review', 'comment', 'share'].includes(positionals[0]) &&
+    ['analysis', 'report', 'export', 'review', 'comment', 'share', 'method'].includes(
+      positionals[0],
+    ) &&
     !Object.hasOwn(STUDY_REPORT_COMMANDS, action) &&
     !Object.hasOwn(STUDY_REVIEW_COMMANDS, action) &&
-    !Object.hasOwn(STUDY_ADVANCED_COMMANDS, action)
+    !Object.hasOwn(STUDY_ADVANCED_COMMANDS, action) &&
+    !Object.hasOwn(STUDY_METHOD_COMMANDS, action)
   )
     studyFailure('CAPABILITY_UNAVAILABLE');
+  if (positionals[0] === 'method' && versionFlag !== '6') studyFailure('UNSUPPORTED_SCHEMA');
+  if (versionFlag === '6' && !Object.hasOwn(STUDY_METHOD_COMMANDS, action))
+    studyFailure('UNSUPPORTED_SCHEMA');
   const advancedOnly = action === 'analysis parameters';
   if (advancedOnly && versionFlag !== undefined && versionFlag !== '5')
     studyFailure('UNSUPPORTED_SCHEMA');
   if (versionFlag === '5' && !Object.hasOwn(STUDY_ADVANCED_COMMANDS, action))
     studyFailure('UNSUPPORTED_SCHEMA');
   const recovering = action === 'request recover';
-  const waiting = action === 'task wait' || action === 'analysis task wait';
+  const waiting =
+    action === 'task wait' ||
+    action === 'analysis task wait' ||
+    action === 'method assessment task wait';
   const reporting = Object.hasOwn(STUDY_REPORT_COMMANDS, action);
   const reviewing =
     Object.hasOwn(STUDY_REVIEW_COMMANDS, action) && !Object.hasOwn(STUDY_COMMANDS, action);
   if (recovering && versionFlag !== undefined) studyFailure('INVALID_ARGS');
-  if (reviewing && versionFlag !== undefined && versionFlag !== '4' && versionFlag !== '5')
+  if (
+    reviewing &&
+    versionFlag !== undefined &&
+    versionFlag !== '4' &&
+    versionFlag !== '5' &&
+    versionFlag !== '6'
+  )
     studyFailure('UNSUPPORTED_SCHEMA');
   if (reporting && versionFlag === '2') studyFailure('UNSUPPORTED_SCHEMA');
   if (
@@ -215,6 +269,7 @@ export async function runStudyCommand(
     versionFlag !== undefined &&
     versionFlag !== '4' &&
     versionFlag !== '5' &&
+    versionFlag !== '6' &&
     !reporting &&
     !reviewing &&
     ![
@@ -229,21 +284,25 @@ export async function runStudyCommand(
     studyFailure('INVALID_ARGS');
   const apiVersion: StudyApiVersion | undefined = recovering
     ? undefined
-    : advancedOnly || versionFlag === '5'
-      ? 'v5'
-      : reviewing || versionFlag === '4'
-        ? 'v4'
-        : reporting || versionFlag === '3'
-          ? 'v3'
-          : 'v2';
+    : versionFlag === '6'
+      ? 'v6'
+      : advancedOnly || versionFlag === '5'
+        ? 'v5'
+        : reviewing || versionFlag === '4'
+          ? 'v4'
+          : reporting || versionFlag === '3'
+            ? 'v3'
+            : 'v2';
   const operation =
-    apiVersion === 'v5'
-      ? STUDY_ADVANCED_COMMANDS[action]
-      : apiVersion === 'v4'
-        ? action === 'capabilities'
-          ? 'capability.read'
-          : STUDY_REVIEW_COMMANDS[action]
-        : STUDY_COMMANDS[action];
+    apiVersion === 'v6'
+      ? STUDY_METHOD_COMMANDS[action]
+      : apiVersion === 'v5'
+        ? STUDY_ADVANCED_COMMANDS[action]
+        : apiVersion === 'v4'
+          ? action === 'capabilities'
+            ? 'capability.read'
+            : STUDY_REVIEW_COMMANDS[action]
+          : STUDY_COMMANDS[action];
   if (!operation && !recovering) studyFailure('INVALID_ARGS');
   if (
     (recovering && (!values['intent-file'] || values.input || values.output || values.force)) ||

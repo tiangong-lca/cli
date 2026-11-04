@@ -805,12 +805,22 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
   const requests = [];
   let committed;
   let drop = true;
+  const methodComponent = JSON.parse(
+    readFileSync(
+      join(packageRoot, 'assets/study-renderer/v3/package/methodProtocol.fixture.json'),
+      'utf8',
+    ),
+  );
+  let authRequests = 0;
+  let dropMethodReport = false;
+  let archiveState = { status: 'active', revision: 7 };
   const server = createServer(async (request, response) => {
     const send = (body) => {
       response.writeHead(200, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify(body));
     };
     if (request.url === '/auth/v1/user') {
+      authRequests++;
       send({ id: actor, email: 'installed-fixture@example.test', role: 'authenticated' });
       return;
     }
@@ -828,37 +838,119 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
         envelope({
           type: 'capabilities',
           contractVersion:
-            value.schemaVersion === 'lca.study-api.v5'
-              ? '5.0.0'
-              : value.schemaVersion === 'lca.study-api.v4'
-                ? '4.0.0'
-                : value.schemaVersion === 'lca.study-api.v3'
-                  ? '3.0.0'
-                  : '2.0.0',
+            value.schemaVersion === 'lca.study-api.v6'
+              ? '6.0.0'
+              : value.schemaVersion === 'lca.study-api.v5'
+                ? '5.0.0'
+                : value.schemaVersion === 'lca.study-api.v4'
+                  ? '4.0.0'
+                  : value.schemaVersion === 'lca.study-api.v3'
+                    ? '3.0.0'
+                    : '2.0.0',
           runtimeEnabled: true,
-          operations: ['lca.study-api.v4', 'lca.study-api.v5'].includes(value.schemaVersion)
-            ? ['capability.read', 'comment.append']
-            : value.schemaVersion === 'lca.study-api.v3'
-              ? ['capability.read']
-              : ['capability.read', 'study.create'],
-          ...(value.schemaVersion === 'lca.study-api.v5'
+          operations:
+            value.schemaVersion === 'lca.study-api.v6'
+              ? ['capability.read', 'comment.append', 'report.create', 'report.save']
+              : ['lca.study-api.v4', 'lca.study-api.v5'].includes(value.schemaVersion)
+                ? ['capability.read', 'comment.append']
+                : value.schemaVersion === 'lca.study-api.v3'
+                  ? ['capability.read']
+                  : ['capability.read', 'study.create', 'study.archive'],
+          ...(value.schemaVersion === 'lca.study-api.v6'
             ? {
-                analysisProfiles: [],
-                reportTemplates: [],
+                methodProfiles: [],
+                reportTemplates: ['lca.study-method-report.v1'],
                 finalizationProfiles: [],
                 reviewClasses: [],
                 disclosurePolicies: [],
+                limits: {
+                  maxEvidenceRefs: 128,
+                  maxSelectedFactorRecords: 8192,
+                  maxFactsBytes: 4194304,
+                  maxProjectionBytes: 2000000,
+                },
               }
-            : value.schemaVersion === 'lca.study-api.v4'
-              ? { finalizationProfiles: [], reviewClasses: [], disclosurePolicies: [] }
-              : value.schemaVersion === 'lca.study-api.v3'
-                ? { analysisProfiles: [], reportTemplates: [] }
-                : { profiles: [] }),
+            : value.schemaVersion === 'lca.study-api.v5'
+              ? {
+                  analysisProfiles: [],
+                  reportTemplates: [],
+                  finalizationProfiles: [],
+                  reviewClasses: [],
+                  disclosurePolicies: [],
+                }
+              : value.schemaVersion === 'lca.study-api.v4'
+                ? { finalizationProfiles: [], reviewClasses: [], disclosurePolicies: [] }
+                : value.schemaVersion === 'lca.study-api.v3'
+                  ? { analysisProfiles: [], reportTemplates: [] }
+                  : { profiles: [] }),
         }),
       );
       return;
     }
     requests.push(value);
+    if (value.operation === 'report.create' || value.operation === 'report.save') {
+      if (dropMethodReport) {
+        dropMethodReport = false;
+        response.destroy();
+        return;
+      }
+      const contentHash = methodComponent.view.report.contentHash;
+      send(
+        envelope({
+          type: 'reportRevision',
+          value: {
+            reportRevisionId: methodComponent.view.report.reportRevisionId,
+            studyId: methodComponent.view.report.studyId,
+            parentReportRevisionId: null,
+            authorId: actor,
+            revision: value.operation === 'report.create' ? 1 : value.target.expectedRevision + 1,
+            status: 'draft',
+            contentHash,
+            runIds: methodComponent.stored.runIds,
+            methodAssessmentIds: methodComponent.stored.methodAssessmentIds,
+            factsRefs: methodComponent.stored.factsRefs,
+            contentRef: {
+              type: 'reportContent',
+              id: '10000000-0000-4000-8000-000000000082',
+              contentHash,
+              digestScope: 'artifact_bytes_sha256',
+              byteSize: 1,
+              mediaType: 'application/json',
+              schemaVersion: 'lca.study-method-report-content.v1',
+            },
+            templateId: 'lca.study-method-report.v1',
+            finalization: {
+              status: 'not_finalized',
+              profileId: 'lca.study-report-unreviewed.v1',
+              reviewRequirement: 'none',
+              finalizedAt: null,
+              reviewIds: [],
+            },
+            validitySnapshot: {
+              status: 'current',
+              checkedAt: '2026-11-04T00:00:00Z',
+              reasonCodes: [],
+            },
+          },
+        }),
+      );
+      return;
+    }
+    if (value.operation === 'study.archive') {
+      send(
+        envelope({
+          type: 'study',
+          value: {
+            studyId: value.target.id,
+            scope: { kind: 'user', id: actor },
+            title: 'Installed archive fixture',
+            currentRevisionId: null,
+            ...archiveState,
+          },
+        }),
+      );
+      return;
+    }
     if (value.operation === 'comment.append') {
       send(
         envelope({
@@ -962,6 +1054,52 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
     assert.equal(JSON.parse(recovered.stdout).data.value.studyId, 'installed-study');
     assert.equal(requests.length, 2);
     assert.deepEqual(requests[0], requests[1]);
+    for (const [status, revision] of [
+      ['active', 7],
+      ['active', 8],
+      ['archived', 7],
+      ['archived', 10],
+    ]) {
+      archiveState = { status, revision };
+      writeFileSync(
+        input,
+        JSON.stringify({
+          requestId: `installed-archive-${status}-${revision}`,
+          idempotencyKey: `archive-${status}-${revision}`,
+          target: { type: 'study', id: 'installed-study', expectedRevision: 7 },
+        }),
+      );
+      const count = requests.filter((r) => r.operation === 'study.archive').length;
+      const invalid = await invoke([
+        'archive',
+        '--input',
+        input,
+        '--state-dir',
+        join(cwd, 'retained-archive-state'),
+        '--json',
+      ]);
+      assert.equal(invalid.code, 1, invalid.stdout);
+      const failure = JSON.parse(invalid.stderr).error;
+      assert.equal(failure.code, 'STUDY_RESPONSE_SELECTION');
+      const file = failure.details.intentFile,
+        original = readFileSync(file);
+      assert.equal(requests.filter((r) => r.operation === 'study.archive').length, count + 1);
+      const rejected = await invoke(['request', 'recover', '--intent-file', file, '--json']);
+      assert.equal(rejected.code, 1, rejected.stdout);
+      assert.equal(JSON.parse(rejected.stderr).error.code, 'STUDY_RESPONSE_SELECTION');
+      assert.deepEqual(readFileSync(file), original);
+      archiveState = { status: 'archived', revision: 8 };
+      const accepted = await invoke(['request', 'recover', '--intent-file', file, '--json']);
+      assert.equal(accepted.code, 0, accepted.stderr);
+      assert.equal(JSON.parse(accepted.stdout).data.value.revision, 8);
+      assert.equal(JSON.parse(accepted.stdout).data.value.status, 'archived');
+      assert.deepEqual(readFileSync(file), original);
+      const archiveRequests = requests.filter((r) => r.operation === 'study.archive').slice(count);
+      assert.equal(archiveRequests.length, 3);
+      assert.deepEqual(archiveRequests[0], archiveRequests[1]);
+      assert.deepEqual(archiveRequests[0], archiveRequests[2]);
+    }
+
     const reporting = await invoke(['capabilities', '--api-version', '3', '--json']);
     assert.equal(reporting.code, 0, reporting.stderr);
     assert.equal(JSON.parse(reporting.stdout).apiSchema, 'lca.study-api.v3');
@@ -1030,7 +1168,136 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
       requests.filter((r) => r.schemaVersion === 'lca.study-api.v5')[1],
     );
 
-    for (const finalized of [false, true]) {
+    const methodCaps = await invoke(['capabilities', '--api-version', '6', '--json']);
+    assert.equal(methodCaps.code, 0, methodCaps.stderr);
+    assert.equal(JSON.parse(methodCaps.stdout).apiSchema, 'lca.study-api.v6');
+    const method = await invoke([
+      'comment',
+      'append',
+      '--api-version',
+      '6',
+      '--input',
+      input,
+      '--state-dir',
+      join(cwd, 'retained-v6-state'),
+      '--json',
+    ]);
+    assert.equal(method.code, 0, method.stderr);
+    const methodComment = JSON.parse(method.stdout);
+    assert.ok(methodComment.intentFile.split(/[\\/]/u).includes('v6'));
+    const methodBytes = readFileSync(methodComment.intentFile);
+    const methodRecovered = await invoke([
+      'request',
+      'recover',
+      '--intent-file',
+      methodComment.intentFile,
+      '--json',
+    ]);
+    assert.equal(methodRecovered.code, 0, methodRecovered.stderr);
+    assert.deepEqual(readFileSync(methodComment.intentFile), methodBytes);
+    assert.deepEqual(
+      requests.filter((r) => r.schemaVersion === 'lca.study-api.v6')[0],
+      requests.filter((r) => r.schemaVersion === 'lca.study-api.v6')[1],
+    );
+    for (const kind of ['request', 'response']) {
+      const schema = await invoke(['schema', kind, '--api-version', '6', '--json']);
+      assert.equal(schema.code, 0, schema.stderr);
+      assert.deepEqual(
+        JSON.parse(schema.stdout),
+        JSON.parse(
+          readFileSync(join(packageRoot, `assets/study-contract/v6/${kind}.schema.json`), 'utf8'),
+        ),
+      );
+    }
+
+    const methodDraft = () => ({
+      ...structuredClone(methodComponent.stored.content),
+      sections: [
+        {
+          sectionId: 'unicode-section',
+          title: 'Valid section',
+          paragraphs: ['Valid paragraph 🧪'],
+          claimIds: [],
+        },
+      ],
+    });
+    const methodReportInput = (verb, content) =>
+      verb === 'create'
+        ? {
+            studyId: methodComponent.stored.studyId,
+            parentReportRevisionId: null,
+            runIds: methodComponent.stored.runIds,
+            methodAssessmentIds: methodComponent.stored.methodAssessmentIds,
+            templateId: 'lca.study-method-report.v1',
+            content,
+          }
+        : {
+            target: {
+              type: 'reportRevision',
+              id: methodComponent.view.report.reportRevisionId,
+              expectedRevision: 7,
+            },
+            content,
+          };
+    for (const verb of ['create', 'save']) {
+      for (const field of ['title', 'paragraph', 'unit'])
+        for (const scalar of ['\ud800', '\udc00']) {
+          const content = methodDraft();
+          if (field === 'title') content.title = scalar;
+          else if (field === 'paragraph') content.sections[0].paragraphs = [scalar];
+          else content.claims[0].unit = scalar;
+          writeFileSync(input, JSON.stringify(methodReportInput(verb, content)));
+          const state = join(cwd, `unpublished-${verb}-${field}-${scalar.charCodeAt(0)}`),
+            beforeAuth = authRequests,
+            beforeDomain = requests.length;
+          const rejected = await invoke([
+            'report',
+            verb,
+            '--api-version',
+            '6',
+            '--input',
+            input,
+            '--state-dir',
+            state,
+            '--json',
+          ]);
+          assert.equal(rejected.code, 1, rejected.stdout);
+          assert.equal(JSON.parse(rejected.stderr).error.code, 'INVALID_REQUEST');
+          assert.equal(authRequests, beforeAuth);
+          assert.equal(requests.length, beforeDomain);
+          assert.equal(existsSync(state), false);
+        }
+      const content = methodDraft();
+      content.title = '🧪'.repeat(256);
+      content.claims[0].unit = 'kg 🧪';
+      writeFileSync(input, JSON.stringify(methodReportInput(verb, content)));
+      dropMethodReport = true;
+      const unknown = await invoke([
+        'report',
+        verb,
+        '--api-version',
+        '6',
+        '--input',
+        input,
+        '--state-dir',
+        join(cwd, `retained-unicode-${verb}`),
+        '--json',
+      ]);
+      assert.equal(unknown.code, 1, unknown.stdout);
+      const failure = JSON.parse(unknown.stderr).error;
+      assert.equal(failure.code, 'STUDY_TRANSPORT_UNKNOWN');
+      const file = failure.details.intentFile,
+        bytes = readFileSync(file);
+      assert.deepEqual(JSON.parse(bytes).request.content, content);
+      const recovered = await invoke(['request', 'recover', '--intent-file', file, '--json']);
+      assert.equal(recovered.code, 0, recovered.stderr);
+      assert.deepEqual(readFileSync(file), bytes);
+      const writes = requests.filter((r) => r.operation === `report.${verb}`);
+      assert.equal(writes.length, 2);
+      assert.deepEqual(writes[0], writes[1]);
+    }
+
+    for (const finalized of [false, true, 'method']) {
       // Fixture generation is test-only; the installed verifier below has no source/compiler import.
       const generator = spawnSync(
         process.execPath,
@@ -1039,7 +1306,7 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
           'tsx',
           '--input-type=module',
           '--eval',
-          `import { signedExportFixture, exportEnvironment } from ${JSON.stringify(new URL('./helpers/study-export-fixture.ts', import.meta.url).href)}; const f=await signedExportFixture(undefined,${finalized ? '{reviewed:true}' : 'undefined'}); process.stdout.write(JSON.stringify({bundleBase64:f.bytes.toString('base64'),anchors:f.anchors,expected:f.expected,env:exportEnvironment()}));`,
+          `import { signedExportFixture, signedMethodExportFixture, exportEnvironment } from ${JSON.stringify(new URL('./helpers/study-export-fixture.ts', import.meta.url).href)}; const f=await ${finalized === 'method' ? 'signedMethodExportFixture()' : `signedExportFixture(undefined,${finalized ? '{reviewed:true}' : 'undefined'})`}; process.stdout.write(JSON.stringify({bundleBase64:f.bytes.toString('base64'),anchors:f.anchors,expected:f.expected,env:exportEnvironment()}));`,
         ],
         {
           cwd: REPOSITORY_ROOT,
@@ -1056,6 +1323,7 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
       const verified = await invoke([
         'export',
         'verify',
+        ...(finalized === 'method' ? ['--api-version', '6'] : []),
         '--bundle',
         join(cwd, 'bundle.json'),
         '--anchors',
@@ -1317,6 +1585,15 @@ function assertPackedFiles(fileMetadata) {
     'assets/study-contract/v4/manifest.json',
     'assets/study-contract/v4/LICENSE.zod',
     'assets/study-contract/v4/LICENSE.renderer',
+    'assets/study-contract/v6/index.mjs',
+    'assets/study-contract/v6/index.d.ts',
+    'assets/study-contract/v6/manifest.json',
+    'assets/study-contract/v6/request.schema.json',
+    'assets/study-contract/v6/response.schema.json',
+    'assets/study-renderer/v3/study-report-renderer-3.0.0.tgz',
+    'assets/study-renderer/v3/package/manifest.json',
+    'assets/study-renderer/v3/package/index.js',
+    'assets/study-renderer/v3/package/methodProtocol.mjs',
     'assets/study-contract/v5/index.mjs',
     'assets/study-contract/v5/index.d.ts',
     'assets/study-contract/v5/manifest.json',

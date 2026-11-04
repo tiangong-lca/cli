@@ -6,7 +6,8 @@ export const STUDY_API_SCHEMA = 'lca.study-api.v2' as const;
 export const STUDY_REPORT_SCHEMA = 'lca.study-api.v3' as const;
 export const STUDY_REVIEW_SCHEMA = 'lca.study-api.v4' as const;
 export const STUDY_ADVANCED_SCHEMA = 'lca.study-api.v5' as const;
-export type StudyApiVersion = 'v2' | 'v3' | 'v4' | 'v5';
+export const STUDY_METHOD_SCHEMA = 'lca.study-api.v6' as const;
+export type StudyApiVersion = 'v2' | 'v3' | 'v4' | 'v5' | 'v6';
 export const STUDY_REQUEST_LIMIT = 256 * 1024;
 export const STUDY_RESPONSE_LIMIT = 6 * 1024 * 1024;
 export const STUDY_ARTIFACT_LIMIT = 4 * 1024 * 1024;
@@ -16,7 +17,8 @@ export type StudyRequest = StudyObject & {
     | typeof STUDY_API_SCHEMA
     | typeof STUDY_REPORT_SCHEMA
     | typeof STUDY_REVIEW_SCHEMA
-    | typeof STUDY_ADVANCED_SCHEMA;
+    | typeof STUDY_ADVANCED_SCHEMA
+    | typeof STUDY_METHOD_SCHEMA;
   requestId: string;
   operation: string;
 };
@@ -100,12 +102,36 @@ export const STUDY_ADVANCED_COMMANDS: Readonly<Record<string, string>> = Object.
   'task cancel': 'task.cancel',
   'artifact download': 'artifact.read',
 });
+export const STUDY_METHOD_COMMANDS: Readonly<Record<string, string>> = Object.freeze({
+  ...Object.fromEntries(
+    Object.entries(STUDY_REPORT_COMMANDS).filter(([name]) => !name.startsWith('analysis ')),
+  ),
+  ...Object.fromEntries(
+    Object.entries(STUDY_REVIEW_COMMANDS).filter(([name]) => name !== 'member set'),
+  ),
+  'method evidence register': 'method.evidence.create',
+  'method evidence get': 'method.evidence.read',
+  'method assessment request': 'method.assessment.request',
+  'method assessment get': 'method.assessment.read',
+  'method assessment task get': 'task.read',
+  'method assessment task wait': 'task.read',
+  'method assessment task cancel': 'task.cancel',
+  'export download': 'export.download',
+  'share download': 'share.download',
+  capabilities: 'capability.read',
+  resources: 'study.resources.list',
+  'task get': 'task.read',
+  'task wait': 'task.read',
+  'task cancel': 'task.cancel',
+  'artifact download': 'artifact.read',
+});
 export const STUDY_COMMANDS = Object.freeze({ ...STUDY_CORE_COMMANDS, ...STUDY_REPORT_COMMANDS });
 export function studyApiVersion(schema: unknown): StudyApiVersion {
   if (schema === STUDY_API_SCHEMA) return 'v2';
   if (schema === STUDY_REPORT_SCHEMA) return 'v3';
   if (schema === STUDY_REVIEW_SCHEMA) return 'v4';
   if (schema === STUDY_ADVANCED_SCHEMA) return 'v5';
+  if (schema === STUDY_METHOD_SCHEMA) return 'v6';
   return studyFailure('UNSUPPORTED_SCHEMA');
 }
 
@@ -207,14 +233,16 @@ export function prepareStudyRequest(
       ? Object.values(STUDY_CORE_COMMANDS)
       : version === 'v3'
         ? [...Object.values(STUDY_REPORT_COMMANDS), 'capability.read', 'artifact.read']
-        : version === 'v5'
-          ? Object.values(STUDY_ADVANCED_COMMANDS)
-          : [
-              ...Object.values(STUDY_REVIEW_COMMANDS),
-              'capability.read',
-              'export.download',
-              'share.download',
-            ];
+        : version === 'v6'
+          ? Object.values(STUDY_METHOD_COMMANDS)
+          : version === 'v5'
+            ? Object.values(STUDY_ADVANCED_COMMANDS)
+            : [
+                ...Object.values(STUDY_REVIEW_COMMANDS),
+                'capability.read',
+                'export.download',
+                'share.download',
+              ];
   if (!operations.includes(operation) || !studyObject(value)) studyFailure('STUDY_REQUEST_INVALID');
   assertStudySafe(value);
   if (value.schemaVersion !== undefined && value.schemaVersion !== schema)
@@ -254,6 +282,7 @@ export function parseStudyResponse(
   } catch {
     return studyFailure('STUDY_RESPONSE_INVALID');
   }
+  if (parsed.requestId !== request.requestId) studyFailure('STUDY_RESPONSE_SELECTION');
   if (!parsed.ok) studyFailure(parsed.code, { httpStatus: status, requestId: request.requestId });
   if (status < 200 || status >= 300) studyFailure('STUDY_RESPONSE_INVALID');
   try {

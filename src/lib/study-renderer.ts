@@ -18,8 +18,22 @@ export const STUDY_V2_RENDERER_MANIFEST_SHA256 =
   'b0c9bdd08a25b9a4ac22acf135f013602970049851725a9e612fe9e23ef6a50b';
 export const STUDY_V2_RENDERER_CANDIDATE_ENV =
   'TIANGONG_LCA_STUDY_ADVANCED_RENDERER_CANDIDATE_SHA256';
-export type StudyRendererVersion = 'v1' | 'v2';
+export const STUDY_V3_RENDERER_ARCHIVE_SHA256 =
+  '3f195573d530d0342815114fb3e14a4856930270df2874883b364f1ea5bc9c58';
+export const STUDY_V3_RENDERER_MANIFEST_SHA256 =
+  '954c75dc016aa0ba833eb49643631e17eec09cf4bf2f74e50df17f32534614a3';
+export const STUDY_V3_RENDERER_CANDIDATE_ENV =
+  'TIANGONG_LCA_STUDY_METHOD_RENDERER_CANDIDATE_SHA256';
+export type StudyRendererVersion = 'v1' | 'v2' | 'v3';
 const RENDERERS = {
+  v3: {
+    archive: 'study-report-renderer-3.0.0.tgz',
+    version: '3.0.0',
+    view: 'lca.study-report-view.v3',
+    archiveSha256: STUDY_V3_RENDERER_ARCHIVE_SHA256,
+    manifestSha256: STUDY_V3_RENDERER_MANIFEST_SHA256,
+    candidate: STUDY_V3_RENDERER_CANDIDATE_ENV,
+  },
   v1: {
     archive: 'study-report-renderer-1.0.0.tgz',
     version: '1.0.0',
@@ -95,7 +109,7 @@ export function verifyStudyRenderer(
     if (bytes.length !== file.byteSize || studyDigest(bytes) !== file.sha256)
       studyFailure('STUDY_RENDERER_INTEGRITY');
     names.push(file.path);
-    if (file.path.endsWith('.js')) sources.set(file.path, bytes);
+    if (/\.m?js$/u.test(file.path)) sources.set(file.path, bytes);
   }
   if (
     !['index.js', 'package.json', 'render.js', 'viewModel.js', 'LICENSE'].every((name) =>
@@ -170,14 +184,14 @@ export async function instantiateStudyRenderer(
   const select = (url: string): Buffer => {
     const name = url.slice(prefix.length);
     const bytes = snapshot.get(name);
-    if (!bytes || !/^[A-Za-z][A-Za-z0-9_.-]*\.js$/u.test(name))
+    if (!bytes || !/^[A-Za-z][A-Za-z0-9_.-]*\.m?js$/u.test(name))
       studyFailure('STUDY_RENDERER_INVALID');
     return bytes;
   };
   const hooks = registerHooks({
     resolve(specifier, context, nextResolve) {
       if (context.parentURL?.startsWith(prefix)) {
-        if (!/^\.\/[A-Za-z][A-Za-z0-9_.-]*\.js$/u.test(specifier))
+        if (!/^\.\/[A-Za-z][A-Za-z0-9_.-]*\.m?js$/u.test(specifier))
           studyFailure('STUDY_RENDERER_INVALID');
         const url = new URL(specifier, context.parentURL).href;
         select(url);

@@ -39,9 +39,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-04
-lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
-lastReviewedNote: 'CLI #460: reviewed explicit contained V5/renderer2 consumption, preserved older journals and artifacts, owner-controlled rollback reads and offline/online family bindings. Package version, dependencies, publication authority and actual runtime qualification remain separate.'
+lastReviewedAt: 2026-11-05
+lastReviewedCommit: 121715acb68b26e5e1ac512d59a9911fe950f244
+lastReviewedNote: 'CLI #462: reviewed exact corrected V6 facade, owner-only authored Unicode rejection before I/O/intent, valid Unicode recovery and unchanged33operations. Corrected V2, older families/renderers, dependencies and publication remain unchanged; final cohort/Main holds persist.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -69,7 +69,7 @@ Review note, 2026-09-24: CLI #368 synchronizes the 0.2.3 Process reference schem
 
 ## Specialized contracts
 
-Study commands follow `docs/agents/study-cli-contract.md`. Edge owns the contained portable wire codec; CLI owns private pre-dispatch intent and actor/client/destination recovery binding. A worktree codec is task-local development evidence only, never a Production/release trust claim. Study installation grants no remote capability. P2 analysis/report/export selects v3 independently; P3 review/finalization/named sharing selects v4, retaining historical signatures and exact-key recovery. Member/export upgrades require an explicit API selection. Detached signature/view binding uses the same fixed owner renderer; bundled artifacts pin clean committed Edge/Platform source. Future worktree candidates remain loopback development-only, and source provenance does not grant hosted activation, permission or public-release trust.
+Study commands follow `docs/agents/study-cli-contract.md`. Edge owns the contained portable wire codec; CLI owns private pre-dispatch intent and actor/client/destination recovery binding. A worktree codec is task-local development evidence only, never a Production/release trust claim. Study installation grants no remote capability. CLI #462 deliberately adopts the existing qualified Edge #556 V2 archive response correction while retaining V2 wire 2.0.0, valid historical journals and unchanged V3–V5/renderer1–2 bytes; rejected archive successes remain unknown with explicit original-intent recovery. Explicit V6 method evidence/assessment/report/review/share consumes the contained owner interface and export4/view3/renderer3; owner hashes and exact immutable journals remain separate from local scientific evaluation, professional approval and actual runtime qualification. P2 analysis/report/export selects v3 independently; P3 review/finalization/named sharing selects v4, retaining historical signatures and exact-key recovery. Member/export upgrades require an explicit API selection. Detached signature/view binding uses the same fixed owner renderer; bundled artifacts pin clean committed Edge/Platform source. Future worktree candidates remain loopback development-only, and source provenance does not grant hosted activation, permission or public-release trust.
 
 Private live-account testing is maintainer-only and requires explicit account authorization. Follow [the live case guide](docs/agents/live-case-testing.md); public CLI authentication remains OAuth-only and personal credentials never enter public CI.
 
