@@ -582,3 +582,39 @@ test('state-aware process write rejects unexpected RPC payloads even on HTTP 200
     },
   );
 });
+
+test('state-aware Process draft rechecks candidate languages after awaited row observation', async () => {
+  const payload = processTransportFixture();
+  const root = payload.processDataSet as Record<string, unknown>;
+  const info = (root.processInformation as Record<string, unknown>).dataSetInformation as Record<
+    string,
+    unknown
+  >;
+  info['common:generalComment'] = [{ '@xml:lang': 'en', '#text': 'Original' }];
+  const methods: string[] = [];
+  await assert.rejects(
+    syncStateAwareProcessRecord({
+      id: 'proc-draft',
+      version: '01.00.001',
+      payload,
+      env: buildSupabaseTestEnv({
+        TIANGONG_LCA_API_BASE_URL: 'https://example.supabase.co',
+        TIANGONG_LCA_ACCESS_TOKEN: 'key',
+      }),
+      fetchImpl: withSupabaseAuthBootstrap(async (_url, init) => {
+        methods.push(String(init?.method ?? 'GET'));
+        (info['common:generalComment'] as Record<string, unknown>[]).push({
+          '@xml:lang': 'en',
+          '#text': 'Additional',
+        });
+        return makeResponse({
+          ok: true,
+          status: 200,
+          body: '[{"id":"proc-draft","version":"01.00.001","user_id":"user-1","state_code":0}]',
+        });
+      }),
+    }),
+    (error: unknown) => error instanceof CliError && error.code === 'DATASET_DUPLICATE_LANGUAGE',
+  );
+  assert.deepEqual(methods, ['GET']);
+});

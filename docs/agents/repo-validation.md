@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-04
-lastReviewedCommit: 0d40fff1c0f82b7ab2c040a58f0253e8dbc7bf29
-lastReviewedNote: 'CLI #454: explicit filesystem-error and platform/stat fixtures cover preflight failure, private intent policy and non-directory refusal on every host. Runtime bytes and the 947f944 business-E2E archive remain unchanged; native Windows exact coverage requires fresh CI.'
+lastReviewedCommit: 29219a94fd53b58ce63e94284c6bdd61350bdd2c
+lastReviewedNote: 'CLI #292: reviewed anonymous malformed/duplicate-language, no-dispatch and recovery regressions plus existing exact-runtime/full-coverage and original-workflow qualification requirements.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -75,6 +75,8 @@ For protected-branch parity, the authoritative full gate is:
 ```bash
 pnpm prepush:gate
 ```
+
+Language-uniqueness changes require the actual create/save terminal seam, Model parent and child bundle candidates, maintenance pending/consumed-plan boundaries, protected alias v1/v2 and sealed flow-identity desired artifacts, and public local validation. Prove duplicate languages fail before dispatch without changing desired or before-image bytes; a valid merged repair may retain a duplicate historical before image. Cover extra attributes, language variants, opaque extensions, classification levels, independent repeated entities, failing SDK schemas and an awaited caller gate changing the candidate. The localized-role boundary regression must compare the positive multilingual field inventory and every declared owner path with the installed canonical schemas, including the `name.flowProperties` versus root `flowProperties` collision. Use complete SDK-valid Process controls with distinct referenced UUIDs and independent exchanges retaining outer language metadata. References, exchanges, units, reviews, variables and process instances must keep separate outer identities while repeated languages in their actual text children still fail with exact paths; adding reference attributes to real comments must never exempt them. Cover singleton and array references and zero-dispatch rejection at the terminal writer. Build-plan tests must retain all prose in source order, reject names/attributed conflicts and leave SDK length checks intact. Use anonymous fixtures; offline no-dispatch tests do not attest live writes.
 
 Process ownership-version changes require focused `dataset-command`, `process-save-draft`, and `publish` tests in addition to the baseline. Prove exact `modelId`/`modelVersion` forwarding, omission-compatible legacy fallback, rejection of `modelVersion` without `modelId`, precedence among canonical source metadata forms, and absence of any latest-Model lookup. The final proof remains the exact-100% `pnpm prepush:gate`.
 

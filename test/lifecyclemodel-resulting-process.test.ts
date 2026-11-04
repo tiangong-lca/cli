@@ -791,7 +791,15 @@ test('runLifecyclemodelBuildResultingProcess builds and aggregates a resulting p
       edge_count: 3,
     });
     assert.equal((technology.referenceToIncludedProcesses as JsonRecord[]).length, 3);
-    assert.equal((dataSetInformation['common:generalComment'] as JsonRecord[]).length, 3);
+    const comments = dataSetInformation['common:generalComment'] as JsonRecord[];
+    assert.deepEqual(
+      comments.map((entry) => entry['@xml:lang']),
+      ['en', 'zh'],
+    );
+    assert.match(
+      String(comments[0]['#text']),
+      /^Pack assembly comment\n\nLocal primary resulting process/u,
+    );
     assert.equal(
       ((processDataSet.modellingAndValidation as JsonRecord).LCIMethodAndAllocation as JsonRecord)
         .typeOfDataSet,

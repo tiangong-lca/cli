@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: af7668e8e24a51cd8e14ff4f28bb5d195f963654
-lastReviewedNote: 'CLI #454: distinct explicit-loopback doctor uses bounded live actor/client verification and reports current validated callback only. Canonical identity-receipt/whoami and Production/default doctor remain unchanged; no historical callback or account grant claim.'
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: 29219a94fd53b58ce63e94284c6bdd61350bdd2c
+lastReviewedNote: 'CLI #292: reviewed source-order paragraph assembly and actionable field-local language failures in existing command families; candidate bytes and sealed execution evidence remain immutable.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -31,6 +31,8 @@ related:
   - ./agents/repo-architecture.md
   - ./agents/repo-validation.md
 ---
+
+多语言字段的唯一性由 `dataset-localized-text.ts` 统一判定：同一字段的语言标签重复时返回精确路径和 `duplicate_language_entry`，末端写入拒绝码为 `DATASET_DUPLICATE_LANGUAGE`。校验直接读取候选原值，额外属性不能绕过检查；它不改写文字、候选 SHA、执行合同或历史前像。分类层级、独立 exchange/reference 和不透明 `common:other` 扩展不合并。Model bundle 只检查 parent 与各子项 `jsonOrdered`；维护 apply 在认证、approval、attempt 前检查仍需写入的 desired，已完成项仍走只读恢复。生成说明段落可按源顺序双换行合并，名称及属性冲突保留阻断，超长内容仍由锁定 SDK 字段规则判定。
 
 Review note, 2026-09-24: CLI #368 把 Process 非 Flow 定量参考纳入正式 SDK 0.4.1 校验：`Other parameter` 要求双语计量文字，`Reference flow(s)` 仍要求 Flow ID。数据 #33 只读案例保留独立缺陷提示，不视为入库许可；CLI 版本与认证边界不变。
 

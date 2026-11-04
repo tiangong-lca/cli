@@ -1227,6 +1227,56 @@ test('status-only core performs no preflight, gate, admission, or mutation prech
   }
 });
 
+test('protected alias language admission stops before a seal or remote work and leaves status recovery available', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tg-protected-language-'));
+  try {
+    const fixture = preparedFixture(root, true);
+    fixture.prepared.aliasPlanRequest = {
+      batches: [
+        {
+          actions: [
+            {
+              desired_json_ordered: {
+                comment: [
+                  { '@xml:lang': 'en', '#text': 'First.' },
+                  { '@xml:lang': 'en', '#text': 'Second.' },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const bytes = JSON.stringify(fixture.prepared.aliasPlanRequest);
+    const counters: Record<string, number> = {};
+    await assert.rejects(
+      runInternals.runPreparedProtectedExecution(
+        fixture.command,
+        fixture.prepared,
+        runtimeDependencies({
+          counters,
+          rows: fixture.rows,
+          completeness: completeness(fixture.rows),
+        }),
+      ),
+      { code: 'DATASET_DUPLICATE_LANGUAGE' },
+    );
+    assert.deepEqual(counters, {});
+    assert.equal(existsSync(fixture.prepared.artifacts.execution_seal), false);
+    assert.equal(existsSync(fixture.prepared.artifacts.submission_attempt), false);
+    assert.equal(JSON.stringify(fixture.prepared.aliasPlanRequest), bytes);
+    const recovered = await runInternals.runPreparedProtectedExecution(
+      { ...fixture.command, commit: false, statusOnly: true },
+      fixture.prepared,
+      runtimeDependencies({ counters }),
+    );
+    assert.equal(recovered.status, 'pending');
+    assert.deepEqual(counters, { read: 1 });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('same-directory pending to terminal recovery uses per-attempt readbacks and an idempotent canonical terminal', async () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'tg-protected-recovery-artifacts-'));
   try {

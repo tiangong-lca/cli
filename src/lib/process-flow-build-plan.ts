@@ -1,3 +1,7 @@
+import {
+  collectLocalizedTextUniquenessIssues,
+  mergeLocalizedTextParagraphs,
+} from './dataset-localized-text.js';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
@@ -309,19 +313,57 @@ function localizedText(text: string, lang = 'en'): JsonObject {
   return { '#text': text, '@xml:lang': lang };
 }
 
-function multiLangFromValue(value: unknown, fallback: string, fallbackLang = 'en'): JsonObject[] {
+/** Preserve explicit localized values before any shorthand conversion or fallback. */
+function localizedObjectFromValue(value: JsonObject, fallbackLang: string): JsonObject | null {
+  if ('@xml:lang' in value || '#text' in value) {
+    // A bare text object is an established language-default shorthand. Other explicit canonical
+    // values, including missing/invalid text and additional attributes, reach validation intact.
+    if (Object.keys(value).length === 1 && typeof value['#text'] === 'string') {
+      return { ...value, '@xml:lang': fallbackLang };
+    }
+    return { ...value };
+  }
+  const text = textToken(value.text ?? value.value);
+  if (
+    text &&
+    !('text' in value && 'value' in value) &&
+    (!('lang' in value) || (typeof value.lang === 'string' && Boolean(textToken(value.lang))))
+  ) {
+    const attributes = Object.fromEntries(
+      Object.entries(value).filter(([key]) => !['text', 'value', 'lang'].includes(key)),
+    );
+    return {
+      ...attributes,
+      ...localizedText(text, textToken(value.lang) ?? fallbackLang),
+    };
+  }
+  return Object.keys(value).length > 0 ? { ...value } : null;
+}
+
+function multiLangFromValue(
+  value: unknown,
+  fallback: string,
+  fallbackLang = 'en',
+  sourcePath = '<localized-field>',
+): JsonObject[] {
   if (Array.isArray(value)) {
     const normalized = value
-      .map((entry) => {
-        if (isRecord(entry)) {
-          const text = textToken(entry['#text'] ?? entry.text ?? entry.value);
-          if (!text) {
-            return null;
-          }
-          return localizedText(text, textToken(entry['@xml:lang'] ?? entry.lang) ?? fallbackLang);
-        }
+      .map((entry, index) => {
+        if (isRecord(entry)) return localizedObjectFromValue(entry, fallbackLang);
         const text = textToken(entry);
-        return text ? localizedText(text, fallbackLang) : null;
+        if (text) return localizedText(text, fallbackLang);
+        if (
+          entry === null ||
+          entry === undefined ||
+          typeof entry === 'string' ||
+          (Array.isArray(entry) && entry.length === 0)
+        )
+          return null;
+        throw new CliError(`Unsupported localized value at ${sourcePath}.${index}.`, {
+          code: 'BUILD_PLAN_LOCALIZED_VALUE_INVALID',
+          exitCode: 2,
+          details: { path: `${sourcePath}.${index}` },
+        });
       })
       .filter((entry): entry is JsonObject => Boolean(entry));
     if (normalized.length) {
@@ -329,20 +371,41 @@ function multiLangFromValue(value: unknown, fallback: string, fallbackLang = 'en
     }
   }
   if (isRecord(value)) {
-    const text = textToken(value['#text'] ?? value.text ?? value.value);
-    if (text) {
-      return [localizedText(text, textToken(value['@xml:lang'] ?? value.lang) ?? fallbackLang)];
+    if (
+      Object.keys(value).every((key) => key === 'en' || key === 'zh') &&
+      Object.values(value).every(
+        (text) =>
+          text === null ||
+          typeof text === 'string' ||
+          (typeof text === 'number' && Number.isFinite(text)),
+      )
+    ) {
+      const en = textToken(value.en);
+      const zh = textToken(value.zh);
+      const rows = [
+        en ? localizedText(en, 'en') : null,
+        zh ? localizedText(zh, 'zh') : null,
+      ].filter((entry): entry is JsonObject => Boolean(entry));
+      if (rows.length) return rows;
     }
-    const en = textToken(value.en);
-    const zh = textToken(value.zh);
-    const rows = [en ? localizedText(en, 'en') : null, zh ? localizedText(zh, 'zh') : null].filter(
-      (entry): entry is JsonObject => Boolean(entry),
-    );
-    if (rows.length) {
-      return rows;
-    }
+    const normalized = localizedObjectFromValue(value, fallbackLang);
+    if (normalized) return [normalized];
   }
   const token = textToken(value);
+  if (
+    token === null &&
+    value !== null &&
+    value !== undefined &&
+    !isRecord(value) &&
+    !Array.isArray(value) &&
+    typeof value !== 'string'
+  ) {
+    throw new CliError(`Unsupported localized value at ${sourcePath}.`, {
+      code: 'BUILD_PLAN_LOCALIZED_VALUE_INVALID',
+      exitCode: 2,
+      details: { path: sourcePath },
+    });
+  }
   return [localizedText(token ?? fallback, fallbackLang)];
 }
 
@@ -350,10 +413,15 @@ function firstMultiLang(plan: JsonObject, paths: string[], fallback: string): Js
   for (const candidate of paths) {
     const value = valueAtPath(plan, candidate);
     if (value !== undefined && value !== null) {
-      return multiLangFromValue(value, fallback);
+      return multiLangFromValue(value, fallback, 'en', candidate);
     }
   }
   return multiLangFromValue(undefined, fallback);
+}
+
+/** Generated prose may combine paragraphs; metadata conflicts remain visible to admission. */
+function firstProseMultiLang(plan: JsonObject, paths: string[], fallback: string): JsonObject[] {
+  return mergeLocalizedTextParagraphs(firstMultiLang(plan, paths, fallback));
 }
 
 const INTENDED_APPLICATIONS_PATH = 'administrative_information.intended_applications';
@@ -363,9 +431,7 @@ const INTENDED_APPLICATIONS_PATHS = [
 ];
 
 function plannedIntendedApplications(plan: JsonObject): JsonObject[] {
-  return firstMultiLang(plan, INTENDED_APPLICATIONS_PATHS, '').filter((entry) =>
-    Boolean(textToken(entry['#text'])),
-  );
+  return firstProseMultiLang(plan, INTENDED_APPLICATIONS_PATHS, '');
 }
 
 function globalReference(options: {
@@ -684,21 +750,26 @@ function referenceFlowRef(plan: JsonObject): JsonObject {
 }
 
 function buildAnnualSupply(plan: JsonObject): unknown {
-  const explicit = firstValue(plan, [
+  const sourcePaths = [
     'required_fields.annualSupplyOrProductionVolume',
     'requiredFields.annualSupplyOrProductionVolume',
     'authoring.required_fields.annualSupplyOrProductionVolume',
     'authoring.requiredFields.annualSupplyOrProductionVolume',
     'modelling_and_validation.annualSupplyOrProductionVolume',
     'modellingAndValidation.annualSupplyOrProductionVolume',
-  ]);
+  ];
+  const sourcePath = sourcePaths.find((candidate) => {
+    const value = valueAtPath(plan, candidate);
+    return value !== undefined && value !== null;
+  });
   // No annual-volume evidence: the supported unknown representation. A quantitative reference
   // amount and a reference/default unit are never annual-volume evidence, so no quantity is
   // synthesized from them. An explicit array is passed through exactly as declared, including
   // the empty array, so a malformed shape reaches the SDK gate instead of being repaired here.
-  if (explicit === undefined) return [];
+  if (sourcePath === undefined) return [];
+  const explicit = valueAtPath(plan, sourcePath);
   if (Array.isArray(explicit)) return explicit;
-  return multiLangFromValue(explicit, String(explicit));
+  return multiLangFromValue(explicit, String(explicit), 'en', sourcePath);
 }
 
 function normalizeExchangeDirection(value: string | null): 'Input' | 'Output' {
@@ -837,7 +908,7 @@ function buildCanonicalFlowPayload(plan: JsonObject, inputPath: string): JsonObj
           ...(firstToken(plan, ['target.cas_number', 'target.CASNumber'])
             ? { CASNumber: firstToken(plan, ['target.cas_number', 'target.CASNumber']) }
             : {}),
-          'common:generalComment': firstMultiLang(
+          'common:generalComment': firstProseMultiLang(
             plan,
             ['target.general_comment', 'target.generalComment', 'evidence_manifest.summary'],
             `Flow materialized from build plan ${inputPath}.`,
@@ -939,7 +1010,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
             ),
           },
           classificationInformation: processClassificationInformation(plan),
-          'common:generalComment': firstMultiLang(
+          'common:generalComment': firstProseMultiLang(
             plan,
             ['target.general_comment', 'target.generalComment', 'evidence_manifest.summary'],
             `Process materialized from build plan ${inputPath}.`,
@@ -957,7 +1028,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
               'time.reference_year',
             ]),
           ),
-          'common:timeRepresentativenessDescription': firstMultiLang(
+          'common:timeRepresentativenessDescription': firstProseMultiLang(
             plan,
             ['time.description', 'time.timeRepresentativenessDescription'],
             'Reference year documented in build plan evidence.',
@@ -966,7 +1037,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
         geography: {
           locationOfOperationSupplyOrProduction: {
             '@location': location,
-            descriptionOfRestrictions: firstMultiLang(
+            descriptionOfRestrictions: firstProseMultiLang(
               plan,
               ['target.geography_description', 'target.geographyDescription'],
               `Operation location: ${location}.`,
@@ -974,7 +1045,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
           },
         },
         technology: {
-          technologyDescriptionAndIncludedProcesses: firstMultiLang(
+          technologyDescriptionAndIncludedProcesses: firstProseMultiLang(
             plan,
             ['technology.description', 'technology.technologyDescriptionAndIncludedProcesses'],
             firstToken(plan, ['target.technology_route', 'target.technologyRoute']) ??
@@ -997,7 +1068,7 @@ function buildCanonicalProcessPayload(plan: JsonObject, inputPath: string): Json
             ]) ?? 'Attributional',
         },
         dataSourcesTreatmentAndRepresentativeness: {
-          dataCutOffAndCompletenessPrinciples: firstMultiLang(
+          dataCutOffAndCompletenessPrinciples: firstProseMultiLang(
             plan,
             ['modelling_and_validation.data_cutoff', 'modellingAndValidation.dataCutoff'],
             'Cut-off and completeness principles are documented in the build plan evidence.',
@@ -1358,7 +1429,7 @@ function evaluateBuildPlan(plan: JsonObject, kind: BuildPlanKind): Evaluation {
   for (const spec of required) {
     const hasValue =
       spec.path === INTENDED_APPLICATIONS_PATH
-        ? plannedIntendedApplications(plan).length > 0
+        ? plannedIntendedApplications(plan).some((entry) => Boolean(textToken(entry['#text'])))
         : pathIsSatisfied(plan, spec.aliases);
     if (hasValue) {
       satisfied.push(spec.path);
@@ -1478,9 +1549,10 @@ function validateMaterializedSchema(
 
   const { validator, schema, createEntity } = schemaForKind(kind, schemas);
   const payload = unwrapDatasetPayload(artifact);
-  const outcome = validateSchemaWithDeepFallback(schema, payload, createEntity);
+  const outcome = validateSchemaWithDeepFallback(schema, structuredClone(payload), createEntity);
   const issues = [
     ...outcome.issues.map(normalizeSchemaIssue),
+    ...collectLocalizedTextUniquenessIssues(payload),
     ...collectClassificationIssues(
       payload,
       kind === 'process' ? 'processes' : 'flows',

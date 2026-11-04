@@ -1,3 +1,4 @@
+import { collectLocalizedTextUniquenessIssues } from './dataset-localized-text.js';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -523,17 +524,22 @@ function collectLocalizedTextIssues(
   category: string,
   filePath: string,
 ): ValidationIssue[] {
-  return validateLocalizedTextLanguageConstraints(jsonItem).map((message) => {
-    return makeIssue(
-      category,
-      filePath,
-      extractLocalizedTextLocation(message),
-      message,
-      message.includes('is not a TIDAS Languages enumeration value')
-        ? 'localized_text_language_not_in_tidas_enum'
-        : 'localized_text_language_error',
-    );
-  });
+  return [
+    ...validateLocalizedTextLanguageConstraints(jsonItem).map((message) => {
+      return makeIssue(
+        category,
+        filePath,
+        extractLocalizedTextLocation(message),
+        message,
+        message.includes('is not a TIDAS Languages enumeration value')
+          ? 'localized_text_language_not_in_tidas_enum'
+          : 'localized_text_language_error',
+      );
+    }),
+    ...collectLocalizedTextUniquenessIssues(jsonItem).map((issue) =>
+      makeIssue(category, filePath, issue.path, issue.message, issue.code),
+    ),
+  ];
 }
 
 function collectFlowSchemaGapIssues(
@@ -693,7 +699,7 @@ function collectSchemaIssues(
   createEntity: SdkValidationFactory | null = null,
 ): ValidationIssue[] {
   try {
-    const result = validateSchemaWithDeepFallback(schema, jsonItem, createEntity);
+    const result = validateSchemaWithDeepFallback(schema, structuredClone(jsonItem), createEntity);
     if (result.success) {
       return [];
     }

@@ -1,3 +1,4 @@
+import { assertLocalizedTextLanguageUniqueness } from './dataset-localized-text.js';
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -212,6 +213,55 @@ function loadProcessTemplates(planPath: string, plan: FlowIdentityPlan): Process
     }
     return value as unknown as ProcessTemplate;
   });
+}
+
+/** Read only the sealed prospective payload; snapshots and completed rows are not admission input. */
+function assertDesiredProcessLanguages(prepared: PreparedRun, ordinal: number): void {
+  const process = prepared.plan.processes[ordinal - 1]!;
+  const filePath = path.join(
+    path.dirname(prepared.planPath),
+    prepared.plan.artifacts.desired_payload_dir,
+    `${processStem(process.ordinal, process.id, process.version)}.json`,
+  );
+  const desired = readCanonicalJson(filePath, `Flow identity desired process ${ordinal}`);
+  if (!isJsonObject(desired) || sha256Json(desired) !== process.desired_payload_sha256) {
+    fail(
+      `Desired process ${ordinal} does not bind the sealed manifest.`,
+      'DATASET_FLOW_IDENTITY_DESIRED_PAYLOAD_INVALID',
+    );
+  }
+  assertLocalizedTextLanguageUniqueness(desired);
+}
+
+function assertFreshDesiredProcessLanguages(
+  command: RunFlowIdentityOptions,
+  prepared: PreparedRun,
+): void {
+  if (!command.commit) return;
+  if (prepared.recovery) {
+    if (existsSync(path.join(prepared.outDir, 'scope-recovery-attempt.json'))) return;
+    const baseline = prepared.recovery.recoveryFreeze.baseline;
+    if (!baseline.primary_complete) {
+      for (const process of prepared.plan.processes) {
+        if (process.ordinal >= baseline.next_ordinal) {
+          assertDesiredProcessLanguages(prepared, process.ordinal);
+        }
+      }
+    }
+    return;
+  }
+  if (
+    [
+      'scope-preflight-attempt.json',
+      'scope-preflight-proof.json',
+      'scope-lookup-proof.json',
+      'scope-preflight-domain-rejection.json',
+    ].some((name) => existsSync(path.join(prepared.outDir, name)))
+  )
+    return;
+  for (const process of prepared.plan.processes) {
+    assertDesiredProcessLanguages(prepared, process.ordinal);
+  }
 }
 
 function readRecoveryInputScope(options: {
@@ -936,6 +986,7 @@ async function executeRun(
 ): Promise<FlowIdentityRunReport> {
   const prepared = preparedInput ?? prepareRun(command);
   const mode = command.commit ? 'commit' : 'status_only';
+  assertFreshDesiredProcessLanguages(command, prepared);
   const context = await dependencies.resolveContext({
     env: command.env,
     fetchImpl: command.fetchImpl,
@@ -1212,6 +1263,7 @@ async function executeRun(
         now: dependencies.now(),
       });
     }
+    assertDesiredProcessLanguages(prepared, ordinal);
     writePrivateImmutableJson(markerPath, {
       schema_version: 'dataset-flow-identity-process-attempt.v2',
       generated_at_utc: dependencies.now().toISOString(),
@@ -1803,6 +1855,8 @@ export async function runFlowIdentity(
 
 export const __testInternals = {
   assertContext,
+  assertDesiredProcessLanguages,
+  assertFreshDesiredProcessLanguages,
   completedRunStatus,
   errorDetails,
   executeRun,

@@ -1481,6 +1481,191 @@ function stripMaintenanceContentRange(fetchImpl: FetchLike): FetchLike {
   };
 }
 
+function withDuplicateComment(payload: JsonObject): JsonObject {
+  const result = structuredClone(payload);
+  const root = result.processDataSet as JsonObject;
+  const information = root.processInformation as JsonObject;
+  const data = information.dataSetInformation as JsonObject;
+  data['common:generalComment'] = [
+    { '@xml:lang': 'en', '#text': 'Original scope paragraph.' },
+    { '@xml:lang': 'en', '#text': 'Separate limitation paragraph.', '@source': 'legacy' },
+  ];
+  return result;
+}
+
+test('maintenance language admission blocks new plans without rewriting desired text', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-language-plan-'));
+  try {
+    const remote = new FakeMaintenanceRemote('language-plan');
+    seed(remote);
+    const files = buildScopeFiles({ root, remote });
+    const payload = withDuplicateComment(readJsonFile(files.desiredPath, 'fixture') as JsonObject);
+    const bytes = JSON.stringify(payload);
+    writeFileSync(files.desiredPath, bytes);
+    const plan = await runDatasetMaintenancePlan({
+      scopePath: files.scopePath,
+      operation: 'repair-references',
+      outDir: files.outDir,
+      env: remote.env,
+      fetchImpl: remote.fetch,
+    });
+    assert.equal(plan.status, 'blocked');
+    const issue = plan.blockers.find((entry) => entry.code === 'duplicate_language_entry');
+    assert.ok(issue);
+    assert.deepEqual(issue.details, {
+      path: 'processDataSet.processInformation.dataSetInformation.common:generalComment.1.@xml:lang',
+    });
+    assert.equal(readFileSync(files.desiredPath, 'utf8'), bytes);
+    assert.deepEqual(remote.rpcOrder, []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('maintenance language admission rejects historical ready plans before any request or attempt', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-language-apply-'));
+  try {
+    const { remote, files, plan } = await prepareSeededScenario(root, 'language-apply');
+    const action = plan.actions.find((entry) => entry.action === 'save_draft')!;
+    const payloadPath = path.join(files.outDir, action.desired_payload!.path);
+    const payload = withDuplicateComment(readJsonFile(payloadPath, 'fixture') as JsonObject);
+    const bytes = JSON.stringify(payload);
+    writeFileSync(payloadPath, bytes);
+    action.desired_payload!.sha256 = sha256Json(payload);
+    plan.plan_sha256 = computePlanSha256(plan);
+    const planPath = path.join(files.outDir, 'maintenance-plan.json');
+    writeFileSync(planPath, JSON.stringify(plan));
+    let requests = 0;
+    await assert.rejects(
+      runDatasetMaintenanceApply({
+        planPath,
+        commit: true,
+        approvePlan: plan.plan_sha256,
+        confirm: remote.email,
+        env: remote.env,
+        fetchImpl: async (input, init) => {
+          requests += 1;
+          return remote.fetch(input, init);
+        },
+      }),
+      (error: unknown) => error instanceof CliError && error.code === 'DATASET_DUPLICATE_LANGUAGE',
+    );
+    assert.equal(requests, 0);
+    assert.deepEqual(remote.rpcOrder, []);
+    for (const name of ['approval-record.json', 'apply-progress.jsonl', 'commit-report.json']) {
+      assert.equal(existsSync(path.join(files.outDir, name)), false, name);
+    }
+    assert.equal(readFileSync(payloadPath, 'utf8'), bytes);
+    assert.deepEqual(readJsonFile(planPath, 'fixture'), plan);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('maintenance language admission guards the direct RPC seam without changing payload bytes', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-language-rpc-'));
+  try {
+    const { remote, context } = await prepareSeededScenario(root, 'language-rpc');
+    const payload = withDuplicateComment(
+      processPayload({ id: '22222222-2222-4222-8222-222222222222', version: '01.00.000' }),
+    );
+    const bytes = JSON.stringify(payload);
+    await assert.rejects(
+      saveDraftMaintenanceRow({
+        context,
+        table: 'processes',
+        id: '22222222-2222-4222-8222-222222222222',
+        version: '01.00.000',
+        payload,
+        modelId: null,
+        ruleVerification: null,
+        audit: {},
+      }),
+      (error: unknown) => error instanceof CliError && error.code === 'DATASET_DUPLICATE_LANGUAGE',
+    );
+    assert.deepEqual(remote.rpcOrder, []);
+    assert.equal(JSON.stringify(payload), bytes);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('maintenance language admission allows repair of a duplicate-language before image', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-language-repair-'));
+  try {
+    const remote = new FakeMaintenanceRemote('language-repair');
+    seed(remote);
+    const row = remote.rows.get('processes')![0]!;
+    row.json_ordered = withDuplicateComment(row.json_ordered!);
+    const original = JSON.stringify(row.json_ordered);
+    const files = buildScopeFiles({ root, remote });
+    const plan = await runDatasetMaintenancePlan({
+      scopePath: files.scopePath,
+      operation: 'repair-references',
+      outDir: files.outDir,
+      env: remote.env,
+      fetchImpl: remote.fetch,
+    });
+    assert.equal(plan.status, 'ready');
+    assert.equal(JSON.stringify(row.json_ordered), original);
+    const desired = readFileSync(files.desiredPath, 'utf8');
+    const result = await runDatasetMaintenanceApply({
+      planPath: path.join(files.outDir, 'maintenance-plan.json'),
+      commit: true,
+      approvePlan: plan.plan_sha256,
+      confirm: remote.email,
+      env: remote.env,
+      fetchImpl: remote.fetch,
+    });
+    assert.equal(result.status, 'completed');
+    assert.deepEqual(remote.rpcOrder, ['cmd_dataset_save_draft', 'cmd_dataset_delete']);
+    assert.deepEqual(remote.rows.get('processes')![0]!.json_ordered, JSON.parse(desired));
+    assert.equal(readFileSync(files.desiredPath, 'utf8'), desired);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('maintenance language admission preserves readback-only recovery of completed legacy saves', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-language-resume-'));
+  try {
+    const { remote, files, plan } = await prepareSeededScenario(root, 'language-resume');
+    const action = plan.actions.find((entry) => entry.action === 'save_draft')!;
+    const payloadPath = path.join(files.outDir, action.desired_payload!.path);
+    const payload = withDuplicateComment(readJsonFile(payloadPath, 'fixture') as JsonObject);
+    const bytes = JSON.stringify(payload);
+    writeFileSync(payloadPath, bytes);
+    action.desired_payload!.sha256 = sha256Json(payload);
+    plan.plan_sha256 = computePlanSha256(plan);
+    const planPath = path.join(files.outDir, 'maintenance-plan.json');
+    writeFileSync(planPath, JSON.stringify(plan));
+    // The historical save and delete already succeeded. Only observation is
+    // allowed; the current validation policy cannot cause them to be replayed.
+    remote.rows.get('processes')![0]!.json_ordered = structuredClone(payload);
+    remote.rows.set('sources', []);
+    for (const entry of plan.actions) {
+      appendStableJsonLine(
+        path.join(files.outDir, 'apply-progress.jsonl'),
+        successProgressEntry(plan, entry),
+      );
+    }
+    const result = await runDatasetMaintenanceApply({
+      planPath,
+      commit: true,
+      approvePlan: plan.plan_sha256,
+      confirm: remote.email,
+      env: remote.env,
+      fetchImpl: remote.fetch,
+    });
+    assert.equal(result.status, 'completed');
+    assert.equal(result.summary.resumed_successes, 2);
+    assert.deepEqual(remote.rpcOrder, []);
+    assert.equal(readFileSync(payloadPath, 'utf8'), bytes);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('row-level maintenance plans update-first closure, resumes failure, and verifies readback', async () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-row-'));
   const remote = new FakeMaintenanceRemote('row-maintenance-main');

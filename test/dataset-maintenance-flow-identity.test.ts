@@ -609,6 +609,10 @@ function materializeExecutionScenario(root: string) {
       template.process.version,
     );
     writePrivateImmutableJson(
+      path.join(root, input.plan.artifacts.desired_payload_dir, `${stem}.json`),
+      template.desired_payload,
+    );
+    writePrivateImmutableJson(
       path.join(root, input.plan.artifacts.process_request_dir, `${stem}.json`),
       {
         process: template.process,

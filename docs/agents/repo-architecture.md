@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-04
-lastReviewedCommit: 0d40fff1c0f82b7ab2c040a58f0253e8dbc7bf29
-lastReviewedNote: 'CLI #454: explicit filesystem-error and platform/stat fixtures cover preflight failure, private intent policy and non-directory refusal on every host. Runtime bytes and the 947f944 business-E2E archive remain unchanged; native Windows exact coverage requires fresh CI.'
+lastReviewedCommit: 29219a94fd53b58ce63e94284c6bdd61350bdd2c
+lastReviewedNote: 'CLI #292: reviewed one shared localized-text policy reused across native validation, generated prose and terminal dataset, model and maintenance writers; preimages and consumed attempts remain outside fresh admission.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -223,6 +223,10 @@ Dataset-local governance now uses the same CLI-native command layer:
 - `src/lib/lifecyclemodel-graph.ts`
 
 These modules keep validation, entity-level curation queue build/next/verify state, reference rewrites, RLS-scoped account and exact-row maintenance, save-draft preparation, graph extraction, and local artifact reports inside the CLI instead of routing through skills or MCP transports.
+
+`dataset-localized-text.ts` owns field-local language uniqueness admission. It reads raw candidate values, including additional attributes, and reports each repeated language at its exact array index without rewriting text, language tags or hashes. `LOCALIZED_TEXT_FIELD_NAMES` positively identifies the 53 multilingual scalar owners in the pinned canonical schemas; the sole name collision, `flowProperties`, is localized only directly under `name`. Attributes never assign a field role. All other arrays, including exchanges, units, reviews, variables, references and classification levels, retain independent entity metadata while traversal continues into their declared localized children. Opaque `common:other` extension content remains outside this policy. Unknown fields and untyped root arrays do not gain a localized role from a language attribute. The schema-inventory regression checks every declared property owner, localized name and role collision, so SDK changes cannot silently turn an entity container into a translated scalar field. The helper is shared by local validation, Process/Flow/Model validation, package QA, build-plan validation and terminal dataset/Model-bundle/maintenance writers. Bundle checks inspect only the parent candidate and each child `jsonOrdered`; historical before images and unrelated metadata are not prospective writes. Dataset command admission repeats after the awaited caller gate. Maintenance checks pending desired payloads before authentication, approval or attempt artifacts; completed actions retain readback-only recovery. Protected alias v1/v2 requests and sealed flow-identity desired artifacts use the same helper before fresh admission; consumed alias attempts and status-only recovery keep their existing readback-only path. Guards never inspect an old before image as a proposed new write.
+
+Build-plan generation combines only descriptive paragraphs (general comments, time/geography/technology descriptions, cut-off principles and intended applications) with two newlines in source order. Names and other captions retain duplicate conflicts. Unsupported per-entry attributes remain present; conflicting attributed prose is rejected rather than flattened. Generation never deduplicates substrings, truncates paragraphs or splits text into repeated language nodes. The SDK retains field-length authority.
 
 `lifecyclemodel-save-draft-run` selects create or update only after an exact visible-row lookup, then delegates to the existing actor-bound `save_lifecycle_model_bundle` Edge transport. The official Production OAuth client must be configured with the dedicated `EDGE-BUNDLE-01` database capability in addition to its retained general CLI, core read/write, and Next read/search grants; OAuth scopes do not grant database capabilities. The command report preserves the Edge application's sanitized `code` and `details` for actionable failures, but excludes the raw text held by the generic `REMOTE_REQUEST_FAILED` fallback.
 

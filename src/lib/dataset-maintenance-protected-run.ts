@@ -1,6 +1,9 @@
 import { appendFileSync, chmodSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { buildAliasPlanRequest } from './dataset-maintenance-alias-request.js';
+import {
+  assertAliasPlanLocalizedTextUniqueness,
+  buildAliasPlanRequest,
+} from './dataset-maintenance-alias-request.js';
 import {
   ensurePrivateArtifactDirectory,
   readProtectedJsonArtifact,
@@ -807,6 +810,7 @@ async function runPreparedProtectedExecution(
   basePrepared: PreparedProtectedExecution,
   dependencies: ProtectedRuntimeDependencies,
 ): Promise<DatasetMaintenanceProtectedReport> {
+  if (options.commit) assertAliasPlanLocalizedTextUniqueness(basePrepared.aliasPlanRequest);
   ensurePrivateDirectory(basePrepared.outDir);
   return dependencies.withStateLock(
     basePrepared.artifacts.submission_attempt,
