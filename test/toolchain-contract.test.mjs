@@ -827,20 +827,47 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
       send(
         envelope({
           type: 'capabilities',
-          contractVersion: value.schemaVersion === 'lca.study-api.v3' ? '3.0.0' : '2.0.0',
+          contractVersion:
+            value.schemaVersion === 'lca.study-api.v4'
+              ? '4.0.0'
+              : value.schemaVersion === 'lca.study-api.v3'
+                ? '3.0.0'
+                : '2.0.0',
           runtimeEnabled: true,
           operations:
-            value.schemaVersion === 'lca.study-api.v3'
-              ? ['capability.read']
-              : ['capability.read', 'study.create'],
-          ...(value.schemaVersion === 'lca.study-api.v3'
-            ? { analysisProfiles: [], reportTemplates: [] }
-            : { profiles: [] }),
+            value.schemaVersion === 'lca.study-api.v4'
+              ? ['capability.read', 'comment.append']
+              : value.schemaVersion === 'lca.study-api.v3'
+                ? ['capability.read']
+                : ['capability.read', 'study.create'],
+          ...(value.schemaVersion === 'lca.study-api.v4'
+            ? { finalizationProfiles: [], reviewClasses: [], disclosurePolicies: [] }
+            : value.schemaVersion === 'lca.study-api.v3'
+              ? { analysisProfiles: [], reportTemplates: [] }
+              : { profiles: [] }),
         }),
       );
       return;
     }
     requests.push(value);
+    if (value.operation === 'comment.append') {
+      send(
+        envelope({
+          type: 'comment',
+          value: {
+            studyId: 'installed-study',
+            reportRevisionId: value.reportRevisionId,
+            reportContentHash: value.expectedContentHash,
+            commentId: 'installed-comment',
+            actorId: actor,
+            clientId: client,
+            text: value.text,
+            createdAt: '2026-11-04T00:00:00Z',
+          },
+        }),
+      );
+      return;
+    }
     committed ??= {
       type: 'study',
       value: {
@@ -929,42 +956,84 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
     const reporting = await invoke(['capabilities', '--api-version', '3', '--json']);
     assert.equal(reporting.code, 0, reporting.stderr);
     assert.equal(JSON.parse(reporting.stdout).apiSchema, 'lca.study-api.v3');
-    // Fixture generation is test-only; the installed verifier below has no source/compiler import.
-    const generator = spawnSync(
-      process.execPath,
-      [
-        '--import',
-        'tsx',
-        '--input-type=module',
-        '--eval',
-        `import { signedExportFixture, exportEnvironment } from ${JSON.stringify(new URL('./helpers/study-export-fixture.ts', import.meta.url).href)}; const f=await signedExportFixture(); process.stdout.write(JSON.stringify({bundleBase64:f.bytes.toString('base64'),anchors:f.anchors,expected:f.expected,env:exportEnvironment()}));`,
-      ],
-      {
-        cwd: REPOSITORY_ROOT,
-        env: runtimeEnvironment(),
-        encoding: 'utf8',
-        maxBuffer: 8 * 1024 * 1024,
-      },
+    const reviewCapabilities = await invoke(['capabilities', '--api-version', '4', '--json']);
+    assert.equal(reviewCapabilities.code, 0, reviewCapabilities.stderr);
+    writeFileSync(
+      input,
+      JSON.stringify({
+        reportRevisionId: 'installed-report',
+        expectedContentHash: 'a'.repeat(64),
+        text: 'An annotation is not review approval.',
+      }),
     );
-    assert.equal(generator.status, 0, generator.stderr);
-    const detached = JSON.parse(generator.stdout);
-    writeFileSync(join(cwd, 'bundle.json'), Buffer.from(detached.bundleBase64, 'base64'));
-    for (const name of ['anchors', 'expected'])
-      writeFileSync(join(cwd, `${name}.json`), JSON.stringify(detached[name]));
-    const verified = await invoke([
-      'export',
-      'verify',
-      '--bundle',
-      join(cwd, 'bundle.json'),
-      '--anchors',
-      join(cwd, 'anchors.json'),
-      '--expected',
-      join(cwd, 'expected.json'),
+    const annotated = await invoke([
+      'comment',
+      'append',
+      '--input',
+      input,
+      '--state-dir',
+      join(cwd, 'retained-v4-state'),
       '--json',
     ]);
-    assert.equal(verified.code, 0, verified.stderr);
-    assert.equal(JSON.parse(verified.stdout).rendererMatched, true);
-    assert.equal(JSON.parse(verified.stdout).currentAccess, 'not-checked-offline');
+    assert.equal(annotated.code, 0, annotated.stderr);
+    const annotation = JSON.parse(annotated.stdout);
+    assert.equal(annotation.apiSchema, 'lca.study-api.v4');
+    const recoveredAnnotation = await invoke([
+      'request',
+      'recover',
+      '--intent-file',
+      annotation.intentFile,
+      '--json',
+    ]);
+    assert.equal(recoveredAnnotation.code, 0, recoveredAnnotation.stderr);
+    assert.deepEqual(
+      requests.filter((r) => r.operation === 'comment.append')[0],
+      requests.filter((r) => r.operation === 'comment.append')[1],
+    );
+
+    for (const finalized of [false, true]) {
+      // Fixture generation is test-only; the installed verifier below has no source/compiler import.
+      const generator = spawnSync(
+        process.execPath,
+        [
+          '--import',
+          'tsx',
+          '--input-type=module',
+          '--eval',
+          `import { signedExportFixture, exportEnvironment } from ${JSON.stringify(new URL('./helpers/study-export-fixture.ts', import.meta.url).href)}; const f=await signedExportFixture(undefined,${finalized ? '{reviewed:true}' : 'undefined'}); process.stdout.write(JSON.stringify({bundleBase64:f.bytes.toString('base64'),anchors:f.anchors,expected:f.expected,env:exportEnvironment()}));`,
+        ],
+        {
+          cwd: REPOSITORY_ROOT,
+          env: runtimeEnvironment(),
+          encoding: 'utf8',
+          maxBuffer: 8 * 1024 * 1024,
+        },
+      );
+      assert.equal(generator.status, 0, generator.stderr);
+      const detached = JSON.parse(generator.stdout);
+      writeFileSync(join(cwd, 'bundle.json'), Buffer.from(detached.bundleBase64, 'base64'));
+      for (const name of ['anchors', 'expected'])
+        writeFileSync(join(cwd, `${name}.json`), JSON.stringify(detached[name]));
+      const verified = await invoke([
+        'export',
+        'verify',
+        '--bundle',
+        join(cwd, 'bundle.json'),
+        '--anchors',
+        join(cwd, 'anchors.json'),
+        '--expected',
+        join(cwd, 'expected.json'),
+        '--json',
+      ]);
+      assert.equal(verified.code, 0, verified.stderr);
+      assert.equal(JSON.parse(verified.stdout).rendererMatched, true);
+      assert.equal(JSON.parse(verified.stdout).currentAccess, 'not-checked-offline');
+      if (finalized)
+        assert.equal(
+          JSON.parse(verified.stdout).historicalFinalization.finalizationId,
+          'finalization-fixture',
+        );
+    }
   } finally {
     server.closeAllConnections();
     await new Promise((resolve, reject) =>
@@ -1204,6 +1273,11 @@ function assertPackedFiles(fileMetadata) {
     'assets/study-contract/v3/index.d.ts',
     'assets/study-contract/v3/manifest.json',
     'assets/study-contract/v3/LICENSE.zod',
+    'assets/study-contract/v4/index.mjs',
+    'assets/study-contract/v4/index.d.ts',
+    'assets/study-contract/v4/manifest.json',
+    'assets/study-contract/v4/LICENSE.zod',
+    'assets/study-contract/v4/LICENSE.renderer',
     'assets/study-renderer/v1/study-report-renderer-1.0.0.tgz',
     'assets/study-renderer/v1/package/manifest.json',
     'assets/study-renderer/v1/package/index.js',

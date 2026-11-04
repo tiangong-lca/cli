@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-04
-lastReviewedCommit: 0d40fff1c0f82b7ab2c040a58f0253e8dbc7bf29
-lastReviewedNote: 'CLI #454: explicit filesystem-error and platform/stat fixtures cover preflight failure, private intent policy and non-directory refusal on every host. Runtime bytes and the 947f944 business-E2E archive remain unchanged; native Windows exact coverage requires fresh CI.'
+lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
+lastReviewedNote: 'CLI #455: exact committed V4 owner codec, explicit review/finalization/share commands, original outcome/current-state recovery and independently anchored versioned downloads. V2/V3 and historical signatures remain; no public release, hosted grant or actual P3 acceptance is inferred.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -136,6 +136,8 @@ For runtime-rule composition changes, run `pnpm verify:tidas-public-rules`, the 
 ## Coverage Notes
 
 Study tests must exercise the contained owner codec, pre-dispatch private intent visibility, restart/lost-response exact-key recovery, actor/client/destination drift, current capability refusal, bounded/redacted Auth and domain transport, typed task polling/cancellation, and atomic exact-byte artifact output. `node --import tsx --test test/study-*.test.ts` is focused synthetic transport proof only. The full hard coverage/package gate and an installed consumer against the task-owned actual Auth/API/DB/Worker remain mandatory; worktree codec tests do not qualify a release or Production. Detached export tests use an independent native Ed25519 issuer and actual owner codecs/renderer, reject edited bytes, transplanted scope and arbitrary package selection, and exercise final-path replacement, retained failed staging, and entry/dependency replacement after renderer verification. Execution is bound to the captured complete module graph; publication does no final-path write/rollback. The [Study CLI contract](study-cli-contract.md) keeps candidate/release and remaining runtime qualification boundaries explicit.
+
+P3 tests additionally preserve V2/V3 journals and historical signatures, exercise exact v4 actor/client/delegation/receipt bindings and same-key recovery, retain original finalization alongside different latest state, show Database action/role projections without local inference, and refuse transplanted/poisoned finalized export/share bytes. The outside-source packed consumer must exercise v4 commands and both signed formats. Actual UI/CLI/SQL/auth and recipient/revoke/expiry/source-withdrawal qualification remains separate.
 
 Renderer filesystem fault injections must match the canonical native package/entry paths produced by the loader, rather than forward-slash suffixes. Assert that each injection actually ran as well as the integrity rejection. A local pass cannot replace native Windows qualification. Storage error fixtures must inject the intended failure explicitly instead of depending on platform-specific missing-entry/ENOTDIR handling. Scoped platform/stat observations exercise POSIX mode rejection and the distinct Windows policy on every host; synthetic mode bits do not emulate native ACLs.
 

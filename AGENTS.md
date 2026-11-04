@@ -40,8 +40,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-04
-lastReviewedCommit: 0d40fff1c0f82b7ab2c040a58f0253e8dbc7bf29
-lastReviewedNote: 'CLI #454: explicit filesystem-error and platform/stat fixtures cover preflight failure, private intent policy and non-directory refusal on every host. Runtime bytes and the 947f944 business-E2E archive remain unchanged; native Windows exact coverage requires fresh CI.'
+lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
+lastReviewedNote: 'CLI #455: exact committed V4 owner codec, explicit review/finalization/share commands, original outcome/current-state recovery and independently anchored versioned downloads. V2/V3 and historical signatures remain; no public release, hosted grant or actual P3 acceptance is inferred.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -69,7 +69,7 @@ Review note, 2026-09-24: CLI #368 synchronizes the 0.2.3 Process reference schem
 
 ## Specialized contracts
 
-Study commands follow `docs/agents/study-cli-contract.md`. Edge owns the contained portable wire codec; CLI owns private pre-dispatch intent and actor/client/destination recovery binding. A worktree codec is task-local development evidence only, never a Production/release trust claim. Study installation grants no remote capability. P2 analysis/report/export selects v3 independently, with detached signature/view binding and the fixed owner renderer; bundled artifacts pin clean committed Edge/Platform source. Future worktree candidates remain loopback development-only, and source provenance does not grant hosted activation, permission or public-release trust.
+Study commands follow `docs/agents/study-cli-contract.md`. Edge owns the contained portable wire codec; CLI owns private pre-dispatch intent and actor/client/destination recovery binding. A worktree codec is task-local development evidence only, never a Production/release trust claim. Study installation grants no remote capability. P2 analysis/report/export selects v3 independently; P3 review/finalization/named sharing selects v4, retaining historical signatures and exact-key recovery. Member/export upgrades require an explicit API selection. Detached signature/view binding uses the same fixed owner renderer; bundled artifacts pin clean committed Edge/Platform source. Future worktree candidates remain loopback development-only, and source provenance does not grant hosted activation, permission or public-release trust.
 
 Private live-account testing is maintainer-only and requires explicit account authorization. Follow [the live case guide](docs/agents/live-case-testing.md); public CLI authentication remains OAuth-only and personal credentials never enter public CI.
 

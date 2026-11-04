@@ -11,6 +11,7 @@ import {
   verifyStudyCodecArtifact,
   STUDY_CODEC_CANDIDATE_ENV,
   STUDY_V3_CODEC_CANDIDATE_ENV,
+  STUDY_V4_CODEC_CANDIDATE_ENV,
 } from '../src/lib/study-codec.js';
 import { studyDigest } from '../src/lib/study-protocol.js';
 import { CliError } from '../src/lib/errors.js';
@@ -202,4 +203,47 @@ test('Reporting codec requires every owner export helper and never accepts parti
       () => assertStudyCodecModule({ ...full, [key]: null }, 'v3'),
       'STUDY_CONTRACT_INVALID',
     );
+});
+
+test('V4 contained ABI and candidate admission stay independently versioned from v3', () => {
+  const valid = {
+    API_SCHEMA: 'lca.study-api.v4',
+    CONTRACT_VERSION: '4.0.0',
+    operationMetadata: {},
+    parseRequest() {},
+    parseResponse() {},
+    validateResponseForRequest() {},
+    parseExportBundle() {},
+    verifyExport() {},
+    verifyVersionedExport() {},
+    canonicalReceiptBytes() {},
+    validateExportViewBindings() {},
+  };
+  assert.equal(assertStudyCodecModule(valid, 'v4'), valid);
+  codeError(
+    () => assertStudyCodecModule({ ...valid, verifyVersionedExport: null }, 'v4'),
+    'STUDY_CONTRACT_INVALID',
+  );
+  admitStudyCodecCandidate(
+    { sourceStatus: 'worktree' },
+    {
+      TIANGONG_LCA_API_BASE_URL: 'http://127.0.0.1:1234',
+      [STUDY_V4_CODEC_CANDIDATE_ENV]: 'v4-pin',
+    },
+    'v4-pin',
+    'v4',
+  );
+  codeError(
+    () =>
+      admitStudyCodecCandidate(
+        { sourceStatus: 'worktree' },
+        {
+          TIANGONG_LCA_API_BASE_URL: 'http://127.0.0.1:1234',
+          [STUDY_V3_CODEC_CANDIDATE_ENV]: 'v4-pin',
+        },
+        'v4-pin',
+        'v4',
+      ),
+    'STUDY_CONTRACT_CANDIDATE_REQUIRED',
+  );
 });
