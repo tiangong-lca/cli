@@ -828,23 +828,32 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
         envelope({
           type: 'capabilities',
           contractVersion:
-            value.schemaVersion === 'lca.study-api.v4'
-              ? '4.0.0'
-              : value.schemaVersion === 'lca.study-api.v3'
-                ? '3.0.0'
-                : '2.0.0',
+            value.schemaVersion === 'lca.study-api.v5'
+              ? '5.0.0'
+              : value.schemaVersion === 'lca.study-api.v4'
+                ? '4.0.0'
+                : value.schemaVersion === 'lca.study-api.v3'
+                  ? '3.0.0'
+                  : '2.0.0',
           runtimeEnabled: true,
-          operations:
-            value.schemaVersion === 'lca.study-api.v4'
-              ? ['capability.read', 'comment.append']
-              : value.schemaVersion === 'lca.study-api.v3'
-                ? ['capability.read']
-                : ['capability.read', 'study.create'],
-          ...(value.schemaVersion === 'lca.study-api.v4'
-            ? { finalizationProfiles: [], reviewClasses: [], disclosurePolicies: [] }
+          operations: ['lca.study-api.v4', 'lca.study-api.v5'].includes(value.schemaVersion)
+            ? ['capability.read', 'comment.append']
             : value.schemaVersion === 'lca.study-api.v3'
-              ? { analysisProfiles: [], reportTemplates: [] }
-              : { profiles: [] }),
+              ? ['capability.read']
+              : ['capability.read', 'study.create'],
+          ...(value.schemaVersion === 'lca.study-api.v5'
+            ? {
+                analysisProfiles: [],
+                reportTemplates: [],
+                finalizationProfiles: [],
+                reviewClasses: [],
+                disclosurePolicies: [],
+              }
+            : value.schemaVersion === 'lca.study-api.v4'
+              ? { finalizationProfiles: [], reviewClasses: [], disclosurePolicies: [] }
+              : value.schemaVersion === 'lca.study-api.v3'
+                ? { analysisProfiles: [], reportTemplates: [] }
+                : { profiles: [] }),
         }),
       );
       return;
@@ -989,6 +998,36 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
     assert.deepEqual(
       requests.filter((r) => r.operation === 'comment.append')[0],
       requests.filter((r) => r.operation === 'comment.append')[1],
+    );
+    const advancedCaps = await invoke(['capabilities', '--api-version', '5', '--json']);
+    assert.equal(advancedCaps.code, 0, advancedCaps.stderr);
+    assert.equal(JSON.parse(advancedCaps.stdout).apiSchema, 'lca.study-api.v5');
+    const advanced = await invoke([
+      'comment',
+      'append',
+      '--api-version',
+      '5',
+      '--input',
+      input,
+      '--state-dir',
+      join(cwd, 'retained-v5-state'),
+      '--json',
+    ]);
+    assert.equal(advanced.code, 0, advanced.stderr);
+    const advancedComment = JSON.parse(advanced.stdout);
+    assert.equal(advancedComment.apiSchema, 'lca.study-api.v5');
+    assert.ok(advancedComment.intentFile.split(/[\\/]/u).includes('v5'));
+    const advancedRecover = await invoke([
+      'request',
+      'recover',
+      '--intent-file',
+      advancedComment.intentFile,
+      '--json',
+    ]);
+    assert.equal(advancedRecover.code, 0, advancedRecover.stderr);
+    assert.deepEqual(
+      requests.filter((r) => r.schemaVersion === 'lca.study-api.v5')[0],
+      requests.filter((r) => r.schemaVersion === 'lca.study-api.v5')[1],
     );
 
     for (const finalized of [false, true]) {
@@ -1278,6 +1317,13 @@ function assertPackedFiles(fileMetadata) {
     'assets/study-contract/v4/manifest.json',
     'assets/study-contract/v4/LICENSE.zod',
     'assets/study-contract/v4/LICENSE.renderer',
+    'assets/study-contract/v5/index.mjs',
+    'assets/study-contract/v5/index.d.ts',
+    'assets/study-contract/v5/manifest.json',
+    'assets/study-contract/v5/LICENSE.renderer',
+    'assets/study-renderer/v2/study-report-renderer-2.0.0.tgz',
+    'assets/study-renderer/v2/package/manifest.json',
+    'assets/study-renderer/v2/package/index.js',
     'assets/study-renderer/v1/study-report-renderer-1.0.0.tgz',
     'assets/study-renderer/v1/package/manifest.json',
     'assets/study-renderer/v1/package/index.js',

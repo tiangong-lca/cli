@@ -41,7 +41,7 @@ checkPaths:
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-04
 lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
-lastReviewedNote: 'CLI #455: exact committed V4 owner codec, explicit review/finalization/share commands, original outcome/current-state recovery and independently anchored versioned downloads. V2/V3 and historical signatures remain; no public release, hosted grant or actual P3 acceptance is inferred.'
+lastReviewedNote: 'CLI #460: reviewed explicit contained V5/renderer2 consumption, preserved older journals and artifacts, owner-controlled rollback reads and offline/online family bindings. Package version, dependencies, publication authority and actual runtime qualification remain separate.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -201,3 +201,5 @@ Install the versioned local hook once per checkout:
 The `pre-push` hook runs `scripts/docpact-gate.sh`, which delegates CLI lookup to `scripts/docpact` and performs strict config validation plus enforced lint before the push leaves the machine. It then runs `pnpm prepush:gate` as the local test gate. The sole exception is a complete, verified branch-deletion-only stdin stream: it publishes no source. Tags, source/mixed updates, empty/TTY/malformed input and classification failures retain both gates. The wrapper checks `DOCPACT_BIN`, Cargo install locations, Homebrew install locations, and then `PATH`, so local agent shells should not fail only because bare `docpact` is unavailable. The default comparison base is `origin/main`. Override it for unusual stacks with `DOCPACT_BASE_REF=<ref>` or `scripts/docpact-gate.sh --base <ref>`. The gate writes its detailed report to a temporary file so normal pushes do not create `.docpact/runs/` artifacts. The GitHub `quality-gate` automatically validates dependency/configuration/Actions PRs targeting main and supports manual exact-head reproduction and reusable invocation; a detected CLI release must pass its four-platform invocation before the tag job can run.
 
 PCR content discovery, task pins and forced local reader execution belong to `src/lib/pcr-snapshot-*.ts`; see `docs/agents/pcr-snapshot-contract.md`. PCR owns offline reader and scientific semantics. Task snapshots and selected installed tool bytes are immutable; release and snapshot source fingerprints use different hash domains. No runtime dependency or executable installation is added.
+
+Study P4 consumption uses separately negotiated V5, immutable owner assets and versioned renderer2/view2/export3. Existing journals, defaults and historical renderer1 artifacts remain separate. The Study CLI contract owns exact pins, rollback-safe historical reads and the distinction between package proof and actual installed runtime qualification.

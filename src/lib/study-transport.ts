@@ -195,13 +195,17 @@ export function verifyStudyArtifact(
   const publicKinds =
     request.schemaVersion === 'lca.study-api.v2'
       ? ['modelInput', 'runResult']
-      : [
-          'analysisFacts',
-          'reportContent',
-          'reportProjection',
-          'renderResources',
-          'reportExportBundle',
-        ];
+      : request.schemaVersion === 'lca.study-api.v5'
+        ? request.operation === 'artifact.read'
+          ? ['analysisFacts', 'reportContent']
+          : ['reportExportBundle']
+        : [
+            'analysisFacts',
+            'reportContent',
+            'reportProjection',
+            'renderResources',
+            'reportExportBundle',
+          ];
   if (!publicKinds.includes(String(ref.type))) studyFailure('DISCLOSURE_DENIED');
   if (
     !Number.isSafeInteger(ref.byteSize) ||
@@ -395,7 +399,7 @@ export async function runStudyRequest(
   const destination = endpointFor(runtime.apiBaseUrl);
   const codec = await loadStudyCodec(options.env, version);
   try {
-    if (version === 'v3' && request.operation === 'analysis.request') {
+    if ((version === 'v3' || version === 'v5') && request.operation === 'analysis.request') {
       const hash = await codec.analysisConfigHash!(request.config);
       if (request.configHash !== undefined && request.configHash !== hash)
         studyFailure('REFERENCE_MISMATCH');
@@ -452,7 +456,7 @@ export async function runStudyRequest(
     if (request.operation !== 'capability.read') {
       const capabilities = await dispatch(prepareStudyRequest('capability.read', {}, version));
       if (
-        capabilities.runtimeEnabled !== true ||
+        (capabilities.runtimeEnabled !== true && version !== 'v5') ||
         !(capabilities.operations as string[]).includes(request.operation)
       )
         studyFailure('CAPABILITY_UNAVAILABLE');
@@ -467,18 +471,19 @@ export async function runStudyRequest(
       )
         studyFailure('CAPABILITY_UNAVAILABLE');
       if (
-        version === 'v3' &&
+        (version === 'v3' || version === 'v5') &&
+        request.operation === 'analysis.request' &&
         request.profileId !== undefined &&
         !(capabilities.analysisProfiles as string[]).includes(String(request.profileId))
       )
         studyFailure('CAPABILITY_UNAVAILABLE');
       if (
-        version === 'v3' &&
+        (version === 'v3' || version === 'v5') &&
         request.templateId !== undefined &&
         !(capabilities.reportTemplates as string[]).includes(String(request.templateId))
       )
         studyFailure('CAPABILITY_UNAVAILABLE');
-      if (version === 'v4') {
+      if (version === 'v4' || (version === 'v5' && request.operation !== 'analysis.request')) {
         for (const [field, admitted] of [
           ['profileId', 'finalizationProfiles'],
           ['reviewClass', 'reviewClasses'],
@@ -496,7 +501,7 @@ export async function runStudyRequest(
       intentFile = persistStudyIntent(request, binding, options.env, options.stateDir);
     const execute = async (): Promise<StudyCommandReport> => {
       const data = await dispatch(request);
-      if (version === 'v4' && studyObject(data.value)) {
+      if ((version === 'v4' || version === 'v5') && studyObject(data.value)) {
         if (
           [
             'comment.append',
