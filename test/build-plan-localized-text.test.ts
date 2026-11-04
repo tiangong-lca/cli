@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { CliError } from '../src/lib/errors.js';
 import { runProcessBuildPlanMaterialize } from '../src/lib/process-flow-build-plan.js';
 
 test('public build-plan materialization keeps all descriptive paragraphs in one node per language', async () => {
@@ -164,6 +165,7 @@ test('public build-plan keeps established primitive, text and bilingual shorthan
       ],
     ],
     [42, [{ '@xml:lang': 'en', '#text': '42' }]],
+    [{ en: 42, zh: null }, [{ '@xml:lang': 'en', '#text': '42' }]],
   ];
   for (const [input, expected] of cases) {
     const plan = JSON.parse(
@@ -186,6 +188,113 @@ test('public build-plan keeps established primitive, text and bilingual shorthan
         payload.processDataSet.processInformation.dataSetInformation['common:generalComment'],
         expected,
       );
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('public build-plan rejects every unsupported nonempty localized member at its source path', async () => {
+  const members = [
+    true,
+    false,
+    ['Nested text'],
+    [null],
+    [{ '@xml:lang': 'en', '#text': 'Nested localized object' }],
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+  ];
+  for (const field of ['comment', 'name', 'intended'] as const) {
+    for (const member of members) {
+      for (const mixed of [true, false]) {
+        if (!mixed && Array.isArray(member)) continue;
+        const plan = JSON.parse(
+          readFileSync(
+            new URL('./fixtures/process-intended-applications-plan.json', import.meta.url),
+            'utf8',
+          ),
+        );
+        const input = mixed
+          ? [{ '@xml:lang': 'en', '#text': 'Original valid paragraph' }, member]
+          : member;
+        const sourcePath =
+          field === 'comment'
+            ? 'target.general_comment'
+            : field === 'name'
+              ? 'name_plan.base_name'
+              : 'administrative_information.intended_applications';
+        if (field === 'comment') plan.target.general_comment = input;
+        else if (field === 'name') plan.name_plan.base_name = input;
+        else plan.administrative_information.intended_applications = input;
+        const before = structuredClone(plan);
+        const outDir = mkdtempSync(path.join(os.tmpdir(), 'cli-language-unsupported-member-'));
+        try {
+          const outcome = await runProcessBuildPlanMaterialize({
+            inputPath: 'anonymous-plan.json',
+            rawInput: plan,
+            outDir,
+          }).then(
+            (report) => ({ report }),
+            (error: unknown) => ({ error }),
+          );
+          if ('error' in outcome) {
+            const error = outcome.error;
+            assert.ok(
+              error instanceof CliError && error.code === 'BUILD_PLAN_LOCALIZED_VALUE_INVALID',
+            );
+            assert.equal(
+              (error.details as { path: string }).path,
+              `${sourcePath}${mixed ? '.1' : ''}`,
+            );
+          } else {
+            assert.equal(outcome.report.status, 'blocked');
+            assert.ok(outcome.report.required_fields.missing.includes(sourcePath));
+          }
+          assert.deepEqual(plan, before);
+        } finally {
+          rmSync(outDir, { recursive: true, force: true });
+        }
+      }
+    }
+  }
+});
+
+test('public build-plan still cleans intentional empty localized members beside valid text', async () => {
+  for (const field of ['comment', 'name', 'intended'] as const) {
+    const plan = JSON.parse(
+      readFileSync(
+        new URL('./fixtures/process-intended-applications-plan.json', import.meta.url),
+        'utf8',
+      ),
+    );
+    const original = { '@xml:lang': 'en', '#text': 'Original valid paragraph' };
+    const input = [original, null, undefined, {}, [], '', '  '];
+    if (field === 'comment') plan.target.general_comment = input;
+    else if (field === 'name') plan.name_plan.base_name = input;
+    else plan.administrative_information.intended_applications = input;
+    const before = structuredClone(plan);
+    const outDir = mkdtempSync(path.join(os.tmpdir(), 'cli-language-empty-control-'));
+    try {
+      const report = await runProcessBuildPlanMaterialize({
+        inputPath: 'anonymous-plan.json',
+        rawInput: plan,
+        outDir,
+      });
+      assert.equal(report.status, 'passed');
+      const payload = JSON.parse(readFileSync(report.files.materialized_artifact!, 'utf8'));
+      const root = payload.processDataSet;
+      const info = root.processInformation.dataSetInformation;
+      const actual =
+        field === 'comment'
+          ? info['common:generalComment']
+          : field === 'name'
+            ? info.name.baseName
+            : root.administrativeInformation['common:commissionerAndGoal'][
+                'common:intendedApplications'
+              ];
+      assert.deepEqual(actual, [original]);
+      assert.deepEqual(plan, before);
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }

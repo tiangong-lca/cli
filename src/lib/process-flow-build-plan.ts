@@ -340,13 +340,30 @@ function localizedObjectFromValue(value: JsonObject, fallbackLang: string): Json
   return Object.keys(value).length > 0 ? { ...value } : null;
 }
 
-function multiLangFromValue(value: unknown, fallback: string, fallbackLang = 'en'): JsonObject[] {
+function multiLangFromValue(
+  value: unknown,
+  fallback: string,
+  fallbackLang = 'en',
+  sourcePath = '<localized-field>',
+): JsonObject[] {
   if (Array.isArray(value)) {
     const normalized = value
-      .map((entry) => {
+      .map((entry, index) => {
         if (isRecord(entry)) return localizedObjectFromValue(entry, fallbackLang);
         const text = textToken(entry);
-        return text ? localizedText(text, fallbackLang) : null;
+        if (text) return localizedText(text, fallbackLang);
+        if (
+          entry === null ||
+          entry === undefined ||
+          typeof entry === 'string' ||
+          (Array.isArray(entry) && entry.length === 0)
+        )
+          return null;
+        throw new CliError(`Unsupported localized value at ${sourcePath}.${index}.`, {
+          code: 'BUILD_PLAN_LOCALIZED_VALUE_INVALID',
+          exitCode: 2,
+          details: { path: `${sourcePath}.${index}` },
+        });
       })
       .filter((entry): entry is JsonObject => Boolean(entry));
     if (normalized.length) {
@@ -375,6 +392,20 @@ function multiLangFromValue(value: unknown, fallback: string, fallbackLang = 'en
     if (normalized) return [normalized];
   }
   const token = textToken(value);
+  if (
+    token === null &&
+    value !== null &&
+    value !== undefined &&
+    !isRecord(value) &&
+    !Array.isArray(value) &&
+    typeof value !== 'string'
+  ) {
+    throw new CliError(`Unsupported localized value at ${sourcePath}.`, {
+      code: 'BUILD_PLAN_LOCALIZED_VALUE_INVALID',
+      exitCode: 2,
+      details: { path: sourcePath },
+    });
+  }
   return [localizedText(token ?? fallback, fallbackLang)];
 }
 
@@ -382,7 +413,7 @@ function firstMultiLang(plan: JsonObject, paths: string[], fallback: string): Js
   for (const candidate of paths) {
     const value = valueAtPath(plan, candidate);
     if (value !== undefined && value !== null) {
-      return multiLangFromValue(value, fallback);
+      return multiLangFromValue(value, fallback, 'en', candidate);
     }
   }
   return multiLangFromValue(undefined, fallback);
@@ -719,21 +750,26 @@ function referenceFlowRef(plan: JsonObject): JsonObject {
 }
 
 function buildAnnualSupply(plan: JsonObject): unknown {
-  const explicit = firstValue(plan, [
+  const sourcePaths = [
     'required_fields.annualSupplyOrProductionVolume',
     'requiredFields.annualSupplyOrProductionVolume',
     'authoring.required_fields.annualSupplyOrProductionVolume',
     'authoring.requiredFields.annualSupplyOrProductionVolume',
     'modelling_and_validation.annualSupplyOrProductionVolume',
     'modellingAndValidation.annualSupplyOrProductionVolume',
-  ]);
+  ];
+  const sourcePath = sourcePaths.find((candidate) => {
+    const value = valueAtPath(plan, candidate);
+    return value !== undefined && value !== null;
+  });
   // No annual-volume evidence: the supported unknown representation. A quantitative reference
   // amount and a reference/default unit are never annual-volume evidence, so no quantity is
   // synthesized from them. An explicit array is passed through exactly as declared, including
   // the empty array, so a malformed shape reaches the SDK gate instead of being repaired here.
-  if (explicit === undefined) return [];
+  if (sourcePath === undefined) return [];
+  const explicit = valueAtPath(plan, sourcePath);
   if (Array.isArray(explicit)) return explicit;
-  return multiLangFromValue(explicit, String(explicit));
+  return multiLangFromValue(explicit, String(explicit), 'en', sourcePath);
 }
 
 function normalizeExchangeDirection(value: string | null): 'Input' | 'Output' {

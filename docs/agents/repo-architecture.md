@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-04
-lastReviewedCommit: 0d40fff1c0f82b7ab2c040a58f0253e8dbc7bf29
-lastReviewedNote: 'CLI #454: explicit filesystem-error and platform/stat fixtures cover preflight failure, private intent policy and non-directory refusal on every host. Runtime bytes and the 947f944 business-E2E archive remain unchanged; native Windows exact coverage requires fresh CI.'
+lastReviewedCommit: 29219a94fd53b58ce63e94284c6bdd61350bdd2c
+lastReviewedNote: 'CLI #292: reviewed one shared localized-text policy reused across native validation, generated prose and terminal dataset, model and maintenance writers; preimages and consumed attempts remain outside fresh admission.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
