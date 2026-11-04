@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { executeCli } from '../src/cli.js';
@@ -165,6 +165,43 @@ function fixture(
           },
           recordedAt: STAMP,
           status: 'recorded_unverified',
+        },
+      };
+    } else if (r.operation === 'report.create' || r.operation === 'report.save') {
+      data = {
+        type: 'reportRevision',
+        value: {
+          reportRevisionId: id(300),
+          studyId: STUDY,
+          parentReportRevisionId: null,
+          authorId: ACTOR,
+          revision:
+            r.operation === 'report.create'
+              ? 1
+              : (r.target as { expectedRevision: number }).expectedRevision + 1,
+          status: 'draft',
+          contentHash: HASH,
+          runIds: [id(10)],
+          methodAssessmentIds: [ASSESSMENT],
+          factsRefs: [component.sourceFactsRef],
+          contentRef: {
+            type: 'reportContent',
+            id: id(82),
+            contentHash: HASH,
+            digestScope: 'artifact_bytes_sha256',
+            byteSize: 1,
+            mediaType: 'application/json',
+            schemaVersion: 'lca.study-method-report-content.v1',
+          },
+          templateId: 'lca.study-method-report.v1',
+          finalization: {
+            status: 'not_finalized',
+            profileId: 'lca.study-report-unreviewed.v1',
+            reviewRequirement: 'none',
+            finalizedAt: null,
+            reviewIds: [],
+          },
+          validitySnapshot: { status: 'current', checkedAt: STAMP, reasonCodes: [] },
         },
       };
     } else if (r.operation === 'comment.append')
@@ -601,3 +638,138 @@ test('V6 denial envelopes must retain the exact current request identity', async
     (e: unknown) => e instanceof CliError && e.code === 'STUDY_RESPONSE_SELECTION',
   );
 });
+
+type MethodDraft = {
+  title: string;
+  claims: Array<Record<string, unknown>>;
+  sections: Array<{ sectionId: string; title: string; paragraphs: string[]; claimIds: string[] }>;
+};
+function methodDraft(): MethodDraft {
+  const content = structuredClone(component.stored.content) as unknown as MethodDraft;
+  content.sections = [
+    {
+      sectionId: 'unicode-section',
+      title: 'Valid section',
+      paragraphs: ['Valid authored paragraph'],
+      claimIds: [],
+    },
+  ];
+  return content;
+}
+function reportInput(verb: 'create' | 'save', content: MethodDraft) {
+  return verb === 'create'
+    ? {
+        studyId: STUDY,
+        parentReportRevisionId: null,
+        runIds: [id(10)],
+        methodAssessmentIds: [ASSESSMENT],
+        templateId: 'lca.study-method-report.v1',
+        content,
+      }
+    : { target: { type: 'reportRevision', id: id(300), expectedRevision: 7 }, content };
+}
+for (const verb of ['create', 'save'] as const)
+  for (const field of ['title', 'paragraph', 'unit'] as const)
+    for (const scalar of ['\ud800', '\udc00']) {
+      test(`V6 report ${verb} rejects ${field} unpaired ${scalar.charCodeAt(0).toString(16)} before Auth/domain I/O or intent publication`, async () => {
+        const content = methodDraft();
+        if (field === 'title') content.title = scalar;
+        else if (field === 'paragraph') content.sections[0].paragraphs = [scalar];
+        else content.claims[0].unit = scalar;
+        const state = path.join(root(), 'unpublished-state');
+        let calls = 0;
+        const result = await invoke(
+          [
+            'study',
+            'report',
+            verb,
+            '--api-version',
+            '6',
+            '--input',
+            input(reportInput(verb, content)),
+            '--state-dir',
+            state,
+            '--json',
+          ],
+          async () => {
+            calls++;
+            throw new Error('malformed local draft cannot call Auth or domain');
+          },
+        );
+        assert.equal(result.exitCode, 1, result.stdout);
+        const failure = JSON.parse(result.stderr) as {
+          error: { code: string; details?: { intentFile?: string } };
+        };
+        assert.equal(failure.error.code, 'INVALID_REQUEST');
+        assert.equal(calls, 0);
+        assert.equal(existsSync(state), false);
+        assert.equal(failure.error.details?.intentFile, undefined);
+      });
+    }
+for (const verb of ['create', 'save'] as const) {
+  test(`V6 report ${verb} retains valid Unicode and exact immutable recovery`, async () => {
+    const content = methodDraft();
+    content.title = '🧪'.repeat(256);
+    content.sections[0].paragraphs = ['Valid authored Unicode 🧪'];
+    content.claims[0].unit = 'kg 🧪';
+    const f = fixture({ lost: true }),
+      state = root();
+    const result = await invoke(
+      [
+        'study',
+        'report',
+        verb,
+        '--api-version',
+        '6',
+        '--input',
+        input(reportInput(verb, content)),
+        '--state-dir',
+        state,
+        '--json',
+      ],
+      f.fetchImpl,
+    );
+    assert.equal(result.exitCode, 1, result.stdout);
+    const failure = JSON.parse(result.stderr) as {
+      error: { code: string; details: { intentFile: string } };
+    };
+    assert.equal(failure.error.code, 'STUDY_TRANSPORT_UNKNOWN');
+    const file = failure.error.details.intentFile,
+      bytes = readFileSync(file),
+      saved = readStudyIntent(file);
+    assert.deepEqual(saved.request.content, content);
+    assert.equal(saved.request.schemaVersion, STUDY_METHOD_SCHEMA);
+    const recovered = await invoke(
+      ['study', 'request', 'recover', '--intent-file', file, '--json'],
+      f.fetchImpl,
+    );
+    assert.equal(recovered.exitCode, 0, recovered.stderr);
+    assert(readFileSync(file).equals(bytes));
+    const writes = f.requests.filter((r) => r.operation === `report.${verb}`);
+    assert.equal(writes.length, 2);
+    assert.deepEqual(writes[0], writes[1]);
+    let calls = 0;
+    const invalidState = path.join(root(), 'unpublished-overlimit');
+    const overlimit = await invoke(
+      [
+        'study',
+        'report',
+        verb,
+        '--api-version',
+        '6',
+        '--input',
+        input(reportInput(verb, { ...content, title: '🧪'.repeat(257) })),
+        '--state-dir',
+        invalidState,
+        '--json',
+      ],
+      async () => {
+        calls++;
+        throw new Error('bound rejection stays local');
+      },
+    );
+    assert.match(overlimit.stderr, /INVALID_REQUEST/u);
+    assert.equal(calls, 0);
+    assert.equal(existsSync(invalidState), false);
+  });
+}

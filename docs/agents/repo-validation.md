@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-05
-lastReviewedCommit: 6126a870042ce61e57d5a109f5f9a3d3ca399206
-lastReviewedNote: 'CLI #462: reviewed deliberate qualified V2 archive correction, strict archived/CAS response binding and original-intent unknown recovery. V2 wire, valid journals, V3–V6/renderer bytes, dependencies and publication remain unchanged; final cohort/Main holds persist.'
+lastReviewedCommit: 121715acb68b26e5e1ac512d59a9911fe950f244
+lastReviewedNote: 'CLI #462: reviewed exact corrected V6 facade, owner-only authored Unicode rejection before I/O/intent, valid Unicode recovery and unchanged33operations. Corrected V2, older families/renderers, dependencies and publication remain unchanged; final cohort/Main holds persist.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -229,3 +229,5 @@ P4 Study proof additionally exercises the exact contained V5 codec, scientific-s
 V6 method-consumer validation covers explicit selection, exact local schema discovery, owner config/evidence helpers, original-family unknown-outcome recovery, current denial, actor binding, strict Unicode and artifact bounds. Signed export4 tests retain twenty requirements, twenty-five categories and fifty-eight facts, independent trust anchors, exact renderer3 HTML and historical manifests1–3/renderer1–2. Installed package proof runs native separate-process recovery/schema/verification outside the repository without sibling imports. Canonical projection ordering must match producer-rendered HTML; tests must not weaken byte equality to accept a raw-object render. Full-source 100% and exact four-platform CI remain required. Actual authorized non-production OAuth/native/Storage and professional positive-case proof remain separately bound to the producer cohort, never inferred from fixtures.
 
 The explicit V2 archive correction in CLI #462 requires red/green native-response and fresh-process recovery regressions. For expected revision7, reject active7/active8/archived7/archived10 and accept archived8. Every rejected-success case retains byte-identical original intent, performs no automatic replay, rejects the same wrong recovery response, then accepts only explicit recovery with the exact archived8 result and unchanged request/key/family. Installed-package proof repeats those boundaries outside the repository alongside the source-compatible V6 suite. Earlier source/package/CI evidence is retained as superseded; qualify only the new exact source/package.
+
+Final V6 facade qualification covers report.create/save × title/paragraph/claim-unit × unpaired high/low surrogate. All twelve cases must reject locally with zero Auth/domain calls and no intent directory; installed fresh-process proof repeats the boundary. Valid256-emoji titles and authored Unicode must survive an ambiguous mutation and exact immutable recovery for both operations, while257 codepoints remain rejected. These checks consume the exact owner executable validator and add no consumer Unicode policy. Superseded121715ac/6126packages and CI remain retained under separate immutable paths.

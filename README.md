@@ -32,8 +32,8 @@ checkPaths:
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
 lastReviewedAt: 2026-11-05
-lastReviewedCommit: 6126a870042ce61e57d5a109f5f9a3d3ca399206
-lastReviewedNote: 'CLI #462: reviewed deliberate qualified V2 archive correction, strict archived/CAS response binding and original-intent unknown recovery. V2 wire, valid journals, V3–V6/renderer bytes, dependencies and publication remain unchanged; final cohort/Main holds persist.'
+lastReviewedCommit: 121715acb68b26e5e1ac512d59a9911fe950f244
+lastReviewedNote: 'CLI #462: reviewed exact corrected V6 facade, owner-only authored Unicode rejection before I/O/intent, valid Unicode recovery and unchanged33operations. Corrected V2, older families/renderers, dependencies and publication remain unchanged; final cohort/Main holds persist.'
 ---
 
 Review note, 2026-10-07: CLI #407 prepares the separate version-only 0.1.26 release from reviewed allocation/reference PR #406 at main `0a476fee7569af67f4197a1469bb97666d9911e9`. The existing helper selected 0.1.26 from repository and npm latest 0.1.25, proved the target unpublished, and the canonical tag read found no cli-v0.1.26. Package identity and eight directly bound fixture values advance; runtime, exact SDK 0.5.1 dependency, pnpm lock, exports, authentication and workflows remain unchanged. Publication and installed/Foundry managed acceptance still require the existing exact-head four-platform gate, automatic merge tag, native pnpm Trusted Publishing/provenance, credential-free consumers and exact workspace integration.

@@ -805,6 +805,14 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
   const requests = [];
   let committed;
   let drop = true;
+  const methodComponent = JSON.parse(
+    readFileSync(
+      join(packageRoot, 'assets/study-renderer/v3/package/methodProtocol.fixture.json'),
+      'utf8',
+    ),
+  );
+  let authRequests = 0;
+  let dropMethodReport = false;
   let archiveState = { status: 'active', revision: 7 };
   const server = createServer(async (request, response) => {
     const send = (body) => {
@@ -812,6 +820,7 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
       response.end(JSON.stringify(body));
     };
     if (request.url === '/auth/v1/user') {
+      authRequests++;
       send({ id: actor, email: 'installed-fixture@example.test', role: 'authenticated' });
       return;
     }
@@ -839,17 +848,18 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
                     ? '3.0.0'
                     : '2.0.0',
           runtimeEnabled: true,
-          operations: ['lca.study-api.v4', 'lca.study-api.v5', 'lca.study-api.v6'].includes(
-            value.schemaVersion,
-          )
-            ? ['capability.read', 'comment.append']
-            : value.schemaVersion === 'lca.study-api.v3'
-              ? ['capability.read']
-              : ['capability.read', 'study.create', 'study.archive'],
+          operations:
+            value.schemaVersion === 'lca.study-api.v6'
+              ? ['capability.read', 'comment.append', 'report.create', 'report.save']
+              : ['lca.study-api.v4', 'lca.study-api.v5'].includes(value.schemaVersion)
+                ? ['capability.read', 'comment.append']
+                : value.schemaVersion === 'lca.study-api.v3'
+                  ? ['capability.read']
+                  : ['capability.read', 'study.create', 'study.archive'],
           ...(value.schemaVersion === 'lca.study-api.v6'
             ? {
                 methodProfiles: [],
-                reportTemplates: [],
+                reportTemplates: ['lca.study-method-report.v1'],
                 finalizationProfiles: [],
                 reviewClasses: [],
                 disclosurePolicies: [],
@@ -878,6 +888,54 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
       return;
     }
     requests.push(value);
+    if (value.operation === 'report.create' || value.operation === 'report.save') {
+      if (dropMethodReport) {
+        dropMethodReport = false;
+        response.destroy();
+        return;
+      }
+      const contentHash = methodComponent.view.report.contentHash;
+      send(
+        envelope({
+          type: 'reportRevision',
+          value: {
+            reportRevisionId: methodComponent.view.report.reportRevisionId,
+            studyId: methodComponent.view.report.studyId,
+            parentReportRevisionId: null,
+            authorId: actor,
+            revision: value.operation === 'report.create' ? 1 : value.target.expectedRevision + 1,
+            status: 'draft',
+            contentHash,
+            runIds: methodComponent.stored.runIds,
+            methodAssessmentIds: methodComponent.stored.methodAssessmentIds,
+            factsRefs: methodComponent.stored.factsRefs,
+            contentRef: {
+              type: 'reportContent',
+              id: '10000000-0000-4000-8000-000000000082',
+              contentHash,
+              digestScope: 'artifact_bytes_sha256',
+              byteSize: 1,
+              mediaType: 'application/json',
+              schemaVersion: 'lca.study-method-report-content.v1',
+            },
+            templateId: 'lca.study-method-report.v1',
+            finalization: {
+              status: 'not_finalized',
+              profileId: 'lca.study-report-unreviewed.v1',
+              reviewRequirement: 'none',
+              finalizedAt: null,
+              reviewIds: [],
+            },
+            validitySnapshot: {
+              status: 'current',
+              checkedAt: '2026-11-04T00:00:00Z',
+              reasonCodes: [],
+            },
+          },
+        }),
+      );
+      return;
+    }
     if (value.operation === 'study.archive') {
       send(
         envelope({
@@ -1150,6 +1208,93 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
           readFileSync(join(packageRoot, `assets/study-contract/v6/${kind}.schema.json`), 'utf8'),
         ),
       );
+    }
+
+    const methodDraft = () => ({
+      ...structuredClone(methodComponent.stored.content),
+      sections: [
+        {
+          sectionId: 'unicode-section',
+          title: 'Valid section',
+          paragraphs: ['Valid paragraph 🧪'],
+          claimIds: [],
+        },
+      ],
+    });
+    const methodReportInput = (verb, content) =>
+      verb === 'create'
+        ? {
+            studyId: methodComponent.stored.studyId,
+            parentReportRevisionId: null,
+            runIds: methodComponent.stored.runIds,
+            methodAssessmentIds: methodComponent.stored.methodAssessmentIds,
+            templateId: 'lca.study-method-report.v1',
+            content,
+          }
+        : {
+            target: {
+              type: 'reportRevision',
+              id: methodComponent.view.report.reportRevisionId,
+              expectedRevision: 7,
+            },
+            content,
+          };
+    for (const verb of ['create', 'save']) {
+      for (const field of ['title', 'paragraph', 'unit'])
+        for (const scalar of ['\ud800', '\udc00']) {
+          const content = methodDraft();
+          if (field === 'title') content.title = scalar;
+          else if (field === 'paragraph') content.sections[0].paragraphs = [scalar];
+          else content.claims[0].unit = scalar;
+          writeFileSync(input, JSON.stringify(methodReportInput(verb, content)));
+          const state = join(cwd, `unpublished-${verb}-${field}-${scalar.charCodeAt(0)}`),
+            beforeAuth = authRequests,
+            beforeDomain = requests.length;
+          const rejected = await invoke([
+            'report',
+            verb,
+            '--api-version',
+            '6',
+            '--input',
+            input,
+            '--state-dir',
+            state,
+            '--json',
+          ]);
+          assert.equal(rejected.code, 1, rejected.stdout);
+          assert.equal(JSON.parse(rejected.stderr).error.code, 'INVALID_REQUEST');
+          assert.equal(authRequests, beforeAuth);
+          assert.equal(requests.length, beforeDomain);
+          assert.equal(existsSync(state), false);
+        }
+      const content = methodDraft();
+      content.title = '🧪'.repeat(256);
+      content.claims[0].unit = 'kg 🧪';
+      writeFileSync(input, JSON.stringify(methodReportInput(verb, content)));
+      dropMethodReport = true;
+      const unknown = await invoke([
+        'report',
+        verb,
+        '--api-version',
+        '6',
+        '--input',
+        input,
+        '--state-dir',
+        join(cwd, `retained-unicode-${verb}`),
+        '--json',
+      ]);
+      assert.equal(unknown.code, 1, unknown.stdout);
+      const failure = JSON.parse(unknown.stderr).error;
+      assert.equal(failure.code, 'STUDY_TRANSPORT_UNKNOWN');
+      const file = failure.details.intentFile,
+        bytes = readFileSync(file);
+      assert.deepEqual(JSON.parse(bytes).request.content, content);
+      const recovered = await invoke(['request', 'recover', '--intent-file', file, '--json']);
+      assert.equal(recovered.code, 0, recovered.stderr);
+      assert.deepEqual(readFileSync(file), bytes);
+      const writes = requests.filter((r) => r.operation === `report.${verb}`);
+      assert.equal(writes.length, 2);
+      assert.deepEqual(writes[0], writes[1]);
     }
 
     for (const finalized of [false, true, 'method']) {

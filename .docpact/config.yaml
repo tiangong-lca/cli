@@ -1,8 +1,8 @@
 version: 1
 layout: repo
 lastReviewedAt: "2026-11-05"
-lastReviewedCommit: "6126a870042ce61e57d5a109f5f9a3d3ca399206"
-lastReviewedNote: 'CLI #462: reviewed deliberate qualified V2 archive correction, strict archived/CAS response binding and original-intent unknown recovery. V2 wire, valid journals, V3–V6/renderer bytes, dependencies and publication remain unchanged; final cohort/Main holds persist.'
+lastReviewedCommit: "121715acb68b26e5e1ac512d59a9911fe950f244"
+lastReviewedNote: 'CLI #462: reviewed exact corrected V6 facade, owner-only authored Unicode rejection before I/O/intent, valid Unicode recovery and unchanged33operations. Corrected V2, older families/renderers, dependencies and publication remain unchanged; final cohort/Main holds persist.'
 
 catalog:
   repos:
