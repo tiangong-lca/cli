@@ -313,23 +313,38 @@ function localizedText(text: string, lang = 'en'): JsonObject {
   return { '#text': text, '@xml:lang': lang };
 }
 
+/** Preserve explicit localized values before any shorthand conversion or fallback. */
+function localizedObjectFromValue(value: JsonObject, fallbackLang: string): JsonObject | null {
+  if ('@xml:lang' in value || '#text' in value) {
+    // A bare text object is an established language-default shorthand. Other explicit canonical
+    // values, including missing/invalid text and additional attributes, reach validation intact.
+    if (Object.keys(value).length === 1 && typeof value['#text'] === 'string') {
+      return { ...value, '@xml:lang': fallbackLang };
+    }
+    return { ...value };
+  }
+  const text = textToken(value.text ?? value.value);
+  if (
+    text &&
+    !('text' in value && 'value' in value) &&
+    (!('lang' in value) || (typeof value.lang === 'string' && Boolean(textToken(value.lang))))
+  ) {
+    const attributes = Object.fromEntries(
+      Object.entries(value).filter(([key]) => !['text', 'value', 'lang'].includes(key)),
+    );
+    return {
+      ...attributes,
+      ...localizedText(text, textToken(value.lang) ?? fallbackLang),
+    };
+  }
+  return Object.keys(value).length > 0 ? { ...value } : null;
+}
+
 function multiLangFromValue(value: unknown, fallback: string, fallbackLang = 'en'): JsonObject[] {
   if (Array.isArray(value)) {
     const normalized = value
       .map((entry) => {
-        if (isRecord(entry)) {
-          const text = textToken(entry['#text'] ?? entry.text ?? entry.value);
-          if (!text) {
-            return null;
-          }
-          const attributes = Object.fromEntries(
-            Object.entries(entry).filter(([key]) => !['text', 'value', 'lang'].includes(key)),
-          );
-          return {
-            ...attributes,
-            ...localizedText(text, textToken(entry['@xml:lang'] ?? entry.lang) ?? fallbackLang),
-          };
-        }
+        if (isRecord(entry)) return localizedObjectFromValue(entry, fallbackLang);
         const text = textToken(entry);
         return text ? localizedText(text, fallbackLang) : null;
       })
@@ -339,26 +354,25 @@ function multiLangFromValue(value: unknown, fallback: string, fallbackLang = 'en
     }
   }
   if (isRecord(value)) {
-    const text = textToken(value['#text'] ?? value.text ?? value.value);
-    if (text) {
-      const attributes = Object.fromEntries(
-        Object.entries(value).filter(([key]) => !['text', 'value', 'lang'].includes(key)),
-      );
-      return [
-        {
-          ...attributes,
-          ...localizedText(text, textToken(value['@xml:lang'] ?? value.lang) ?? fallbackLang),
-        },
-      ];
+    if (
+      Object.keys(value).every((key) => key === 'en' || key === 'zh') &&
+      Object.values(value).every(
+        (text) =>
+          text === null ||
+          typeof text === 'string' ||
+          (typeof text === 'number' && Number.isFinite(text)),
+      )
+    ) {
+      const en = textToken(value.en);
+      const zh = textToken(value.zh);
+      const rows = [
+        en ? localizedText(en, 'en') : null,
+        zh ? localizedText(zh, 'zh') : null,
+      ].filter((entry): entry is JsonObject => Boolean(entry));
+      if (rows.length) return rows;
     }
-    const en = textToken(value.en);
-    const zh = textToken(value.zh);
-    const rows = [en ? localizedText(en, 'en') : null, zh ? localizedText(zh, 'zh') : null].filter(
-      (entry): entry is JsonObject => Boolean(entry),
-    );
-    if (rows.length) {
-      return rows;
-    }
+    const normalized = localizedObjectFromValue(value, fallbackLang);
+    if (normalized) return [normalized];
   }
   const token = textToken(value);
   return [localizedText(token ?? fallback, fallbackLang)];
@@ -386,9 +400,7 @@ const INTENDED_APPLICATIONS_PATHS = [
 ];
 
 function plannedIntendedApplications(plan: JsonObject): JsonObject[] {
-  return firstProseMultiLang(plan, INTENDED_APPLICATIONS_PATHS, '').filter((entry) =>
-    Boolean(textToken(entry['#text'])),
-  );
+  return firstProseMultiLang(plan, INTENDED_APPLICATIONS_PATHS, '');
 }
 
 function globalReference(options: {
@@ -1381,7 +1393,7 @@ function evaluateBuildPlan(plan: JsonObject, kind: BuildPlanKind): Evaluation {
   for (const spec of required) {
     const hasValue =
       spec.path === INTENDED_APPLICATIONS_PATH
-        ? plannedIntendedApplications(plan).length > 0
+        ? plannedIntendedApplications(plan).some((entry) => Boolean(textToken(entry['#text'])))
         : pathIsSatisfied(plan, spec.aliases);
     if (hasValue) {
       satisfied.push(spec.path);
