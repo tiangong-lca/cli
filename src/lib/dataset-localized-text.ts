@@ -2,6 +2,53 @@ import { CliError } from './errors.js';
 
 export type LocalizedTextIssue = { path: string; code: string; message: string };
 
+/** GlobalReferenceType owners in the pinned SDK: their arrays contain entities, not translations. */
+export const GLOBAL_REFERENCE_ENTITY_FIELD_NAMES = Object.freeze([
+  'common:referenceToCommissioner',
+  'common:referenceToCompleteReviewReport',
+  'common:referenceToComplianceSystem',
+  'common:referenceToConvertedOriginalDataSetFrom',
+  'common:referenceToDataSetFormat',
+  'common:referenceToDataSetUseApproval',
+  'common:referenceToEntitiesWithExclusiveAccess',
+  'common:referenceToNameOfReviewerAndInstitution',
+  'common:referenceToOwnershipOfDataSet',
+  'common:referenceToPersonOrEntityEnteringTheData',
+  'common:referenceToPersonOrEntityGeneratingTheDataSet',
+  'common:referenceToPrecedingDataSetVersion',
+  'common:referenceToRegistrationAuthority',
+  'common:referenceToUnchangedRepublication',
+  'referenceQuantity',
+  'referenceToComplementingProcess',
+  'referenceToContact',
+  'referenceToDataHandlingPrinciples',
+  'referenceToDataSource',
+  'referenceToDiagram',
+  'referenceToEntity',
+  'referenceToExternalDocumentation',
+  'referenceToFlowDataSet',
+  'referenceToFlowPropertyDataSet',
+  'referenceToIncludedMethods',
+  'referenceToIncludedNormalisationDataSets',
+  'referenceToIncludedProcesses',
+  'referenceToIncludedWeightingDataSets',
+  'referenceToLCAMethodDetails',
+  'referenceToLCIAMethodDataSet',
+  'referenceToLogo',
+  'referenceToMethodologyFlowChart',
+  'referenceToModelSource',
+  'referenceToProcess',
+  'referenceToReferenceUnitGroup',
+  'referenceToResultingProcess',
+  'referenceToSupportedImpactAssessmentMethods',
+  'referenceToTechnicalSpecification',
+  'referenceToTechnologyFlowDiagrammOrPicture',
+  'referenceToTechnologyPictogramme',
+  'referenceToUsableNormalisationDataSets',
+  'referenceToUsableWeightingDataSets',
+] as const);
+const GLOBAL_REFERENCE_ENTITY_FIELDS = new Set<string>(GLOBAL_REFERENCE_ENTITY_FIELD_NAMES);
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -21,9 +68,17 @@ export function collectLocalizedTextUniquenessIssues(
         fieldPath.endsWith(
           'classificationInformation.common:elementaryFlowCategorization.common:category',
         );
+      const fieldName = path.at(-1);
+      const referenceEntities =
+        typeof fieldName === 'string' && GLOBAL_REFERENCE_ENTITY_FIELDS.has(fieldName);
       const seen = new Map<string, number>();
       node.forEach((entry: unknown, index) => {
-        if (!hierarchy && isRecord(entry) && typeof entry['@xml:lang'] === 'string') {
+        if (
+          !hierarchy &&
+          !referenceEntities &&
+          isRecord(entry) &&
+          typeof entry['@xml:lang'] === 'string'
+        ) {
           const language = entry['@xml:lang'].trim().toLowerCase();
           const first = seen.get(language);
           if (first !== undefined) {
