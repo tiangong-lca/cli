@@ -31,9 +31,9 @@ checkPaths:
   - test/auth-identity*.test.ts
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: 121715acb68b26e5e1ac512d59a9911fe950f244
-lastReviewedNote: 'CLI #462: reviewed exact corrected V6 facade, owner-only authored Unicode rejection before I/O/intent, valid Unicode recovery and unchanged33operations. Corrected V2, older families/renderers, dependencies and publication remain unchanged; final cohort/Main holds persist.'
+lastReviewedAt: '2026-11-07'
+lastReviewedCommit: '3ede655'
+lastReviewedNote: 'CLI #377: reviewed input/result correction and primary-only capability admission. Full local gate passes at 100% coverage; package version, release workflow and publication prerequisites remain unchanged.'
 ---
 
 Review note, 2026-10-07: CLI #407 prepares the separate version-only 0.1.26 release from reviewed allocation/reference PR #406 at main `0a476fee7569af67f4197a1469bb97666d9911e9`. The existing helper selected 0.1.26 from repository and npm latest 0.1.25, proved the target unpublished, and the canonical tag read found no cli-v0.1.26. Package identity and eight directly bound fixture values advance; runtime, exact SDK 0.5.1 dependency, pnpm lock, exports, authentication and workflows remain unchanged. Publication and installed/Foundry managed acceptance still require the existing exact-head four-platform gate, automatic merge tag, native pnpm Trusted Publishing/provenance, credential-free consumers and exact workspace integration.
@@ -806,3 +806,5 @@ tiangong-lca publish --help
 ```
 
 Task PCR preparation uses `tiangong-lca pcr snapshot ensure --task-dir <absolute-dir> --tool-root <installed-PCR-package> --json`. Continue with `tiangong-lca pcr exec --task-dir <absolute-dir> -- guidance --pcr <id> --format json`. Initial connected preparation selects the latest compatible published content; subsequent work retains exact snapshot and reader bytes. Use `--version` for an explicit release or `--offline` for verified cached content. Tools are explicitly selected installations and are never downloaded by this operation. See [the task PCR snapshot contract](docs/agents/pcr-snapshot-contract.md).
+
+`lifecyclemodel build-resulting-process` supports `projection.mode: "primary-only"` (the default). An `all-subproducts` request fails with `LIFECYCLEMODEL_PROJECTION_MODE_UNSUPPORTED` before source lookup or artifact output. Model inputs remain composition references; they are not inferred as generated secondary results. Explicit generated members retain their own versions.
