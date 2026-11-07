@@ -368,6 +368,8 @@ tiangong-lca
 - 已实现的 `lifecyclemodel publish-build` 继续保留同一套 run 布局，并把本地 publish-bundle/request/intent、validation 摘要复用、invocation index 更新统一收口到 CLI
 - `lifecyclemodel publish-build` 当前只负责本地 publish handoff，不直接执行远端 publish commit 或数据库写入；真正的 dry-run / commit 边界仍由 `tiangong-lca publish run` 负责
 - 已实现的 `lifecyclemodel save-draft` 读取 lifecyclemodel rows JSON/JSONL，先用 `LifeCycleModelSchema` 做本地校验，再按 dry-run / commit 边界输出 selected、progress、failures 与 summary artifacts
+- `lifecyclemodel save-draft` 的输入过程仅用于组成图，不自动派生生成结果成员；显式 `json_tg.submodels` 保留精确版本，重复、缺少版本或与输入相同的主/副结果成员会拒绝；显式 allocated 提供过程可以同时参与计算组成。
+- `build-resulting-process` 仅支持默认 `primary-only`；`all-subproducts` 在读取源数据、网络调用及产物写入之前返回 `LIFECYCLEMODEL_PROJECTION_MODE_UNSUPPORTED`。
 - 已实现的 `lifecyclemodel graph` 从本地 lifecyclemodel rows 生成 graph report、JSON graph、DOT 与 SVG artifacts，并可检查连接问题
 - 已实现的 `build-resulting-process` 和 `publish-resulting-process` 都走本地优先、artifact-first 路径，不依赖 Python 或 MCP
 - `build-resulting-process` 现在还支持一个显式的 deterministic direct-read 补全路径：当 request 打开 `process_sources.allow_remote_lookup=true` 时，CLI 会从 `TIANGONG_LCA_API_BASE_URL` 推导 Supabase 目标，并通过原生 `@supabase/supabase-js` 按 `process_id/version` 直接补齐缺失的 process dataset

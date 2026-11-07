@@ -394,7 +394,16 @@ function normalizeStringArray(value: unknown, fieldName: string): string[] {
 
 function normalizeProjectionMode(value: unknown): ProjectionMode {
   const mode = firstNonEmpty(value) ?? 'primary-only';
-  if (mode === 'primary-only' || mode === 'all-subproducts') {
+  if (mode === 'all-subproducts') {
+    throw new CliError(
+      'all-subproducts is not supported yet. Use primary-only only when a single primary result meets your request.',
+      {
+        code: 'LIFECYCLEMODEL_PROJECTION_MODE_UNSUPPORTED',
+        exitCode: 2,
+      },
+    );
+  }
+  if (mode === 'primary-only') {
     return mode;
   }
 
@@ -1728,6 +1737,7 @@ async function buildProjectionBundle(options: {
     resolved_process_summary: JsonObject;
   };
 }> {
+  normalizeProjectionMode(options.request.projection.mode);
   const root = lifecyclemodelRoot(options.sourceModelJson);
   const modelInfo = isRecord(root.lifeCycleModelInformation) ? root.lifeCycleModelInformation : {};
   const modelDataInfo = isRecord(modelInfo.dataSetInformation) ? modelInfo.dataSetInformation : {};
@@ -1791,15 +1801,6 @@ async function buildProjectionBundle(options: {
     undefined,
     options.request.semantic_context,
   );
-  if (options.request.projection.mode === 'all-subproducts') {
-    const jsonTg = isRecord(root.json_tg) ? root.json_tg : {};
-    const submodels = ensureList<JsonObject>(jsonTg.submodels).filter(isRecord);
-    notes.push(
-      submodels.length > 0
-        ? 'Subproduct projection was requested, but this lifecycle model only carries submodel metadata and no submodel-specific topology slices; only the primary aggregated resulting process was emitted.'
-        : 'Subproduct projection was requested, but the lifecycle model does not expose submodel topology metadata; only the primary aggregated resulting process was emitted.',
-    );
-  }
 
   const sourceModelSummary = {
     id: modelIdentity.id,

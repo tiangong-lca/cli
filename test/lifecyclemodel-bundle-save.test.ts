@@ -101,16 +101,7 @@ function createLifecyclemodelPayload(): Record<string, unknown> {
 test('deriveLifecyclemodelJsonTg builds xflow and submodels from json_ordered payloads', () => {
   const jsonTg = __testInternals.deriveLifecyclemodelJsonTg(createLifecyclemodelPayload());
 
-  assert.equal((jsonTg.submodels as Array<Record<string, unknown>>).length, 2);
-  assert.deepEqual((jsonTg.submodels as Array<Record<string, unknown>>)[0], {
-    id: 'proc-primary',
-    version: '01.01.000',
-    type: 'primary',
-    name: {
-      baseName: [{ '#text': 'Primary process' }],
-    },
-    instanceId: '1',
-  });
+  assert.deepEqual(jsonTg.submodels, []);
   assert.equal((jsonTg.xflow as Record<string, unknown>).nodes instanceof Array, true);
   assert.equal(((jsonTg.xflow as Record<string, unknown>).nodes as unknown[]).length, 2);
   assert.deepEqual(
@@ -179,7 +170,7 @@ test('deriveLifecyclemodelJsonTg skips invalid submodels and dangling downstream
   });
 
   const jsonTg = __testInternals.deriveLifecyclemodelJsonTg(payload);
-  assert.equal((jsonTg.submodels as Array<Record<string, unknown>>).length, 2);
+  assert.deepEqual(jsonTg.submodels, []);
   assert.equal(((jsonTg.xflow as Record<string, unknown>).edges as unknown[]).length, 0);
 });
 
@@ -249,24 +240,7 @@ test('buildLifecyclemodelBundlePlan merges explicit metadata and validates proce
         },
       ],
     },
-    submodels: [
-      {
-        id: 'proc-primary',
-        version: '01.01.000',
-        type: 'primary',
-        name: {
-          baseName: [{ '#text': 'Primary process' }],
-        },
-        instanceId: '1',
-      },
-      {
-        id: 'proc-secondary',
-        version: '01.01.000',
-        type: 'secondary',
-        name: [{ '#text': 'Secondary process' }],
-        instanceId: '2',
-      },
-    ],
+    submodels: [],
     preserved: true,
   });
   assert.equal(plan.processMutations.length, 1);
@@ -503,13 +477,7 @@ test('lifecyclemodel bundle helpers fall back cleanly for sparse payloads', () =
   };
 
   const jsonTg = __testInternals.deriveLifecyclemodelJsonTg(sparsePayload);
-  assert.deepEqual(jsonTg.submodels, [
-    {
-      id: 'proc-2',
-      type: 'secondary',
-      instanceId: 'instance-2',
-    },
-  ]);
+  assert.deepEqual(jsonTg.submodels, []);
   assert.deepEqual((jsonTg.xflow as Record<string, unknown>).nodes, [
     {
       id: 'node-1',
@@ -564,68 +532,9 @@ test('lifecyclemodel bundle helpers fall back cleanly for sparse payloads', () =
   ]);
 });
 
-test('lifecyclemodel bundle token and process matching helpers cover empty inputs', () => {
+test('lifecyclemodel bundle token helpers cover empty inputs', () => {
   assert.equal(__testInternals.trimToken('  '), null);
   assert.equal(__testInternals.firstNonEmpty(undefined, ' ', '\n'), null);
-  assert.equal(
-    __testInternals.matchingResultingProcessType(
-      {
-        referenceToProcess: 0 as unknown as Record<string, unknown>,
-      },
-      {},
-    ),
-    'secondary',
-  );
-  assert.equal(
-    __testInternals.matchingResultingProcessType(
-      {
-        referenceToProcess: 0 as unknown as Record<string, unknown>,
-      },
-      {
-        lifeCycleModelInformation: {
-          dataSetInformation: {
-            referenceToResultingProcess: {},
-          },
-        },
-      },
-    ),
-    'secondary',
-  );
-  assert.equal(
-    __testInternals.matchingResultingProcessType(
-      {
-        referenceToProcess: {
-          '@refObjectId': 'proc-primary',
-          '@version': '02.00.000',
-        },
-      },
-      {
-        lifeCycleModelInformation: {
-          dataSetInformation: {
-            referenceToResultingProcess: {
-              '@refObjectId': 'proc-primary',
-            },
-          },
-        },
-      },
-    ),
-    'primary',
-  );
-  assert.equal(
-    __testInternals.matchingResultingProcessType(
-      {
-        referenceToProcess: {
-          '@refObjectId': 'proc-secondary',
-        },
-      },
-      {
-        lifeCycleModelInformation: {
-          dataSetInformation: 0 as unknown as Record<string, unknown>,
-        },
-      },
-    ),
-    'secondary',
-  );
 });
 
 test('syncLifecyclemodelBundleRecord creates lifecyclemodels through save_lifecycle_model_bundle', async () => {
@@ -957,4 +866,57 @@ test('syncLifecyclemodelBundleRecord preserves structured errors and generic HTT
       return true;
     },
   );
+});
+
+test('explicit generated roles retain their exact versions and reject input/duplicate conflicts', () => {
+  const build = (submodels: unknown) =>
+    __testInternals.buildLifecyclemodelBundlePlan({
+      id: 'model',
+      version: '06.00.000',
+      payload: createLifecyclemodelPayload(),
+      mode: 'update',
+      metadata: { json_tg: { submodels } },
+    });
+  const members = ['primary', 'secondary', 'allocated'].map((type, index) => ({
+    id: `result-${index}`,
+    version: `00.00.00${index + 1}`,
+    type,
+    finalId: `flow-${index}`,
+  }));
+  assert.deepEqual(build(members).parent.jsonTg.submodels, members);
+  assert.deepEqual(build([]).parent.jsonTg.submodels, []);
+  const allocatedProvider = { id: 'proc-primary', version: '01.01.000', type: 'allocated' };
+  assert.deepEqual(build([allocatedProvider]).parent.jsonTg.submodels, [allocatedProvider]);
+  assert.deepEqual(
+    build([{ id: 'proc-primary', version: '02.00.000', type: 'primary' }]).parent.jsonTg.submodels,
+    [{ id: 'proc-primary', version: '02.00.000', type: 'primary' }],
+  );
+  for (const invalid of [
+    null,
+    {},
+    [null],
+    [{}],
+    [{ id: 'result' }],
+    [{ id: 'result', version: '01.00.000', type: 'input' }],
+    [members[0], members[0]],
+    [{ id: 'proc-primary', version: '01.01.000', type: 'primary' }],
+  ]) {
+    assert.throws(() => build(invalid), { code: 'LIFECYCLEMODEL_GENERATED_MEMBERS_INVALID' });
+  }
+});
+
+test('invalid input references cannot manufacture generated memberships', () => {
+  const payload = {
+    lifeCycleModelInformation: {
+      technology: { processes: { processInstance: [{ referenceToProcess: null }] } },
+    },
+  };
+  const plan = __testInternals.buildLifecyclemodelBundlePlan({
+    id: 'model',
+    version: '06.00.000',
+    mode: 'update',
+    payload,
+    metadata: { json_tg: { submodels: [] } },
+  });
+  assert.deepEqual(plan.parent.jsonTg.submodels, []);
 });

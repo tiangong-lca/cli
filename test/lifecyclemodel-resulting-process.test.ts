@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -865,7 +865,7 @@ test('runLifecyclemodelBuildResultingProcess auto-detects process dirs and write
       json_ordered_path: './tidas_bundle/lifecyclemodels/solo_model.json',
     },
     projection: {
-      mode: 'all-subproducts',
+      mode: 'primary-only',
     },
     process_sources: {
       allow_mcp_lookup: 'false',
@@ -903,10 +903,6 @@ test('runLifecyclemodelBuildResultingProcess auto-detects process dirs and write
       processDir,
     ]);
     assert.equal(projectionReport.status as string, 'projected_local_bundle');
-    assert.match(
-      (projectionReport.notes as string[])[2] as string,
-      /only carries submodel metadata/u,
-    );
 
     const projectedProcess = ((bundle.projected_processes as JsonRecord[])[0] as JsonRecord)
       .json_ordered as JsonRecord;
@@ -2450,7 +2446,7 @@ test('lifecyclemodel internal builders cover fallback-only branches', async () =
           json_ordered: null,
         },
         projection: {
-          mode: 'all-subproducts',
+          mode: 'primary-only',
           process_id: null,
           process_version: null,
           metadata_overrides: {},
@@ -2486,10 +2482,6 @@ test('lifecyclemodel internal builders cover fallback-only branches', async () =
 
     const projectedProcess = (projection.bundle.projected_processes as JsonRecord[])[0];
     assert.equal(projectedProcess.id, `${projection.sourceModelSummary.id}-resulting-process`);
-    assert.match(
-      (projection.report.notes as string[])[2] as string,
-      /does not expose submodel topology metadata/u,
-    );
   } finally {
     rmSync(projectionDir, { recursive: true, force: true });
   }
@@ -2550,7 +2542,7 @@ test('buildProjectionBundle can fall back to process.env and global fetch for re
           json_ordered: null,
         },
         projection: {
-          mode: 'all-subproducts',
+          mode: 'primary-only',
           process_id: null,
           process_version: null,
           metadata_overrides: {},
@@ -2627,5 +2619,34 @@ test('buildProjectionBundle can fall back to process.env and global fetch for re
     } else {
       process.env.TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY = originalPublishableKey;
     }
+  }
+});
+
+test('all-subproducts fails before source lookup, network calls or artifact output', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-lm-unsupported-'));
+  const inputPath = path.join(dir, 'request.json');
+  const outDir = path.join(dir, 'out');
+  writeJson(inputPath, {
+    source_model: { json_ordered_path: './missing-model.json' },
+    projection: { mode: 'all-subproducts' },
+    process_sources: { allow_remote_lookup: true },
+  });
+  let calls = 0;
+  try {
+    await assert.rejects(
+      runLifecyclemodelBuildResultingProcess({
+        inputPath,
+        outDir,
+        fetchImpl: async () => {
+          calls++;
+          throw new Error('must not fetch');
+        },
+      }),
+      { code: 'LIFECYCLEMODEL_PROJECTION_MODE_UNSUPPORTED', exitCode: 2 },
+    );
+    assert.equal(calls, 0);
+    assert.equal(existsSync(outDir), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
