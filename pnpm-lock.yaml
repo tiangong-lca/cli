@@ -16,8 +16,8 @@ importers:
         specifier: ^2.112.4
         version: 2.118.0
       '@tiangong-lca/tidas-sdk':
-        specifier: 0.5.1
-        version: 0.5.1
+        specifier: 0.6.0
+        version: 0.6.0
     devDependencies:
       '@types/node':
         specifier: ^24.13.3
@@ -450,8 +450,8 @@ packages:
       '@opentelemetry/api':
         optional: true
 
-  '@tiangong-lca/tidas-sdk@0.5.1':
-    resolution: {integrity: sha512-Wj/bgHq3SYDpPBmqrNWkpMtdtGTCD7L5yhCyJ/ytfCSzFu+L2ZJ0TQK1t5x10l/7rTln0By0rolE0dMFPuO1WA==}
+  '@tiangong-lca/tidas-sdk@0.6.0':
+    resolution: {integrity: sha512-CSGPNqvWTGqOm2cC9+Q+3ytCx/W1C7E5rFFPnM3zg25+QBELQwlvdEzL9BuvLSRZiViKnd82AkxX9QQNWnOIrQ==}
     engines: {node: 24.19.0}
 
   '@tufjs/canonical-json@2.0.0':
@@ -1018,8 +1018,8 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod@4.4.3:
-    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
 snapshots:
 
@@ -1273,11 +1273,11 @@ snapshots:
       '@supabase/realtime-js': 2.118.0
       '@supabase/storage-js': 2.118.0
 
-  '@tiangong-lca/tidas-sdk@0.5.1':
+  '@tiangong-lca/tidas-sdk@0.6.0':
     dependencies:
       jsonschema: 1.5.0
       xmltodict: 1.0.5
-      zod: 4.4.3
+      zod: 4.6.7
 
   '@tufjs/canonical-json@2.0.0': {}
 
@@ -1835,4 +1835,4 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod@4.4.3: {}
+  zod@4.6.7: {}
