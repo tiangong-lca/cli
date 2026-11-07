@@ -22,9 +22,9 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-11-04
-lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
-lastReviewedNote: 'CLI #455: exact committed V4 owner codec, explicit review/finalization/share commands, original outcome/current-state recovery and independently anchored versioned downloads. V2/V3 and historical signatures remain; no public release, hosted grant or actual P3 acceptance is inferred.'
+lastReviewedAt: '2026-11-07'
+lastReviewedCommit: '3ede655'
+lastReviewedNote: 'CLI #377: reviewed input/result correction and primary-only capability admission. Full local gate passes at 100% coverage; package version, release workflow and publication prerequisites remain unchanged.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

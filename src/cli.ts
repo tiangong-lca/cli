@@ -2362,6 +2362,10 @@ Options:
   --json             Print compact JSON
   -h, --help
 
+Projection mode:
+  projection.mode defaults to primary-only (one aggregated primary result).
+  all-subproducts is not supported; it fails before lookup or artifact output.
+
 Remote lookup env (only when process_sources.allow_remote_lookup=true):
   Official Production uses its bundled profile and a prior "tiangong-lca auth login".
   A custom environment requires the complete matching tuple:

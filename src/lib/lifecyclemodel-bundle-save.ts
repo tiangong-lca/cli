@@ -87,11 +87,6 @@ function lifecyclemodelRoot(payload: JsonObject): JsonObject {
   return isRecord(payload.lifeCycleModelDataSet) ? payload.lifeCycleModelDataSet : payload;
 }
 
-function dataSetInformation(root: JsonObject): JsonObject {
-  const info = isRecord(root.lifeCycleModelInformation) ? root.lifeCycleModelInformation : {};
-  return isRecord(info.dataSetInformation) ? info.dataSetInformation : {};
-}
-
 function technology(root: JsonObject): JsonObject {
   const info = isRecord(root.lifeCycleModelInformation) ? root.lifeCycleModelInformation : {};
   return isRecord(info.technology) ? info.technology : {};
@@ -113,32 +108,6 @@ function outputConnections(instance: JsonObject): JsonObject[] {
   return ensureList<JsonObject>(connections.outputExchange).filter(isRecord);
 }
 
-function matchingResultingProcessType(
-  instance: JsonObject,
-  payload: JsonObject,
-): 'primary' | 'secondary' {
-  const ref = isRecord(instance.referenceToProcess) ? instance.referenceToProcess : {};
-  const resulting = isRecord(
-    dataSetInformation(lifecyclemodelRoot(payload)).referenceToResultingProcess,
-  )
-    ? (dataSetInformation(lifecyclemodelRoot(payload)).referenceToResultingProcess as JsonObject)
-    : {};
-  const processId = trimToken(ref['@refObjectId']);
-  const processVersion = trimToken(ref['@version']);
-  const resultingId = trimToken(resulting['@refObjectId']);
-  const resultingVersion = trimToken(resulting['@version']);
-
-  if (
-    processId &&
-    processId === resultingId &&
-    (!resultingVersion || processVersion === resultingVersion)
-  ) {
-    return 'primary';
-  }
-
-  return 'secondary';
-}
-
 function displayName(reference: JsonObject): unknown {
   if (reference.name !== undefined) {
     return cloneJson(reference.name);
@@ -149,29 +118,6 @@ function displayName(reference: JsonObject): unknown {
   }
 
   return undefined;
-}
-
-function deriveSubmodels(payload: JsonObject): JsonObject[] {
-  const submodels: Array<JsonObject | null> = extractProcessInstances(payload).map(
-    (instance, index) => {
-      const reference = isRecord(instance.referenceToProcess) ? instance.referenceToProcess : {};
-      const id = trimToken(reference['@refObjectId']);
-      if (!id) {
-        return null;
-      }
-
-      const version = trimToken(reference['@version']);
-      return {
-        id,
-        ...(version ? { version } : {}),
-        type: matchingResultingProcessType(instance, payload),
-        ...(displayName(reference) !== undefined ? { name: displayName(reference) } : {}),
-        instanceId: firstNonEmpty(instance['@dataSetInternalID'], `instance-${index + 1}`),
-      };
-    },
-  );
-
-  return submodels.filter((value): value is JsonObject => value !== null);
 }
 
 function buildNodeLabel(reference: JsonObject, fallback: string): unknown {
@@ -281,7 +227,8 @@ export function deriveLifecyclemodelJsonTg(payload: JsonObject): JsonObject {
       nodes: deriveXflowNodes(payload),
       edges: deriveXflowEdges(payload),
     },
-    submodels: deriveSubmodels(payload),
+    // Inputs belong to the composition graph. Generated members require explicit metadata.
+    submodels: [],
   };
 }
 
@@ -334,6 +281,44 @@ function normalizeProcessMutations(value: unknown): JsonObject[] {
   return cloneJson(mutations);
 }
 
+function validateGeneratedMembers(explicit: JsonObject | null, payload: JsonObject): void {
+  if (!explicit || explicit.submodels === undefined) return;
+  const inputIds = new Set(
+    extractProcessInstances(payload).map((instance) => {
+      const ref = isRecord(instance.referenceToProcess) ? instance.referenceToProcess : {};
+      return `${trimToken(ref['@refObjectId'])}@${trimToken(ref['@version'])}`;
+    }),
+  );
+  const seen = new Set<string>();
+  if (!Array.isArray(explicit.submodels)) {
+    throw new CliError('json_tg.submodels must be an array of generated results.', {
+      code: 'LIFECYCLEMODEL_GENERATED_MEMBERS_INVALID',
+      exitCode: 2,
+    });
+  }
+  for (const member of explicit.submodels) {
+    const id = isRecord(member) ? trimToken(member.id) : null;
+    const version = isRecord(member) ? trimToken(member.version) : null;
+    const key = `${id}@${version}`;
+    if (
+      !id ||
+      !version ||
+      !['primary', 'secondary', 'allocated'].includes(String(member.type)) ||
+      seen.has(key) ||
+      (inputIds.has(key) && member.type !== 'allocated')
+    ) {
+      throw new CliError(
+        'Generated members require unique id/version and primary, secondary or allocated type; an input cannot also be a primary or secondary result. Allocated providers may be composition members.',
+        {
+          code: 'LIFECYCLEMODEL_GENERATED_MEMBERS_INVALID',
+          exitCode: 2,
+        },
+      );
+    }
+    seen.add(key);
+  }
+}
+
 export function buildLifecyclemodelBundlePlan(options: {
   id: string;
   version: string;
@@ -343,6 +328,7 @@ export function buildLifecyclemodelBundlePlan(options: {
 }): LifecyclemodelBundlePlan {
   const explicitJsonTg = isRecord(options.metadata?.json_tg) ? options.metadata?.json_tg : null;
   const derivedJsonTg = deriveLifecyclemodelJsonTg(options.payload);
+  validateGeneratedMembers(explicitJsonTg, options.payload);
 
   return {
     mode: options.mode,
@@ -618,7 +604,6 @@ export const __testInternals = {
   deriveLifecyclemodelJsonTg,
   exactVisibleRows,
   firstNonEmpty,
-  matchingResultingProcessType,
   mergeLifecyclemodelJsonTg,
   parseVisibleRows,
   requireLifecyclemodelBundleResponse,
