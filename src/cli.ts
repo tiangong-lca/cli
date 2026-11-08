@@ -1,3 +1,5 @@
+import { runDatasetProcessCommand } from './commands/dataset-process.js';
+import { createProcessPorts } from './adapters/process.js';
 import { parseArgs } from 'node:util';
 import { runRuntimeCommand } from './lib/runtime/command.js';
 import { runPcrCommand } from './lib/pcr-snapshot-command.js';
@@ -584,7 +586,7 @@ Implemented Commands:
   auth       login | status | whoami | doctor-auth | logout | identity-receipt
   search     flow | process | lifecyclemodel
   process    get | list | identity-preflight | build-plan | scope-statistics | dedup-review | auto-build | resume-build | publish-build | complete-required-fields | save-draft | batch-build | refresh-references | verify-rows
-  dataset    support-cache export | contract get | context-pack | classification children/path/audit/apply | curation-queue build/next/verify | import-lca convert | author | patch apply | save-draft | source upload-attachments | validate | verify-remote | bilingual extract/apply/validate | evidence-search plan/run | references rewrite/refresh-remote | maintenance clear-account/plan/apply/verify/flow-identity
+  dataset    process get/validate (0.2.0 preview) | support-cache export | contract get | context-pack | classification children/path/audit/apply | curation-queue build/next/verify | import-lca convert | author | patch apply | save-draft | source upload-attachments | validate | verify-remote | bilingual extract/apply/validate | evidence-search plan/run | references rewrite/refresh-remote | maintenance clear-account/plan/apply/verify/flow-identity
   flow       get | list | identity-preflight | build-plan | fetch-rows | materialize-decisions | remediate | publish-version | publish-reviewed-data | build-alias-map | scan-process-flow-refs | plan-process-flow-repairs | apply-process-flow-repairs | regen-product | validate-processes
   lifecyclemodel auto-build | validate-build | publish-build | save-draft | graph | build-resulting-process | publish-resulting-process | orchestrate
   qa         process | flow | lifecyclemodel
@@ -7343,6 +7345,12 @@ function applyRemoteOverrides(
 
 export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResult> {
   try {
+    if (argv[0] === 'dataset' && argv[1] === 'process') {
+      return await runDatasetProcessCommand(
+        argv.slice(2),
+        createProcessPorts(deps.env, deps.fetchImpl),
+      );
+    }
     const { flags, command, subcommand, commandArgs } = parseCommandLine(argv);
     const authIdentityReceiptImpl = deps.runAuthIdentityReceiptImpl ?? runAuthIdentityReceipt;
     const oauthLoginImpl = deps.loginWithSupabaseOAuthImpl ?? loginWithSupabaseOAuth;

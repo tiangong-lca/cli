@@ -53,6 +53,20 @@ Managed-host launch selection stays in the generic CLI manager. Dedicated protoc
 
 `dataset-save-draft-reference-intent.ts` composes the shared #289 strict selection/evaluator and complete-body observation with the owner execution contract. `dataset-save-draft-run.ts` owns fresh preflight/predispatch, action ledger and recovery; `dataset-command.ts` awaits admission before POST. Default gates and the original ledger domain remain unchanged. [The exact-reference contract](exact-reference-intent-contract.md#guarded-flow-owner-drafts) defines caller snapshots and admission fields.
 
+## 0.2.0 foundation (CLI #468)
+
+The refactor starts with README/AGENTS and a small working path, not a wholesale move of `src/lib`. `src/cli.ts` composes the new Process ports and dispatches only `dataset process` into `src/commands/dataset-process.ts`; all other namespaces remain on their existing paths.
+
+- `src/commands/`: strict CLI argument/help handling, bounded output and local artifact coordination.
+- `src/application/`: atomic Process read/validation operations with injected ports; no argv, filesystem or network APIs.
+- `src/adapters/`: existing authenticated data lookup and Process validation implementations behind those ports. Exact reads disable the legacy latest fallback.
+- `src/shared/`: pure result types separated from file IO and presentation/template lookup.
+- `assets/reply-templates/`: installed Markdown guidance selected by command outcome.
+
+The minimum path implements Process `get` and local `validate`. Help explicitly limits validation to `schema,business`; remote reference validation, projections and other type/action combinations remain later work. No service writes are added. Existing public subpath exports and legacy helpers retain their boundaries. [Existing runtime safeguards](existing-runtime-contract.md) retain the detailed constraints formerly embedded in AGENTS.
+
+Imports flow from composition to commands to application; adapters implement ports and reuse legacy helpers. Application may use pure shared result types and type-only legacy domain report shapes. Presentation and filesystem modules stay out of application. Tests exercise behavior through the same entrypoint plus injected operation ports.
+
 ## Repo Shape
 
 This repo is organized around one stable launcher plus a library-style `src/lib/**` tree that implements command families and shared helpers.

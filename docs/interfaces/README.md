@@ -6,6 +6,15 @@ status: active
 authoritative: false
 owner: cli
 language: zh-CN
+whenToUse:
+  - checking the target CLI interface boundaries
+whenToUpdate:
+  - when the documented scope or behavior changes
+checkPaths:
+  - docs/interfaces/**
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: e2b7a7a0142085180935454aa2e782d6a79433e8
+lastReviewedNote: 'CLI #468: reviewed documentation-first foundation and explicit implementation boundaries; target design remains separate from runtime capability.'
 ---
 
 # CLI 目标接口设计

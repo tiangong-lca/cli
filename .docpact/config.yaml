@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-11-07"
-lastReviewedCommit: "2ed5b82102ac80e56c2d4c7f0fe8ab00e4a471fa"
-lastReviewedNote: 'CLI #466: reviewed version-only 0.1.29 preparation on merged #377 source; eight bound fixture values advance, while runtime, dependency lock, exports and release authority remain unchanged.'
+lastReviewedAt: '2026-11-08'
+lastReviewedCommit: 'e2b7a7a0142085180935454aa2e782d6a79433e8'
+lastReviewedNote: 'CLI #468: reviewed the documentation-first command foundation, retained runtime safeguards and routing for new layers; release and integration authority remain unchanged.'
 
 catalog:
   repos:
@@ -14,6 +14,7 @@ catalog:
         - docs/agents/live-case-testing.md
         - docs/agents/repo-validation.md
         - docs/agents/repo-architecture.md
+        - docs/agents/existing-runtime-contract.md
         - docs/agents/study-cli-contract.md
         - DEV_CN.md
         - docs/IMPLEMENTATION_GUIDE_CN.md
@@ -44,10 +45,15 @@ ownership:
           - bin/**
           - src/main.ts
           - src/cli.ts
+          - src/commands/**
       ownerRepo: cli
     - id: command-families-and-runtime
       paths:
         include:
+          - src/application/**
+          - src/adapters/**
+          - src/shared/**
+          - assets/reply-templates/**
           - src/batch.ts
           - src/auth-identity-receipt.ts
           - src/command-spec.ts
@@ -161,6 +167,7 @@ coverage:
     - .oxlintrc.json
     - bin/**
     - src/**
+    - assets/reply-templates/**
     - assets/runtime/**
     - assets/study-contract/**
     - assets/study-renderer/**
@@ -402,6 +409,8 @@ rules:
     scope: repo
     repo: cli
     triggers:
+      - path: docs/agents/existing-runtime-contract.md
+        kind: retained-runtime-contract
       - path: AGENTS.md
         kind: doc-contract
       - path: .docpact/config.yaml
@@ -490,6 +499,8 @@ rules:
         kind: process-entry
       - path: src/cli.ts
         kind: command-router
+      - path: src/commands/**
+        kind: command-router
     requiredDocs:
       - path: AGENTS.md
         mode: review_or_update
@@ -506,6 +517,14 @@ rules:
     scope: repo
     repo: cli
     triggers:
+      - path: src/application/**
+        kind: command-logic
+      - path: src/adapters/**
+        kind: command-logic
+      - path: src/shared/**
+        kind: shared-runtime
+      - path: assets/reply-templates/**
+        kind: artifact-runtime
       - path: src/lib/artifacts.ts
         kind: artifact-runtime
       - path: src/lib/canonical-json-hash.ts
@@ -555,6 +574,8 @@ rules:
       - path: src/lib/validation.ts
         kind: validation-runtime
     requiredDocs:
+      - path: docs/agents/existing-runtime-contract.md
+        mode: review_or_update
       - path: AGENTS.md
         mode: review_or_update
       - path: .docpact/config.yaml
@@ -843,3 +864,18 @@ rules:
       - path: docs/agents/dependency-maintenance.md
         mode: review_or_update
     reason: Dependency monitoring cadence, budgets and manual intake belong in the focused maintenance guide.
+
+  - id: cli-refactor-design-contract
+    scope: repo
+    repo: cli
+    triggers:
+      - path: docs/interfaces/**
+        kind: interface-design
+      - path: docs/plans/cli-0.2.0-refactor-plan.md
+        kind: implementation-plan
+    requiredDocs:
+      - path: docs/interfaces/README.md
+        mode: review_or_update
+      - path: docs/plans/cli-0.2.0-refactor-plan.md
+        mode: review_or_update
+    reason: Target contracts and implementation status remain separate and traceable during the refactor.

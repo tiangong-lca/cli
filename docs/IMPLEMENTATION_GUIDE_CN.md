@@ -1430,3 +1430,7 @@ Flow-only `dataset save-draft --execution-contract` 可在 dry-run／commit 中�
 `study` 的研究生命周期使用 Edge v2，分析、报告和导出显式使用 v3；CLI 不重算模型或计算算法身份。变更请求在发送前保存私有 intent，未知结果只通过原键显式恢复。独立锚定的签名、投影绑定及同一固定渲染器的精确 HTML 重现共同构成离线验证；它不代表当前访问权或评审状态。候选 owner artifact 的三项 digest 开关列于 `.env.example`，仅允许明确的 loopback 任务环境；正式发行需替换为合格产物。字段、命令与安装验证以 [Study CLI contract](agents/study-cli-contract.md) 为准。
 
 本地 loopback 的 doctor 诊断在网络前独立选择，复用 Study 有界 live-user/token-client 校验；Skill 只在当前 origin/client/callback 与独立任务 tuple 一致时接受。它不放宽 Production 身份回执，也不证明缓存登录的历史 callback。参见 [Study CLI contract](agents/study-cli-contract.md)。
+
+## CLI 0.2.0 起步结构（#468）
+
+新入口按 `src/commands`（参数与帮助）、`src/application`（原子业务操作与端口）、`src/adapters`（现有服务与校验适配）、`src/shared`（结果、文件与模板）分层。`src/cli.ts` 仅接入 `dataset process get/validate` 样例，其余能力仍由现有实现承担。Process 精确读取不回退到最新版本；本地校验暂不支持远程引用检查。完整范围与状态见 [README](../README.md)、[架构](agents/repo-architecture.md) 和[实施计划](plans/cli-0.2.0-refactor-plan.md)。

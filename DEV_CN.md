@@ -934,3 +934,7 @@ Review note, 2026-09-21: independently reviewed CLI #283 annual-volume commit d4
 `dataset save-draft --execution-contract --reference-intent-file` 仅在 Flow-only 合约中消费 #289 的显式选择。前检与 dispatch 前鲜检由 CLI 承担；Foundry 只绑定并传递 snapshot，不复制 eligibility。新增用例位于 `test/dataset-save-draft-exact-reference.test.ts`，覆盖同一完整 consumer 的 public dry-run／commit、正文和账号漂移、async gate、原 admission ledger 与 UNKNOWN 不重放。执行 `pnpm prepush:gate` 的全量证明后，仍须由原调用方资格通路完成实际 Task 回验；合成 transport 成功不代表生产或正式 runtime 采用。字段定义见 [exact-reference contract](docs/agents/exact-reference-intent-contract.md#guarded-flow-owner-drafts)。
 
 显式完整 loopback 环境的 `auth doctor-auth` 使用独立本地诊断 schema，返回当前 origin/client/callback 与在线 actor；不得将它视作规范 Supabase project 身份回执或历史 callback 证明。Production/default、whoami 与 identity-receipt 保持规范回执规则。字段和 tuple 核对要求见 [Study CLI contract](docs/agents/study-cli-contract.md)。
+
+## CLI 0.2.0 基础里程碑（#468）
+
+从 [README](README.md)、[AGENTS](AGENTS.md) 和[实施计划](docs/plans/cli-0.2.0-refactor-plan.md) 开始。新代码按 commands/application/adapters/shared 分层；当前仅接入 `dataset process get/validate`，既有命令仍保留。运行 `pnpm build` 后使用 `node --import tsx --test test/cli-dataset-process.test.ts` 验证样例，再完成原有 lint、package 和完整覆盖率门禁。下游迁移不属于此里程碑。

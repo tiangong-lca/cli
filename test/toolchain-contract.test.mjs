@@ -1638,6 +1638,23 @@ function copyCleanPackageSource(destination) {
 }
 
 function assertProductionBootstrap(binPath, cwd) {
+  const sampleHelp = runBin(binPath, ['dataset', 'process', 'get', '--help', '--json'], cwd);
+  assertSuccessfulExit(sampleHelp);
+  assert.deepEqual(JSON.parse(sampleHelp.stdout).implementedActions, ['get', 'validate']);
+  const sampleInput = join(cwd, 'foundation-invalid-process.json');
+  writeFileSync(sampleInput, JSON.stringify({ processDataSet: {} }));
+  const sample = runBin(
+    binPath,
+    ['dataset', 'process', 'validate', '--input', sampleInput, '--json'],
+    cwd,
+  );
+  assert.equal(sample.status, 1, sample.stderr || sample.stdout);
+  const sampleResult = JSON.parse(sample.stdout);
+  assert.equal(sampleResult.operation, 'dataset process validate');
+  assert.equal(sampleResult.status, 'completed');
+  assert.ok(existsSync(sampleResult.replyTemplate));
+  assert.match(readFileSync(sampleResult.replyTemplate, 'utf8'), /校验/);
+
   const sessionFile = join(cwd, 'private-session', 'session.json');
   const env = { TIANGONG_LCA_SESSION_FILE: sessionFile };
   const doctor = runBin(binPath, ['doctor', '--json'], cwd, env);
