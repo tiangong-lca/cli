@@ -4,6 +4,7 @@ export type RpcReplayClassification = {
 };
 
 export const DATA_API_RPC_REPLAY_CLASSIFICATION = {
+  qry_review_get_items: { operation: 'read', authRefreshReplay: 'once-after-401-403' },
   cmd_dataset_alias_execution_admit_guarded: { operation: 'mutation', authRefreshReplay: 'never' },
   cmd_dataset_alias_execution_gate_guarded: { operation: 'mutation', authRefreshReplay: 'never' },
   cmd_dataset_alias_execution_preflight_guarded: {

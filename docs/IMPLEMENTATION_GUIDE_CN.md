@@ -1431,6 +1431,6 @@ Flow-only `dataset save-draft --execution-contract` 可在 dry-run／commit 中�
 
 本地 loopback 的 doctor 诊断在网络前独立选择，复用 Study 有界 live-user/token-client 校验；Skill 只在当前 origin/client/callback 与独立任务 tuple 一致时接受。它不放宽 Production 身份回执，也不证明缓存登录的历史 callback。参见 [Study CLI contract](agents/study-cli-contract.md)。
 
-## CLI 0.2.0 起步结构（#468）
+## CLI 0.2.0 能力结构
 
-新入口按 `src/commands`（参数与帮助）、`src/application`（原子业务操作与端口）、`src/adapters`（现有服务与校验适配）、`src/shared`（结果、文件与模板）分层。`src/cli.ts` 仅接入 `dataset process get/validate` 样例，其余能力仍由现有实现承担。Process 精确读取不回退到最新版本；本地校验暂不支持远程引用检查。完整范围与状态见 [README](../README.md)、[架构](agents/repo-architecture.md) 和[实施计划](plans/cli-0.2.0-refactor-plan.md)。
+新入口按 `src/commands`（参数与帮助）、`src/application`（原子操作与端口）、`src/adapters`（服务及规则适配）、`src/shared`（结果、文件与模板）分层。Dataset 按八种类型的能力表开放查询、契约、内容处理和独立写入，Review 适配现有提交者及审核者业务。精确读取不回退到最新版本，Model 生成只输出候选，写入未知结果不重放。服务端与前检保证分别表达，新增审核语义按实施范围后续落地。能力和限制见 [README](../README.md)、[架构](agents/repo-architecture.md) 与[实施计划](plans/cli-0.2.0-refactor-plan.md)。

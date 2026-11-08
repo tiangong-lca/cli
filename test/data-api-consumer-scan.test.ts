@@ -38,8 +38,8 @@ test('consumer-zero scan inventories every active relation and api RPC without r
     'sources',
     'unitgroups',
   ]);
-  // The versioned (v2) protected lifecycle endpoints are approved surface: four additive names.
-  assert.equal(report.inventory.rpc_names.length, 20);
+  // The inventory also includes the verified participant Review read RPC.
+  assert.equal(report.inventory.rpc_names.length, 21);
   for (const name of [
     'cmd_dataset_alias_execution_preflight_v2_guarded',
     'cmd_dataset_alias_execution_gate_v2_guarded',

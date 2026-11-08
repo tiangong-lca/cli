@@ -25,9 +25,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-07
-lastReviewedCommit: 2ed5b82102ac80e56c2d4c7f0fe8ab00e4a471fa
-lastReviewedNote: 'CLI #466: reviewed version-only 0.1.29 preparation on merged #377 source; eight bound fixture values advance, while runtime, dependency lock, exports and release authority remain unchanged.'
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
+lastReviewedNote: 'CLI #468: reviewed packaging of typed commands and Markdown reply templates; version, publication, tagging and integration procedures are unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

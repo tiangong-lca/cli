@@ -127,6 +127,15 @@ test('buildDoctorReport records canonical TianGong LCA env keys', () => {
   assert.equal(report.ok, true);
   const accessTokenCheck = report.checks.find((check) => check.key === 'TIANGONG_LCA_ACCESS_TOKEN');
   assert.equal(accessTokenCheck?.source, 'env');
+  assert.equal(accessTokenCheck?.valuePreview, '[redacted]');
+  assert.ok(
+    !JSON.stringify(
+      buildDoctorReport(
+        { TIANGONG_LCA_ACCESS_TOKEN: 'tiny' },
+        { loaded: false, path: '', count: 0 },
+      ),
+    ).includes('tiny'),
+  );
   const publishableCheck = report.checks.find(
     (check) => check.key === 'TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY',
   );

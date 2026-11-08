@@ -14,8 +14,8 @@ checkPaths:
   - AGENTS.md
   - src/lib/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e2b7a7a0142085180935454aa2e782d6a79433e8
-lastReviewedNote: 'CLI #468: reviewed documentation-first foundation and explicit implementation boundaries; target design remains separate from runtime capability.'
+lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
+lastReviewedNote: 'CLI #468: reviewed reuse of auth, RLS, server guards, exact references and unknown-outcome protections by typed Dataset and Review adapters; retained specialized runtime contracts remain applicable.'
 ---
 
 # Existing runtime safeguards

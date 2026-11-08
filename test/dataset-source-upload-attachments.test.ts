@@ -8,7 +8,6 @@ import { CliError } from '../src/lib/errors.js';
 import {
   __testInternals,
   runDatasetSourceUploadAttachments,
-  type DatasetSourceUploadAttachmentsReport,
 } from '../src/lib/dataset-source-upload-attachments.js';
 import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
 import type { FetchLike, ResponseLike } from '../src/lib/http.js';
@@ -556,32 +555,6 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function stubReport(
-  status: DatasetSourceUploadAttachmentsReport['status'],
-): DatasetSourceUploadAttachmentsReport {
-  return {
-    schema_version: 1,
-    generated_at_utc: '2026-06-29T00:00:00.000Z',
-    status,
-    mode: status === 'uploaded_attachments' ? 'commit' : 'dry-run',
-    bucket: 'external_docs',
-    external_docs_dir: '/x',
-    summary: {
-      sources_scanned: 0,
-      local_refs: 0,
-      remote_refs: 0,
-      unresolved_refs: 0,
-      files_planned: 0,
-      files_uploaded: 0,
-      files_failed: 0,
-      sources_rewritten: 0,
-    },
-    files: [],
-    references: [],
-    artifacts: { report: '/x/r.json', rewritten_sources: '/x/s.jsonl' },
-  };
-}
-
 test('executeCli renders source upload-attachments help', async () => {
   const bare = await executeCli(['dataset', 'source'], makeDeps());
   assert.equal(bare.exitCode, 0);
@@ -593,104 +566,36 @@ test('executeCli renders source upload-attachments help', async () => {
 });
 
 test('executeCli rejects an unknown source action', async () => {
-  const result = await executeCli(['dataset', 'source', 'frobnicate'], makeDeps());
+  const result = await executeCli(['dataset', 'source', 'frobnicate', '--json'], makeDeps());
   assert.equal(result.exitCode, 2);
-  assert.match(result.stderr, /dataset source action must be 'upload-attachments'/u);
+  assert.equal(JSON.parse(result.stdout).error.code, 'CAPABILITY_UNSUPPORTED');
 });
 
-test('executeCli requires --input and --external-docs-dir', async () => {
-  const noInput = await executeCli(['dataset', 'source', 'upload-attachments'], makeDeps());
+test('new Source entry requires a readable structured input', async () => {
+  const noInput = await executeCli(
+    ['dataset', 'source', 'upload-attachments', '--json'],
+    makeDeps(),
+  );
   assert.equal(noInput.exitCode, 2);
-  assert.match(noInput.stderr, /requires --input/u);
+  assert.equal(JSON.parse(noInput.stdout).error.code, 'VALUE_REQUIRED');
 
   const noDocs = await executeCli(
-    ['dataset', 'source', 'upload-attachments', '--input', 'x.jsonl'],
+    ['dataset', 'source', 'upload-attachments', '--input', 'x.jsonl', '--json'],
     makeDeps(),
   );
   assert.equal(noDocs.exitCode, 2);
-  assert.match(noDocs.stderr, /requires --external-docs-dir/u);
+  assert.equal(JSON.parse(noDocs.stdout).error.code, 'INPUT_INVALID_JSON');
 });
 
-test('executeCli rejects conflicting and malformed flags', async () => {
-  const conflict = await executeCli(
-    [
-      'dataset',
-      'source',
-      'upload-attachments',
-      '--input',
-      'x',
-      '--external-docs-dir',
-      'y',
-      '--commit',
-      '--dry-run',
-    ],
-    makeDeps(),
-  );
-  assert.equal(conflict.exitCode, 2);
-  assert.match(conflict.stderr, /Cannot pass both --commit and --dry-run/u);
-
-  const badTimeout = await executeCli(
-    [
-      'dataset',
-      'source',
-      'upload-attachments',
-      '--input',
-      'x',
-      '--external-docs-dir',
-      'y',
-      '--timeout-ms',
-      'abc',
-    ],
-    makeDeps(),
-  );
-  assert.equal(badTimeout.exitCode, 2);
-  assert.match(badTimeout.stderr, /--timeout-ms must be an integer/u);
-});
-
-test('executeCli maps upload-attachments status to an exit code', async () => {
-  const calls: Record<string, unknown>[] = [];
-  const deps = makeDeps({
-    runDatasetSourceUploadAttachmentsImpl: async (options: Record<string, unknown>) => {
-      calls.push(options);
-      return stubReport('uploaded_attachments');
-    },
-  });
-  const ok = await executeCli(
-    [
-      'dataset',
-      'source',
-      'upload-attachments',
-      '--input',
-      'rows.jsonl',
-      '--external-docs-dir',
-      'docs',
-      '--bucket',
-      'external_docs',
-      '--verify',
-      '--timeout-ms',
-      '5000',
-      '--json',
-    ],
-    deps,
-  );
-  assert.equal(ok.exitCode, 0);
-  assert.equal(calls[0].inputPath, 'rows.jsonl');
-  assert.equal(calls[0].externalDocsDir, 'docs');
-  assert.equal(calls[0].bucket, 'external_docs');
-  assert.equal(calls[0].outDir, null);
-  assert.equal(calls[0].commit, false);
-  assert.equal(calls[0].verify, true);
-  assert.equal(calls[0].timeoutMs, 5000);
-  assert.equal(calls[0].env, deps.env);
-  assert.equal(calls[0].fetchImpl, deps.fetchImpl);
-
-  const failed = await executeCli(
-    ['dataset', 'source', 'upload-attachments', '--input', 'r', '--external-docs-dir', 'd'],
-    makeDeps({
-      runDatasetSourceUploadAttachmentsImpl: async () => stubReport('completed_with_failures'),
-    }),
-  );
-  assert.equal(failed.exitCode, 1);
+test('new Source entry rejects legacy directory and commit flags', async () => {
+  for (const flag of ['--external-docs-dir', '--commit', '--verify', '--timeout-ms']) {
+    const reply = await executeCli(
+      ['dataset', 'source', 'upload-attachments', flag, '--json'],
+      makeDeps(),
+    );
+    assert.equal(reply.exitCode, 2);
+    assert.equal(JSON.parse(reply.stdout).error.code, 'ARGUMENTS_INVALID');
+  }
 });
 
 test('executeCli renders source help for --help and -h action aliases', async () => {
@@ -701,42 +606,11 @@ test('executeCli renders source help for --help and -h action aliases', async ()
   }
 });
 
-test('executeCli runs source upload-attachments end-to-end through the real impl', async () => {
-  const externalDocsDir = buildExternalDocs();
-  const inputPath = writeJsonl([source('s', { '@uri': '../external_docs/eaf.png' })]);
-  const outDir = tmp('tg-cli-e2e-');
-  try {
-    const result = await executeCli(
-      [
-        'dataset',
-        'source',
-        'upload-attachments',
-        '--input',
-        inputPath,
-        '--external-docs-dir',
-        externalDocsDir,
-        '--out-dir',
-        outDir,
-        '--json',
-      ],
-      makeDeps({ env: buildSupabaseTestEnv(), fetchImpl: async () => okResponse() }),
-    );
-    assert.equal(result.exitCode, 0);
-    const report = JSON.parse(result.stdout);
-    assert.equal(report.status, 'planned_attachment_upload');
-    assert.equal(report.summary.files_planned, 1);
-  } finally {
-    for (const d of [externalDocsDir, path.dirname(inputPath), outDir]) {
-      rmSync(d, { recursive: true, force: true });
-    }
-  }
-});
-
 test('executeCli rejects an unknown flag for source upload-attachments', async () => {
   const result = await executeCli(
-    ['dataset', 'source', 'upload-attachments', '--input', 'x', '--bogus'],
+    ['dataset', 'source', 'upload-attachments', '--input', 'x', '--bogus', '--json'],
     makeDeps(),
   );
   assert.equal(result.exitCode, 2);
-  assert.match(result.stderr, /INVALID_ARGS|Unknown option|--bogus/u);
+  assert.equal(JSON.parse(result.stdout).error.code, 'ARGUMENTS_INVALID');
 });

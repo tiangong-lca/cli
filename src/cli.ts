@@ -1,5 +1,10 @@
-import { runDatasetProcessCommand } from './commands/dataset-process.js';
-import { createProcessPorts } from './adapters/process.js';
+import { runDatasetCommand, runDatasetHelp } from './commands/dataset.js';
+import { createDatasetPorts } from './adapters/dataset.js';
+import { datasetTypes } from './application/dataset-types.js';
+import { runReviewCommand } from './commands/review.js';
+import { reviewReader } from './adapters/review-read.js';
+import { reviewWriter } from './adapters/review-write.js';
+import { reviewMaterials } from './adapters/review-materials.js';
 import { parseArgs } from 'node:util';
 import { runRuntimeCommand } from './lib/runtime/command.js';
 import { runPcrCommand } from './lib/pcr-snapshot-command.js';
@@ -342,11 +347,6 @@ import {
 import { runFlowIdentity } from './lib/dataset-maintenance-flow-identity-run.js';
 import { verifyFlowIdentity } from './lib/dataset-maintenance-flow-identity-verify.js';
 import type { DatasetMaintenanceOperation } from './lib/dataset-maintenance-contract.js';
-import {
-  runDatasetSourceUploadAttachments,
-  type DatasetSourceUploadAttachmentsReport,
-  type RunDatasetSourceUploadAttachmentsOptions,
-} from './lib/dataset-source-upload-attachments.js';
 
 export type CliDeps = {
   runDatasetSupportCacheExportImpl?: (
@@ -547,9 +547,6 @@ export type CliDeps = {
   sealFlowIdentityRecoveryApprovalImpl?: typeof sealFlowIdentityRecoveryApproval;
   runFlowIdentityImpl?: typeof runFlowIdentity;
   verifyFlowIdentityImpl?: typeof verifyFlowIdentity;
-  runDatasetSourceUploadAttachmentsImpl?: (
-    options: RunDatasetSourceUploadAttachmentsOptions,
-  ) => Promise<DatasetSourceUploadAttachmentsReport>;
 };
 
 export type CliResult = {
@@ -568,116 +565,39 @@ function renderMainHelp(dotEnvStatus: DotEnvLoadResult): string {
 
 Unified TianGong command entrypoint.
 
-Design principles:
-  - direct REST / Edge Function access
-  - no MCP inside the CLI
-  - TypeScript source on Node 24
-  - file-first input and JSON-first output
-
 Usage:
   tiangong-lca <command> [subcommand] [options]
 
-Commands:
 Implemented Commands:
-  doctor     show environment diagnostics
+  doctor     environment diagnostics
+  auth       login | status | whoami | doctor-auth | logout | identity-receipt
+  dataset    <flow|process|model|source|contact|flowproperty|unitgroup|lciamethod> <action>
+  review     submit | resubmit | get | list | materials | comment | decide
+  release    prepare | upload | finalize | approve | publish | readback-verify | unpublish | status | current | calculation-bundle | calculation-artifact | artifact-download
+
+Dataset discovery and content:
+  get | list | search | versions | contract | list-references | validate
+  diff | patch | translations extract/apply
+  create | save | delete (type-specific, existing service safeguards)
+  model graph | model build-resulting-process (alias aggregate)
+  process statistics | source upload-attachments
+  Actions are type-specific. Use dataset <type> <action> --help --json.
+
+Runtime support:
   runtime    describe | ensure | status | prune | lease-release | exec
   pcr        snapshot ensure | snapshot status | exec
-  study      capabilities | create | get | list | resources | model | revision | scenario | run | task | artifact | request
-  auth       login | status | whoami | doctor-auth | logout | identity-receipt
-  search     flow | process | lifecyclemodel
-  process    get | list | identity-preflight | build-plan | scope-statistics | dedup-review | auto-build | resume-build | publish-build | complete-required-fields | save-draft | batch-build | refresh-references | verify-rows
-  dataset    process get/validate (0.2.0 preview) | support-cache export | contract get | context-pack | classification children/path/audit/apply | curation-queue build/next/verify | import-lca convert | author | patch apply | save-draft | source upload-attachments | validate | verify-remote | bilingual extract/apply/validate | evidence-search plan/run | references rewrite/refresh-remote | maintenance clear-account/plan/apply/verify/flow-identity
-  flow       get | list | identity-preflight | build-plan | fetch-rows | materialize-decisions | remediate | publish-version | publish-reviewed-data | build-alias-map | scan-process-flow-refs | plan-process-flow-repairs | apply-process-flow-repairs | regen-product | validate-processes
-  lifecyclemodel auto-build | validate-build | publish-build | save-draft | graph | build-resulting-process | publish-resulting-process | orchestrate
-  qa         process | flow | lifecyclemodel
-  publish    run
-  validation run
-  release    prepare | upload | finalize | approve | publish | readback-verify | unpublish | status | current | calculation-bundle | calculation-artifact | artifact-download
-  admin      embedding-run
-
-Planned Surface (not implemented yet):
-  job        get | wait | logs
-
-Planned commands currently print an explicit "not implemented yet" message and exit with code 2.
 
 Examples:
-  tiangong-lca doctor
-  tiangong-lca auth login
-  tiangong-lca auth status --json
   tiangong-lca auth whoami --json
-  tiangong-lca auth doctor-auth --json
-  tiangong-lca auth logout
-  tiangong-lca auth identity-receipt --expected-project-ref <project-ref> --expected-user-id <user-id> --json
-  tiangong-lca search flow --input ./request.json
-  tiangong-lca search process --input ./request.json --dry-run
-  tiangong-lca process get --id <process-id>
-  tiangong-lca process list --state-code 100 --limit 20
-  tiangong-lca process identity-preflight --input ./process-preflight.json --out-dir ./process-preflight
-  tiangong-lca process build-plan validate --input ./process-build-plan.json --out-dir ./process-build-plan
-  tiangong-lca process scope-statistics --out-dir /abs/path/to/process-scope --state-code 0 --state-code 100
-  tiangong-lca process dedup-review --input ./duplicate-groups.json --out-dir /abs/path/to/process-dedup
-  tiangong-lca process auto-build --input ./pff-request.json --out-dir /abs/path/to/process-run
-  tiangong-lca process resume-build --run-dir /abs/path/to/process-run
-  tiangong-lca process publish-build --run-dir /abs/path/to/process-run
-  tiangong-lca process complete-required-fields --input ./processes.jsonl --out ./processes.completed.jsonl --default-unit MJ
-  tiangong-lca process save-draft --input ./patched-processes.jsonl --out-dir /abs/path/to/process-save-draft --dry-run
-  tiangong-lca process batch-build --input ./batch-request.json --out-dir /abs/path/to/process-batch
-  tiangong-lca process refresh-references --out-dir /abs/path/to/process-refresh --dry-run
-  tiangong-lca process verify-rows --rows-file ./process-list-report.json --out-dir /abs/path/to/process-verify
-  tiangong-lca dataset validate --input ./rows.jsonl --type auto --out-dir /abs/path/to/dataset-validate
-  tiangong-lca dataset contract get --type process --include schema,methodology,ruleset --out-dir ./contract
-  tiangong-lca dataset context-pack --type process --profile ai-import --out-dir ./context-pack
-  tiangong-lca dataset classification children --type process --parent A --out-dir ./classification --json
-  tiangong-lca dataset classification path --type process --code 1080 --out-dir ./classification --json
-  tiangong-lca dataset classification audit --type location --input ./rows/processes.jsonl --out-dir ./classification --json
-  tiangong-lca dataset classification apply --input ./rows/processes.jsonl --decisions ./classification-decisions.jsonl --out ./rows/processes.classified.jsonl --type process --out-dir ./classification --json
-  tiangong-lca dataset curation-queue build --processes ./processes.jsonl --flows ./flows.jsonl --out-dir ./curation-queue
-  tiangong-lca dataset curation-queue next --queue-dir ./curation-queue --type support
-  tiangong-lca dataset curation-queue verify --queue-dir ./curation-queue --type process
-  tiangong-lca dataset import-lca convert --input ./external-package --output-dir ./converted --from-format auto --target tidas
-  tiangong-lca dataset author --input ./source.pdf --target-types process,flow --out-dir ./authoring
-  tiangong-lca dataset save-draft --input ./contacts.jsonl --type contact --out-dir /abs/path/to/contact-save-draft --commit
-  tiangong-lca dataset verify-remote --input ./rows.jsonl --out-dir /abs/path/to/dataset-remote-verify
-  tiangong-lca dataset bilingual extract --input ./rows/processes.jsonl --type process --out-dir ./translation
-  tiangong-lca dataset bilingual apply --input ./rows/processes.jsonl --translations ./translation/trans-reviewed.jsonl --out ./rows/processes.translated.jsonl
-  tiangong-lca dataset bilingual validate --input ./rows/processes.translated.jsonl --type process --out-dir ./translation-validate
-  tiangong-lca dataset evidence-search plan --query "中国2026年电力结构数据" --out-dir ./evidence-search
-  tiangong-lca dataset evidence-search run --input ./evidence-search.request.json --results ./search-results.json --out-dir ./evidence-search
-  tiangong-lca dataset references rewrite --input ./rows.jsonl --from flow:<old-id>@<old-version> --to flow:<new-id>@<new-version> --out-dir /abs/path/to/dataset-rewrite
-  tiangong-lca dataset maintenance clear-account --out-dir /abs/path/to/account-clear --json
-  tiangong-lca dataset maintenance plan --scope ./maintenance-scope.json --operation merge-support-aliases --out-dir /abs/path/to/dataset-maintenance
-  tiangong-lca dataset maintenance freeze-protected --plan ./maintenance-plan.json --toolchain-evidence ./toolchain.json --expected-project-ref <production-ref> --confirm bafudata@126.com --out-dir /abs/path/to/protected-freeze
-  tiangong-lca dataset maintenance run-protected --plan ./maintenance-plan.json --freeze ./protected-execution-seal.json --approval ./protected-approval.json --out-dir /abs/path/to/protected-run --status-only
-  tiangong-lca lifecyclemodel auto-build --input ./lifecyclemodel-auto-build.request.json --out-dir /abs/path/to/lifecyclemodel-run
-  tiangong-lca lifecyclemodel validate-build --run-dir /abs/path/to/lifecyclemodel-run
-  tiangong-lca lifecyclemodel publish-build --run-dir /abs/path/to/lifecyclemodel-run
-  tiangong-lca lifecyclemodel save-draft --input ./lifecyclemodels.jsonl --out-dir /abs/path/to/lifecyclemodel-save-draft --dry-run
-  tiangong-lca lifecyclemodel graph --input ./lifecyclemodels.jsonl --out-dir /abs/path/to/lifecyclemodel-graph --format all
-  tiangong-lca lifecyclemodel orchestrate plan --input ./lifecyclemodel-orchestrate.request.json --out-dir /abs/path/to/lifecyclemodel-recursive-run
-  tiangong-lca flow get --id <flow-id> --version <version>
-  tiangong-lca flow list --id <flow-id> --state-code 100 --limit 20
-  tiangong-lca flow identity-preflight --input ./flow-preflight.json --out-dir ./flow-preflight
-  tiangong-lca flow build-plan validate --input ./flow-build-plan.json --out-dir ./flow-build-plan
-  tiangong-lca flow fetch-rows --refs-file ./flow-refs.json --out-dir ./flow-fetch
-  tiangong-lca flow materialize-decisions --decision-file ./approved-decisions.json --flow-rows-file ./qa-input-rows.jsonl --out-dir ./flow-decisions
-  tiangong-lca flow remediate --input-file ./invalid-flows.jsonl --out-dir ./flow-remediation
-  tiangong-lca flow publish-version --input-file ./ready-flows.jsonl --out-dir ./flow-publish --commit
-  tiangong-lca flow publish-reviewed-data --flow-rows-file ./reviewed-flows.jsonl --original-flow-rows-file ./original-flows.jsonl --out-dir ./flow-publish-review
-  tiangong-lca flow build-alias-map --old-flow-file ./old-flows.jsonl --new-flow-file ./new-flows.jsonl --out-dir ./flow-alias-map
-  tiangong-lca flow scan-process-flow-refs --processes-file ./processes.jsonl --scope-flow-file ./flows.jsonl --out-dir ./flow-scan
-  tiangong-lca flow plan-process-flow-repairs --processes-file ./processes.jsonl --scope-flow-file ./flows.jsonl --out-dir ./flow-repair-plan
-  tiangong-lca flow apply-process-flow-repairs --processes-file ./processes.jsonl --scope-flow-file ./flows.jsonl --out-dir ./flow-repair-apply
-  tiangong-lca flow regen-product --processes-file ./processes.jsonl --scope-flow-file ./flows.jsonl --out-dir ./flow-regeneration --apply
-  tiangong-lca flow validate-processes --original-processes-file ./before.jsonl --patched-processes-file ./after.jsonl --scope-flow-file ./flows.jsonl --out-dir ./flow-validation
-  tiangong-lca qa process --rows-file ./processes.jsonl --out-dir ./qa
-  tiangong-lca qa process --run-root /abs/path/to/process-run --run-id <run_id> --out-dir ./qa
-  tiangong-lca qa flow --rows-file ./flows.json --out-dir ./qa
-  tiangong-lca qa lifecyclemodel --rows-file ./lifecyclemodels.jsonl --out-dir ./lifecyclemodel-qa
-  tiangong-lca publish run --input ./publish-request.json --dry-run
-  tiangong-lca validation run --input-dir ./package --engine auto
-  tiangong-lca release status --release-run-id <run-id> --json
-  tiangong-lca release calculation-bundle --package-id <package-id> --output ./calculation-bundle.json
-  tiangong-lca admin embedding-run --input ./jobs.json
+  tiangong-lca auth identity-receipt --json
+  tiangong-lca dataset flow search --query electricity --json
+  tiangong-lca dataset process get --id <id> --version <version> --output process.json --json
+  tiangong-lca dataset process validate --input process.json --json
+  tiangong-lca dataset model aggregate --help --json
+  tiangong-lca review --help --json
+
+Use --json for one machine-readable result and --output for complete content/artifacts.
+Inspect command help for input, effects, unsupported capabilities and recovery.
 
 Environment:
   .env loaded: ${dotEnvStatus.loaded ? `yes (${dotEnvStatus.path}, ${dotEnvStatus.count} keys)` : 'no'}
@@ -952,72 +872,6 @@ Options:
   --report-file <file> Write the structured validation report to a file
   --json               Print compact JSON
   -h, --help
-`.trim();
-}
-
-function renderDatasetHelp(): string {
-  return `Usage:
-  tiangong-lca dataset <subcommand> [options]
-
-Implemented Subcommands:
-  support-cache export Export complete observed canonical support rows through OAuth
-  contract get        Write TIDAS schema / methodology / ruleset contract artifacts
-  context-pack        Write an AI-ready TIDAS contract context pack
-  classification       Navigate bundled TIDAS classification schemas or apply selected classifications
-  curation-queue build Build entity-level AI curation queue artifacts for Foundry imports
-  curation-queue next  Return the next runnable support/flow/process queue task
-  curation-queue verify Verify queue task checkpoints for a scope
-  import-lca convert  Import supported external LCA packages through the unified Rust tidas binary
-  author              Extract source evidence and prepare TIDAS context packs for AI authoring
-  patch apply          Apply AI-authored structured dataset patches deterministically
-  save-draft           Save contact/source/support or other canonical dataset rows through the platform dataset command path
-  source upload-attachments Upload source referenceToDigitalFile binaries to storage and rewrite their @uri
-  validate             Validate local flow / process / lifecyclemodel rows with the TIDAS SDK
-  verify-remote        Verify dataset roots and TIDAS references against remote published versions
-  bilingual extract    Extract bilingual translation units from local rows
-  bilingual apply      Apply reviewed bilingual translations back to local rows
-  bilingual validate   Validate bilingual rows with deterministic scans and schema/QA gates
-  evidence-search      Plan or record field-level public evidence retrieval
-  references rewrite   Rewrite flow references in local process and lifecyclemodel rows
-  references refresh-remote Refresh local TIDAS reference versions to latest reachable remote rows
-  maintenance clear-account Dry-run or clear current authenticated account-owned dataset rows through RLS
-  maintenance plan    Build an immutable, RLS-visible row-level maintenance plan
-  maintenance apply   Execute an explicitly approved maintenance plan through current-user RLS
-  maintenance freeze-protected Read and freeze one exact production owner-draft plan without admitting or mutating it
-  maintenance seal-protected-approval Record byte-exact human approval entirely offline
-  maintenance run-protected Run or inspect one sealed, one-shot production maintenance execution
-  maintenance verify  Read back affected rows and references against the immutable plan
-  maintenance flow-identity Dedicated Step 3 capture/plan/freeze/approval/serial-run/verify workflow
-
-Examples:
-  tiangong-lca dataset contract get --type process --include schema,methodology,ruleset --out-dir ./contract --help
-  tiangong-lca dataset context-pack --type process --profile ai-import --out-dir ./context-pack --help
-  tiangong-lca dataset classification children --type process --parent A --out-dir ./classification --help
-  tiangong-lca dataset classification path --type process --code 1080 --out-dir ./classification --help
-  tiangong-lca dataset classification audit --type location --input ./rows/processes.jsonl --out-dir ./classification --help
-  tiangong-lca dataset classification apply --input ./rows/processes.jsonl --decisions ./classification-decisions.jsonl --out ./rows/processes.classified.jsonl --type process --out-dir ./classification --help
-  tiangong-lca dataset curation-queue build --processes ./rows/processes.jsonl --flows ./rows/flows.jsonl --support ./rows/sources.jsonl --out-dir ./curation-queue --help
-  tiangong-lca dataset curation-queue next --queue-dir ./curation-queue --type flow --json
-  tiangong-lca dataset curation-queue verify --queue-dir ./curation-queue --task-id process:abc@00.00.001 --json
-  tiangong-lca dataset import-lca convert --input ./external-package --output-dir ./converted --from-format auto --target tidas --help
-  tiangong-lca dataset author --input ./source.pdf --target-types process,flow --out-dir ./authoring --help
-  tiangong-lca dataset patch apply --input ./rows.jsonl --patch ./ai-patches.json --out ./rows.patched.jsonl --out-dir ./patch-apply --help
-  tiangong-lca dataset save-draft --input ./contacts.jsonl --type contact --out-dir ./contact-save-draft --commit --help
-  tiangong-lca dataset validate --input ./rows.jsonl --type auto --out-dir ./dataset-validate --help
-  tiangong-lca dataset verify-remote --input ./rows.jsonl --out-dir ./dataset-remote-verify --help
-  tiangong-lca dataset bilingual extract --input ./rows.jsonl --type process --out-dir ./translation --help
-  tiangong-lca dataset bilingual apply --input ./rows.jsonl --translations ./trans-reviewed.jsonl --out ./rows.translated.jsonl --help
-  tiangong-lca dataset bilingual validate --input ./rows.translated.jsonl --type process --out-dir ./translation-validate --help
-  tiangong-lca dataset evidence-search plan --query "中国2026年电力结构数据" --out-dir ./evidence-search --help
-  tiangong-lca dataset evidence-search run --input ./request.json --results ./search-results.json --out-dir ./evidence-search --help
-  tiangong-lca dataset references rewrite --input ./rows.jsonl --from flow:<old-id>@<old-version> --to flow:<new-id>@<new-version> --out-dir ./dataset-rewrite --help
-  tiangong-lca dataset references refresh-remote --input ./rows.jsonl --out ./rows.refreshed.jsonl --out-dir ./dataset-reference-refresh --help
-  tiangong-lca dataset maintenance clear-account --out-dir ./account-clear --json --help
-  tiangong-lca dataset maintenance plan --scope ./maintenance-scope.json --operation merge-support-aliases --out-dir ./dataset-maintenance --help
-  tiangong-lca dataset maintenance freeze-protected --help
-  tiangong-lca dataset maintenance seal-protected-approval --help
-  tiangong-lca dataset maintenance run-protected --help
-  tiangong-lca dataset maintenance flow-identity --help
 `.trim();
 }
 
@@ -1652,34 +1506,6 @@ Contract:
   This generic dataset path writes only mutable rows such as contact/source/flow/process. Unit group and flow property rows are reference-only; select existing database rows and rewrite references instead of creating My Data support rows.
   Process and lifecyclemodel imports may still use their dedicated save-draft commands when the workflow needs their specialized reports.
   With an execution contract, each save_draft action sends the complete before image read fresh in this run; a bounded existing-Process owner draft whose only authoring gap is the unknown annual volume may repair the reviewed reference short descriptions with ruleVerification=false and a recorded draft_repair_admission (bound into the first attempt event, so recovery returns the original admission), never reporting the row as ready; the platform rejects a stale or changed before content and the CLI never falls back to an unguarded save or retries it. A contract dry-run reports preflight evidence only, treats an action prepared earlier in the same preflight as a satisfied dependency, reports an already consumed attempt as retained, and can never close an import.
-`.trim();
-}
-
-function renderDatasetSourceUploadAttachmentsHelp(): string {
-  return `Usage:
-  tiangong-lca dataset source upload-attachments --input <file|dir> --external-docs-dir <dir> [options]
-
-Uploads the binary documents referenced by source datasets via referenceToDigitalFile
-(e.g. "../external_docs/pef_method.pdf") to a Supabase Storage bucket using the current
-authenticated account session, then rewrites each source's referenceToDigitalFile @uri to
-"../<bucket>/<key>". Plain http(s) URIs are left untouched; backslash paths and filename
-case differences are normalized; each physical file is uploaded once (deduped).
-
-Options:
-  --input <file|dir>        Source TIDAS rows (.jsonl, .json, or a directory of *.json)
-  --external-docs-dir <dir> Directory holding the referenced binaries
-  --bucket <name>           Storage bucket (default: external_docs)
-  --out-dir <dir>           Artifact directory
-  --commit                  Upload binaries (default: dry-run plan only)
-  --dry-run                 Plan without uploading (default)
-  --verify                  After upload, create a signed URL to confirm each object resolves
-  --timeout-ms <n>          Per-request timeout (default: 30000)
-  --json                    Print compact JSON
-  -h, --help
-
-Outputs written under --out-dir:
-  - attachments-report.json
-  - rewritten-sources.jsonl
 `.trim();
 }
 
@@ -3562,76 +3388,6 @@ function parseDatasetSaveDraftFlags(args: string[]): {
         ? values['reference-intent-file']
         : undefined,
     maxParallel,
-  };
-}
-
-function parseDatasetSourceUploadAttachmentsFlags(args: string[]): {
-  help: boolean;
-  json: boolean;
-  inputPath: string;
-  externalDocsDir: string;
-  bucket: string | null;
-  outDir: string | null;
-  commit: boolean;
-  verify: boolean;
-  timeoutMs: number | undefined;
-} {
-  let values: ReturnType<typeof parseArgs>['values'];
-  try {
-    ({ values } = parseArgs({
-      args,
-      allowPositionals: false,
-      strict: true,
-      options: {
-        help: { type: 'boolean', short: 'h' },
-        json: { type: 'boolean' },
-        input: { type: 'string' },
-        'external-docs-dir': { type: 'string' },
-        bucket: { type: 'string' },
-        'out-dir': { type: 'string' },
-        commit: { type: 'boolean' },
-        'dry-run': { type: 'boolean' },
-        verify: { type: 'boolean' },
-        'timeout-ms': { type: 'string' },
-      },
-    }));
-  } catch (error) {
-    throw new CliError(String(error), {
-      code: 'INVALID_ARGS',
-      exitCode: 2,
-    });
-  }
-
-  if (values.commit && values['dry-run']) {
-    throw new CliError('Cannot pass both --commit and --dry-run.', {
-      code: 'INVALID_DATASET_SOURCE_UPLOAD_MODE',
-      exitCode: 2,
-    });
-  }
-
-  let timeoutMs: number | undefined;
-  if (typeof values['timeout-ms'] === 'string') {
-    const parsed = Number.parseInt(values['timeout-ms'], 10);
-    if (!Number.isInteger(parsed)) {
-      throw new CliError('--timeout-ms must be an integer.', {
-        code: 'INVALID_ARGS',
-        exitCode: 2,
-      });
-    }
-    timeoutMs = parsed;
-  }
-
-  return {
-    help: Boolean(values.help),
-    json: Boolean(values.json),
-    inputPath: typeof values.input === 'string' ? values.input : '',
-    externalDocsDir:
-      typeof values['external-docs-dir'] === 'string' ? values['external-docs-dir'] : '',
-    bucket: typeof values.bucket === 'string' ? values.bucket : null,
-    outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : null,
-    commit: Boolean(values.commit),
-    verify: Boolean(values.verify),
-    timeoutMs,
   };
 }
 
@@ -7320,16 +7076,6 @@ function plannedCommand(command: string, subcommand?: string): CliResult {
   };
 }
 
-function removedReviewCommand(subcommand?: string): CliResult {
-  const suffix = subcommand ? ` ${subcommand}` : '';
-  const replacement = subcommand ? `qa ${subcommand}` : 'qa';
-  return {
-    exitCode: 2,
-    stdout: '',
-    stderr: `Command 'review${suffix}' was removed. Use 'tiangong-lca ${replacement}' instead.\n`,
-  };
-}
-
 function applyRemoteOverrides(
   env: NodeJS.ProcessEnv,
   overrides: Pick<ReturnType<typeof parseRemoteFlags>, 'apiBaseUrl' | 'region'>,
@@ -7345,11 +7091,15 @@ function applyRemoteOverrides(
 
 export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResult> {
   try {
-    if (argv[0] === 'dataset' && argv[1] === 'process') {
-      return await runDatasetProcessCommand(
-        argv.slice(2),
-        createProcessPorts(deps.env, deps.fetchImpl),
-      );
+    if (argv[0] === 'dataset' && (!argv[1] || argv[1].startsWith('-')))
+      return runDatasetHelp(argv.slice(1));
+    if (argv[0] === 'review')
+      return await runReviewCommand(argv.slice(1), reviewReader(deps.env, deps.fetchImpl), {
+        mutate: reviewWriter(deps.env, deps.fetchImpl),
+        materials: reviewMaterials(deps.env, deps.fetchImpl),
+      });
+    if (argv[0] === 'dataset' && datasetTypes.includes(argv[1] as (typeof datasetTypes)[number])) {
+      return await runDatasetCommand(argv.slice(1), createDatasetPorts(deps.env, deps.fetchImpl));
     }
     const { flags, command, subcommand, commandArgs } = parseCommandLine(argv);
     const authIdentityReceiptImpl = deps.runAuthIdentityReceiptImpl ?? runAuthIdentityReceipt;
@@ -7477,8 +7227,6 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
       deps.sealFlowIdentityRecoveryApprovalImpl ?? sealFlowIdentityRecoveryApproval;
     const flowIdentityRunImpl = deps.runFlowIdentityImpl ?? runFlowIdentity;
     const flowIdentityVerifyImpl = deps.verifyFlowIdentityImpl ?? verifyFlowIdentity;
-    const datasetSourceUploadAttachmentsImpl =
-      deps.runDatasetSourceUploadAttachmentsImpl ?? runDatasetSourceUploadAttachments;
 
     if (flags.version) {
       return { exitCode: 0, stdout: `${loadCliPackageVersion(import.meta.url)}\n`, stderr: '' };
@@ -7674,10 +7422,6 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
         }),
         stderr: '',
       };
-    }
-
-    if (command === 'dataset' && !subcommand) {
-      return { exitCode: 0, stdout: `${renderDatasetHelp()}\n`, stderr: '' };
     }
 
     if (command === 'dataset' && subcommand === 'contract') {
@@ -7965,61 +7709,6 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
       });
       return {
         exitCode: report.status === 'blocked' ? 1 : 0,
-        stdout: stringifyJson(report, datasetFlags.json),
-        stderr: '',
-      };
-    }
-
-    if (command === 'dataset' && subcommand === 'source') {
-      const action = commandArgs[0] ?? '';
-      if (!action || action === '--help' || action === '-h') {
-        return {
-          exitCode: 0,
-          stdout: `${renderDatasetSourceUploadAttachmentsHelp()}\n`,
-          stderr: '',
-        };
-      }
-      if (action !== 'upload-attachments') {
-        throw new CliError("dataset source action must be 'upload-attachments'.", {
-          code: 'DATASET_SOURCE_ACTION_INVALID',
-          exitCode: 2,
-        });
-      }
-      const datasetFlags = parseDatasetSourceUploadAttachmentsFlags(commandArgs.slice(1));
-      if (datasetFlags.help) {
-        return {
-          exitCode: 0,
-          stdout: `${renderDatasetSourceUploadAttachmentsHelp()}\n`,
-          stderr: '',
-        };
-      }
-      if (!datasetFlags.inputPath) {
-        throw new CliError('dataset source upload-attachments requires --input.', {
-          code: 'DATASET_SOURCE_UPLOAD_INPUT_REQUIRED',
-          exitCode: 2,
-        });
-      }
-      if (!datasetFlags.externalDocsDir) {
-        throw new CliError('dataset source upload-attachments requires --external-docs-dir.', {
-          code: 'DATASET_SOURCE_UPLOAD_EXTERNAL_DOCS_DIR_REQUIRED',
-          exitCode: 2,
-        });
-      }
-
-      const report = await datasetSourceUploadAttachmentsImpl({
-        inputPath: datasetFlags.inputPath,
-        externalDocsDir: datasetFlags.externalDocsDir,
-        bucket: datasetFlags.bucket,
-        outDir: datasetFlags.outDir,
-        commit: datasetFlags.commit,
-        verify: datasetFlags.verify,
-        timeoutMs: datasetFlags.timeoutMs,
-        env: deps.env,
-        fetchImpl: deps.fetchImpl,
-      });
-
-      return {
-        exitCode: report.status === 'completed_with_failures' ? 1 : 0,
         stdout: stringifyJson(report, datasetFlags.json),
         stderr: '',
       };
@@ -10220,10 +9909,6 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
         stdout: stringifyJson(report, qaFlags.json),
         stderr: '',
       };
-    }
-
-    if (command === 'review') {
-      return removedReviewCommand(subcommand ?? undefined);
     }
 
     return plannedCommand(command, subcommand ?? undefined);

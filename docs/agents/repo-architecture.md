@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: d458a503152caffdff0ca65b2bb0ee1c95599dea
-lastReviewedNote: 'CLI #468: reviewed the docs writing contract and its discovery; runtime, validation and release behavior are unchanged.'
+lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
+lastReviewedNote: 'CLI #468: reviewed typed Dataset and Review layers, explicit effects, local content snapshots and current service boundaries.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -53,19 +53,23 @@ Managed-host launch selection stays in the generic CLI manager. Dedicated protoc
 
 `dataset-save-draft-reference-intent.ts` composes the shared #289 strict selection/evaluator and complete-body observation with the owner execution contract. `dataset-save-draft-run.ts` owns fresh preflight/predispatch, action ledger and recovery; `dataset-command.ts` awaits admission before POST. Default gates and the original ledger domain remain unchanged. [The exact-reference contract](exact-reference-intent-contract.md#guarded-flow-owner-drafts) defines caller snapshots and admission fields.
 
-## 0.2.0 foundation (CLI #468)
+## 0.2.0 command layers
 
-The refactor starts with README/AGENTS and a small working path, not a wholesale move of `src/lib`. `src/cli.ts` composes the new Process ports and dispatches only `dataset process` into `src/commands/dataset-process.ts`; all other namespaces remain on their existing paths.
+`src/cli.ts` composes the typed Dataset and Review adapters and delegates their public parsing and presentation to `src/commands/`. Retained command families continue through their existing dispatch paths while their final migration disposition is verified.
 
 - `src/commands/`: strict CLI argument/help handling, bounded output and local artifact coordination.
-- `src/application/`: atomic Process read/validation operations with injected ports; no argv, filesystem or network APIs.
-- `src/adapters/`: existing authenticated data lookup and Process validation implementations behind those ports. Exact reads disable the legacy latest fallback.
-- `src/shared/`: pure result types separated from file IO and presentation/template lookup.
-- `assets/reply-templates/`: installed Markdown guidance selected by command outcome.
+- `src/application/`: Dataset identity, query/cursor rules, content diff/patch, reference discovery and supplied-translation application; no filesystem or network transport.
+- `src/adapters/`: authenticated exact reads/search, existing contract and validation helpers, Model calculations, Source attachment transfer and explicit Dataset/Review mutations.
+- `src/shared/`: result types, safe file IO, error projection and installed template lookup.
+- `assets/reply-templates/`: Markdown guidance selected by actual outcome.
 
-The minimum path implements Process `get` and local `validate`. Help explicitly limits validation to `schema,business`; remote reference validation, projections and other type/action combinations remain later work. No service writes are added. Existing public subpath exports and legacy helpers retain their boundaries. [Existing runtime safeguards](existing-runtime-contract.md) retain the detailed constraints formerly embedded in AGENTS.
+Dataset uses one typed command router for all eight object types. Model `build-resulting-process` and its `aggregate` alias share a canonical operation and implementation. Calculation inputs are explicit snapshots; exact remote Process lookups never fall back to latest. Source uploads verify selected bytes and independent readback, preserve failed references and do not save Source content.
 
-Imports flow from composition to commands to application; adapters implement ports and reuse legacy helpers. Application may use pure shared result types and type-only legacy domain report shapes. Presentation and filesystem modules stay out of application. Tests exercise behavior through the same entrypoint plus injected operation ports.
+Create and save are separate service intents. Ordinary saves reuse server content CAS. Model writes use the existing atomic model service with no implicit Process mutations or create-conflict fallback; existing graph metadata is preserved while composition graph changes follow the explicit Model content. Delete and Model save disclose when expected-content comparisons occur only before dispatch. Durable local intents prohibit replay after an unknown mutation outcome.
+
+Review adapts the existing business contract: one submission root with server-related data, current participant queries/materials, reviewer draft save and separate reviewer decision. Historical packages and server round links are not fabricated. See the [service comparison](../analysis/cli-interface-comparison.md#现有业务服务与本次实施基线) for the boundary against deferred target semantics.
+
+Imports flow from composition to commands to application; adapters implement ports and reuse legacy helpers. Application may use pure shared result types and type-only legacy domain report shapes. Presentation and filesystem modules stay out of application. Existing public library subpaths and Release/runtime/PCR protocols keep their own contracts.
 
 ## Repo Shape
 

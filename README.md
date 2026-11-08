@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e2b7a7a0142085180935454aa2e782d6a79433e8
-lastReviewedNote: 'CLI #468: reviewed documentation-first foundation and explicit implementation boundaries; target design remains separate from runtime capability.'
+lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
+lastReviewedNote: 'CLI #468: reviewed implemented typed Dataset and existing-service Review capabilities, deferred target semantics and explicit validation limits.'
 ---
 
 # TianGong LCA CLI
@@ -36,9 +36,9 @@ tiangong-lca --help
 | 范围 | 当前状态 |
 | --- | --- |
 | 环境与认证 | 既有 `doctor`、`runtime`、`auth` 可用，重构中逐步统一发现和结果。 |
-| 新 Dataset 入口 | 当前源码先提供 Process `get`、`validate` 样例；限制见下文。 |
-| 其他 Dataset 类型、写入、Review | 已有目标设计，尚未迁移到新接口。 |
-| Model 结果生成 | 主命令 `build-resulting-process`、别名 `aggregate` 是目标设计，当前源码尚未实现新入口。 |
+| Dataset 查询与内容处理 | 八种对象按能力表提供类型入口；包含契约、精确读取、分页、引用清单、校验及可编辑对象的本地处理。 |
+| Dataset 写入与 Review | 适配现有业务服务：创建与保存分离、草稿删除、关联审核提交、当前审核查询、草稿意见及审核决定。服务边界见下文。 |
+| Model 结果生成 | `build-resulting-process` 为主命令，`aggregate` 为同实现别名；显式输入生成候选，不自动写入。 |
 | Release、运行支撑与旧命令 | 沿用既有行为，参见安装版本帮助及[原有命令参考](docs/reference/legacy-command-reference.md)。 |
 
 ## 安装与开始
@@ -65,7 +65,7 @@ tiangong-lca auth whoami --json
 
 最终接口按对象组织，完整范围见[目标设计](docs/interfaces/README.md)。表中的命令方向不是当前全部可执行命令清单。研究、生产计划和跨阶段任务编排由调用方负责。
 
-## 当前源码的 Process 样例
+## 当前源码的 Dataset 入口
 
 ```bash
 pnpm install --frozen-lockfile
@@ -77,9 +77,19 @@ node bin/tiangong-lca.js dataset process validate --input process.json --output 
 
 `get` 必须显式选择精确版本或 `latest`，精确版本不存在时不回退。`--output` 保存完整内容，默认拒绝覆盖已有文件。未指定输出文件时 JSON 包含完整内容；人类输出只呈现摘要。
 
-`validate` 读取单个 Process JSON，复用现有本地结构、必填字段、多语言和分配语义检查。当前只支持默认 `schema,business` 检查组合；远程引用检查和其他组合尚未接入，显式请求会被拒绝。报告保留执行过的检查及证据缺口，不能把结构合法描述为科学有效或审核通过。
+`validate` 接收单个规范对象内容，复用现有结构、业务、多语言和适用分配检查；显式 `--checks references` 执行现有远程精确引用准入校验。报告区分实际检查与未覆盖的科学适用性和跨对象定量一致性。LCIA Method 仅支持契约和 schema 校验。
 
 新入口的 JSON 返回业务结果、完整性和上下文。下一步提示仅包含说明与可选命令，回复模板为安装包中的 Markdown 路径。大校验报告可通过 `--output` 保存；终端只显示有界摘要。缺少模板时仍保留真实业务结果。
+
+## 现有业务服务边界
+
+可编辑对象的 `create` 不覆盖已有版本，`save` 不创建缺失对象；写入请求显式绑定账号、环境和请求身份。普通草稿保存使用服务端内容比较，Model 使用现有事务接口；Model 保存与草稿删除的内容比较仅发生在 CLI 前检，结果明确披露此限制。任何派发后未知结果都保留原请求，禁止自动重放。
+
+Review 本次适配已有业务语义：`submit` 只接受一个起始对象，`includeRelated` 默认且仅支持 `true`；关联范围由服务端业务规则决定。`resubmit` 引用已驳回审核及同一精确对象，返回实际受理结果，不宣称后端建立了轮次关系。`get/list` 查询当前记录，`materials` 获取当前可读对象；它们不是历史审核包快照。
+
+`review comment` 保存审核者当前草稿，可能覆盖该草稿，不形成决定；`review decide` 独立提交通过或驳回，Process/Model 通过需要已有审核草稿。整包多起始对象、关闭关联、历史包、追加式独立意见及审核撤回属于后续目标设计，未开放的行为会明确拒绝。
+
+源码迁移仍在验证和旧入口清理中；[服务能力对照](docs/analysis/cli-interface-comparison.md#现有业务服务与本次实施基线)记录实施基线，不把协议模拟描述为真实账号或部署验证。
 
 ## 开发与文档
 

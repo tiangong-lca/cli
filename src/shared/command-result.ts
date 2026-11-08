@@ -1,7 +1,7 @@
 export type CommandResult = {
   schemaVersion: 1;
   operation: string;
-  status: 'completed' | 'failed';
+  status: 'completed' | 'accepted' | 'partial' | 'failed' | 'unknown';
   outcome: string;
   summary: string;
   data: Record<string, unknown>;

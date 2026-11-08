@@ -47,7 +47,7 @@ export function writeCommandOutput(file: string, value: unknown, force: boolean,
   mkdirSync(path.dirname(output), { recursive: true });
   const temporary = `${output}.${randomUUID()}.tmp`;
   try {
-    writeFileSync(temporary, text, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+    writeFileSync(temporary, text, { encoding: 'utf8', flag: 'wx', mode: 0o600, flush: true });
     if (force) renameSync(temporary, output);
     else linkSync(temporary, output);
   } catch {

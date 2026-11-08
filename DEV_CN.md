@@ -935,6 +935,6 @@ Review note, 2026-09-21: independently reviewed CLI #283 annual-volume commit d4
 
 显式完整 loopback 环境的 `auth doctor-auth` 使用独立本地诊断 schema，返回当前 origin/client/callback 与在线 actor；不得将它视作规范 Supabase project 身份回执或历史 callback 证明。Production/default、whoami 与 identity-receipt 保持规范回执规则。字段和 tuple 核对要求见 [Study CLI contract](docs/agents/study-cli-contract.md)。
 
-## CLI 0.2.0 基础里程碑（#468）
+## CLI 0.2.0 能力迁移
 
-从 [README](README.md)、[AGENTS](AGENTS.md) 和[实施计划](docs/plans/cli-0.2.0-refactor-plan.md) 开始。新代码按 commands/application/adapters/shared 分层；当前仅接入 `dataset process get/validate`，既有命令仍保留。运行 `pnpm build` 后使用 `node --import tsx --test test/cli-dataset-process.test.ts` 验证样例，再完成原有 lint、package 和完整覆盖率门禁。下游迁移不属于此里程碑。
+从 [README](README.md)、[AGENTS](AGENTS.md) 和[实施计划](docs/plans/cli-0.2.0-refactor-plan.md) 开始。新代码按 commands/application/adapters/shared 分层，Dataset 和 Review 的具体能力以当前帮助及实现状态为准。构建后运行[验证契约](docs/agents/repo-validation.md#020-command-validation)列出的专项测试，再完成既有 lint、package 和完整覆盖率门禁。业务适配复用现有服务语义；目标设计的后续审核扩展与下游迁移分别实施。

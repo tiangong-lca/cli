@@ -277,6 +277,7 @@ export async function deleteDatasetRecord(options: {
   table: DatasetCommandTable;
   id: string;
   version: string;
+  beforeDispatch?: () => void | Promise<void>;
 }): Promise<JsonObject> {
   return invokeDatasetCommand({
     transport: options.transport,
@@ -286,6 +287,7 @@ export async function deleteDatasetRecord(options: {
       id: options.id,
       version: options.version,
     },
+    beforeDispatch: options.beforeDispatch,
   });
 }
 

@@ -25,6 +25,7 @@ export type CorePublicRelation = (typeof CORE_PUBLIC_RELATIONS)[number];
 
 export const DATA_API_RELATION_CONSUMERS = {
   contacts: [
+    'src/adapters/dataset-read.ts',
     'src/lib/dataset-save-draft-run.ts',
     'src/lib/dataset-remote-verify.ts',
     'src/lib/dataset-maintenance-remote.ts',
@@ -32,6 +33,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/dataset-maintenance-clear-account.ts',
   ],
   flowproperties: [
+    'src/adapters/dataset-read.ts',
     'src/lib/dataset-support-cache.ts',
     'src/lib/dataset-save-draft-run.ts',
     'src/lib/dataset-remote-verify.ts',
@@ -40,6 +42,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/process-refresh-references.ts',
   ],
   flows: [
+    'src/adapters/dataset-read.ts',
     'src/lib/process-allocation-write-admission.ts',
     'src/lib/flow-read.ts',
     'src/lib/flow-list.ts',
@@ -58,6 +61,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/process-refresh-references.ts',
   ],
   lifecyclemodels: [
+    'src/adapters/dataset-read.ts',
     'src/lib/lifecyclemodel-bundle-save.ts',
     'src/lib/process-dedup-review.ts',
     'src/lib/dataset-remote-verify.ts',
@@ -66,6 +70,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/dataset-maintenance-clear-account.ts',
   ],
   processes: [
+    'src/adapters/dataset-read.ts',
     'src/lib/process-get.ts',
     'src/lib/process-list.ts',
     'src/lib/process-save-draft.ts',
@@ -80,6 +85,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/dataset-maintenance-clear-account.ts',
   ],
   sources: [
+    'src/adapters/dataset-read.ts',
     'src/lib/dataset-save-draft-run.ts',
     'src/lib/dataset-remote-verify.ts',
     'src/lib/dataset-maintenance-remote.ts',
@@ -88,6 +94,7 @@ export const DATA_API_RELATION_CONSUMERS = {
     'src/lib/dataset-maintenance-clear-account.ts',
   ],
   unitgroups: [
+    'src/adapters/dataset-read.ts',
     'src/lib/dataset-support-cache.ts',
     'src/lib/dataset-save-draft-run.ts',
     'src/lib/dataset-remote-verify.ts',
@@ -103,6 +110,11 @@ type RpcTarget = {
 };
 
 export const DATA_API_RPC_TARGETS = {
+  qry_review_get_items: {
+    targetSchema: 'api',
+    signature:
+      'api.qry_review_get_items(p_review_ids uuid[], p_data_id uuid, p_data_version text, p_state_codes integer[])',
+  },
   cmd_dataset_alias_execution_admit_guarded: {
     targetSchema: 'api',
     signature: 'api.cmd_dataset_alias_execution_admit_guarded(p_request jsonb)',

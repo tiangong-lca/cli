@@ -52,6 +52,15 @@ type ContractPack = {
   aiContext?: unknown;
 };
 
+export async function readDatasetContract(type: string, include: string) {
+  return loadContractPack({
+    type: normalizeType(type),
+    includes: normalizeIncludes(include),
+    profile: 'default',
+    includeAiContext: false,
+  });
+}
+
 type CanonicalKind =
   | 'contact'
   | 'flow'

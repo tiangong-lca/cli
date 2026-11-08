@@ -15,8 +15,8 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: d458a503152caffdff0ca65b2bb0ee1c95599dea
-lastReviewedNote: 'CLI #468: established document responsibilities, operational boundaries and in-place correction rules.'
+lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
+lastReviewedNote: 'CLI #468: reviewed current implementation-status updates and service analysis against the in-place writing and target-versus-implementation rules.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

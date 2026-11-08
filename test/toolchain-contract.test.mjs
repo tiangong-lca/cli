@@ -1640,7 +1640,8 @@ function copyCleanPackageSource(destination) {
 function assertProductionBootstrap(binPath, cwd) {
   const sampleHelp = runBin(binPath, ['dataset', 'process', 'get', '--help', '--json'], cwd);
   assertSuccessfulExit(sampleHelp);
-  assert.deepEqual(JSON.parse(sampleHelp.stdout).implementedActions, ['get', 'validate']);
+  assert.ok(JSON.parse(sampleHelp.stdout).implementedActions.includes('get'));
+  assert.ok(JSON.parse(sampleHelp.stdout).implementedActions.includes('validate'));
   const sampleInput = join(cwd, 'foundation-invalid-process.json');
   writeFileSync(sampleInput, JSON.stringify({ processDataSet: {} }));
   const sample = runBin(

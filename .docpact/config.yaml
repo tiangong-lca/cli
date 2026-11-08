@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-11-08"
-lastReviewedCommit: "d458a503152caffdff0ca65b2bb0ee1c95599dea"
-lastReviewedNote: 'CLI #468: reviewed the docs writing contract and its discovery; runtime, validation and release behavior are unchanged.'
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
+lastReviewedNote: 'CLI #468: reviewed typed command, adapter, application, template and test coverage; existing ownership and release routing remain applicable.'
 
 catalog:
   repos:

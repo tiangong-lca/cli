@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: d458a503152caffdff0ca65b2bb0ee1c95599dea
-lastReviewedNote: 'CLI #468: reviewed the docs writing contract and its discovery; runtime, validation and release behavior are unchanged.'
+lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
+lastReviewedNote: 'CLI #468: reviewed adapter, mutation recovery, content-processing and installation regression scope; full coverage gates remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -232,8 +232,8 @@ The explicit V2 archive correction in CLI #462 requires red/green native-respons
 
 Final V6 facade qualification covers report.create/save × title/paragraph/claim-unit × unpaired high/low surrogate. All twelve cases must reject locally with zero Auth/domain calls and no intent directory; installed fresh-process proof repeats the boundary. Valid256-emoji titles and authored Unicode must survive an ambiguous mutation and exact immutable recovery for both operations, while257 codepoints remain rejected. These checks consume the exact owner executable validator and add no consumer Unicode policy. Superseded121715ac/6126packages and CI remain retained under separate immutable paths.
 
-## 0.2.0 foundation validation (CLI #468)
+## 0.2.0 command validation
 
-Run `node --import tsx --test test/cli-dataset-process.test.ts` after `pnpm build` for the new Process path. It verifies strict help/flags, explicit version selection, no latest fallback, local-only validation, truthful incomplete results, bounded findings/full reports, safe file replacement, redacted transport errors and installed-layout template lookup outside the source directory. Protocol fixtures are not evidence of production access. The package test also exercises the new commands and templates from the packed consumer.
+After `pnpm build`, run the focused `test/cli-dataset-*.test.ts`, `test/cli-review*.test.ts`, `test/cli-model-processing.test.ts`, `test/cli-source-attachments.test.ts` and `test/cli-command-files.test.ts` suites for typed command changes. They cover exact reads, pagination, content processing, real local validation, service adaptation, separate mutation intentions, unknown-outcome non-replay, safe artifacts and installed Markdown templates. Protocol fixtures are not evidence of deployed authorization, historical content or a production transaction. The package suite also exercises the public launcher outside the source checkout.
 
-The application layer must remain free of transport/filesystem imports. New modules retain the full-source coverage requirement; no empty-domain scaffolding, new dependencies or coverage ignores are introduced. Existing lint, package, full coverage and prepush gates remain required. This branch is not a released package and downstream migration is excluded.
+The application layer must remain free of transport/filesystem imports. New modules retain the full-source coverage requirement; no empty-domain scaffolding, new dependencies or coverage ignores are introduced. Existing lint, package, full coverage and prepush gates remain required. Downstream adoption is outside CLI migration validation.

@@ -12,7 +12,7 @@ language: zh-CN
 
 核对基线：CLI `0.1.29`，本地 `main` 提交 `5fcde75e54220e6fca0015b85f2a5c7996c50ba4`，核对日期 2026-11-08。本次依据命令分派、帮助、关键实现及仓库契约进行静态分析，未执行生产命令，也未验证远程服务当前是否具备全部目标能力。
 
-本文件记录现状、判断和实现差距。[目标接口目录](../interfaces/README.md)只规定设计，不承载迁移历史。本次修改仅涉及文档，不删除或重命名现有命令，不改变当前治理归属和授权。
+本文件记录现状、判断和实现差距。[目标接口目录](../interfaces/README.md)只规定设计，不承载迁移历史。前半部分保留该版本的能力基线；下文的服务核对用于当前迁移，不能把基线中的旧入口视为新接口的实现状态。
 
 ## 设计判断与本轮范围
 
@@ -154,3 +154,35 @@ CLI 进一步明确了实际默认值与范围披露、有界摘要、分页继�
 - [来源解析](../../src/lib/dataset-author.ts)、[证据搜索](../../src/lib/dataset-evidence-search.ts)：证据准备与研究策略。
 - [Release 适配器](../../src/lib/lca-release.ts)：完整动作集合和文件完整性约束。
 - [架构契约](../agents/repo-architecture.md)、[仓库契约](../../AGENTS.md)：当前实现及治理边界。
+
+## 现有业务服务与本次实施基线
+
+本次迁移复用现有业务语义，新增审核语义后续实施。核对的是源码契约，不是已部署服务或真实账号的集成证明。源码基线为 Platform `69753a4bc9a42649dc6f8d42f430e6a785d10ae2`、Edge Functions `75b8cf15b46bbdcc1db7736af56379b41ec5f1f0`、Database `a2dcdb0e6bd2850dd40751bce57843e8ecf5a030`。
+
+| 业务 | 已有服务与实际保证 | 本次 CLI 适配 |
+| --- | --- | --- |
+| 普通对象创建 | `app_dataset_create` 插入明确内容；冲突不等于更新。 | 单一 create 意图，无 upsert 或冲突后保存。 |
+| 普通草稿保存 | `app_dataset_save_draft` 支持 `expectedJsonOrdered`；数据库锁定对象并比较当前内容、所有者及状态。 | 保留服务端内容比较及独立读回。 |
+| Model 创建、保存 | `save_lifecycle_model_bundle` 的 create/update 模式在数据库事务中写入模型及显式关联变更；内部 bundle 并不要求 CLI 暴露混合写入命令。 | 分离 create/save；无隐式 Process 变更、无创建冲突后更新。保存前比较内容，但当前服务没有相同的写入时内容 CAS 参数，结果如实披露。 |
+| 草稿删除 | `app_dataset_delete` 在行锁下校验所有者和草稿状态后删除精确版本。 | 复用该业务操作；预期内容仅在 CLI 前检比较，不宣称服务端修订 CAS 或级联删除。 |
+| 审核提交 | `app_dataset_submit_review` / `cmd_review_submit` 接收一个起始对象，锁定并检查对象，收集业务关联数据，保存提交修订校验值，返回实际审核单和受影响对象。 | 支持 Flow/Process/Model/Source/Contact 的单起始对象提交，默认且仅支持关联展开。不能将多次提交伪装成一次整包事务。 |
+| 重新提交 | 被驳回对象回到可编辑状态后可通过相同提交服务再次提交，服务按实际业务状态建立或复用审核记录。 | 前检原审核为驳回态及同一精确对象，保留修改说明与原审核观察关系；不伪造后端轮次或前后审核单链接。 |
+| 审核查询及材料 | `qry_review_get_items` 受参与者权限约束；关联进度还有专用查询。当前目标内容可按精确版本读取。 | get/list 表达当前记录和实际分页；materials 表达当前可读目标内容和出向引用，不宣称历史审核包或一致多对象快照。专用关联进度未映射时不得推断整包状态。 |
+| 审核意见与决定 | `app_review_save_comment_draft` 保存当前审核草稿；`app_review_submit_comment` 可触发通过或驳回；`app_review_batch_decision` 按现有权限和状态处理审核者决定。 | comment 明确保存当前草稿而非追加独立历史意见；decide 单独记录当前审核者决定。Process/Model 通过依赖已有草稿。 |
+| 审核撤回 | 已核对的公开审核服务未提供与目标 withdraw 相同的操作；Dataset 撤回发布具有不同语义。 | 不映射 Dataset 撤回，不伪造审核撤回成功。 |
+
+主要来源：[平台审核服务](../../../platform/src/services/reviews/api.ts)、[审核草稿服务](../../../platform/src/services/comments/api.ts)、[Model 持久化服务](../../../platform/src/services/lifeCycleModels/api.ts)、[Model Edge 入口](../../../edge-functions/supabase/functions/save_lifecycle_model_bundle/handler.ts)、[提交事务](../../../database/supabase/workspace/schemas/api/functions/cmd_review_submit/definition.sql)、[审核者决定事务](../../../database/supabase/workspace/schemas/api/functions/cmd_reviewer_submit_decision/definition.sql)、[删除事务](../../../database/supabase/workspace/schemas/api/functions/cmd_dataset_delete/definition.sql)。
+
+目标设计增加的 `includeRelated:false`、明确多起始对象审核包、历史包可重取、服务端轮次关联及追加式非决定意见，均不作为本次已有业务迁移的完成条件。它们仍保留在 `docs/interfaces` 的目标契约中；不得通过修改客户端参数或本地日志宣称服务端已经实现。新能力应由其业务所有者分别提供后再接入 CLI。
+
+## 调用方式与结果变化
+
+新入口按对象选择动作，例如 `dataset flow get`、`dataset model create` 和 `review submit`，不从生产运行目录自动选择对象、版本或操作。复杂请求用 `--input`，源码目录外同样可执行；Model 主命令与 `aggregate` 别名共用请求和结果。
+
+写入请求包含 `id`、精确 `version`、`requestId`、`expectedActor` 和 `expectedEnvironment`。create 提供 `content`；save 同时提供候选 `content` 与 `expectedContent`；delete 提供 `expectedContent`。普通 save 的服务端 CAS 与 Model/delete 的前检比较分别披露。稳定请求身份关联原意图，不能通过换身份掩盖未知结果。
+
+Review submit 使用仅含一个元素的 `targets`，成员为 `type/id/version`；resubmit 增加 `reviewId`、`expectedState:-1` 与 `changeSummary`。comment 使用 `reviewId/expectedState/json` 保存当前审核草稿；decide 使用 `reviewId/expectedState/decision`，驳回时必须提供 reason。所有变更同样绑定请求身份、账号和环境。
+
+新命令 JSON 使用 `data/context/completeness/nextActions/replyTemplate`，实际服务回执保留在业务结果内。`--output` 保存完整产物，默认拒绝覆盖；终端返回有界摘要。传入 `--dry-run` 不创建业务记录或本地派发意图，不把可读前检当作服务端最终准入。
+
+环境、认证、Release、运行支撑和保留的专用接口继续以各自真实帮助及协议为准。既有身份回执的精确格式、公共库子路径和 Release 结果不能因通用结果展示被隐式改变。下游正式接入以 CLI 发布后的适配为界，本次不修改调用仓库。

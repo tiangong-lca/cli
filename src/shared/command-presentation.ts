@@ -7,7 +7,17 @@ import type { CommandResult, CommandIO } from './command-result.js';
 
 export function attachReplyTemplate(
   value: CommandResult,
-  name: 'query-result' | 'validation-result' | 'command-failed',
+  name:
+    | 'query-result'
+    | 'validation-result'
+    | 'command-failed'
+    | 'operation-completed'
+    | 'operation-accepted'
+    | 'outcome-unknown'
+    | 'conflict-result'
+    | 'preview-result'
+    | 'partial-result'
+    | 'decision-required',
   root = runtimePackageRoot(
     new URL(`../runtime${path.extname(fileURLToPath(import.meta.url))}`, import.meta.url).href,
   ),

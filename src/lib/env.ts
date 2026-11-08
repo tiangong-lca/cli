@@ -279,7 +279,10 @@ export function buildDoctorReport(
       required: spec.required,
       source: resolved.source,
       present: resolved.present,
-      valuePreview: maskSecret(resolved.value),
+      valuePreview:
+        spec.key === ENV_KEYS.accessToken && resolved.value
+          ? '[redacted]'
+          : maskSecret(resolved.value),
     };
   });
 

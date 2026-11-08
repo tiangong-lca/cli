@@ -58,20 +58,17 @@ test('executeCli prints main help when no command is given', async () => {
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Unified TianGong command entrypoint/u);
   assert.match(result.stdout, /Implemented Commands:/u);
-  assert.match(result.stdout, /Planned Surface \(not implemented yet\):/u);
   assert.match(
     result.stdout,
-    /process\s+get \| list \| identity-preflight \| build-plan \| scope-statistics/u,
+    /dataset\s+<flow\|process\|model\|source\|contact\|flowproperty\|unitgroup\|lciamethod>/u,
   );
-  assert.match(result.stdout, /flow\s+get \| list \| identity-preflight \| build-plan/u);
-  assert.match(result.stdout, /process\s+auto-build/u);
-  assert.match(result.stdout, /lifecyclemodel auto-build/u);
-  assert.match(result.stdout, /lifecyclemodel auto-build \| validate-build \| publish-build/u);
-  assert.match(result.stdout, /publish-resulting-process/u);
-  assert.match(result.stdout, /qa\s+process \| flow \| lifecyclemodel/u);
-  assert.match(result.stdout, /maintenance clear-account\/plan\/apply\/verify/u);
-  assert.doesNotMatch(result.stdout, /dataset maintenance plan \| apply \| verify/u);
-  assert.match(result.stdout, /exit with code 2/u);
+  assert.match(result.stdout, /review\s+submit \| resubmit \| get \| list/u);
+  assert.match(result.stdout, /Runtime support:/u);
+  assert.doesNotMatch(
+    result.stdout,
+    /Retained compatibility entrypoints:|auto-build|maintenance clear-account/u,
+  );
+  assert.doesNotMatch(result.stdout, /auto-build|maintenance clear-account|curation-queue/u);
   assert.equal(result.stderr, '');
 });
 
@@ -437,13 +434,15 @@ test('executeCli returns help for the lifecyclemodel namespace and implemented s
 test('executeCli exposes dataset and lifecyclemodel friction-fix commands', async () => {
   const datasetHelp = await executeCli(['dataset'], makeDeps());
   assert.equal(datasetHelp.exitCode, 0);
-  assert.match(datasetHelp.stdout, /tiangong-lca dataset <subcommand>/u);
+  assert.match(datasetHelp.stdout, /tiangong-lca dataset <type> <action>/u);
   assert.match(datasetHelp.stdout, /validate/u);
-  assert.match(datasetHelp.stdout, /references rewrite/u);
-  assert.match(datasetHelp.stdout, /maintenance clear-account/u);
-  assert.match(datasetHelp.stdout, /maintenance plan\s+Build an immutable/u);
-  assert.match(datasetHelp.stdout, /maintenance apply\s+Execute an explicitly approved/u);
-  assert.match(datasetHelp.stdout, /maintenance verify\s+Read back affected rows/u);
+  assert.match(datasetHelp.stdout, /list-references/u);
+  assert.doesNotMatch(
+    datasetHelp.stdout,
+    /references rewrite|maintenance clear-account|curation-queue/u,
+  );
+  assert.match(datasetHelp.stdout, /Shared discovery: dataset classification children \| path/u);
+  assert.match(datasetHelp.stdout, /model:.*build-resulting-process.*aggregate/u);
 
   const datasetValidateHelp = await executeCli(['dataset', 'validate', '--help'], makeDeps());
   assert.equal(datasetValidateHelp.exitCode, 0);
@@ -5802,30 +5801,23 @@ test('executeCli rejects unknown root options', async () => {
   assert.match(result.stderr, /UNKNOWN_ROOT_OPTION/u);
 });
 
-test('executeCli rejects removed review command group without aliasing to qa', async () => {
-  const rootResult = await executeCli(['review'], makeDeps());
-  assert.equal(rootResult.exitCode, 2);
-  assert.equal(rootResult.stdout, '');
-  assert.match(rootResult.stderr, /Command 'review' was removed/u);
-  assert.match(rootResult.stderr, /tiangong-lca qa/u);
-
-  const result = await executeCli(['review', 'process', '--help'], makeDeps());
-  assert.equal(result.exitCode, 2);
-  assert.equal(result.stdout, '');
-  assert.match(result.stderr, /Command 'review process' was removed/u);
-  assert.match(result.stderr, /tiangong-lca qa process/u);
-
-  const flowResult = await executeCli(['review', 'flow', '--help'], makeDeps());
-  assert.equal(flowResult.exitCode, 2);
-  assert.equal(flowResult.stdout, '');
-  assert.match(flowResult.stderr, /Command 'review flow' was removed/u);
-  assert.match(flowResult.stderr, /tiangong-lca qa flow/u);
-
-  const lifecyclemodelResult = await executeCli(['review', 'lifecyclemodel', '--help'], makeDeps());
-  assert.equal(lifecyclemodelResult.exitCode, 2);
-  assert.equal(lifecyclemodelResult.stdout, '');
-  assert.match(lifecyclemodelResult.stderr, /Command 'review lifecyclemodel' was removed/u);
-  assert.match(lifecyclemodelResult.stderr, /tiangong-lca qa lifecyclemodel/u);
+test('executeCli discovers Review separately from QA and rejects obsolete QA aliases', async () => {
+  const root = await executeCli(['review', '--help', '--json'], makeDeps());
+  assert.equal(root.exitCode, 0);
+  assert.deepEqual(JSON.parse(root.stdout).implementedActions, [
+    'submit',
+    'resubmit',
+    'get',
+    'list',
+    'materials',
+    'comment',
+    'decide',
+  ]);
+  for (const type of ['process', 'flow', 'lifecyclemodel']) {
+    const reply = await executeCli(['review', type, '--help', '--json'], makeDeps());
+    assert.equal(reply.exitCode, 2);
+    assert.equal(JSON.parse(reply.stdout).error.code, 'CAPABILITY_UNSUPPORTED');
+  }
 });
 
 test('executeCli prints main help when root help appears before the command', async () => {
