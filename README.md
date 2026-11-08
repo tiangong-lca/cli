@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
-lastReviewedNote: 'CLI #468: reviewed implemented core capabilities, unified context, standalone receipts and explicit retained-interface boundaries.'
+lastReviewedCommit: e5699f60e416d02372b470f2deca8f5367def12d
+lastReviewedNote: 'CLI #468: Reviewed local entrypoint qualification; public command and release boundaries remain unchanged.'
 ---
 
 # TianGong LCA CLI

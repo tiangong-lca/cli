@@ -40,8 +40,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
-lastReviewedNote: 'CLI #468: reviewed shared core results, exact standalone identity artifacts, bounded discovery and compatibility retirement boundaries.'
+lastReviewedCommit: e5699f60e416d02372b470f2deca8f5367def12d
+lastReviewedNote: 'CLI #468: Reviewed independent launcher validation alongside package and exact coverage gates.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md

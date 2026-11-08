@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
-lastReviewedNote: 'CLI #468: reviewed capability migration; trusted publishing, platform qualification and repository setup are unchanged.'
+lastReviewedCommit: e5699f60e416d02372b470f2deca8f5367def12d
+lastReviewedNote: 'CLI #468: Reviewed shared local gate extension; release setup and publication authorization remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

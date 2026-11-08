@@ -624,6 +624,7 @@ test('the exact 100% source-coverage gate remains in the pnpm pre-push path', ()
   const coverageCommand = PACKAGE_JSON.scripts?.['test:coverage'] ?? '';
   const coverageAssertCommand = PACKAGE_JSON.scripts?.['test:coverage:assert-full'] ?? '';
   const packageContractCommand = PACKAGE_JSON.scripts?.['test:package'] ?? '';
+  const entrypointsCommand = PACKAGE_JSON.scripts?.['test:entrypoints'] ?? '';
   const prepushCommand = PACKAGE_JSON.scripts?.['prepush:gate'] ?? '';
   const coverageAssertionSource = readFileSync(
     join(REPOSITORY_ROOT, 'scripts', 'assert-full-coverage.ts'),
@@ -633,9 +634,14 @@ test('the exact 100% source-coverage gate remains in the pnpm pre-push path', ()
   assert.match(coverageCommand, /scripts\/run-test-coverage\.cjs/u);
   assert.match(coverageAssertCommand, /assert-full-coverage\.js/u);
   assert.match(packageContractCommand, /test\/toolchain-contract\.test\.mjs/u);
+  assert.equal(
+    entrypointsCommand,
+    'pnpm build && node --import tsx --test test/bin.test.ts test/main.test.ts',
+  );
   assert.equal(PACKAGE_JSON.scripts?.['peers:check'], 'pnpm peers check');
   assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+peers:check(?:\s|&&|$)/u);
   assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+test:package(?:\s|&&|$)/u);
+  assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+test:entrypoints(?:\s|&&|$)/u);
   assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+test:coverage(?:\s|&&|$)/u);
   assert.match(
     prepushCommand,

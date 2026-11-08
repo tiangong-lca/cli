@@ -157,7 +157,10 @@ integrationTest('bin entrypoint executes successfully in a child process', () =>
     });
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /"ok":true/u);
+    const value = JSON.parse(result.stdout);
+    assert.equal(value.operation, 'doctor');
+    assert.equal(value.status, 'completed');
+    assert.equal(value.data.configuration.ok, true);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -177,5 +180,8 @@ integrationTest('dist/main.js executes successfully when run directly in a child
   });
 
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /"ok":true/u);
+  const value = JSON.parse(result.stdout);
+  assert.equal(value.operation, 'doctor');
+  assert.equal(value.status, 'completed');
+  assert.equal(value.data.configuration.ok, true);
 });

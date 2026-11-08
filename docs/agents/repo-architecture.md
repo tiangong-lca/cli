@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
-lastReviewedNote: 'CLI #468: reviewed root, catalog, environment and identity context ownership alongside typed Dataset and Review adapters.'
+lastReviewedCommit: e5699f60e416d02372b470f2deca8f5367def12d
+lastReviewedNote: 'CLI #468: Reviewed canonical gate ownership of package, launcher and coverage proofs.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -303,7 +303,7 @@ Repo-level maintenance gates are now split across:
 
 Important constraints:
 
-- `pnpm prepush:gate` remains the authoritative local proof for code changes and runs from the local pre-push hook; it includes the `test:package` toolchain/tarball consumer contract and exact 100% coverage
+- `pnpm prepush:gate` remains the authoritative local proof for code changes and runs from the local pre-push hook; it includes the `test:package` toolchain/tarball consumer contract, separate uninstrumented `test:entrypoints` launcher tests and exact 100% coverage
 - `ai-doc-lint` keeps the historical check identity, but its implementation should run `docpact`
 - `docpact` enforces that command-surface and release-gate changes also refresh or review the governed source docs
 - the merge-tag workflow is guarded so only the upstream repository can execute release tagging

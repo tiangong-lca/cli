@@ -15,8 +15,8 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
-lastReviewedNote: 'CLI #468: reviewed in-place migration guidance and separation of implementation, target design and durable delivery records.'
+lastReviewedCommit: e5699f60e416d02372b470f2deca8f5367def12d
+lastReviewedNote: 'CLI #468: Reviewed validation guidance in its development owner; execution evidence remains in the Issue.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

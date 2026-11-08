@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
-lastReviewedNote: 'CLI #468: reviewed local provenance, exact receipt parsing, installed context discovery, output projection and retained protocol regressions.'
+lastReviewedCommit: e5699f60e416d02372b470f2deca8f5367def12d
+lastReviewedNote: 'CLI #468: Reviewed independent uninstrumented launcher execution and explicit environment-specific skips.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -75,6 +75,8 @@ For protected-branch parity, the authoritative full gate is:
 ```bash
 pnpm prepush:gate
 ```
+
+The canonical gate runs `pnpm test:entrypoints` separately without coverage instrumentation. This rebuilds the CLI and exercises `runFromBin`, the installed-style launcher and direct `main` execution with the current result contract. Those tests are skipped inside the coverage run to avoid instrumenting child entrypoints; that skip must not remove their independent execution from the gate. The packed-consumer test likewise runs separately through `pnpm test:package`. Windows-only and explicitly enabled local-RPC cases require their corresponding environments; passing the local gate does not establish those results.
 
 Process ownership-version changes require focused `dataset-command`, `process-save-draft`, and `publish` tests in addition to the baseline. Prove exact `modelId`/`modelVersion` forwarding, omission-compatible legacy fallback, rejection of `modelVersion` without `modelId`, precedence among canonical source metadata forms, and absence of any latest-Model lookup. The final proof remains the exact-100% `pnpm prepush:gate`.
 
