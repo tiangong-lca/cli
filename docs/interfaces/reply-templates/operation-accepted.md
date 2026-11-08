@@ -1,0 +1,19 @@
+---
+title: 操作受理回复模板
+docType: guide
+scope: repo
+status: active
+authoritative: false
+owner: cli
+language: zh-CN
+---
+
+# 操作已受理
+
+说明请求已受理，以及尚未完成的业务步骤。
+
+给出可继续查询的精确请求或业务对象标识。审核提交还需说明轮次、成员数量和关联范围。
+
+优先提供返回结果中的状态查询命令，不把受理表述为审核通过。
+
+只有实际建立了持续监测，才能说明监测已经开始。

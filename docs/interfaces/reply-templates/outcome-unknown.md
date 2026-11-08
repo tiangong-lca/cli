@@ -1,0 +1,19 @@
+---
+title: 结果未知回复模板
+docType: guide
+scope: repo
+status: active
+authoritative: false
+owner: cli
+language: zh-CN
+---
+
+# 执行结果未知
+
+明确实际效果尚未确认，说明原操作、请求身份和已知事实。
+
+提供保留的恢复记录，以及结果中给出的原请求查询或独立读回命令。
+
+请求可能已经生效，不能写成确定失败或建议直接重试变更。
+
+没有可用恢复入口时说明缺少的能力或信息，不编造命令。
