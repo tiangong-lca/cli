@@ -138,8 +138,9 @@ test('executeCli returns doctor json and failure status when required env is mis
     }),
   );
   assert.equal(result.exitCode, 1);
-  const payload = JSON.parse(result.stdout) as { ok: boolean };
-  assert.equal(payload.ok, false);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.data.configuration.ok, false);
+  assert.equal(payload.status, 'failed');
 });
 
 test('executeCli returns remote help for search flow', async () => {
@@ -5038,9 +5039,9 @@ test('executeCli returns parsing errors for invalid remote flags', async () => {
 test('executeCli returns parsing errors for invalid doctor flags', async () => {
   const result = await executeCli(['doctor', '--bad-flag'], makeDeps());
   assert.equal(result.exitCode, 2);
-  assert.equal(result.stdout, '');
-  assert.match(result.stderr, /INVALID_ARGS/u);
-  assert.match(result.stderr, /Unknown option '--bad-flag'/u);
+  assert.match(result.stdout, /doctor --help --json/u);
+  assert.equal(result.stderr, '');
+  assert.match(result.stdout, /malformed doctor option/u);
 });
 
 test('executeCli returns unexpected error payloads from remote execution failures', async () => {
@@ -5795,7 +5796,7 @@ test('executeCli returns success for validation reports that are ok', async () =
 });
 
 test('executeCli rejects unknown root options', async () => {
-  const result = await executeCli(['--json'], makeDeps());
+  const result = await executeCli(['--unknown-root-option'], makeDeps());
   assert.equal(result.exitCode, 2);
   assert.equal(result.stdout, '');
   assert.match(result.stderr, /UNKNOWN_ROOT_OPTION/u);
@@ -5829,7 +5830,7 @@ test('executeCli prints main help when root help appears before the command', as
 test('executeCli supports root argument separator before the command', async () => {
   const result = await executeCli(['--', 'doctor', '--json'], makeDeps());
   assert.equal(result.exitCode, 0);
-  assert.match(result.stdout, /"ok":true/u);
+  assert.equal(JSON.parse(result.stdout).data.configuration.ok, true);
 });
 
 test('executeCli prints main help for the explicit help command', async () => {

@@ -183,6 +183,21 @@ CLI 进一步明确了实际默认值与范围披露、有界摘要、分页继�
 
 Review submit 使用仅含一个元素的 `targets`，成员为 `type/id/version`；resubmit 增加 `reviewId`、`expectedState:-1` 与 `changeSummary`。comment 使用 `reviewId/expectedState/json` 保存当前审核草稿；decide 使用 `reviewId/expectedState/decision`，驳回时必须提供 reason。所有变更同样绑定请求身份、账号和环境。
 
-新命令 JSON 使用 `data/context/completeness/nextActions/replyTemplate`，实际服务回执保留在业务结果内。`--output` 保存完整产物，默认拒绝覆盖；终端返回有界摘要。传入 `--dry-run` 不创建业务记录或本地派发意图，不把可读前检当作服务端最终准入。
+分类目录 children/path 使用 `--output` 保存报告，替代旧的查询 `--out-dir`；默认分页返回 20 项，游标绑定同一目录选择及内容。`list-references` 的已知类型使用可执行的 CLI 类型名，原始类型留在 `declaredType`，未知声明明确标记，不推断目标。
 
-环境、认证、Release、运行支撑和保留的专用接口继续以各自真实帮助及协议为准。既有身份回执的精确格式、公共库子路径和 Release 结果不能因通用结果展示被隐式改变。下游正式接入以 CLI 发布后的适配为界，本次不修改调用仓库。
+新命令 JSON 使用 `data/context/completeness/nextActions/replyTemplate`，实际服务回执保留在业务结果内。`--output` 保存完整产物，默认拒绝覆盖；成功写出完整产物后，内容处理结果不在终端重复展开完整候选；产物失败时保留已观察事实。传入 `--dry-run` 不创建业务记录或本地派发意图，不把可读前检当作服务端最终准入。
+
+Auth 和 doctor 使用统一结果；Auth 回执本体位于 `data.receipt`，`--output` 保存原始回执。既有回执精确格式和公共解析器不变，Release、运行支撑和保留的专用接口继续以各自协议为准。下游正式接入以 CLI 发布后的适配为界，本次不修改调用仓库。
+
+## 旧入口处置与兼容边界
+
+核心帮助和 `--help --json` 只发现新的业务入口及明确保留的运行、发布和文件包工具。新能力不再添加到旧工作流树。兼容接口不是新命令的自动回退，旧 upsert 或隐式选择不能当作 create/save 的别名。
+
+| 入口或实现 | 处置 | 边界与退出条件 |
+| --- | --- | --- |
+| Process-only 样例、重复 Source 上传路由、原有 Doctor 和分类查询的重复解析 | 已被多类型命令和统一上下文替换，移除重复实现。 | 通过当前行为、安装和覆盖率验证，不保留两套新业务实现。 |
+| Model `aggregate` | 保留为 `build-resulting-process` 的正式别名。 | 相同请求、算法、结果及错误；不存在退出安排。 |
+| 原 `search/flow/process/lifecyclemodel/qa`、通用 Dataset 本地与批量旧路径 | 保留 0.1.x 调用兼容，退出新核心发现。 | 正式发布新 CLI 后，由相关下游采用新入口；确认调用及历史恢复记录迁移完成后再删除旧路径。本次不在下游执行这项工作。 |
+| 受保护维护、专用 Study、Release、runtime/PCR 和文件包工具 | 保留各自现行契约，按职责与核心原子接口区分。 | 不是 create/save 或 Review 的等价别名。不得通过命令清理放宽授权、丢弃历史恢复或改变公共库协议；所属领域的后续归属调整独立处理。 |
+
+本次不为保留树添加新的业务编排，也不把保留的兼容行为作为目标设计的新增能力。新调用方使用类型入口和当前结构化帮助；旧版本的运行记录仍按其原始协议解释，不能用新版本展示格式重写历史证据。

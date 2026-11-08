@@ -14,8 +14,8 @@ checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e2b7a7a0142085180935454aa2e782d6a79433e8
-lastReviewedNote: 'CLI #468: reviewed documentation-first foundation and explicit implementation boundaries; target design remains separate from runtime capability.'
+lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
+lastReviewedNote: 'CLI #468: reviewed implemented existing-service scope, deferred Review extensions and post-release compatibility retirement conditions.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -162,7 +162,7 @@ AGENTS 面向开发 AI，规定目录职责、依赖方向、新命令开发路�
 
 按前置核查清单，删除已被替代的入口、帮助及无引用实现，收敛核心命令树。研究、生产编排及专项运维流程退出核心范围时，在本仓完成入口和依赖清理，并记录移除后的使用边界；本次不在下游仓库重建这些流程。
 
-语义完全一致的入口在分支开发期间可以临时转接；upsert、隐式保存、自动追新等旧行为不能直接映射成新动作。所有过渡入口在验收前明确最终处置，不保留没有退出条件的兼容层。设计明确保留的 `aggregate` 属于主命令的正式别名，不作为待删除的旧入口；它不等于保留旧的 `lifecyclemodel` 命令层级。旧恢复记录、历史产物及公共库接口的兼容需求单独核查，不能随命令清理误删恢复能力。
+语义完全一致的入口在分支开发期间可以临时转接；upsert、隐式保存、自动追新等旧行为不能直接映射成新动作。所有过渡入口在验收前明确最终处置，不保留没有退出条件的兼容层。旧调用路径可在“新 CLI 正式发布、相关下游采用新入口并验证历史恢复记录”完成前保留原协议；这些退出条件属于 Release 后的调用方迁移，不能因此在本轮修改下游。设计明确保留的 `aggregate` 属于主命令的正式别名，不作为待删除的旧入口；它不等于保留旧的 `lifecyclemodel` 命令层级。旧恢复记录、历史产物及公共库接口的兼容需求单独核查，不能随命令清理误删恢复能力。
 
 下游迁移说明包括旧命令到新命令映射、移除项、参数与输出变化、创建和保存的语义差异、错误与恢复方式，以及基于新命令的使用示例。无法一对一映射的旧流程说明应由调用方组合哪些原子能力，不伪造等价替代命令。
 
@@ -204,6 +204,6 @@ AGENTS 面向开发 AI，规定目录职责、依赖方向、新命令开发路�
 | M3：核心业务能力齐备 | 第 7、8 步完成，独立写入与审核通过验收。                |
 | M4：候选版本可评审   | 第 9、10 步完成，清理、安装包、场景验收和迁移资料齐备。 |
 
-实施状态：基础分层已完成；Dataset 多类型能力和现有 Review 服务适配已通过本地门禁，入口整理及环境、认证上下文衔接仍需完成。目标设计与本次业务服务基线的差异按第 8 步处理，未实施的扩展不计为已有能力。
+实施状态：基础分层已完成；Dataset 多类型能力和现有 Review 服务适配已通过本地门禁，环境、认证和目录发现已接入统一结果；核心帮助、重复实现清理与兼容入口的退出条件已按能力对照整理。目标设计与本次业务服务基线的差异按第 8 步处理，未实施的扩展不计为已有能力。
 
 当前交付事实、源码身份、验证证据和剩余事项保存在对应 Issue/PR。计划不替代交付记录，也不以阶段描述代替代码、服务集成或发布证据。正式发布后的下游升级独立进行。

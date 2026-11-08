@@ -22,9 +22,9 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: '2026-11-07'
-lastReviewedCommit: '3ede655'
-lastReviewedNote: 'CLI #377: reviewed input/result correction and primary-only capability admission. Full local gate passes at 100% coverage; package version, release workflow and publication prerequisites remain unchanged.'
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
+lastReviewedNote: 'CLI #468: reviewed the command-layer development entrypoint and unchanged validation requirements.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

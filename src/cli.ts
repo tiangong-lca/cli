@@ -5,12 +5,17 @@ import { runReviewCommand } from './commands/review.js';
 import { reviewReader } from './adapters/review-read.js';
 import { reviewWriter } from './adapters/review-write.js';
 import { reviewMaterials } from './adapters/review-materials.js';
+import { runAuthCommand } from './commands/auth.js';
+import { runDoctorCommand } from './commands/doctor.js';
+import { doctorPorts } from './adapters/doctor.js';
+import { runClassificationCommand } from './commands/classification.js';
+import { rootHelp } from './commands/help.js';
 import { parseArgs } from 'node:util';
 import { runRuntimeCommand } from './lib/runtime/command.js';
 import { runPcrCommand } from './lib/pcr-snapshot-command.js';
 import { runStudyCommand } from './lib/study-command.js';
 import { selectLoopbackAuthDiagnostic, runLoopbackAuthDiagnostic } from './lib/study-transport.js';
-import { buildDoctorReport, readRuntimeEnv } from './lib/env.js';
+import { readRuntimeEnv } from './lib/env.js';
 import type { DotEnvLoadResult } from './lib/dotenv.js';
 import { CliError, toErrorPayload } from './lib/errors.js';
 import type { FetchLike } from './lib/http.js';
@@ -727,16 +732,6 @@ Optional session env:
 `.trim();
 }
 
-function renderDoctorHelp(): string {
-  return `Usage:
-  tiangong-lca doctor [--json]
-
-Options:
-  --json    Print structured environment diagnostics
-  -h, --help
-`.trim();
-}
-
 function renderSearchHelp(): string {
   return `Usage:
   tiangong-lca search <flow|process|lifecyclemodel> --input <file> [options]
@@ -1271,14 +1266,15 @@ Options for children:
   --type <type>     Classification schema type
   --parent <code>   Parent code to inspect
   --query <text>    Filter direct children by code or label
-  --limit <n>       Limit returned children
-  --out-dir <dir>   Optional artifact directory
+  --limit <n>       Page size 1..100, default 20
+  --cursor <token>  Continue the same content-bound selection
+  --output <file>   Complete selected report
   --json            Print compact JSON
 
 Options for path:
   --type <type>     Classification schema type
   --code <code>     Leaf or intermediate classification code
-  --out-dir <dir>   Optional artifact directory
+  --output <file>   Complete selected report
   --json            Print compact JSON
 
 Options for audit:
@@ -1304,7 +1300,7 @@ Decision contract:
   --type location and target_path when a row contains more than one location field.
 
 Outputs:
-  - children/path report under outputs/ when --out-dir is provided
+  - complete children/path report at --output; terminal context remains bounded
   - outputs/location-audit-findings.jsonl for audit
   - outputs/location-audit-report.json for audit
   - classified rows at --out for apply
@@ -2756,30 +2752,6 @@ Outputs written under --out-dir:
 `.trim();
 }
 
-function renderDoctorText(report: ReturnType<typeof buildDoctorReport>): string {
-  const lines = [
-    'TianGong CLI doctor',
-    `  .env loaded: ${report.loadedDotEnv ? `yes (${report.dotEnvKeysLoaded} keys)` : 'no'}`,
-    `  .env path:   ${report.dotEnvPath}`,
-    '',
-  ];
-  for (const check of report.checks) {
-    const status = check.present ? 'OK ' : 'MISS';
-    lines.push(
-      `  [${status}] ${check.key} (${check.source})${check.required ? ' [required]' : ''}`,
-    );
-  }
-  if (!report.ok) {
-    lines.push('', 'Missing required environment keys:');
-    for (const check of report.checks) {
-      if (check.required && !check.present) {
-        lines.push(`  - ${check.key}`);
-      }
-    }
-  }
-  return `${lines.join('\n')}\n`;
-}
-
 type CommandDispatch = {
   flags: RootFlags;
   command: string | null;
@@ -2841,34 +2813,6 @@ function parseCommandLine(args: string[]): CommandDispatch {
   };
 }
 
-function parseDoctorFlags(args: string[]): {
-  help: boolean;
-  json: boolean;
-} {
-  let values: ReturnType<typeof parseArgs>['values'];
-  try {
-    ({ values } = parseArgs({
-      args,
-      allowPositionals: false,
-      strict: true,
-      options: {
-        help: { type: 'boolean', short: 'h' },
-        json: { type: 'boolean' },
-      },
-    }));
-  } catch (error) {
-    throw new CliError(String(error), {
-      code: 'INVALID_ARGS',
-      exitCode: 2,
-    });
-  }
-
-  return {
-    help: Boolean(values.help),
-    json: Boolean(values.json),
-  };
-}
-
 function parseAuthIdentityReceiptFlags(args: string[]): {
   help: boolean;
   json: boolean;
@@ -2876,40 +2820,19 @@ function parseAuthIdentityReceiptFlags(args: string[]): {
   expectedUserId: string | null;
   timeoutMs: number;
 } {
-  let parsed: ReturnType<typeof parseArgs>;
-  try {
-    parsed = parseArgs({
-      args,
-      allowPositionals: false,
-      strict: true,
-      tokens: true,
-      options: {
-        help: { type: 'boolean', short: 'h' },
-        json: { type: 'boolean' },
-        'expected-project-ref': { type: 'string' },
-        'expected-user-id': { type: 'string' },
-        'timeout-ms': { type: 'string' },
-      },
-    });
-  } catch (error) {
-    throw new CliError(String(error), {
-      code: 'INVALID_ARGS',
-      exitCode: 2,
-    });
-  }
-
-  const tokens = parsed.tokens!;
-  for (const optionName of ['expected-project-ref', 'expected-user-id', 'timeout-ms'] as const) {
-    const occurrences = tokens.filter(
-      (entry) => entry.kind === 'option' && entry.name === optionName,
-    ).length;
-    if (occurrences > 1) {
-      throw new CliError(`Option --${optionName} may be provided only once.`, {
-        code: 'INVALID_ARGS',
-        exitCode: 2,
-      });
-    }
-  }
+  const parsed = parseArgs({
+    args,
+    allowPositionals: false,
+    strict: true,
+    tokens: true,
+    options: {
+      help: { type: 'boolean', short: 'h' },
+      json: { type: 'boolean' },
+      'expected-project-ref': { type: 'string' },
+      'expected-user-id': { type: 'string' },
+      'timeout-ms': { type: 'string' },
+    },
+  });
 
   const timeoutText =
     typeof parsed.values['timeout-ms'] === 'string' ? parsed.values['timeout-ms'] : undefined;
@@ -2944,32 +2867,18 @@ function parseAuthLoginFlags(args: string[]): {
   json: boolean;
   timeoutMs: number;
 } {
-  let parsed: ReturnType<typeof parseArgs>;
-  try {
-    parsed = parseArgs({
-      args,
-      allowPositionals: false,
-      strict: true,
-      tokens: true,
-      options: {
-        help: { type: 'boolean', short: 'h' },
-        json: { type: 'boolean' },
-        'timeout-ms': { type: 'string' },
-      },
-    });
-  } catch (error) {
-    throw new CliError(String(error), { code: 'INVALID_ARGS', exitCode: 2 });
-  }
+  const parsed = parseArgs({
+    args,
+    allowPositionals: false,
+    strict: true,
+    tokens: true,
+    options: {
+      help: { type: 'boolean', short: 'h' },
+      json: { type: 'boolean' },
+      'timeout-ms': { type: 'string' },
+    },
+  });
 
-  const timeoutOccurrences = parsed.tokens!.filter(
-    (entry) => entry.kind === 'option' && entry.name === 'timeout-ms',
-  ).length;
-  if (timeoutOccurrences > 1) {
-    throw new CliError('Option --timeout-ms may be provided only once.', {
-      code: 'INVALID_ARGS',
-      exitCode: 2,
-    });
-  }
   const timeoutText = parsed.values['timeout-ms'];
   const timeoutMs = typeof timeoutText === 'string' ? Number(timeoutText) : 180_000;
   if (
@@ -2991,49 +2900,28 @@ function parseAuthLoginFlags(args: string[]): {
 }
 
 function parseAuthLogoutFlags(args: string[]): { help: boolean; json: boolean } {
-  try {
-    const { values } = parseArgs({
-      args,
-      allowPositionals: false,
-      strict: true,
-      options: {
-        help: { type: 'boolean', short: 'h' },
-        json: { type: 'boolean' },
-      },
-    });
-    return { help: Boolean(values.help), json: Boolean(values.json) };
-  } catch (error) {
-    throw new CliError(String(error), { code: 'INVALID_ARGS', exitCode: 2 });
-  }
+  const { values } = parseArgs({
+    args,
+    allowPositionals: false,
+    strict: true,
+    options: { help: { type: 'boolean', short: 'h' }, json: { type: 'boolean' } },
+  });
+  return { help: Boolean(values.help), json: Boolean(values.json) };
 }
 
 function parseAuthLiveFlags(args: string[]): { help: boolean; json: boolean; timeoutMs: number } {
-  let parsed: ReturnType<typeof parseArgs>;
-  try {
-    parsed = parseArgs({
-      args,
-      allowPositionals: false,
-      strict: true,
-      tokens: true,
-      options: {
-        help: { type: 'boolean', short: 'h' },
-        json: { type: 'boolean' },
-        'timeout-ms': { type: 'string' },
-      },
-    });
-  } catch (error) {
-    throw new CliError(String(error), { code: 'INVALID_ARGS', exitCode: 2 });
-  }
+  const parsed = parseArgs({
+    args,
+    allowPositionals: false,
+    strict: true,
+    tokens: true,
+    options: {
+      help: { type: 'boolean', short: 'h' },
+      json: { type: 'boolean' },
+      'timeout-ms': { type: 'string' },
+    },
+  });
 
-  const timeoutOccurrences = parsed.tokens!.filter(
-    (entry) => entry.kind === 'option' && entry.name === 'timeout-ms',
-  ).length;
-  if (timeoutOccurrences > 1) {
-    throw new CliError('Option --timeout-ms may be provided only once.', {
-      code: 'INVALID_ARGS',
-      exitCode: 2,
-    });
-  }
   const timeoutText = parsed.values['timeout-ms'];
   const timeoutMs = typeof timeoutText === 'string' ? Number(timeoutText) : 10_000;
   if (
@@ -3429,94 +3317,6 @@ function parseDatasetContractFlags(args: string[]): {
       ? values.include.filter((value): value is string => typeof value === 'string')
       : [],
     profile: typeof values.profile === 'string' ? values.profile : undefined,
-    outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : null,
-  };
-}
-
-function parseDatasetClassificationChildrenFlags(args: string[]): {
-  help: boolean;
-  json: boolean;
-  type: string;
-  parent: string | null;
-  query: string | null;
-  limit: number | null;
-  outDir: string | null;
-} {
-  let values: ReturnType<typeof parseArgs>['values'];
-  try {
-    ({ values } = parseArgs({
-      args,
-      allowPositionals: false,
-      strict: true,
-      options: {
-        help: { type: 'boolean', short: 'h' },
-        json: { type: 'boolean' },
-        type: { type: 'string' },
-        parent: { type: 'string' },
-        query: { type: 'string' },
-        limit: { type: 'string' },
-        'out-dir': { type: 'string' },
-      },
-    }));
-  } catch (error) {
-    throw new CliError(String(error), {
-      code: 'INVALID_ARGS',
-      exitCode: 2,
-    });
-  }
-
-  const limit = typeof values.limit === 'string' ? Number.parseInt(values.limit, 10) : null;
-  if (limit !== null && (!Number.isInteger(limit) || limit <= 0)) {
-    throw new CliError('--limit must be a positive integer.', {
-      code: 'DATASET_CLASSIFICATION_LIMIT_INVALID',
-      exitCode: 2,
-    });
-  }
-
-  return {
-    help: Boolean(values.help),
-    json: Boolean(values.json),
-    type: typeof values.type === 'string' ? values.type : '',
-    parent: typeof values.parent === 'string' ? values.parent : null,
-    query: typeof values.query === 'string' ? values.query : null,
-    limit,
-    outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : null,
-  };
-}
-
-function parseDatasetClassificationPathFlags(args: string[]): {
-  help: boolean;
-  json: boolean;
-  type: string;
-  code: string;
-  outDir: string | null;
-} {
-  let values: ReturnType<typeof parseArgs>['values'];
-  try {
-    ({ values } = parseArgs({
-      args,
-      allowPositionals: false,
-      strict: true,
-      options: {
-        help: { type: 'boolean', short: 'h' },
-        json: { type: 'boolean' },
-        type: { type: 'string' },
-        code: { type: 'string' },
-        'out-dir': { type: 'string' },
-      },
-    }));
-  } catch (error) {
-    throw new CliError(String(error), {
-      code: 'INVALID_ARGS',
-      exitCode: 2,
-    });
-  }
-
-  return {
-    help: Boolean(values.help),
-    json: Boolean(values.json),
-    type: typeof values.type === 'string' ? values.type : '',
-    code: typeof values.code === 'string' ? values.code : '',
     outDir: typeof values['out-dir'] === 'string' ? values['out-dir'] : null,
   };
 }
@@ -7090,6 +6890,25 @@ function applyRemoteOverrides(
 }
 
 export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResult> {
+  if (argv[0] === '--' && ['dataset', 'review', 'auth', 'doctor'].includes(argv[1] ?? ''))
+    argv = argv.slice(1);
+  if (
+    argv.includes('--json') &&
+    argv.every((arg) => ['help', '--help', '-h', '--json'].includes(arg))
+  )
+    return rootHelp(renderMainHelp(deps.dotEnvStatus));
+  if (argv[0] === '--json' && ['dataset', 'review', 'auth', 'doctor'].includes(argv[1]!))
+    argv = [...argv.slice(1), '--json'];
+  if (argv[0] === 'auth')
+    return runAuthCommand(
+      argv.slice(1),
+      (args) => executeCore(['auth', ...args], deps),
+      readRuntimeEnv(deps.env).apiBaseUrl,
+    );
+  return executeCore(argv, deps);
+}
+
+async function executeCore(argv: string[], deps: CliDeps): Promise<CliResult> {
   try {
     if (argv[0] === 'dataset' && (!argv[1] || argv[1].startsWith('-')))
       return runDatasetHelp(argv.slice(1));
@@ -7101,6 +6920,15 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
     if (argv[0] === 'dataset' && datasetTypes.includes(argv[1] as (typeof datasetTypes)[number])) {
       return await runDatasetCommand(argv.slice(1), createDatasetPorts(deps.env, deps.fetchImpl));
     }
+    if (
+      argv[0] === 'dataset' &&
+      argv[1] === 'classification' &&
+      !['audit', 'apply'].includes(argv[2] ?? '')
+    )
+      return runClassificationCommand(argv.slice(2), {
+        children: deps.runDatasetClassificationChildrenImpl ?? runDatasetClassificationChildren,
+        path: deps.runDatasetClassificationPathImpl ?? runDatasetClassificationPath,
+      });
     const { flags, command, subcommand, commandArgs } = parseCommandLine(argv);
     const authIdentityReceiptImpl = deps.runAuthIdentityReceiptImpl ?? runAuthIdentityReceipt;
     const oauthLoginImpl = deps.loginWithSupabaseOAuthImpl ?? loginWithSupabaseOAuth;
@@ -7193,10 +7021,6 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
     const datasetAuthorImpl = deps.runDatasetAuthorImpl ?? runDatasetAuthor;
     const datasetPatchApplyImpl = deps.runDatasetPatchApplyImpl ?? runDatasetPatchApply;
     const datasetSaveDraftImpl = deps.runDatasetSaveDraftImpl ?? runDatasetSaveDraft;
-    const datasetClassificationChildrenImpl =
-      deps.runDatasetClassificationChildrenImpl ?? runDatasetClassificationChildren;
-    const datasetClassificationPathImpl =
-      deps.runDatasetClassificationPathImpl ?? runDatasetClassificationPath;
     const datasetClassificationAuditImpl =
       deps.runDatasetClassificationAuditImpl ?? runDatasetClassificationAudit;
     const datasetClassificationApplyImpl =
@@ -7245,31 +7069,14 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
     if (command === 'study')
       return await runStudyCommand(subcommand, commandArgs, deps.fetchImpl, deps.env);
 
-    if (command === 'doctor') {
-      const doctorFlags = parseDoctorFlags(commandArgs);
-      if (doctorFlags.help) {
-        return { exitCode: 0, stdout: `${renderDoctorHelp()}\n`, stderr: '' };
-      }
-      const report = buildDoctorReport(deps.env, deps.dotEnvStatus);
-      return {
-        exitCode: report.ok ? 0 : 1,
-        stdout: doctorFlags.json ? `${JSON.stringify(report)}\n` : renderDoctorText(report),
-        stderr: '',
-      };
-    }
+    if (command === 'doctor')
+      return runDoctorCommand(
+        commandArgs,
+        doctorPorts(deps.env, deps.dotEnvStatus, deps.fetchImpl),
+      );
 
-    if (command === 'auth' && !subcommand) {
-      if (
-        commandArgs.length === 0 ||
-        (commandArgs.length === 1 && ['--help', '-h'].includes(commandArgs[0] as string))
-      ) {
-        return { exitCode: 0, stdout: `${renderAuthHelp()}\n`, stderr: '' };
-      }
-      throw new CliError('The auth namespace accepts only -h or --help.', {
-        code: 'INVALID_ARGS',
-        exitCode: 2,
-      });
-    }
+    if (command === 'auth' && !subcommand)
+      return { exitCode: 0, stdout: `${renderAuthHelp()}\n`, stderr: '' };
 
     if (command === 'auth' && subcommand === 'identity-receipt') {
       const authFlags = parseAuthIdentityReceiptFlags(commandArgs);
@@ -7473,47 +7280,7 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
     }
 
     if (command === 'dataset' && subcommand === 'classification') {
-      const action = commandArgs[0] ?? '';
-      if (!action || action === '--help' || action === '-h') {
-        return { exitCode: 0, stdout: `${renderDatasetClassificationHelp()}\n`, stderr: '' };
-      }
-
-      if (action === 'children') {
-        const datasetFlags = parseDatasetClassificationChildrenFlags(commandArgs.slice(1));
-        if (datasetFlags.help) {
-          return { exitCode: 0, stdout: `${renderDatasetClassificationHelp()}\n`, stderr: '' };
-        }
-        const report = await datasetClassificationChildrenImpl({
-          type: datasetFlags.type,
-          parent: datasetFlags.parent,
-          query: datasetFlags.query,
-          limit: datasetFlags.limit,
-          outDir: datasetFlags.outDir,
-        });
-        return {
-          exitCode: report.status === 'blocked' ? 1 : 0,
-          stdout: stringifyJson(report, datasetFlags.json),
-          stderr: '',
-        };
-      }
-
-      if (action === 'path') {
-        const datasetFlags = parseDatasetClassificationPathFlags(commandArgs.slice(1));
-        if (datasetFlags.help) {
-          return { exitCode: 0, stdout: `${renderDatasetClassificationHelp()}\n`, stderr: '' };
-        }
-        const report = await datasetClassificationPathImpl({
-          type: datasetFlags.type,
-          code: datasetFlags.code,
-          outDir: datasetFlags.outDir,
-        });
-        return {
-          exitCode: report.status === 'blocked' ? 1 : 0,
-          stdout: stringifyJson(report, datasetFlags.json),
-          stderr: '',
-        };
-      }
-
+      const action = commandArgs[0];
       if (action === 'audit') {
         const datasetFlags = parseDatasetClassificationAuditFlags(commandArgs.slice(1));
         if (datasetFlags.help) {
@@ -7529,9 +7296,7 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
           stdout: stringifyJson(report, datasetFlags.json),
           stderr: '',
         };
-      }
-
-      if (action === 'apply') {
+      } else {
         const datasetFlags = parseDatasetClassificationApplyFlags(commandArgs.slice(1));
         if (datasetFlags.help) {
           return { exitCode: 0, stdout: `${renderDatasetClassificationHelp()}\n`, stderr: '' };
@@ -7549,14 +7314,6 @@ export async function executeCli(argv: string[], deps: CliDeps): Promise<CliResu
           stderr: '',
         };
       }
-
-      throw new CliError(
-        "dataset classification action must be 'children', 'path', 'audit', or 'apply'.",
-        {
-          code: 'DATASET_CLASSIFICATION_ACTION_INVALID',
-          exitCode: 2,
-        },
-      );
     }
 
     if (command === 'dataset' && subcommand === 'curation-queue') {

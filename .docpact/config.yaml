@@ -1,8 +1,8 @@
 version: 1
 layout: repo
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
-lastReviewedNote: 'CLI #468: reviewed typed command, adapter, application, template and test coverage; existing ownership and release routing remain applicable.'
+lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
+lastReviewedNote: 'CLI #468: reviewed coverage of shared discovery, authentication and environment command owners; existing ownership and release routing remain applicable.'
 
 catalog:
   repos:

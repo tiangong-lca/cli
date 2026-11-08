@@ -57,7 +57,7 @@ test('Explicit OAuth loopback doctor verifies the exact live actor/client and cu
     reader = actorReader();
   const result = await invoke(env, reader.fetchImpl);
   assert.equal(result.exitCode, 0, result.stderr);
-  const value = JSON.parse(result.stdout);
+  const value = JSON.parse(result.stdout).data.receipt;
   assert.equal(value.schemaVersion, 'tiangong.cli-loopback-auth-doctor.v1');
   assert.equal(value.scope, 'explicit-loopback');
   assert.equal(value.status, 'passed');
@@ -85,7 +85,7 @@ test('Explicit OAuth loopback doctor verifies the exact live actor/client and cu
     const count = reader.calls.length;
     const refused = await invoke(env, reader.fetchImpl, ['auth', action, '--json']);
     assert.equal(refused.exitCode, 2);
-    assert.equal(JSON.parse(refused.stderr).error.code, 'AUTH_IDENTITY_PROJECT_INVALID');
+    assert.equal(JSON.parse(refused.stdout).error.code, 'AUTH_IDENTITY_PROJECT_INVALID');
     assert.equal(reader.calls.length, count);
   }
 });
@@ -115,7 +115,7 @@ test('Loopback tuple selection refuses incomplete configuration and never become
   ] as const) {
     const result = await invoke(configured, noFetch);
     assert.notEqual(result.exitCode, 0);
-    assert.equal(JSON.parse(result.stderr).error.code, code);
+    assert.equal(JSON.parse(result.stdout).error.code, code);
   }
   const otherOrigin = await invoke(
     { ...env, TIANGONG_LCA_API_BASE_URL: 'http://127.0.0.1:56432' },
@@ -124,7 +124,7 @@ test('Loopback tuple selection refuses incomplete configuration and never become
   const otherClient = await invoke({ ...env, TIANGONG_LCA_OAUTH_CLIENT_ID: OTHER }, noFetch);
   for (const result of [otherOrigin, otherClient]) {
     assert.equal(result.exitCode, 1);
-    const value = JSON.parse(result.stdout);
+    const value = JSON.parse(result.stdout).data.receipt;
     assert.equal(value.schemaVersion, 'tiangong.cli-loopback-auth-doctor.v1');
     assert.equal(value.status, 'login-required');
     assert.equal(value.live, null);
@@ -149,7 +149,7 @@ test('Live actor/client disagreement, revoked user, redirect and oversized respo
   ] as Array<[NodeJS.ProcessEnv, FetchLike]>) {
     const result = await invoke(env, fetchImpl);
     assert.equal(result.exitCode, 1, result.stdout);
-    assert.equal(JSON.parse(result.stderr).error.code, 'AUTH_LOOPBACK_DIAGNOSTIC_FAILED');
+    assert.equal(JSON.parse(result.stdout).error.code, 'AUTH_LOOPBACK_DIAGNOSTIC_FAILED');
     assert(!result.stderr.includes('private provider text'));
   }
 });
@@ -164,7 +164,7 @@ test('Headless loopback diagnosis stays read-only and reports actual public clie
   const reader = actorReader(),
     result = await invoke(env, reader.fetchImpl);
   assert.equal(result.exitCode, 0, result.stderr);
-  const value = JSON.parse(result.stdout);
+  const value = JSON.parse(result.stdout).data.receipt;
   assert.equal(value.live.clientId, null);
   assert.equal(value.live.callbackUri, null);
   assert.equal(value.live.authMethod, 'access_token');
@@ -184,5 +184,5 @@ test('Headless loopback diagnosis stays read-only and reports actual public clie
     '--json',
   ]);
   assert.equal(stalled.exitCode, 1);
-  assert.equal(JSON.parse(stalled.stderr).error.code, 'AUTH_LOOPBACK_DIAGNOSTIC_FAILED');
+  assert.equal(JSON.parse(stalled.stdout).error.code, 'AUTH_LOOPBACK_DIAGNOSTIC_FAILED');
 });

@@ -92,6 +92,24 @@ export function patchContent(request: JsonObject): { content: JsonObject; change
   return { content, changes: diffContent(original, content) };
 }
 
+const referenceTypes: Record<string, string> = {
+  'flow data set': 'flow',
+  'process data set': 'process',
+  'life cycle model data set': 'model',
+  'source data set': 'source',
+  'contact data set': 'contact',
+  'flow property data set': 'flowproperty',
+  'unit group data set': 'unitgroup',
+  'lcia method data set': 'lciamethod',
+  flow: 'flow',
+  process: 'process',
+  model: 'model',
+  source: 'source',
+  contact: 'contact',
+  flowproperty: 'flowproperty',
+  unitgroup: 'unitgroup',
+  lciamethod: 'lciamethod',
+};
 export function listContentReferences(content: JsonObject): JsonObject[] {
   const references: JsonObject[] = [];
   function visit(value: unknown, path: string) {
@@ -105,16 +123,21 @@ export function listContentReferences(content: JsonObject): JsonObject[] {
       Object.hasOwn(value, '@flowUUID') ||
       /\/referenceTo[^/]+$/u.test(path)
     ) {
-      const type = typeof value['@type'] === 'string' ? value['@type'] : null;
+      const declaredType = typeof value['@type'] === 'string' ? value['@type'] : null;
+      const key = declaredType?.trim().toLowerCase();
+      const type =
+        key !== undefined && Object.hasOwn(referenceTypes, key) ? referenceTypes[key]! : null;
       const id = value['@refObjectId'] ?? value['@flowUUID'] ?? null;
       const version = value['@version'] ?? null;
       references.push({
         type,
+        declaredType,
+        unresolvedType: declaredType !== null && type === null,
         id,
         version,
         path,
         missing: [
-          ...(type ? [] : ['type']),
+          ...(declaredType ? [] : ['type']),
           ...(id ? [] : ['id']),
           ...(version ? [] : ['version']),
         ],

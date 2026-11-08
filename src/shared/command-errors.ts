@@ -4,6 +4,7 @@ import { CommandInputError } from './command-result.js';
 export function commandFailure(error: unknown, fallbackCode: string) {
   const input = error instanceof CommandInputError;
   const known = input || error instanceof CliError;
+  const invalidInput = input || (error instanceof CliError && error.exitCode === 2);
   const code = known ? error.code : fallbackCode;
   const conflict = /CONFLICT|STALE|MISMATCH/u.test(code);
   const unsupported = /UNSUPPORTED|CONTRACT_REQUIRED/u.test(code);
@@ -19,7 +20,7 @@ export function commandFailure(error: unknown, fallbackCode: string) {
           ? 'authentication'
           : precondition
             ? 'precondition'
-            : input
+            : invalidInput
               ? 'input'
               : 'service',
     message: input
@@ -27,6 +28,6 @@ export function commandFailure(error: unknown, fallbackCode: string) {
       : authentication
         ? 'Authentication or identity verification failed. Inspect auth doctor-auth in the selected environment.'
         : 'Operation failed. Inspect the command contract, target service and authentication.',
-    exitCode: conflict || authentication || precondition ? 1 : input ? 2 : 1,
+    exitCode: conflict || authentication || precondition ? 1 : invalidInput ? 2 : 1,
   };
 }

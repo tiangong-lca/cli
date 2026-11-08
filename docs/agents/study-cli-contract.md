@@ -19,9 +19,9 @@ checkPaths:
   - assets/study-renderer/**
   - test/study-*.test.ts
   - docs/agents/study-cli-contract.md
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: 121715acb68b26e5e1ac512d59a9911fe950f244
-lastReviewedNote: 'CLI #462: reviewed exact corrected V6 facade, owner-only authored Unicode rejection before I/O/intent, valid Unicode recovery and unchanged33operations. Corrected V2, older families/renderers, dependencies and publication remain unchanged; final cohort/Main holds persist.'
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
+lastReviewedNote: 'CLI #468: reviewed loopback diagnostic receipt extraction from the common envelope; Study wire, renderer, permissions and recovery are unchanged.'
 related:
   - ../../AGENTS.md
   - repo-architecture.md
@@ -74,7 +74,7 @@ Use the existing CLI OAuth session and official/custom profile selection. Explic
 
 Domain POSTs send `x-study-schema` equal to the request schema so pre-body auth/transport errors retain the selected version. All Study authentication/domain traffic rejects redirects and shares a bounded operation deadline; Auth response bytes are bounded separately from Study responses. A non-TLS destination is permitted only for an explicitly selected literal loopback host. The high-level auth identity receipt's canonical Production/project restrictions remain unchanged; this module only reuses its internal bounded current-user reader for an explicit task fixture.
 
-For an explicit complete loopback configuration, `auth doctor-auth --json` uses the distinct `tiangong.cli-loopback-auth-doctor.v1` with `scope: explicit-loopback`. Its `live` value is `tiangong.cli-loopback-identity.v1` containing exact `origin`, server-observed `actorId`, actual token `clientId` (or null), current configured `callbackUri` (or null for headless), `authMethod` and `onlineVerified: true`. OAuth needs an explicit callback accepted by the existing loopback validator; local session selection still binds origin/key/client. The same bounded live-user and actual token/client check used by Study runs before success. Failures provide no identity result; remote diagnostic failure uses stable `AUTH_LOOPBACK_DIAGNOSTIC_FAILED`.
+For an explicit complete loopback configuration, `auth doctor-auth --json` carries the distinct `tiangong.cli-loopback-auth-doctor.v1` receipt under `data.receipt` with `scope: explicit-loopback`. Its `live` value is `tiangong.cli-loopback-identity.v1` containing exact `origin`, server-observed `actorId`, actual token `clientId` (or null), current configured `callbackUri` (or null for headless), `authMethod` and `onlineVerified: true`. OAuth needs an explicit callback accepted by the existing loopback validator; local session selection still binds origin/key/client. The same bounded live-user and actual token/client check used by Study runs before success. Failures provide no identity result; remote diagnostic failure uses stable `AUTH_LOOPBACK_DIAGNOSTIC_FAILED`.
 
 A local Skill must compare origin/client/current callback with its independently selected owned tuple. This diagnostic has no canonical project reference, signature, credential-derived fingerprint or Production receipt authority. The existing session schema does not record the historical login callback: the field reports current validated configuration, while actual callback execution belongs to the independent OAuth driver evidence. Production/default doctor keeps its original canonical receipt path; `whoami` and `identity-receipt` keep rejecting noncanonical loopback project identities. Selection happens before I/O, without fallback from a failed canonical receipt.
 

@@ -66,10 +66,50 @@ export async function runReviewCommand(
       );
     }
 
+    const helpManifest = {
+      schemaVersion: 1,
+      command: `review${actions.includes(action!) ? ` ${action}` : ''}`,
+      actions,
+      implementedActions: actions.filter((name) => name !== 'withdraw'),
+      limitations: {
+        submit:
+          'One starting object; related business data is always included. Explicit multi-root packages and includeRelated:false are deferred.',
+        resubmit:
+          'Rejected review and same exact dataset; the server determines the actual new or reused review. No server round link is claimed.',
+        comment:
+          'Saves the current reviewer draft, possibly replacing it; no append-only history or decision.',
+        materials: 'Current readable target only, not a historical package snapshot.',
+        withdraw:
+          'No existing review-withdraw service mapping; dataset unpublication is a different operation.',
+      },
+      input: {
+        submit: {
+          requestId: 'stable identity',
+          expectedActor: 'online user UUID',
+          expectedEnvironment: 'exact project origin',
+          targets: [
+            { type: 'flow|process|model|source|contact', id: 'UUID', version: '00.00.000' },
+          ],
+          includeRelated: 'true, default true',
+        },
+        resubmit: 'submit fields plus reviewId, expectedState:-1, changeSummary',
+        comment:
+          'requestId, expectedActor, expectedEnvironment, reviewId, expectedState, json (reviewer draft)',
+        decide:
+          'requestId, expectedActor, expectedEnvironment, reviewId, expectedState, decision:approve|reject, reason (reject only; max 1000 characters). Process/Model approve requires an existing review draft.',
+        list: '--role submitter|reviewer [--state <integer>] [--limit 1..100] [--cursor <opaque>]',
+        get: '--id <review UUID>',
+        materials: '--id <review UUID> [--output <file>]',
+      },
+      effects:
+        'Submit/resubmit create or reuse the actual review; comment saves a reviewer draft; decide records the current assigned reviewer decision. --dry-run checks readable preconditions without effects, not server final admission.',
+      recovery:
+        'Requests are bound locally before dispatch; unknown results are never automatically replayed.',
+    };
     if (!action || action.startsWith('--') || flags.help)
       return {
         exitCode: 0,
-        stdout: `${JSON.stringify({ schemaVersion: 1, command: `review${actions.includes(action!) ? ` ${action}` : ''}`, actions, implementedActions: actions.filter((name) => name !== 'withdraw'), limitations: { submit: 'One starting object; related business data is always included. Explicit multi-root packages and includeRelated:false are deferred.', resubmit: 'Rejected review and same exact dataset; the server determines the actual new or reused review. No server round link is claimed.', comment: 'Saves the current reviewer draft, possibly replacing it; no append-only history or decision.', materials: 'Current readable target only, not a historical package snapshot.', withdraw: 'No existing review-withdraw service mapping; dataset unpublication is a different operation.' }, input: { submit: { requestId: 'stable identity', expectedActor: 'online user UUID', expectedEnvironment: 'exact project origin', targets: [{ type: 'flow|process|model|source|contact', id: 'UUID', version: '00.00.000' }], includeRelated: 'true, default true' }, resubmit: 'submit fields plus reviewId, expectedState:-1, changeSummary', comment: 'requestId, expectedActor, expectedEnvironment, reviewId, expectedState, json (reviewer draft)', decide: 'requestId, expectedActor, expectedEnvironment, reviewId, expectedState, decision:approve|reject, reason (reject only; max 1000 characters). Process/Model approve requires an existing review draft.', list: '--role submitter|reviewer [--state <integer>] [--limit 1..100] [--cursor <opaque>]', get: '--id <review UUID>', materials: '--id <review UUID> [--output <file>]' }, effects: 'Submit/resubmit create or reuse the actual review; comment saves a reviewer draft; decide records the current assigned reviewer decision. --dry-run checks readable preconditions without effects, not server final admission.', recovery: 'Requests are bound locally before dispatch; unknown results are never automatically replayed.' })}\n`,
+        stdout: `${JSON.stringify(helpManifest)}\n`,
         stderr: '',
       };
     if (flags.force && !flags.output)

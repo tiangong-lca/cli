@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
-lastReviewedNote: 'CLI #468: reviewed typed Dataset and Review layers, explicit effects, local content snapshots and current service boundaries.'
+lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
+lastReviewedNote: 'CLI #468: reviewed root, catalog, environment and identity context ownership alongside typed Dataset and Review adapters.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -55,13 +55,15 @@ Managed-host launch selection stays in the generic CLI manager. Dedicated protoc
 
 ## 0.2.0 command layers
 
-`src/cli.ts` composes the typed Dataset and Review adapters and delegates their public parsing and presentation to `src/commands/`. Retained command families continue through their existing dispatch paths while their final migration disposition is verified.
+`src/cli.ts` composes the typed Dataset, Review, environment and authentication adapters and delegates their public parsing and presentation to `src/commands/`. Retained specialized protocols and 0.1.x compatibility paths keep their existing dispatch and authorization; their scope and retirement condition are recorded in the migration comparison.
 
 - `src/commands/`: strict CLI argument/help handling, bounded output and local artifact coordination.
 - `src/application/`: Dataset identity, query/cursor rules, content diff/patch, reference discovery and supplied-translation application; no filesystem or network transport.
 - `src/adapters/`: authenticated exact reads/search, existing contract and validation helpers, Model calculations, Source attachment transfer and explicit Dataset/Review mutations.
 - `src/shared/`: result types, safe file IO, error projection and installed template lookup.
 - `assets/reply-templates/`: Markdown guidance selected by actual outcome.
+
+Root and classification discovery expose bounded structured help and content-bound local pagination. Authentication presentation reuses the existing OAuth, session and exact-identity implementations through an injected execution port. The common envelope stores the unchanged receipt under `data.receipt`; standalone output writes only that receipt. Public receipt parsing is unchanged. Doctor separates local runtime/configuration observations from an explicit public Auth health GET, which never refreshes sessions or verifies actor permission.
 
 Dataset uses one typed command router for all eight object types. Model `build-resulting-process` and its `aggregate` alias share a canonical operation and implementation. Calculation inputs are explicit snapshots; exact remote Process lookups never fall back to latest. Source uploads verify selected bytes and independent readback, preserve failed references and do not save Source content.
 

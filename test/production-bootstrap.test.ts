@@ -157,7 +157,7 @@ test('clean CLI auth and search use Production without repo env or a preexisting
     for (const command of ['status', 'doctor-auth']) {
       const result = await executeCli(['auth', command, '--json'], deps);
       assert.equal(result.exitCode, 1, result.stderr);
-      assert.equal(JSON.parse(result.stdout).status, 'login-required');
+      assert.equal(JSON.parse(result.stdout).data.receipt.status, 'login-required');
     }
     assert.equal(networkCalls, 0);
     assert.equal(existsSync(sessionFile), false);
@@ -198,10 +198,10 @@ test('clean CLI auth and search use Production without repo env or a preexisting
     assert.equal(stored.auth_method, 'oauth');
     if (process.platform !== 'win32') assert.equal(statSync(sessionFile).mode & 0o777, 0o600);
     const status = await executeCli(['auth', 'status', '--json'], deps);
-    assert.equal(JSON.parse(status.stdout).status, 'ready');
+    assert.equal(JSON.parse(status.stdout).data.receipt.status, 'ready');
     const doctor = await executeCli(['auth', 'doctor-auth', '--json'], deps);
     assert.equal(doctor.exitCode, 0, doctor.stderr);
-    assert.equal(JSON.parse(doctor.stdout).status, 'passed');
+    assert.equal(JSON.parse(doctor.stdout).data.receipt.status, 'passed');
     assert.doesNotMatch(
       login.stdout + status.stdout + doctor.stdout,
       /private-(?:access-token|refresh-token|authorization-code|user@)/u,

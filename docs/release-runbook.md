@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
-lastReviewedNote: 'CLI #468: reviewed packaging of typed commands and Markdown reply templates; version, publication, tagging and integration procedures are unchanged.'
+lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
+lastReviewedNote: 'CLI #468: reviewed installed command-context and standalone receipt packaging; release procedure and publication gates remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

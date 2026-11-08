@@ -296,60 +296,6 @@ test('prepush coverage covers CLI parser error and help branches', async () => {
   );
   assert.equal(importNoBundles.exitCode, 0);
 
-  const classificationChildrenBlocked = await executeCli(
-    [
-      'dataset',
-      'classification',
-      'children',
-      '--type',
-      'process',
-      '--query',
-      'food',
-      '--out-dir',
-      'class-out',
-    ],
-    {
-      ...makeDeps(),
-      runDatasetClassificationChildrenImpl: async (options) => {
-        assert.equal(options.query, 'food');
-        assert.equal(options.outDir, 'class-out');
-        return { status: 'blocked' } as never;
-      },
-    },
-  );
-  assert.equal(classificationChildrenBlocked.exitCode, 1);
-
-  const classificationChildrenCompleted = await executeCli(
-    ['dataset', 'classification', 'children', '--type', 'process', '--json'],
-    {
-      ...makeDeps(),
-      runDatasetClassificationChildrenImpl: async () => ({ status: 'completed' }) as never,
-    },
-  );
-  assert.equal(classificationChildrenCompleted.exitCode, 0);
-
-  const classificationPathBlocked = await executeCli(
-    [
-      'dataset',
-      'classification',
-      'path',
-      '--type',
-      'process',
-      '--code',
-      '1080',
-      '--out-dir',
-      'path-out',
-    ],
-    {
-      ...makeDeps(),
-      runDatasetClassificationPathImpl: async (options) => {
-        assert.equal(options.outDir, 'path-out');
-        return { status: 'blocked' } as never;
-      },
-    },
-  );
-  assert.equal(classificationPathBlocked.exitCode, 1);
-
   const classificationAuditBlocked = await executeCli(
     ['dataset', 'classification', 'audit', '--input', 'rows.jsonl', '--out-dir', 'audit-out'],
     {

@@ -759,6 +759,9 @@ function assertRootBinBehavior(binPath, cwd, expectedVersion) {
   assert.match(authHelp.stdout, /read-only/u);
   assert.equal(authHelp.stderr, '');
   assert.equal(explicitHelp.stderr, '');
+  const manifest = runBin(binPath, ['--help', '--json'], cwd);
+  assertSuccessfulExit(manifest);
+  assert.ok(JSON.parse(manifest.stdout).commands.dataset.model.includes('build-resulting-process'));
 
   const version = runBin(binPath, ['--version'], cwd);
   assertSuccessfulExit(version);
@@ -1031,7 +1034,7 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
       });
     const diagnosed = await invoke(['doctor-auth', '--json'], 'auth');
     assert.equal(diagnosed.code, 0, diagnosed.stderr);
-    const localIdentity = JSON.parse(diagnosed.stdout);
+    const localIdentity = JSON.parse(diagnosed.stdout).data.receipt;
     assert.equal(localIdentity.schemaVersion, 'tiangong.cli-loopback-auth-doctor.v1');
     assert.equal(localIdentity.live.origin, environment.TIANGONG_LCA_API_BASE_URL);
     assert.equal(localIdentity.live.actorId, actor);
@@ -1660,7 +1663,13 @@ function assertProductionBootstrap(binPath, cwd) {
   const env = { TIANGONG_LCA_SESSION_FILE: sessionFile };
   const doctor = runBin(binPath, ['doctor', '--json'], cwd, env);
   assertSuccessfulExit(doctor);
-  const checks = JSON.parse(doctor.stdout).checks;
+  assert.ok(existsSync(JSON.parse(doctor.stdout).replyTemplate));
+  for (const command of ['doctor', 'auth']) {
+    const help = runBin(binPath, [command, '--help', '--json'], cwd, env);
+    assertSuccessfulExit(help);
+    assert.equal(JSON.parse(help.stdout).command, command);
+  }
+  const checks = JSON.parse(doctor.stdout).data.configuration.checks;
   for (const key of [
     'TIANGONG_LCA_API_BASE_URL',
     'TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY',
@@ -1672,7 +1681,7 @@ function assertProductionBootstrap(binPath, cwd) {
     const result = runBin(binPath, ['auth', command, '--json'], cwd, env);
     assert.ifError(result.error);
     assert.equal(result.status, 1, result.stderr || result.stdout);
-    assert.equal(JSON.parse(result.stdout).status, 'login-required');
+    assert.equal(JSON.parse(result.stdout).data.receipt.status, 'login-required');
     assert.equal(result.stderr, '');
   }
   assert.equal(existsSync(sessionFile), false, 'readiness checks must not create a session');

@@ -259,6 +259,8 @@ test('reference discovery is local, bounded, preserves incomplete and repeated o
   assert.equal(first.exitCode, 0);
   assert.equal(value.completeness.total, 4);
   assert.equal(value.completeness.targetsChecked, false);
+  assert.equal(value.data.references[0].type, 'flow');
+  assert.equal(value.data.references[0].declaredType, 'flow data set');
   const second = await run(
     [
       'process',
@@ -292,6 +294,44 @@ test('reference discovery is local, bounded, preserves incomplete and repeated o
     read: async () => ({ records: [], total: 0, environment: '' }),
   });
   assert.equal(missing.exitCode, 1);
+});
+
+test('reference discovery returns executable CLI type names while preserving unknown declarations', () => {
+  const types = [
+    'flow data set',
+    'process data set',
+    'life cycle model data set',
+    'source data set',
+    'contact data set',
+    'flow property data set',
+    'unit group data set',
+    'LCIA method data set',
+    'flow',
+    'unknown data set',
+    'constructor',
+  ];
+  const refs = listContentReferences({
+    refs: types.map((type) => ({ '@type': type, '@refObjectId': 'id', '@version': '01' })),
+  });
+  assert.deepEqual(
+    refs.map((ref) => ref.type),
+    [
+      'flow',
+      'process',
+      'model',
+      'source',
+      'contact',
+      'flowproperty',
+      'unitgroup',
+      'lciamethod',
+      'flow',
+      null,
+      null,
+    ],
+  );
+  assert.equal(refs.at(-2)!.declaredType, 'unknown data set');
+  assert.equal(refs.at(-1)!.unresolvedType, true);
+  assert.deepEqual(refs.at(-1)!.missing, []);
 });
 
 test('patch is atomic, guards the complete source, and rejects unsafe pointers and stale tests', () => {
@@ -770,4 +810,63 @@ test('public Dataset mutation routes preserve outcomes, artifacts, projection an
           : 'attachments_uploaded',
     );
   }
+});
+
+test('complete content artifacts avoid duplicate stdout payloads while failed output preserves observed facts', async (t) => {
+  const dir = directory(t);
+  const output = path.join(dir, 'candidate.json');
+  const before = { flowDataSet: { name: [{ '@xml:lang': 'en', '#text': 'Before' }] } };
+  const input = file(dir, {
+    content: before,
+    expectedDigest: contentDigest(before),
+    operations: [
+      {
+        op: 'replace',
+        path: '/flowDataSet/name/0/#text',
+        value: 'After',
+        basis: 'Explicit fixture correction',
+      },
+    ],
+  });
+  const patched = parsed(await run(['flow', 'patch', '--input', input, '--output', output]));
+  const candidate = JSON.parse(readFileSync(output, 'utf8'));
+  assert.equal(candidate.flowDataSet.name[0]['#text'], 'After');
+  assert.equal(patched.data.content, undefined);
+  assert.equal(patched.data.contentDigest, contentDigest(candidate));
+  assert.equal(patched.completeness.stdoutProjection, 'artifact_summary');
+  assert.equal(patched.data.changes.length, 1);
+  const labels = {
+    flowDataSet: Object.fromEntries(
+      Array.from({ length: 10 }, (_, i) => [
+        `label${i}`,
+        [{ '@xml:lang': 'en', '#text': `Value ${i}` }],
+      ]),
+    ),
+  };
+  const extraction = file(
+    dir,
+    { content: labels, sourceLanguage: 'en', targetLanguage: 'zh' },
+    'translations.json',
+  );
+  const translationsOutput = path.join(dir, 'units.json');
+  const extracted = parsed(
+    await run([
+      'flow',
+      'translations',
+      'extract',
+      '--input',
+      extraction,
+      '--output',
+      translationsOutput,
+    ]),
+  );
+  assert.equal(extracted.data.units.length, 5);
+  assert.equal(extracted.data.unitsCount, 10);
+  assert.equal(JSON.parse(readFileSync(translationsOutput, 'utf8')).units.length, 10);
+  const failed = parsed(
+    await run(['flow', 'get', '--id', 'id', '--version', '01', '--output', output]),
+  );
+  assert.equal(failed.status, 'partial');
+  assert.deepEqual(failed.data.content, content('flow'));
+  assert.equal(JSON.parse(readFileSync(output, 'utf8')).flowDataSet.name[0]['#text'], 'After');
 });

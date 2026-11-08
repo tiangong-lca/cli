@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { datasetOperations } from '../src/adapters/dataset-operations.js';
@@ -138,6 +138,20 @@ test('Model graph runs the existing graph implementation, returns data and detec
   const graph = await operations('model', 'graph', { content: model }, '-');
   assert.equal((graph.counts as JsonObject).nodes, 1);
   assert.equal((graph.graphs as unknown[]).length, 1);
+  const graphInput = path.join(dir, 'graph-request.json');
+  const graphOutput = path.join(dir, 'graph-result.json');
+  writeFileSync(graphInput, JSON.stringify({ content: model }));
+  const written = JSON.parse(
+    (
+      await runDatasetCommand(
+        ['model', 'graph', '--input', graphInput, '--output', graphOutput, '--json'],
+        createDatasetPorts(env, noNetwork),
+      )
+    ).stdout,
+  );
+  assert.equal(written.data.graphs, undefined);
+  assert.equal(typeof written.data.graphsDigest, 'string');
+  assert.equal(JSON.parse(readFileSync(graphOutput, 'utf8')).graphs.length, 1);
   const changed = structuredClone(model);
   changed.lifeCycleModelDataSet.lifeCycleModelInformation.technology.processes.processInstance[0]!.connections.outputExchange.push(
     { '@flowUUID': flowId, downstreamProcess: { '@id': 'missing' } } as never,
@@ -179,6 +193,18 @@ test('Model result generation and aggregate share canonical output with exact lo
   const alias = await runDatasetCommand(['model', 'aggregate', '--input', input, '--json'], ports);
   const first = JSON.parse(main.stdout);
   const second = JSON.parse(alias.stdout);
+  const artifact = path.join(dir, 'candidate.json');
+  const compact = JSON.parse(
+    (
+      await runDatasetCommand(
+        ['model', 'build-resulting-process', '--input', input, '--output', artifact, '--json'],
+        ports,
+      )
+    ).stdout,
+  );
+  assert.equal(compact.data.bundle, undefined);
+  assert.equal(typeof compact.data.bundleDigest, 'string');
+  assert.equal(JSON.parse(readFileSync(artifact, 'utf8')).projectedProcessCount, 1);
   assert.equal(first.operation, 'dataset model build-resulting-process');
   assert.equal(second.operation, first.operation);
   assert.equal(first.data.projectedProcessCount, 1, main.stdout);

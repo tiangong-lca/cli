@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
-lastReviewedNote: 'CLI #468: reviewed adapter, mutation recovery, content-processing and installation regression scope; full coverage gates remain unchanged.'
+lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
+lastReviewedNote: 'CLI #468: reviewed local provenance, exact receipt parsing, installed context discovery, output projection and retained protocol regressions.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -234,6 +234,6 @@ Final V6 facade qualification covers report.create/save × title/paragraph/claim
 
 ## 0.2.0 command validation
 
-After `pnpm build`, run the focused `test/cli-dataset-*.test.ts`, `test/cli-review*.test.ts`, `test/cli-model-processing.test.ts`, `test/cli-source-attachments.test.ts` and `test/cli-command-files.test.ts` suites for typed command changes. They cover exact reads, pagination, content processing, real local validation, service adaptation, separate mutation intentions, unknown-outcome non-replay, safe artifacts and installed Markdown templates. Protocol fixtures are not evidence of deployed authorization, historical content or a production transaction. The package suite also exercises the public launcher outside the source checkout.
+After `pnpm build`, run the focused `test/cli-dataset-*.test.ts`, `test/cli-review*.test.ts`, `test/cli-model-processing.test.ts`, `test/cli-source-attachments.test.ts` and `test/cli-command-files.test.ts` plus `test/cli-environment-context.test.ts` and `test/cli-classification-context.test.ts` suites for typed command changes. They cover exact reads, pagination, content processing, real local validation, service adaptation, separate mutation intentions, unknown-outcome non-replay, safe artifacts and installed Markdown templates. Protocol fixtures are not evidence of deployed authorization, historical content or a production transaction. The package suite also exercises the public launcher outside the source checkout. Environment/Auth tests distinguish local observations, health probes and online identity; standalone identity artifacts must still pass the unchanged public parser, and failed output must not repeat session effects.
 
 The application layer must remain free of transport/filesystem imports. New modules retain the full-source coverage requirement; no empty-domain scaffolding, new dependencies or coverage ignores are introduced. Existing lint, package, full coverage and prepush gates remain required. Downstream adoption is outside CLI migration validation.

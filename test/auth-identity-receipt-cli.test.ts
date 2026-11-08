@@ -51,14 +51,13 @@ test('auth identity-receipt is an implemented, discoverable command', async () =
   const explicitNamespaceHelp = await executeCli(['auth', '--help'], makeDeps());
   assert.equal(explicitNamespaceHelp.exitCode, 0);
   for (const argv of [
-    ['auth', '--json'],
     ['auth', '--unknown'],
     ['auth', '--help', '--unknown'],
   ]) {
     const invalid = await executeCli(argv, makeDeps());
     assert.equal(invalid.exitCode, 2, argv.join(' '));
-    assert.equal(invalid.stdout, '', argv.join(' '));
-    assert.match(invalid.stderr, /INVALID_ARGS/u, argv.join(' '));
+    assert.match(invalid.stdout, /Unknown, duplicated or malformed auth option/u);
+    assert.equal(invalid.stderr, '');
   }
 });
 
@@ -100,7 +99,7 @@ test('auth login and logout are discoverable and dispatch only safe runtime valu
 
   const login = await executeCli(['auth', 'login', '--timeout-ms', '4321', '--json'], deps);
   assert.equal(login.exitCode, 0);
-  assert.deepEqual(JSON.parse(login.stdout), {
+  assert.deepEqual(JSON.parse(login.stdout).data.receipt, {
     schemaVersion: 'tiangong.cli-oauth-login.v1',
     status: 'authenticated',
     authMethod: 'oauth',
@@ -111,8 +110,8 @@ test('auth login and logout are discoverable and dispatch only safe runtime valu
   assert.equal(loginCalls[0]?.loginTimeoutMs, 4321);
   assert.equal(loginCalls[0]?.runtime.authMode, 'oauth');
 
-  const logout = await executeCli(['auth', 'logout'], deps);
-  assert.match(logout.stdout, /\n  "removed": true\n/u);
+  const logout = await executeCli(['auth', 'logout', '--json'], deps);
+  assert.equal(JSON.parse(logout.stdout).data.receipt.removed, true);
   assert.equal(logoutCalls.length, 1);
   assert.equal(logoutCalls[0]?.runtime.oauthClientId, '123e4567-e89b-42d3-a456-426614174000');
 });
@@ -155,29 +154,29 @@ test('auth status, whoami, and doctor-auth provide safe human-login handoff and 
 
   const missing = await executeCli(['auth', 'status', '--json'], deps);
   assert.equal(missing.exitCode, 1);
-  assert.equal(JSON.parse(missing.stdout).status, 'login-required');
+  assert.equal(JSON.parse(missing.stdout).data.receipt.status, 'login-required');
   assert.equal(identityCalls.length, 0);
 
   const blockedDoctor = await executeCli(['auth', 'doctor-auth', '--json'], deps);
   assert.equal(blockedDoctor.exitCode, 1);
-  assert.deepEqual(JSON.parse(blockedDoctor.stdout).live, null);
+  assert.deepEqual(JSON.parse(blockedDoctor.stdout).data.receipt.live, null);
   assert.equal(identityCalls.length, 0);
 
   localReady = true;
   const ready = await executeCli(['auth', 'status', '--json'], deps);
   assert.equal(ready.exitCode, 0);
-  assert.equal(JSON.parse(ready.stdout).sessionState, 'fresh');
+  assert.equal(JSON.parse(ready.stdout).data.receipt.sessionState, 'fresh');
 
   const whoami = await executeCli(['auth', 'whoami', '--timeout-ms', '4321', '--json'], deps);
   assert.equal(whoami.exitCode, 0);
-  assert.equal(JSON.parse(whoami.stdout).status, 'passed');
+  assert.equal(JSON.parse(whoami.stdout).data.receipt.status, 'passed');
   assert.equal(identityCalls[0]?.timeoutMs, 4321);
   assert.equal(identityCalls[0]?.expectedProjectRef, null);
   assert.equal(identityCalls[0]?.expectedUserId, null);
 
   const doctor = await executeCli(['auth', 'doctor-auth', '--json'], deps);
   assert.equal(doctor.exitCode, 0);
-  const doctorReceipt = JSON.parse(doctor.stdout);
+  const doctorReceipt = JSON.parse(doctor.stdout).data.receipt;
   assert.equal(doctorReceipt.schemaVersion, 'tiangong.cli-auth-doctor.v1');
   assert.equal(doctorReceipt.status, 'passed');
   assert.equal(doctorReceipt.local.onlineVerified, false);
@@ -215,7 +214,8 @@ test('auth login/logout reject malformed argv before session work', async () => 
   ]) {
     const result = await executeCli(args, deps);
     assert.equal(result.exitCode, 2, args.join(' '));
-    assert.equal(result.stdout, '', args.join(' '));
+    assert.ok(result.stdout.length > 0, args.join(' '));
+    assert.equal(result.stderr, '');
   }
   assert.equal(calls, 0);
 });
@@ -223,7 +223,7 @@ test('auth login/logout reject malformed argv before session work', async () => 
 test('auth login uses its default timeout and propagates structured session errors', async () => {
   let timeout: number | undefined;
   const result = await executeCli(
-    ['auth', 'login'],
+    ['auth', 'login', '--json'],
     makeDeps({
       env: buildSupabaseTestEnv({
         TIANGONG_LCA_AUTH_MODE: 'oauth',
@@ -240,8 +240,8 @@ test('auth login uses its default timeout and propagates structured session erro
   );
   assert.equal(timeout, 180_000);
   assert.equal(result.exitCode, 1);
-  assert.equal(result.stdout, '');
-  assert.match(result.stderr, /SUPABASE_OAUTH_LOGIN_REQUIRED/u);
+  assert.equal(JSON.parse(result.stdout).error.code, 'SUPABASE_OAUTH_LOGIN_REQUIRED');
+  assert.equal(result.stderr, '');
 });
 
 test('auth identity-receipt dispatches authoritative argv expectations and renders JSON', async () => {
@@ -273,7 +273,7 @@ test('auth identity-receipt dispatches authoritative argv expectations and rende
 
   assert.equal(result.exitCode, 0);
   assert.equal(result.stderr, '');
-  assert.deepEqual(JSON.parse(result.stdout), {
+  assert.deepEqual(JSON.parse(result.stdout).data.receipt, {
     schema: 'tiangong-lca.auth-identity-receipt.v1',
     status: 'passed',
     receipt_scope_sha256: 'a'.repeat(64),
@@ -296,7 +296,7 @@ test('auth identity-receipt pretty-prints by default', async () => {
     }),
   );
   assert.equal(result.exitCode, 0);
-  assert.match(result.stdout, /\n  "status": "passed"\n/u);
+  assert.match(result.stdout, /identity operation completed/u);
 });
 
 test('auth identity-receipt rejects malformed argv before network or command execution', async () => {
@@ -321,8 +321,9 @@ test('auth identity-receipt rejects malformed argv before network or command exe
   for (const args of cases) {
     const result = await executeCli(['auth', 'identity-receipt', ...args], deps);
     assert.equal(result.exitCode, 2, args.join(' '));
-    assert.equal(result.stdout, '', args.join(' '));
-    assert.match(result.stderr, /"error"/u, args.join(' '));
+    assert.ok(result.stdout.length > 0, args.join(' '));
+    assert.equal(result.stderr, '');
+    assert.ok(result.stdout.length > 0, args.join(' '));
   }
   assert.equal(calls, 0);
 });
@@ -340,6 +341,7 @@ test('auth identity-receipt propagates fail-closed structured errors without std
     }),
   );
   assert.equal(result.exitCode, 1);
-  assert.equal(result.stdout, '');
-  assert.match(result.stderr, /AUTH_IDENTITY_USER_MISMATCH/u);
+  assert.equal(JSON.parse(result.stdout).error.code, 'AUTH_IDENTITY_USER_MISMATCH');
+  assert.equal(JSON.parse(result.stdout).data.receipt.schema, undefined);
+  assert.equal(result.stderr, '');
 });

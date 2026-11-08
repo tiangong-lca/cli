@@ -83,6 +83,23 @@ function validationSummary(report: JsonObject): JsonObject {
   if (isObject(report.local)) summary.local = validationSummary(report.local);
   return summary;
 }
+function artifactSummary(data: JsonObject): JsonObject {
+  const summary = { ...data };
+  for (const name of ['content', 'bundle', 'projection', 'graphs']) {
+    if (Object.hasOwn(summary, name)) {
+      summary[`${name}Digest`] = contentDigest(summary[name]);
+      delete summary[name];
+    }
+  }
+  for (const name of ['changes', 'units', 'references', 'files', 'inputBindings', 'findings']) {
+    const entries = summary[name];
+    if (Array.isArray(entries) && entries.length > 5) {
+      summary[`${name}Count`] = entries.length;
+      summary[name] = entries.slice(0, 5);
+    }
+  }
+  return summary;
+}
 const flags: Record<string, string[]> = {
   get: ['id', 'version', 'fields'],
   list: ['owner', 'state', 'limit', 'cursor', 'fields'],
@@ -607,7 +624,23 @@ export async function runDatasetCommand(args: string[], ports: DatasetPorts): Pr
         });
         if (value.status === 'completed') value.status = 'partial';
       }
-      if (action === 'get') delete value.data.content;
+      if (value.artifacts.length) {
+        if (action === 'get') delete value.data.content;
+        if (
+          [
+            'diff',
+            'patch',
+            'translations extract',
+            'translations apply',
+            'graph',
+            'build-resulting-process',
+            'upload-attachments',
+          ].includes(action!)
+        ) {
+          value.data = artifactSummary(value.data);
+          value.completeness.stdoutProjection = 'artifact_summary';
+        }
+      }
     }
     if (action === 'validate') {
       const validation = value.data.validation as JsonObject;

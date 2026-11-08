@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-11-04
-lastReviewedCommit: a44b903a26edfbac1ab616bba78bf5b2f5217d32
-lastReviewedNote: 'CLI #455: exact committed V4 owner codec, explicit review/finalization/share commands, original outcome/current-state recovery and independently anchored versioned downloads. V2/V3 and historical signatures remain; no public release, hosted grant or actual P3 acceptance is inferred.'
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
+lastReviewedNote: 'CLI #468: reviewed core command adaptation and the unchanged receipt payload, runtime and Release boundaries.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -1433,4 +1433,4 @@ Flow-only `dataset save-draft --execution-contract` 可在 dry-run／commit 中�
 
 ## CLI 0.2.0 能力结构
 
-新入口按 `src/commands`（参数与帮助）、`src/application`（原子操作与端口）、`src/adapters`（服务及规则适配）、`src/shared`（结果、文件与模板）分层。Dataset 按八种类型的能力表开放查询、契约、内容处理和独立写入，Review 适配现有提交者及审核者业务。精确读取不回退到最新版本，Model 生成只输出候选，写入未知结果不重放。服务端与前检保证分别表达，新增审核语义按实施范围后续落地。能力和限制见 [README](../README.md)、[架构](agents/repo-architecture.md) 与[实施计划](plans/cli-0.2.0-refactor-plan.md)。
+新入口按 `src/commands`（参数与帮助）、`src/application`（原子操作与端口）、`src/adapters`（服务及规则适配）、`src/shared`（结果、文件与模板）分层。Dataset 按八种类型的能力表开放查询、契约、内容处理和独立写入，Review 适配现有提交者及审核者业务。根帮助及分类目录查询提供结构化发现与内容绑定分页。Auth 和 doctor 采用统一上下文；身份回执保留在 `data.receipt` 并可通过 `--output` 独立保存，公共解析器与回执本体不变。精确读取不回退到最新版本，Model 生成只输出候选，写入未知结果不重放。服务端与前检保证分别表达，新增审核语义按实施范围后续落地。能力和限制见 [README](../README.md)、[架构](agents/repo-architecture.md) 与[实施计划](plans/cli-0.2.0-refactor-plan.md)。

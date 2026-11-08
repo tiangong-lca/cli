@@ -40,8 +40,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
-lastReviewedNote: 'CLI #468: reviewed multi-type Dataset and existing-service Review adaptation against layering, intent, coverage and release boundaries.'
+lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
+lastReviewedNote: 'CLI #468: reviewed shared core results, exact standalone identity artifacts, bounded discovery and compatibility retirement boundaries.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md

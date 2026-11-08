@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 89ab6bad42c019e816701464d3ab4f6f9690dfc9
-lastReviewedNote: 'CLI #468: reviewed implemented typed Dataset and existing-service Review capabilities, deferred target semantics and explicit validation limits.'
+lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
+lastReviewedNote: 'CLI #468: reviewed implemented core capabilities, unified context, standalone receipts and explicit retained-interface boundaries.'
 ---
 
 # TianGong LCA CLI
@@ -31,11 +31,12 @@ lastReviewedNote: 'CLI #468: reviewed implemented typed Dataset and existing-ser
 ```bash
 tiangong-lca --version
 tiangong-lca --help
+tiangong-lca --help --json
 ```
 
 | 范围 | 当前状态 |
 | --- | --- |
-| 环境与认证 | 既有 `doctor`、`runtime`、`auth` 可用，重构中逐步统一发现和结果。 |
+| 环境与认证 | `doctor` 提供本地诊断及显式在线健康检查；Auth 返回统一上下文，并保留原始身份/会话回执。`runtime` 保留独立运行协议。 |
 | Dataset 查询与内容处理 | 八种对象按能力表提供类型入口；包含契约、精确读取、分页、引用清单、校验及可编辑对象的本地处理。 |
 | Dataset 写入与 Review | 适配现有业务服务：创建与保存分离、草稿删除、关联审核提交、当前审核查询、草稿意见及审核决定。服务边界见下文。 |
 | Model 结果生成 | `build-resulting-process` 为主命令，`aggregate` 为同实现别名；显式输入生成候选，不自动写入。 |
@@ -81,6 +82,19 @@ node bin/tiangong-lca.js dataset process validate --input process.json --output 
 
 新入口的 JSON 返回业务结果、完整性和上下文。下一步提示仅包含说明与可选命令，回复模板为安装包中的 Markdown 路径。大校验报告可通过 `--output` 保存；终端只显示有界摘要。缺少模板时仍保留真实业务结果。
 
+## 环境与身份上下文
+
+`doctor` 默认只读取本地配置与安装身份；`doctor --online` 增加对所选 Supabase Auth 的有界健康检查，不刷新会话、不核验账号，也不执行业务操作。其他服务连接和业务权限明确列为未检查。
+
+Auth 的统一结果将原始身份或会话回执放在 `data.receipt`，区分本地观察与在线核验。`--output` 写出回执本体，保持现有身份回执公共解析器可接受的精确格式。退出只删除本地所选会话，不等于撤销远程授权。
+
+```bash
+tiangong-lca doctor --help --json
+tiangong-lca doctor --online --timeout-ms 5000 --json
+tiangong-lca auth status --json
+tiangong-lca auth identity-receipt --expected-project-ref <project-ref> --expected-user-id <user-id> --output identity.json --json
+```
+
 ## 现有业务服务边界
 
 可编辑对象的 `create` 不覆盖已有版本，`save` 不创建缺失对象；写入请求显式绑定账号、环境和请求身份。普通草稿保存使用服务端内容比较，Model 使用现有事务接口；Model 保存与草稿删除的内容比较仅发生在 CLI 前检，结果明确披露此限制。任何派发后未知结果都保留原请求，禁止自动重放。
@@ -89,7 +103,13 @@ Review 本次适配已有业务语义：`submit` 只接受一个起始对象，`
 
 `review comment` 保存审核者当前草稿，可能覆盖该草稿，不形成决定；`review decide` 独立提交通过或驳回，Process/Model 通过需要已有审核草稿。整包多起始对象、关闭关联、历史包、追加式独立意见及审核撤回属于后续目标设计，未开放的行为会明确拒绝。
 
-源码迁移仍在验证和旧入口清理中；[服务能力对照](docs/analysis/cli-interface-comparison.md#现有业务服务与本次实施基线)记录实施基线，不把协议模拟描述为真实账号或部署验证。
+环境、认证、目录发现与业务能力使用统一结果；旧入口的兼容范围与退出条件见迁移对照；[服务能力对照](docs/analysis/cli-interface-comparison.md#现有业务服务与本次实施基线)记录实施基线，不把协议模拟描述为真实账号或部署验证。
+
+## 保留接口
+
+原有 `search/flow/process/lifecyclemodel/qa` 等路径按兼容范围保留，不作为新核心命令树继续扩展。专项维护、Study、运行支撑和 Release 保留各自的约束与协议；不能把它们机械改名为新的 Dataset 原子操作。已被替换的样例与重复路由已经移除。
+
+兼容入口的退出条件是：新 CLI 已正式发布、相关下游完成新接口采用，并验证历史恢复记录仍可读取。下游迁移在 Release 后独立进行，本次不修改其代码。具体对应与保留原因见[迁移对照](docs/analysis/cli-interface-comparison.md#旧入口处置与兼容边界)。
 
 ## 开发与文档
 
