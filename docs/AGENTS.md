@@ -15,8 +15,8 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e5699f60e416d02372b470f2deca8f5367def12d
-lastReviewedNote: 'CLI #468: Reviewed validation guidance in its development owner; execution evidence remains in the Issue.'
+lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
+lastReviewedNote: 'CLI #468: reviewed default positive admission, installed business and recovery scenarios, typed Model provenance and JSONB reviewer filters; specialized contracts and release boundaries remain intact.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

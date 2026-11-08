@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e5699f60e416d02372b470f2deca8f5367def12d
-lastReviewedNote: 'CLI #468: Reviewed local entrypoint qualification; public command and release boundaries remain unchanged.'
+lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
+lastReviewedNote: 'CLI #468: reviewed default positive admission, installed business and recovery scenarios, typed Model provenance and JSONB reviewer filters; specialized contracts and release boundaries remain intact.'
 ---
 
 # TianGong LCA CLI
@@ -101,7 +101,7 @@ tiangong-lca auth identity-receipt --expected-project-ref <project-ref> --expect
 
 Review 本次适配已有业务语义：`submit` 只接受一个起始对象，`includeRelated` 默认且仅支持 `true`；关联范围由服务端业务规则决定。`resubmit` 引用已驳回审核及同一精确对象，返回实际受理结果，不宣称后端建立了轮次关系。`get/list` 查询当前记录，`materials` 获取当前可读对象；它们不是历史审核包快照。
 
-`review comment` 保存审核者当前草稿，可能覆盖该草稿，不形成决定；`review decide` 独立提交通过或驳回，Process/Model 通过需要已有审核草稿。整包多起始对象、关闭关联、历史包、追加式独立意见及审核撤回属于后续目标设计，未开放的行为会明确拒绝。
+`review comment` 保存审核者当前草稿，可能覆盖该草稿，不形成决定；`review decide` 记录当前审核者的通过或驳回决定，Process/Model 通过需要已有审核草稿。审核者分配和最终批准或驳回仍由现有管理员业务处理，当前 CLI 不提供这些独立动作。调用方查询实际状态后才能判断是否可修改或重新提交，不能将 decide 成功解释为审核单已结束。整包多起始对象、关闭关联、历史包、追加式独立意见及审核撤回属于后续目标设计，未开放的行为会明确拒绝。
 
 环境、认证、目录发现与业务能力使用统一结果；旧入口的兼容范围与退出条件见迁移对照；[服务能力对照](docs/analysis/cli-interface-comparison.md#现有业务服务与本次实施基线)记录实施基线，不把协议模拟描述为真实账号或部署验证。
 

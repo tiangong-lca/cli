@@ -62,7 +62,7 @@
     "prepack": "pnpm build",
     "prepublishOnly": "pnpm prepush:gate",
     "test": "pnpm build && node --import tsx --test",
-    "test:package": "node --test test/toolchain-contract.test.mjs",
+    "test:package": "node --import tsx --test test/toolchain-contract.test.mjs",
     "test:entrypoints": "pnpm build && node --import tsx --test test/bin.test.ts test/main.test.ts",
     "test:coverage": "pnpm build && node ./scripts/run-test-coverage.cjs",
     "test:coverage:assert-full": "node ./dist/scripts/assert-full-coverage.js",

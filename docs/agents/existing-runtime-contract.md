@@ -14,8 +14,8 @@ checkPaths:
   - AGENTS.md
   - src/lib/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
-lastReviewedNote: 'CLI #468: reviewed unchanged receipt payload and public parser with the new CLI envelope; specialized authorization and recovery protocols remain intact.'
+lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
+lastReviewedNote: 'CLI #468: reviewed default positive admission, installed business and recovery scenarios, typed Model provenance and JSONB reviewer filters; specialized contracts and release boundaries remain intact.'
 ---
 
 # Existing runtime safeguards

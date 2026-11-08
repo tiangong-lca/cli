@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
-lastReviewedNote: 'CLI #468: reviewed the command-layer development entrypoint and unchanged validation requirements.'
+lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
+lastReviewedNote: 'CLI #468: Reviewed test-only package orchestration and native installed CLI proofs; package runtime stays unchanged.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

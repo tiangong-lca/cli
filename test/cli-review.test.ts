@@ -180,7 +180,7 @@ test('Review adapter uses the existing API read capability with online actor and
   assert.equal(observed[0]!.headers.get('content-profile'), 'api');
   assert.deepEqual((observed[0]!.body as { p_review_ids: unknown }).p_review_ids, [id]);
   assert.ok(observed[1]!.url.searchParams.get('json->user->>id')?.includes(actor));
-  assert.ok(observed[2]!.url.searchParams.get('reviewer_id')?.includes(actor));
+  assert.equal(observed[2]!.url.searchParams.get('reviewer_id'), `cs.${JSON.stringify([actor])}`);
   for (const body of [{}, [{ id: 'different' }], [{}]]) {
     const bad = reviewReader(env, async (url) =>
       isSupabaseAuthTokenUrl(url)

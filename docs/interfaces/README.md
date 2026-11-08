@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - docs/interfaces/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
-lastReviewedNote: 'CLI #468: target contracts remain normative; existing-business Review scope and compatibility retirement conditions remain outside this directory.'
+lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
+lastReviewedNote: 'CLI #468: Reviewed target design against qualification evidence; deferred Review extensions remain target-only and current admin phases are documented outside target contracts.'
 ---
 
 # CLI 目标接口设计

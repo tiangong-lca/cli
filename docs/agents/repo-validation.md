@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e5699f60e416d02372b470f2deca8f5367def12d
-lastReviewedNote: 'CLI #468: Reviewed independent uninstrumented launcher execution and explicit environment-specific skips.'
+lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
+lastReviewedNote: 'CLI #468: reviewed default positive admission, installed business and recovery scenarios, typed Model provenance and JSONB reviewer filters; specialized contracts and release boundaries remain intact.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -239,3 +239,9 @@ Final V6 facade qualification covers report.create/save × title/paragraph/claim
 After `pnpm build`, run the focused `test/cli-dataset-*.test.ts`, `test/cli-review*.test.ts`, `test/cli-model-processing.test.ts`, `test/cli-source-attachments.test.ts` and `test/cli-command-files.test.ts` plus `test/cli-environment-context.test.ts` and `test/cli-classification-context.test.ts` suites for typed command changes. They cover exact reads, pagination, content processing, real local validation, service adaptation, separate mutation intentions, unknown-outcome non-replay, safe artifacts and installed Markdown templates. Protocol fixtures are not evidence of deployed authorization, historical content or a production transaction. The package suite also exercises the public launcher outside the source checkout. Environment/Auth tests distinguish local observations, health probes and online identity; standalone identity artifacts must still pass the unchanged public parser, and failed output must not repeat session effects.
 
 The application layer must remain free of transport/filesystem imports. New modules retain the full-source coverage requirement; no empty-domain scaffolding, new dependencies or coverage ignores are introduced. Existing lint, package, full coverage and prepush gates remain required. Downstream adoption is outside CLI migration validation.
+
+The positive core fixture suite `test/cli-dataset-positive.test.ts` uses complete synthetic Flow, Process, Model, Source and Contact content with the default schema, business and exact-reference admission. Only network responses and the journal directory are isolated; replacing the write-admission function does not qualify these positive cases. Fixture content must remain byte-stable across validation and readback.
+
+`pnpm test:package` uses the repository's test-only tsx loader to orchestrate the package contract. The installed CLI still runs as a native Node process with only published production dependencies. The clean source copy is removed before installed business scenarios run. `test/helpers/cli-business-installed.ts` exercises five-type read/edit/save and Review paths, canonical Model result generation and its alias, Source transfer followed by separate save, completed-result reuse and unknown-outcome recovery across fresh processes. The protocol fixture models administrator assignment/finalization separately; reviewer decision alone must not change the overall review state. No service credentials enter those CLI processes.
+
+Actual local-service qualification uses an explicitly owned disposable environment with the selected Database migrations, Edge source and real Auth users. Seed support data, reviewer roles and test-only Storage bucket policies through the environment's setup boundary; do not inject service credentials into CLI requests or replace business procedures. Preserve unchanged migrations/functions and record additional fixture setup separately. Public synthetic tests, actual local headless-user proof, browser OAuth, hosted qualification and four-platform CI are separate evidence. Resource ownership and verified disposal follow the workspace development-resource runbook; private configuration and raw logs stay outside Git.

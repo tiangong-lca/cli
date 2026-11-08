@@ -38,7 +38,8 @@ export function reviewReader(env: NodeJS.ProcessEnv, fetchImpl: FetchLike) {
       { count: 'exact' },
     );
     if (input.role === 'submitter') query = query.eq('json->user->>id', actor.userId);
-    if (input.role === 'reviewer') query = query.contains('reviewer_id', [actor.userId]);
+    if (input.role === 'reviewer')
+      query = query.contains('reviewer_id', JSON.stringify([actor.userId]));
     const response = await query.order('id').range(input.offset, input.offset + input.limit - 1);
     if (
       response.error ||

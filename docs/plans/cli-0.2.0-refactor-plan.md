@@ -14,8 +14,8 @@ checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
-lastReviewedNote: 'CLI #468: reviewed implemented existing-service scope, deferred Review extensions and post-release compatibility retirement conditions.'
+lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
+lastReviewedNote: 'CLI #468: reviewed default positive admission, installed business and recovery scenarios, typed Model provenance and JSONB reviewer filters; specialized contracts and release boundaries remain intact.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -204,6 +204,6 @@ AGENTS 面向开发 AI，规定目录职责、依赖方向、新命令开发路�
 | M3：核心业务能力齐备 | 第 7、8 步完成，独立写入与审核通过验收。                |
 | M4：候选版本可评审   | 第 9、10 步完成，清理、安装包、场景验收和迁移资料齐备。 |
 
-实施状态：基础分层已完成；Dataset 多类型能力和现有 Review 服务适配已通过本地门禁，环境、认证和目录发现已接入统一结果；核心帮助、重复实现清理与兼容入口的退出条件已按能力对照整理。目标设计与本次业务服务基线的差异按第 8 步处理，未实施的扩展不计为已有能力。
+实施状态：基础分层和核心能力迁移已完成，环境、认证和目录发现接入统一结果；合法内容的默认校验路径、安装包连续业务场景和跨进程恢复纳入验收。核心帮助、重复实现清理、兼容入口退出条件与调用方迁移说明已按能力对照整理。真实本地服务、安装包协议验证和四平台 CI 分别记录，不依据本地覆盖率认定候选版本的所有环境验收完成。目标设计与本次业务服务基线的差异按第 8 步处理，未实施的扩展不计为已有能力。
 
 当前交付事实、源码身份、验证证据和剩余事项保存在对应 Issue/PR。计划不替代交付记录，也不以阶段描述代替代码、服务集成或发布证据。正式发布后的下游升级独立进行。
