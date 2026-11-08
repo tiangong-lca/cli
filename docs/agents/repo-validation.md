@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: b60d97162aaf7780a25474eecf8277dd9b567674
-lastReviewedNote: 'CLI #468: reviewed file-size guidance and branch-independent documentation; routing, runtime behavior, validation and release contracts remain applicable.'
+lastReviewedCommit: d458a503152caffdff0ca65b2bb0ee1c95599dea
+lastReviewedNote: 'CLI #468: reviewed the docs writing contract and its discovery; runtime, validation and release behavior are unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml

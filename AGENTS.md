@@ -40,8 +40,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: b60d97162aaf7780a25474eecf8277dd9b567674
-lastReviewedNote: 'CLI #468: added the default file-size constraint and removed task-specific branch and authorization bindings from the development contract.'
+lastReviewedCommit: d458a503152caffdff0ca65b2bb0ee1c95599dea
+lastReviewedNote: 'CLI #468: reviewed the docs writing contract and its discovery; runtime, validation and release behavior are unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -64,6 +64,7 @@ This repository provides atomic, composable LCA operations for people and AI. Th
 3. [Implementation plan](docs/plans/cli-0.2.0-refactor-plan.md): current milestone, dependencies and deferred work.
 4. Run `scripts/docpact route --root <absolute-repository-root> --paths <changed-paths> --format json`; read the returned governed documents.
 5. Read [architecture](docs/agents/repo-architecture.md) and [validation](docs/agents/repo-validation.md) for implementation work. Read [existing runtime safeguards](docs/agents/existing-runtime-contract.md) before reusing or changing legacy runtime behavior.
+6. Follow [documentation guidance](docs/AGENTS.md) when writing or reviewing documents under `docs/`.
 
 The workspace AGENTS.md governs delivery, branch policy and integration. Resolve the current branch and delivery target from the applicable workspace policy and task records. Keep task-specific branch selections and authorization scope in delivery records rather than this contract.
 
