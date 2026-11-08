@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - docs/interfaces/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e2b7a7a0142085180935454aa2e782d6a79433e8
-lastReviewedNote: 'CLI #468: reviewed documentation-first foundation and explicit implementation boundaries; target design remains separate from runtime capability.'
+lastReviewedCommit: b60d97162aaf7780a25474eecf8277dd9b567674
+lastReviewedNote: 'CLI #468: reviewed file-size guidance and branch-independent documentation; routing, runtime behavior, validation and release contracts remain applicable.'
 ---
 
 # CLI 目标接口设计

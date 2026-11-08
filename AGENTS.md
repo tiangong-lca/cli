@@ -40,8 +40,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e2b7a7a0142085180935454aa2e782d6a79433e8
-lastReviewedNote: 'CLI #468: reviewed the documentation-first command foundation, retained runtime safeguards and routing for new layers; release and integration authority remain unchanged.'
+lastReviewedCommit: b60d97162aaf7780a25474eecf8277dd9b567674
+lastReviewedNote: 'CLI #468: added the default file-size constraint and removed task-specific branch and authorization bindings from the development contract.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -65,7 +65,7 @@ This repository provides atomic, composable LCA operations for people and AI. Th
 4. Run `scripts/docpact route --root <absolute-repository-root> --paths <changed-paths> --format json`; read the returned governed documents.
 5. Read [architecture](docs/agents/repo-architecture.md) and [validation](docs/agents/repo-validation.md) for implementation work. Read [existing runtime safeguards](docs/agents/existing-runtime-contract.md) before reusing or changing legacy runtime behavior.
 
-The workspace AGENTS.md governs delivery, branch policy and integration. Work stays on the user-selected `refactor-0.2.0` branch until a later authorized integration. No downstream migration, main merge or release is implied by implementing this milestone.
+The workspace AGENTS.md governs delivery, branch policy and integration. Resolve the current branch and delivery target from the applicable workspace policy and task records. Keep task-specific branch selections and authorization scope in delivery records rather than this contract.
 
 ## Directory responsibilities
 
@@ -84,6 +84,12 @@ The workspace AGENTS.md governs delivery, branch policy and integration. Work st
 | `docs/plans/`, `docs/analysis/` | Implementation state, decisions, gaps and migration notes. |
 
 Dependency direction: entry/composition -> commands -> application; adapters implement application ports and may reuse `src/lib/`. Shared result types may be used by application and commands. Application must not import commands, adapters, filesystem/network APIs or CLI presentation. Legacy modules must not acquire dependencies on new commands. Do not create empty domain directories or a plugin framework for unimplemented capabilities.
+
+## File size and cohesion
+
+Hand-maintained code files, including tests and scripts, should normally stay within 1,000 physical lines, including comments and blank lines. Split files by responsibility as they approach this size; preserve cohesive modules and readable formatting rather than compressing code or splitting it arbitrarily to meet the number.
+
+Refactor existing oversized files incrementally when changing the relevant responsibilities, and place new independent responsibilities in separate modules. Generated code and generated fixtures are excluded. Record the reason and intended decomposition in the task or PR when a hand-maintained file needs to exceed the guideline.
 
 ## Adding a command
 

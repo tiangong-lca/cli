@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: '2026-11-08'
-lastReviewedCommit: 'e2b7a7a0142085180935454aa2e782d6a79433e8'
-lastReviewedNote: 'CLI #468: reviewed the documentation-first command foundation, retained runtime safeguards and routing for new layers; release and integration authority remain unchanged.'
+lastReviewedAt: "2026-11-08"
+lastReviewedCommit: "b60d97162aaf7780a25474eecf8277dd9b567674"
+lastReviewedNote: 'CLI #468: reviewed file-size guidance and branch-independent documentation; routing, runtime behavior, validation and release contracts remain applicable.'
 
 catalog:
   repos:

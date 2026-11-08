@@ -26,7 +26,7 @@ lastReviewedNote: 'CLI #468: reviewed documentation-first foundation and explici
 
 ## 当前状态
 
-本分支正在实施 0.2.0 重构，包版本仍为 0.1.29；分支能力不代表 npm 已发布版本。查看已安装版本和实际帮助：
+当前源码正在实施 0.2.0 重构，包版本仍为 0.1.29；源码能力不代表 npm 已发布版本。查看已安装版本和实际帮助：
 
 ```bash
 tiangong-lca --version
@@ -36,9 +36,9 @@ tiangong-lca --help
 | 范围 | 当前状态 |
 | --- | --- |
 | 环境与认证 | 既有 `doctor`、`runtime`、`auth` 可用，重构中逐步统一发现和结果。 |
-| 新 Dataset 入口 | 本分支先提供 Process `get`、`validate` 样例；限制见下文。 |
+| 新 Dataset 入口 | 当前源码先提供 Process `get`、`validate` 样例；限制见下文。 |
 | 其他 Dataset 类型、写入、Review | 已有目标设计，尚未迁移到新接口。 |
-| Model 结果生成 | 主命令 `build-resulting-process`、别名 `aggregate` 是目标设计，本分支尚未实现新入口。 |
+| Model 结果生成 | 主命令 `build-resulting-process`、别名 `aggregate` 是目标设计，当前源码尚未实现新入口。 |
 | Release、运行支撑与旧命令 | 沿用既有行为，参见安装版本帮助及[原有命令参考](docs/reference/legacy-command-reference.md)。 |
 
 ## 安装与开始
@@ -52,7 +52,7 @@ tiangong-lca auth login
 tiangong-lca auth whoami --json
 ```
 
-公共安装使用已发布包；下列新 Dataset 示例需要本分支构建。官方环境登录使用浏览器 OAuth。短期令牌只能通过受支持的秘密环境边界注入，不写入命令参数。身份、权限和配置说明见[认证设计](docs/interfaces/identity.md)及安装版本的 `auth --help`。
+公共安装使用已发布包；下列新 Dataset 示例需要从当前源码构建。官方环境登录使用浏览器 OAuth。短期令牌只能通过受支持的秘密环境边界注入，不写入命令参数。身份、权限和配置说明见[认证设计](docs/interfaces/identity.md)及安装版本的 `auth --help`。
 
 ## 能力组织
 
@@ -65,7 +65,7 @@ tiangong-lca auth whoami --json
 
 最终接口按对象组织，完整范围见[目标设计](docs/interfaces/README.md)。表中的命令方向不是当前全部可执行命令清单。研究、生产计划和跨阶段任务编排由调用方负责。
 
-## 本分支的 Process 样例
+## 当前源码的 Process 样例
 
 ```bash
 pnpm install --frozen-lockfile
@@ -97,4 +97,4 @@ pnpm prepush:gate
 - [能力对照](docs/analysis/cli-interface-comparison.md)：旧能力与目标入口。
 - [原有命令参考](docs/reference/legacy-command-reference.md)：尚未迁移的使用方式及历史说明。
 
-下游迁移在 CLI 正式 Release 后独立推进。本分支不修改下游代码，也不以其迁移完成作为 CLI 验收条件。
+下游迁移在 CLI 正式 Release 后由调用方分别推进，其完成状态不作为 CLI 验收条件。
