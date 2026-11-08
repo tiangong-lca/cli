@@ -12,7 +12,7 @@ language: zh-CN
 
 本计划规定 CLI 自身重构的实施顺序、依赖、阶段产物与验收条件。[目标接口设计](../interfaces/README.md)规定最终行为，[现有能力对照](../analysis/cli-interface-comparison.md)记录实现差距；本文件不重新定义接口。
 
-计划基于 2026-11-08 确认的设计：运行代码基线为 CLI `0.1.29`、提交 `5fcde75e54220e6fca0015b85f2a5c7996c50ba4`，设计基线为提交 `22cb236`。工作分支为 `refactor-0.2.0`。当前仅完成计划编写，下列八个实施阶段均未开始；文档示例不代表对应命令已实现。
+计划基于 2026-11-08 确认的设计：运行代码基线为 CLI `0.1.29`、提交 `5fcde75e54220e6fca0015b85f2a5c7996c50ba4`，初始设计基线为提交 `22cb236`，并包含后续确认的引用接口收敛：保留 `list-references`，目标存在性使用精确 `get`，关系校验归 `validate`，修改归编辑或通用 `patch` 后独立保存。工作分支为 `refactor-0.2.0`。当前仅完成计划编写，下列八个实施阶段均未开始；文档示例不代表对应命令已实现。
 
 ## 范围与交付边界
 
@@ -81,7 +81,9 @@ language: zh-CN
 
 ## 3. 迁移查询、发现、环境与认证
 
-按[类型能力表](../interfaces/datasets/README.md)迁移 `get/list/search/versions/contract`，以及分类目录查询。Flow、Process、Model、Source、Contact 按各自设计开放入口；Flow Property、Unit Group 保持参考数据范围；LCIA Method 仅提供设计规定的内容契约与结构校验，不因共享实现而开放远程 CRUD。
+按[类型能力表](../interfaces/datasets/README.md)迁移 `get/list/search/versions/contract/list-references`，以及分类目录查询。Flow、Process、Model、Source、Contact 按各自设计开放入口；Flow Property、Unit Group 保持参考数据范围；LCIA Method 仅提供设计规定的内容契约与结构校验，不因共享实现而开放远程 CRUD。
+
+`list-references` 返回当前内容的引用类型、ID、版本及出现位置，不递归展开或逐一请求引用目标。以本地输入无网络请求、远程输入只读取所选对象作为验收条件；目标存在性由调用方按需执行精确 `get`。
 
 统一分页、过滤、字段投影、精确版本和候选表达。`latest` 的解析结果必须可见，后续动作使用实际版本；多个候选不默认选中首项；读取失败或范围不完整不能伪装为空集合。
 
@@ -91,9 +93,9 @@ language: zh-CN
 
 ## 4. 迁移校验与确定性数据处理
 
-按类型逐步迁移 `validate/diff/patch/references/translations`，再接入 Process 统计、Model 图与聚合等特有操作。复用已有算法、规则和类型校验，解除对私有运行目录、阶段文件及隐式选择的依赖。
+按类型逐步迁移 `validate/diff/patch/translations`，再接入 Process 统计、Model 图与聚合等特有操作。复用已有算法、规则和类型校验，解除对私有运行目录、阶段文件及隐式选择的依赖。
 
-明确输入文件、输出产物、检查范围和引用证据。远程引用检查显式声明；补丁和翻译回填验证源内容及定位；聚合只生成候选 Process，不自动保存、提交审核或发布。Source 附件传输保持独立效果，上传成功与 Source 保存成功分别表达。
+明确输入文件、输出产物、检查范围和引用证据。引用关系检查统一进入 `validate --checks references`，远程检查显式声明；引用字段允许直接编辑或使用通用 `patch`，按需独立 `save`，不新增专用检查或改写入口。补丁和翻译回填验证源内容及定位；聚合只生成候选 Process，不自动保存、提交审核或发布。Source 附件传输保持独立效果，上传成功与 Source 保存成功分别表达。
 
 完成条件：命令可以脱离原生产工作流独立运行；相同确定性输入产生可比对的业务产物；错误、缺失证据和不适用规则准确表达；科学规则不因重构而退化。全部类型特有动作均有归属和验证，不能只完成共同动作。
 
@@ -142,7 +144,8 @@ language: zh-CN
 
 | 情景 | 命令组合或操作 | 核心断言 |
 | --- | --- | --- |
-| 查找引用对象 | 检索、读取、版本发现、引用检查 | 候选不自动选定，版本精确，分页与权限范围完整。 |
+| 列出并确认引用对象 | list-references、精确 get，必要时版本发现 | 清单保留引用位置，不逐一请求目标；目标存在及可访问由 get 确认；缺失信息不猜测。 |
+| 修改并校验引用关系 | 直接编辑或通用 patch、validate、独立 save | 目标存在但关系不匹配时校验失败；修改不自动追新或换算，未 save 前不改变远程内容。 |
 | 准备并创建数据 | 契约发现、本地校验、create、get | 内容与身份一致；冲突不更新已有对象；读回验证实际效果。 |
 | 修改已有草稿 | get、patch、validate、save、get | 前置状态被验证；并发变化返回冲突；缺失目标不创建。 |
 | 聚合模型生成 Process | graph、aggregate、validate、独立 create 或 save | 依赖与投影明确，产物可追溯，聚合本身不写入。 |

@@ -21,7 +21,7 @@ language: zh-CN
 | `validate` | 检查记录结构、引用和适用的业务规则，明确附件是否经过实际核验。 |
 | `create` / `save` / `delete` | 创建新来源草稿、更新或删除已有草稿，遵循身份、权限、修订及引用约束。 |
 | `diff` / `patch` | 比较来源内容或应用给定的本地修改。 |
-| `references get` / `references check` / `references rewrite` | 读取、检查或在本地明确替换数据集引用。 |
+| `list-references` | 列出当前内容的出向数据集引用，包含类型、ID、版本及出现位置；不逐一查询引用目标。 |
 | `translations extract` / `translations apply` | 提取多语言字段或回填给定译文。 |
 | `upload-attachments` | 上传明确附件，返回传输回执和更新附件引用后的候选 Source 内容。 |
 
@@ -33,7 +33,7 @@ language: zh-CN
 
 上传与来源记录保存分别执行。上传成功后，由调用方将候选内容交给 `source create` 或 `source save`；命令不自动保存远程 Source。未成功项保留原引用，已上传项保留恢复身份，不通过自动删除附件模拟回滚。
 
-Source 的数据集引用和附件地址分别处理。`references rewrite` 不负责文件传输；附件上传不修改其他数据集对 Source 的引用。文件可访问性以实际权限检查为准。
+Source 的数据集引用和附件地址分别处理。`list-references` 列出数据集引用，不探测或传输附件。引用字段通过直接编辑或通用 `patch` 修改，再独立 `save`；字段修改不负责文件传输，附件上传不修改其他数据集对 Source 的引用。文件可访问性以实际权限检查为准。
 
 ## 成功、失败与审核材料
 

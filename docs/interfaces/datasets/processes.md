@@ -22,10 +22,10 @@ language: zh-CN
 | `validate` | 检查结构、交换项身份、参考项、引用及适用的业务规则。 |
 | `create` / `save` / `delete` | 创建新草稿、保存或删除已有草稿，禁止隐式创建或覆盖。 |
 | `diff` / `patch` | 比较或修改明确内容，补丁定位到具体交换项或字段。 |
-| `references get` / `references check` / `references rewrite` | 返回、核验或在本地替换明确引用。 |
+| `list-references` | 列出当前内容的出向数据集引用，包含类型、ID、版本及出现位置；不逐一查询引用目标。 |
 | `translations extract` / `translations apply` | 提取多语言字段或回填给定译文。 |
 
-共同操作遵循 [Dataset](README.md) 和[数据处理](processing.md)。交换项不建立独立远程保存入口：调用方在本地应用补丁，再使用完整内容与前置修订保存 Process。
+共同操作遵循 [Dataset](README.md) 和[数据处理](processing.md)。交换项不建立独立远程保存入口：调用方直接编辑本地候选内容或应用通用补丁，再使用完整内容与前置修订保存 Process。
 
 `statistics` 接收与列表一致的范围过滤和 `--group-by` 维度；只支持命令契约声明的分组。输入范围或扫描不完整时返回部分结果，不将统计覆盖率解释为数据质量或生产任务完成率。
 

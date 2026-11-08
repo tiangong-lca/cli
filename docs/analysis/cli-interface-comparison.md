@@ -23,7 +23,7 @@ language: zh-CN
 - **校验与审核不是目标设计缺陷**：目标已经使用 `validate` 表达规则检查、`review` 表达审核单处理。Review 的提交、重新提交及审核单能力差距属于实现工作；单对象和审核包共用入口，默认包含关联数据。
 - **Release 不进入本轮优化**：保留现有命令、参数、输出及恢复契约，积累实际使用反馈后再分析。
 
-确定性聚合、引用核验和补丁仍保留为原子能力；任务规划、证据取舍和生产队列由调用方组织。类型能力矩阵仍区分普通可编辑对象与受治理的参考数据。
+确定性聚合、引用清单查询、规则校验和补丁仍保留为原子能力；任务规划、证据取舍和生产队列由调用方组织。类型能力矩阵仍区分普通可编辑对象与受治理的参考数据。
 
 ## 数据包操作的具体含义
 
@@ -57,8 +57,8 @@ language: zh-CN
 | `dataset validate`、`qa process/flow/lifecyclemodel`、`process verify-rows`、`lifecyclemodel validate-build` | 结构与业务规则检查，部分依赖运行目录。 | 类型 `validate` 接收内容与规则；保留科学适用性和证据，不依赖工作流目录。 |
 | `validation run` | TIDAS 包验证。 | 保持现有入口；本轮只说明包级校验与单对象校验的区别。 |
 | `dataset patch apply`、`bilingual extract/apply/validate` | 本地补丁、语言字段提取和给定译文回填。 | 类型 `patch`、`translations extract/apply`、`validate`；不加入自动翻译决策。 |
-| `dataset references rewrite/refresh-remote`、`process refresh-references` | 引用变更、远程版本选择及部分写入组合。 | 拆为版本发现、显式引用映射、本地替换与独立保存；不隐式追新。 |
-| `dataset verify-remote` | 根对象及引用的远程状态核实。 | 精确 `get` 与 `references check`；保留默认引用政策及受约束例外证据。 |
+| `dataset references rewrite/refresh-remote`、`process refresh-references` | 引用变更、远程版本选择及部分写入组合。 | 使用 `list-references` 查看引用、精确 `get` 确认目标；直接编辑或通用 `patch` 修改字段，`validate` 校验关系，再独立 `save`；不保留专用改写入口，不隐式追新。 |
+| `dataset verify-remote` | 根对象及引用的远程状态核实。 | `list-references` 列出引用，精确 `get` 确认目标存在及可访问，`validate --checks references` 核验关系；保留默认引用政策及受约束例外证据。 |
 | `dataset import-lca convert` | 外部格式转换。 | 保持现有入口；跨类型转换与导出的新命令组织不纳入本轮定案。 |
 | `dataset source upload-attachments` | 文件上传、回执及 Source URI 候选改写。 | Source 类型特有动作；明确上传与保存的两个结果。 |
 | `flow/process identity-preflight`、`process scope-statistics/dedup-review` | 候选比对、范围统计、去重取舍材料。 | 范围计数归 `dataset process statistics`，精确比较归 `diff`；生成前准入、保留/删除决策和专题报告归调用方。 |

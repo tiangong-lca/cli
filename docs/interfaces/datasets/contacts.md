@@ -23,7 +23,7 @@ Contact 与身份认证账号是不同对象。数据集中的所有者、作者
 | `validate` | 检查内容结构、字段格式及明确的数据集引用。 |
 | `create` / `save` / `delete` | 创建新草稿、更新或删除精确已有草稿。 |
 | `diff` / `patch` | 比较内容或应用明确的本地字段修改。 |
-| `references get` / `references check` / `references rewrite` | 读取、核验或在本地替换精确数据集引用。 |
+| `list-references` | 列出当前内容的出向数据集引用，包含类型、ID、版本及出现位置；不逐一查询引用目标。 |
 | `translations extract` / `translations apply` | 提取多语言字段或回填给定译文。 |
 
 共同输入、输出和恢复遵循 [Dataset](README.md)，本地操作遵循[数据处理](processing.md)。

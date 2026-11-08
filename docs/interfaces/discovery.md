@@ -10,7 +10,7 @@ language: zh-CN
 
 # 数据查询与发现
 
-查询挂在具体业务对象下。Dataset 使用 `dataset <type> get|list|search|versions|contract`，审核与发布使用各自文档规定的读取动作。Process 的 `statistics` 提供明确范围的聚合计数，遵循同样的可见性和完整性约束。
+查询挂在具体业务对象下。Dataset 使用 `dataset <type> get|list|search|versions|contract|list-references`，审核与发布使用各自文档规定的读取动作。Process 的 `statistics` 提供明确范围的聚合计数，遵循同样的可见性和完整性约束。
 
 ## 查询动作
 
@@ -20,6 +20,7 @@ language: zh-CN
 | `list` | `--state`、`--owner`、`--limit`、`--cursor`、`--fields`。 | 按明确范围及稳定顺序返回对象页面。 |
 | `search` | `--query`、受支持过滤、`--limit`、`--cursor`。 | 候选身份、匹配依据与实际查询范围。 |
 | `versions` | `--id` 及分页条件。 | 当前权限可见的版本集合和状态。 |
+| `list-references` | `--id` 与精确 `--version`，或 `--input <file>` 指定本地内容，二者互斥。 | 当前内容的出向数据集引用清单：目标类型、ID、版本及每处出现位置。 |
 | `contract` | 类型、`--include schema,methodology,ruleset`。 | 精确来源和版本、可用 schema、方法文档及规则。 |
 
 契约中的方法资料和规则按类型实际存在性返回，缺少的组件标记为不可用，不生成替代内容或假定已通过其规则。
@@ -34,7 +35,9 @@ Dataset `get` 必须提供版本，或显式使用 `--version latest`。`latest`
 
 `dataset classification children --type <目录> [--parent <code>]` 返回直接子项；`dataset classification path --type <目录> --code <code>` 返回完整分类路径。结果携带目录身份和版本，地理位置使用 `location` 目录。目录导航不修改数据，分类赋值通过显式本地补丁完成。
 
-`dataset <type> references get` 返回精确对象的出向引用；`references check` 核验指定内容中的引用。检查范围、可见性和未解决引用按[数据处理契约](datasets/processing.md)返回。不承诺无法证明完整性的全库反向引用查询。
+`dataset <type> list-references` 让调用方无需遍历完整数据结构即可获得出向引用清单，适用类型以各对象能力表为准。远程输入只读取所选对象，本地输入只读取文件；命令不递归展开、不逐一请求引用目标，也不把列出引用表述为引用有效。重复引用保留全部出现位置；缺少类型、ID 或版本时保留位置并标明缺失，不猜测目标。大清单通过分页或 `--output` 交付，并明确完整性。不承诺无法证明完整性的全库反向引用查询。
+
+确认目标存在及可访问时，对清单中的类型、ID 和版本执行精确 `get`。检查引用类型、版本、属性与单位等关系约束使用 `validate --checks references`，目标存在不代表关系有效；远程检查必须显式选择并声明所需身份与范围。引用修改通过直接编辑或通用 `patch` 完成，再按需 `save`，见[数据处理契约](datasets/processing.md)。
 
 本版不提供跨类型模糊搜索入口。调用方按类型查询，结果均携带 `type`、`id` 和 `version`，可以直接用于下一次精确读取。
 
@@ -57,4 +60,5 @@ tiangong-lca dataset flow search --query "electricity" --limit 10 --json
 tiangong-lca dataset flow versions --id <flow-id> --json
 tiangong-lca dataset flow get --id <flow-id> --version <version> --json
 tiangong-lca dataset process contract --include schema,ruleset --output contract.json --json
+tiangong-lca dataset process list-references --id <process-id> --version <version> --json
 ```

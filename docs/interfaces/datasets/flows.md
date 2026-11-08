@@ -21,7 +21,7 @@ language: zh-CN
 | `validate` | 检查结构、参考属性及所选证据支持的单位和引用关系。 |
 | `create` / `save` / `delete` | 创建新草稿、更新或删除精确的已有草稿，遵循共同前置条件。 |
 | `diff` / `patch` | 比较内容或应用明确本地修改，保留字段位置与来源。 |
-| `references get` / `references check` / `references rewrite` | 读取、核验或在本地明确替换引用。 |
+| `list-references` | 列出当前内容的出向数据集引用，包含类型、ID、版本及出现位置；不逐一查询引用目标。 |
 | `translations extract` / `translations apply` | 提取多语言字段或回填给定译文。 |
 
 基础输入、输出与恢复遵循 [Dataset](README.md)，文件操作遵循[数据处理](processing.md)。
