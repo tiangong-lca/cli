@@ -65,7 +65,7 @@ language: zh-CN
 | `flow/process build-plan validate/materialize`、`process complete-required-fields` | 作者计划检查、内容物化及字段补齐。 | 内容校验及显式字段处理保留；作者计划和默认事实选择由调用方提供。 |
 | `flow remediate/materialize-decisions/build-alias-map/scan-process-flow-refs/plan-process-flow-repairs/apply-process-flow-repairs/regen-product/validate-processes` | Flow 治理与 Process 引用修复链。 | 核验、差异和显式补丁保留；范围选择、别名决策、修复计划和轮次移到运维流程。 |
 | `lifecyclemodel graph` | 图结构与连接发现。 | `dataset model graph` 保留。 |
-| `lifecyclemodel build-resulting-process` | 明确模型与过程输入下的确定性聚合。 | `dataset model aggregate` 保留，移除生产目录耦合和隐式发布意图。 |
+| `lifecyclemodel build-resulting-process` | 明确模型与过程输入下的确定性聚合。 | 主命令为 `dataset model build-resulting-process`，`dataset model aggregate` 为同一操作的正式别名，共用参数、帮助、实现及结果；示例、推荐和 operation 使用主命令，移除生产目录耦合和隐式发布意图。 |
 | `process auto-build/resume-build/batch-build/publish-build`、`lifecyclemodel auto-build/orchestrate/publish-build/publish-resulting-process` | 生产运行骨架、恢复交接、递归组装和发布交接。 | 编排归 Foundry/Skills；保留可单独定义的内容处理与读写原语。 |
 | `dataset author` | 文档解析并准备内容契约包，返回 evidence-ready。 | 文档理解与作者流程归调用方；契约获取保留。不能将它描述为已直接生成完整科学数据。 |
 | `dataset evidence-search plan/run`、`curation-queue build/next/verify` | 证据检索策略、证据充分性评估与生产队列。 | 外层研究/生产流程；不纳入核心 Dataset 业务状态。 |

@@ -30,7 +30,7 @@ language: zh-CN
 | 字段 | 语义 |
 | --- | --- |
 | `schemaVersion` | CLI 结果契约版本，与业务数据版本独立。 |
-| `operation` | 实际调用的完整动作。 |
+| `operation` | 实际执行动作的完整主命令名称；别名调用归一到同一主命令。 |
 | `status` | `completed`、`accepted`、`partial`、`failed` 或 `unknown`。 |
 | `outcome` / `summary` | 稳定的具体结果语义，以及根据实际事实生成的一句摘要。 |
 | `data` | 业务结果，包含实际解析的对象身份、状态及必要的内容绑定。 |
