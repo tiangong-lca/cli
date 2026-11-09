@@ -338,3 +338,14 @@ test('process payload validation rejects placeholder authoring content', () => {
     },
   ]);
 });
+
+test('summary preserves a schema-only failure without claiming unavailable layers', () => {
+  const summary = summarizeProcessPayloadValidation({
+    ok: false,
+    validator: 'test',
+    issue_count: 1,
+    issues: [{ path: 'field', message: 'invalid', code: 'schema' }],
+  } as never);
+  assert.match(summary, /1 issue\(s\).*field: invalid/);
+  assert.doesNotMatch(summary, /schema: passed/);
+});

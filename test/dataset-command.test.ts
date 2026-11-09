@@ -262,3 +262,26 @@ test('dataset command helper carries an optional complete before image and omits
   assert.deepEqual(guarded.expectedJsonOrdered, before);
   assert.deepEqual(guarded.jsonOrdered, payload);
 });
+
+test('Process creation forwards its exact source Model version without extra lookups', async () => {
+  const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
+  await createDatasetRecord({
+    transport: {
+      functionsBaseUrl: 'https://example.supabase.co/functions/v1',
+      publishableKey: 'fixture',
+      accessToken: 'token',
+      timeoutMs: 1000,
+      fetchImpl: async (url, init) => {
+        requests.push({ url: String(url), body: JSON.parse(String(init?.body)) });
+        return makeResponse({ ok: true, status: 200, body: '{"ok":true,"data":{}}' });
+      },
+    },
+    table: 'processes',
+    id: '22222222-2222-2222-2222-222222222222',
+    payload: processTransportFixture(),
+    extraData: { modelId: '33333333-3333-3333-3333-333333333333', modelVersion: '01.01.021' },
+  });
+  assert.equal(requests.length, 1);
+  assert.match(requests[0]!.url, /app_dataset_create$/);
+  assert.equal(requests[0]!.body.modelVersion, '01.01.021');
+});

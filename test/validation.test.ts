@@ -389,3 +389,8 @@ test('runValidation validates the input directory and engine value', async () =>
     rmSync(fileDir, { recursive: true, force: true });
   }
 });
+
+test('package validation locates the repository from nested module directories', () => {
+  const root = resolveRepoRootFrom(path.dirname(currentFilePath));
+  assert.equal(root, process.cwd());
+});

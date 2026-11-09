@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-09
-lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
-lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
+lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
+lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -36,7 +36,7 @@ related:
 
 # CLI 开发指南
 
-本指南说明当前候选源码的开发入口。能力清单与服务限制以 [README](README.md) 为准；目标设计位于 [docs/interfaces](docs/interfaces/README.md)，实现规则以 [AGENTS](AGENTS.md) 和[架构](docs/agents/repo-architecture.md)为准。0.1.x 命令及交付记录仅见[历史参考](docs/reference/legacy-command-reference.md)，不作为当前可执行示例。
+本指南说明当前候选源码的开发入口。能力清单与服务限制以 [README](README.md) 为准；目标设计位于 [docs/interfaces](docs/interfaces/README.md)，实现规则以 [AGENTS](AGENTS.md) 和[架构](docs/agents/repo-architecture.md)为准。旧入口到当前能力的对应见[能力对照](docs/analysis/cli-interface-comparison.md)。旧版本实现及交付过程从 Git 历史和原始交付记录追溯。
 
 ## 工具链与运行
 

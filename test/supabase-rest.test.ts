@@ -317,3 +317,16 @@ test('fetchExactOrLatestProcessRow rejects malformed Supabase REST payloads', as
     (error) => error instanceof CliError && error.code === 'SUPABASE_REST_RESPONSE_INVALID',
   );
 });
+
+test('a missing explicitly requested latest Process is reported as absent', async () => {
+  const observed: Parameters<typeof jsonFetch>[1] = [];
+  const result = await fetchExactOrLatestProcessRow({
+    runtime: makeRuntime('https://example.supabase.co/functions/v1'),
+    id: 'missing',
+    timeoutMs: 1000,
+    fetchImpl: jsonFetch([[]], observed),
+  });
+  assert.equal(result, null);
+  assert.equal(observed.length, 1);
+  assert.match(observed[0]!.url, /limit=1/);
+});

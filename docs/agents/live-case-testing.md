@@ -15,9 +15,9 @@ checkPaths:
   - test/live-oauth-harness.test.ts
   - package.json
   - test/toolchain-contract.test.mjs
-lastReviewedAt: 2026-09-10
-lastReviewedCommit: b5e209259d3bb06205b9af131b1c0edc3fba6da2
-lastReviewedNote: 'CLI #304 adds the private Production owner-draft LifecycleModel bundle-write qualification boundary.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
+lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
 related:
   - repo-validation.md
   - repo-architecture.md
@@ -30,7 +30,7 @@ This driver is maintainer tooling for an explicitly authorized account. The publ
 
 ## Preparation
 
-Run `pnpm exec playwright install chromium` in the CLI checkout. Install the published baseline `@tiangong-lca/cli@0.1.8` in a separate temporary consumer using pnpm and verify its package identity and registry lock integrity. Do not pass a source checkout as the installed-consumer proof.
+Run `pnpm exec playwright install chromium` in the CLI checkout. Install the exact candidate or explicitly selected published `@tiangong-lca/cli` version in a separate temporary consumer using pnpm, and verify its source/package identity and lock integrity. Do not pass a source checkout as the installed-consumer proof.
 
 Prepare a private local environment file containing exactly one nonempty `TIANGONG_LCA_USERNAME` and `TIANGONG_LCA_PASSWORD`. The file must be absolute, regular, not a symlink, and current-user-readable only on POSIX. The driver reads only those two values in memory; it does not source the file or inherit its other keys. The account owner must have explicitly authorized the case.
 

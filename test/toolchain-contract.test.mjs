@@ -1565,6 +1565,16 @@ function assertPackedFiles(fileMetadata) {
       /(?:^|\/)(?:package-lock\.json|pnpm-lock\.ya?ml)$/u.test(path),
   );
 
+  const retired = readJson(join(REPOSITORY_ROOT, 'test/fixtures/retired-cli-modules.json'));
+  const retiredFiles = packedFiles.filter((file) =>
+    retired.some((stem) => file.startsWith(`${stem}.`)),
+  );
+  assert.deepEqual(
+    retiredFiles,
+    [],
+    'Retired workflow implementations must not ship in the package',
+  );
+
   assert.ok(packedFiles.includes('bin/tiangong-lca.js'), 'the packed CLI bin is missing');
   assert.ok(packedFiles.includes('dist/src/main.js'), 'the packed runtime entry is missing');
   assert.ok(

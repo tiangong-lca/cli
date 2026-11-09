@@ -15,8 +15,8 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-09
-lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
-lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
+lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
+lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

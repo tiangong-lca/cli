@@ -7,7 +7,6 @@ import { executeCli, type CliDeps } from '../src/cli.js';
 import { buildDoctorReport, readRuntimeEnv } from '../src/lib/env.js';
 import { CliError } from '../src/lib/errors.js';
 import { requireSupabaseRestRuntime } from '../src/lib/supabase-client.js';
-import { hasSupabaseRestRuntime } from '../src/lib/supabase-json-ordered-write.js';
 import { loginWithSupabaseOAuth } from '../src/lib/supabase-session.js';
 
 const PROJECT = 'https://qgzvkongdjqiiamzbbts.supabase.co';
@@ -40,8 +39,6 @@ test('an empty installation resolves one complete official Production OAuth prof
   ]) {
     assert.equal(doctor.checks.find((check) => check.key === key)?.source, 'default');
   }
-  // A default profile is not an opt-in for workflows that are local unless configured.
-  assert.equal(hasSupabaseRestRuntime({}), false);
 });
 
 test('official endpoint aliases and blank example values share the bundled profile', () => {

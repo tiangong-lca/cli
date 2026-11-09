@@ -184,3 +184,10 @@ test('tidas sdk validation helpers normalize issue paths and results', () => {
   assert.equal(normalizeIssuePath([], '/'), '<root>');
   assert.equal(normalizeIssuePath(['a', 0, 'b'], '/'), 'a/0/b');
 });
+
+test('a missing deep validation API retains the actual fast failure', () => {
+  const failure = { success: false, issues: [{ message: 'real failure', path: ['content'] }] };
+  const result = validateEntityWithDeepFallback({}, ((_payload, options) =>
+    options?.deepValidation ? {} : { validate: () => failure }) as SdkValidationFactory);
+  assert.equal(result, failure);
+});

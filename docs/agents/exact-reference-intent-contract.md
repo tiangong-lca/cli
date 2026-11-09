@@ -14,15 +14,12 @@ whenToUpdate:
 checkPaths:
   - src/lib/dataset-exact-reference-intent.ts
   - src/lib/dataset-remote-verify.ts
-  - src/lib/dataset-save-draft-reference-intent.ts
-  - src/lib/dataset-save-draft-run.ts
   - src/lib/dataset-command.ts
   - src/cli.ts
   - test/dataset-exact-reference-intent.test.ts
-  - test/dataset-save-draft-exact-reference.test.ts
 lastReviewedAt: 2026-11-09
-lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
-lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
+lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
+lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
 related:
   - ../../AGENTS.md
   - ./repo-validation.md
@@ -126,27 +123,6 @@ Before publishing the report, the CLI rechecks current consumer content and inte
 
 Moving a control file changes relative path resolution. A host that stages reviewed inputs must preserve or explicitly derive those locators, verify the staged bytes through this command, and bind the resulting file facts. It must not relabel an old report as verification of rewritten inputs or alter consumed historical records.
 
-## Guarded Flow owner drafts
+## Current write boundary
 
-The retained internal `runDatasetSaveDraft` operation accepts `type: 'flow'`, `inputPath`, `executionContractPath`, `referenceIntentFile` and explicit `commit`. A selected intent must be nonempty and requires a Flow-only execution contract; it adds no fields to `dataset-save-draft-execution-contract.v1`. Every complete ordered input consumer is bound, including consumers without a selected occurrence. Operations without this selection keep their existing policy. The former generic `dataset save-draft` and `dataset verify-remote` argv routes are removed; preserving this internal protocol does not expose them or add an exception to typed public create/save. Historical execution records remain bound to their original protocol and version.
-
-The CLI evaluates every selected reference occurrence. Repeated table/UUID/version observations may share transport reads within one action's admission pass, but one selected path never exempts another undeclared path. Selected and visible-latest complete bodies, embedded identities, owner and state must match the reviewed facts; exact reads must return one row. The explicit visible-latest observation is distinct from default latest-published lookup. Roots, malformed or unused declarations, private foreign rows and unsupported states remain ineligible.
-
-Both preflight and immediate pre-dispatch verify the current authenticated actor/project and fresh reference bodies. Immediate pre-dispatch uses a new observation cache, rechecks the exact insert absence or owner-draft before image, renews the dispatch token with owner checks, and synchronously rechecks complete input and intent/review bytes. The transport awaits this gate, then the CLI durably appends the attempt before the one mutation request. A failed gate emits no request or attempt. Reference observations are not a database lock or an atomic transaction across requests; guarded writes and subsequent independent exact readback remain required.
-
-The summary adds `reference_intent`, the normalized `LoadedExactReferenceIntent` already documented above. Each admitted row has `reference_intent_admission`:
-
-| Field | Binding |
-| --- | --- |
-| `schema_version` | `dataset-save-draft-reference-admission.v1` |
-| `selection_sha256` | Canonical parsed-JSON hash of the complete normalized summary `reference_intent`, including all consumers, occurrences and captured file facts |
-| `intent_file` | Original selected intent's exact `path`, raw-byte `sha256`, and `bytes` |
-| `project_ref`, `actor_user_id` | Same project and owner as the execution contract and freshly authenticated identity |
-| `consumer` | This action's original `row_index`, `table`, `id`, `version`, complete `payload_sha256` |
-| `references` | All selected pins for that row, with original `row_index`, exact `path`, `selected` snapshot and `review: { file, latest }`; an unselected row has an empty array |
-
-The per-row admission is a content-bound record of a passed check, not a grant. Dry-run returns it with `prepared`/`would_sync`, zero consumed attempts and no ledger. Commit puts the same admission in the existing hash-chained `attempt_emitted` and `outcome` events and in the row report. Ledger lookup remains keyed by the existing owner scope and action identity (`action_id` plus `desired_sha256`); changing evidence never selects a fresh ledger. Stored admission shape, owner, complete action content and attempt/outcome equality are checked before recovery.
-
-A consumed action requires the same explicit normalized selection. Omitting or changing it, or trying to add evidence to a historical attempt without it, returns a consumed binding failure (`DATASET_SAVE_DRAFT_REFERENCE_RECOVERY_MISMATCH`): `unknown` for commit, `blocked` for dry-run, with the original admission retained and no new request. Restore the original files/selection to use the ordinary readback-only recovery. Malformed or unavailable selected files fail parsing; they cannot grant a new attempt. Matching recovery returns the original admission without re-evaluating or replacing historical observations. An unresolved attempt can resolve by independent exact owner/state/body readback; terminal UNKNOWN stays terminal and never replays. A previous success whose desired body no longer reads back exactly is reported unknown.
-
-Callers must snapshot and bind the complete rows, execution contract, intent and every selected review in their existing command artifact protocol, and pass the explicit selection to both owner preflight and commit. If locators change before the first attempt, derive and reverify the staged intent; do not relabel prior reports or move a consumed selection. Native owner finalization, grant/attempt state and runtime candidate adoption remain caller-owned contracts. A successful read-only `verify-remote` report alone cannot authorize or close a write.
+Reviewed reference observations grant no authority to create or save an object. Typed writes retain their own validation, actor/environment binding, content preconditions and unknown-outcome recovery. Retired generic Flow execution contracts and their admission journals belong to their matching historical CLI version and are not a current recovery or exception interface.

@@ -145,13 +145,11 @@ CLI 进一步明确了实际默认值与范围披露、有界摘要、分页继�
 
 ## 证据入口
 
-- [命令帮助和分派](../../src/cli.ts)：主帮助 `renderMainHelp`、各类型帮助、`executeCli`、`removedReviewCommand`。
+- [命令帮助和分派](../../src/cli.ts)：主帮助 `renderMainHelp`、各类型帮助、`executeCli`。
 - [Dataset 命令传输](../../src/lib/dataset-command.ts)：独立创建、草稿保存与删除。
-- [通用草稿保存](../../src/lib/dataset-save-draft-run.ts)：创建/更新选择和受约束执行。
-- [Flow 版本写入](../../src/lib/flow-publish-version.ts)：`insert_flow_version` 与 `update_flow_version` 调用的是 Dataset 创建/保存。
+- [类型化写入](../../src/adapters/dataset-write.ts)：创建与保存的独立意图、前置检查和原请求恢复。
 - [模型聚合](../../src/lib/lifecyclemodel-resulting-process.ts)、[模型 bundle 保存](../../src/lib/lifecyclemodel-bundle-save.ts)：本地内容计算与关联持久化边界。
 - [内容契约](../../src/lib/dataset-contract.ts)：八种类型的内容契约与上下文投影。
-- [来源解析](../../src/lib/dataset-author.ts)、[证据搜索](../../src/lib/dataset-evidence-search.ts)：证据准备与研究策略。
 - [Release 适配器](../../src/lib/lca-release.ts)：完整动作集合和文件完整性约束。
 - [架构契约](../agents/repo-architecture.md)、[仓库契约](../../AGENTS.md)：当前实现及治理边界。
 
@@ -201,7 +199,7 @@ Auth 和 doctor 使用统一结果；Auth 回执本体位于 `data.receipt`，`-
 | 通用 Dataset `contract/context-pack/curation-queue/author/patch/save-draft/validate/support-cache/verify-remote/bilingual/evidence-search/references` | 移除整组旧入口。 | 契约、修改、校验、翻译和引用发现分别使用 `dataset <type> contract/patch/validate/translations/list-references`；持久化显式选择 create 或 save。旧工作流产物不直接作为新命令输入。 |
 | 受保护维护、专用 Study、Release、runtime/PCR 和文件包工具 | 保留各自现行契约，按职责与核心原子接口区分。 | 不是 create/save 或 Review 的等价别名。不得通过命令清理放宽授权、丢弃历史恢复或改变公共库协议；所属领域的后续归属调整独立处理。 |
 
-保留内部算法、授权校验和历史恢复记录的读取能力，不代表保留旧 CLI 入口，也不代表把这些实现开放为公共库。旧版本记录按原始协议解释，不用新展示格式重写；需要旧入口恢复的操作必须使用与记录匹配的历史版本。公共库四个子路径保持原契约。
+当前适配器和公共协议使用的算法、授权校验与恢复设施继续保留；只服务于退役工作流的实现及专属测试、示例从源码和安装包移除。旧版本记录按原始协议由匹配的历史版本解释，不用新展示格式重写，也不作为当前公共深层接口。公共库四个子路径保持原契约。
 
 ## 新入口的组合与验收边界
 

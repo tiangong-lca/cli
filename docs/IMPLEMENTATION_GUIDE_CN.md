@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-11-09
-lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
-lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
+lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
+lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -34,7 +34,7 @@ related:
 
 # CLI 实现结构
 
-本文件说明当前候选源码如何实现原子业务接口。命令及真实服务限制见 [README](../README.md)，确定的目标设计见 [interfaces](interfaces/README.md)，实施差距见[能力对照](analysis/cli-interface-comparison.md)。0.1.x 生产工作流和旧命令说明保存在[历史参考](reference/legacy-command-reference.md)，不作为当前命令契约。
+本文件说明当前候选源码如何实现原子业务接口。命令及真实服务限制见 [README](../README.md)，确定的目标设计见 [interfaces](interfaces/README.md)，实施差距见[能力对照](analysis/cli-interface-comparison.md)。旧版本实现及交付过程从 Git 历史和原始记录追溯；当前安装包不包含已退役的生产工作流。
 
 ## 入口与职责
 
@@ -46,7 +46,7 @@ related:
 | 业务       | `src/application/`              | 身份、查询与内容变更规则、原子业务端口。         |
 | 适配       | `src/adapters/`                 | 既有认证、数据服务、校验器、写入意图与恢复。     |
 | 共享       | `src/shared/`                   | 小型结果、文件、模板设施。                       |
-| 已有实现   | `src/lib/`                      | 被复用的领域算法、授权和专用协议。               |
+| 已有实现   | `src/lib/`                      | 当前能力复用的领域算法、授权和专用协议。         |
 
 依赖从组合流向命令、业务与适配。业务层不导入 argv、文件或网络 API。Auth 服务、Release、admin、包工具、分类维护和受保护维护分模块承载，不回填到主入口。代码文件原则上不超过 1000 行；按职责拆分，不压缩代码凑行数。
 
@@ -72,7 +72,7 @@ Review 适配已有业务语义：一个起始对象、服务端默认关联、�
 
 旧 `search/flow/process/lifecyclemodel/qa/publish` 与通用 Dataset 兼容入口已删除，没有隐藏路由或自动转接。调用方按真实能力组合原子操作，Release 后独立采用新版本。受保护维护、Study、分类维护、Release、admin、runtime/PCR、文件包工具及四个公共库子路径保留自身协议。
 
-[已有安全约束](agents/existing-runtime-contract.md)、[精确引用](agents/exact-reference-intent-contract.md)、[Study](agents/study-cli-contract.md)、[runtime](agents/runtime-distribution-contract.md) 与 [PCR](agents/pcr-snapshot-contract.md) 各自维护协议细节。内部算法与恢复设施保留不代表旧 CLI 仍可执行，也不新增公共深层 API。
+[已有安全约束](agents/existing-runtime-contract.md)、[精确引用](agents/exact-reference-intent-contract.md)、[Study](agents/study-cli-contract.md)、[runtime](agents/runtime-distribution-contract.md) 与 [PCR](agents/pcr-snapshot-contract.md) 各自维护协议细节。保留当前适配器和专用协议实际依赖的算法与恢复设施。已退役工作流及其专属日志只能由匹配的历史版本解释，不新增公共深层 API。
 
 ## 环境选择
 

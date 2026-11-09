@@ -1,5 +1,4 @@
 import { CliError } from './errors.js';
-import { readRuntimeEnv } from './env.js';
 import type { FetchLike } from './http.js';
 import { postJson } from './http.js';
 import { readJsonInput, stringifyJson } from './io.js';
@@ -8,29 +7,12 @@ import { resolveSupabaseUserSession } from './supabase-session.js';
 
 type RemoteCommandSpec = {
   endpoint: string;
-  includeRegion: boolean;
   help: string;
 };
 
 const REMOTE_COMMANDS: Record<string, RemoteCommandSpec> = {
-  'search:flow': {
-    endpoint: 'flow_hybrid_search',
-    includeRegion: true,
-    help: 'tiangong-lca search flow --input ./request.json [--dry-run] [--json]',
-  },
-  'search:process': {
-    endpoint: 'process_hybrid_search',
-    includeRegion: true,
-    help: 'tiangong-lca search process --input ./request.json [--dry-run] [--json]',
-  },
-  'search:lifecyclemodel': {
-    endpoint: 'lifecyclemodel_hybrid_search',
-    includeRegion: true,
-    help: 'tiangong-lca search lifecyclemodel --input ./request.json [--dry-run] [--json]',
-  },
   'admin:embedding-run': {
     endpoint: 'embedding_ft',
-    includeRegion: false,
     help: 'tiangong-lca admin embedding-run --input ./jobs.json [--dry-run] [--json]',
   },
 };
@@ -49,19 +31,8 @@ function buildUrl(baseUrl: string, endpoint: string): string {
   return `${deriveSupabaseFunctionsBaseUrl(baseUrl)}/${endpoint}`;
 }
 
-function buildHeaders(
-  accessToken: string,
-  includeRegion: boolean,
-  region: string | null,
-): Record<string, string> {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${accessToken}`,
-    'Content-Type': 'application/json',
-  };
-  if (includeRegion && region) {
-    headers['x-region'] = region;
-  }
-  return headers;
+function buildHeaders(accessToken: string): Record<string, string> {
+  return { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
 }
 
 export async function executeRemoteCommand(options: RemoteCommandOptions): Promise<string> {
@@ -73,13 +44,12 @@ export async function executeRemoteCommand(options: RemoteCommandOptions): Promi
     });
   }
 
-  const runtimeEnv = readRuntimeEnv(options.env);
   const runtime = requireSupabaseRestRuntime(options.env);
   const body = readJsonInput(options.inputPath);
   const url = buildUrl(runtime.apiBaseUrl, spec.endpoint);
 
   if (options.dryRun) {
-    const dryRunHeaders = buildHeaders('****', spec.includeRegion, runtimeEnv.region);
+    const dryRunHeaders = buildHeaders('****');
     return stringifyJson(
       {
         dryRun: true,
@@ -103,7 +73,7 @@ export async function executeRemoteCommand(options: RemoteCommandOptions): Promi
     fetchImpl: options.fetchImpl,
     timeoutMs: options.timeoutMs,
   });
-  const headers = buildHeaders(session.accessToken, spec.includeRegion, runtimeEnv.region);
+  const headers = buildHeaders(session.accessToken);
   const response = await postJson({
     url,
     headers,

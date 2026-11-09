@@ -40,8 +40,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-09
-lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
-lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
+lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
+lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -79,13 +79,13 @@ The workspace AGENTS.md governs delivery, branch policy and integration. Resolve
 | `src/application/` | Atomic business operations and typed ports; no argv, filesystem or network transport. |
 | `src/adapters/` | Implement ports using existing auth, data access and validation helpers. |
 | `src/shared/` | Small reusable result, file and reply-template facilities; no domain workflow. |
-| `src/lib/` | Existing runtime and domain helpers retained during incremental migration. |
+| `src/lib/` | Runtime and domain helpers used by current adapters and specialized protocols. |
 | `assets/reply-templates/` | Markdown guidance included in installed packages. |
 | `test/` | Behavioral, adapter, architecture and installation tests. |
 | `docs/interfaces/` | Final target interface design, not progress logs. |
 | `docs/plans/`, `docs/analysis/` | Implementation state, decisions, gaps and migration notes. |
 
-Dependency direction: entry/composition -> commands -> application; adapters implement application ports and may reuse `src/lib/`. Shared result types may be used by application and commands. Application must not import commands, adapters, filesystem/network APIs or CLI presentation. Legacy modules must not acquire dependencies on new commands. Do not create empty domain directories or a plugin framework for unimplemented capabilities.
+Dependency direction: entry/composition -> commands -> application; adapters implement application ports and may reuse `src/lib/`. Shared result types may be used by application and commands. Application must not import commands, adapters, filesystem/network APIs or CLI presentation. Library helpers must not depend on command presentation. Do not create empty domain directories or a plugin framework for unimplemented capabilities.
 
 ## File size and cohesion
 
@@ -110,7 +110,7 @@ Follow [conventions](docs/interfaces/conventions.md) and [AI context](docs/inter
 
 A missing template never changes business facts or repeats an operation. Missing evidence is not success. A successful validation invocation can still report invalid content. A partial implementation must state unsupported checks in help and documentation, and refuse them at runtime.
 
-## Safeguards retained during migration
+## Runtime safeguards
 
 - `create` and `save` remain distinct intentions; conflicts and missing targets never trigger an upsert. Unknown mutations are readback-only without a proven idempotency contract.
 - Never broaden current-user RLS, actor/environment binding, exact references or protected maintenance authorization. CLI carries no service-role credential and performs no raw database mutation fallback.

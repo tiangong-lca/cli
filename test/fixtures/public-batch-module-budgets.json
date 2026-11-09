@@ -74,5 +74,5 @@
       ]
     }
   ],
-  "forbidden_upward_imports": ["src/batch.ts", "src/cli.ts", "src/lib/dataset-save-draft-run.ts"]
+  "forbidden_upward_imports": ["src/batch.ts", "src/cli.ts"]
 }

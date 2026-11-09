@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-09
-lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
-lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
+lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
+lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
 ---
 
 # TianGong LCA CLI
@@ -109,7 +109,7 @@ Review 本次适配已有业务语义：`submit` 只接受一个起始对象，`
 
 数据业务仅通过 `dataset <type> <action>` 和 `review <action>` 访问。原 `search/flow/process/lifecyclemodel/qa/publish` 及通用 Dataset 旧入口已移除，调用会返回 `UNKNOWN_COMMAND`，不会转接或执行。旧生产编排由调用方组合原子操作；下游升级在 Release 后独立进行，不作为移除入口的前置条件。
 
-`dataset model aggregate` 是 `build-resulting-process` 的正式别名，继续保留。专项维护、Study、Release、runtime/PCR、分类维护及文件包工具保留独立契约；公共库接口与内部安全设施继续保留。具体清单及替代方式见[迁移对照](docs/analysis/cli-interface-comparison.md#旧入口处置与保留边界)。
+`dataset model aggregate` 是 `build-resulting-process` 的正式别名，继续保留。专项维护、Study、Release、runtime/PCR、分类维护及文件包工具保留独立契约；公共库接口与当前能力共用的规则、安全设施继续保留。已退役工作流的实现、专属测试和示例不进入当前安装包。具体清单及替代方式见[迁移对照](docs/analysis/cli-interface-comparison.md#旧入口处置与保留边界)。
 
 ## 开发与文档
 
@@ -125,6 +125,5 @@ pnpm prepush:gate
 - [接口设计](docs/interfaces/README.md)：最终能力和行为。
 - [实施计划](docs/plans/cli-0.2.0-refactor-plan.md)：阶段范围与进度。
 - [能力对照](docs/analysis/cli-interface-comparison.md)：旧能力与目标入口。
-- [历史命令参考](docs/reference/legacy-command-reference.md)：0.1.x 历史行为，不是当前可执行入口。
 
 下游迁移在 CLI 正式 Release 后由调用方分别推进，其完成状态不作为 CLI 验收条件。

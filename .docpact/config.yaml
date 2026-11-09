@@ -1,8 +1,8 @@
 version: 1
 layout: repo
 lastReviewedAt: 2026-11-09
-lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
-lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
+lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
+lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
 
 catalog:
   repos:
@@ -35,8 +35,6 @@ ownership:
           - .docpact/config.yaml
           - docs/agents/**
           - docs/IMPLEMENTATION_GUIDE_CN.md
-          - docs/SKILLS_TO_CLI_MIGRATION_CHECKLIST_CN.md
-          - docs/TEMP_ISSUE_55_DIRECT_DEPS_TODO_CN.md
           - docs/release-runbook.md
           - docs/release-setup.md
           - .github/workflows/ai-doc-lint.yml
@@ -71,7 +69,6 @@ ownership:
           - src/lib/dataset-*.ts
           - src/lib/errors.ts
           - src/lib/flow-*.ts
-          - src/lib/identity-preflight.ts
           - src/lib/io.ts
           - src/lib/lifecyclemodel-*.ts
           - src/lib/lca-release.ts
@@ -80,7 +77,6 @@ ownership:
           - assets/study-renderer/**
           - src/lib/package-version.ts
           - src/lib/process-*.ts
-          - src/lib/publish.ts
           - src/lib/review-*.ts
           - src/lib/run.ts
           - src/lib/runtime-rulesets.ts
@@ -99,18 +95,14 @@ ownership:
           - src/lib/dotenv.ts
           - src/lib/env.ts
           - src/lib/http.ts
-          - src/lib/kb-search.ts
-          - src/lib/llm.ts
           - src/lib/oauth-loopback.ts
           - src/lib/oauth-pkce.ts
           - src/lib/remote.ts
           - src/lib/supabase-client.ts
           - src/lib/supabase-data-api-contract.ts
           - src/lib/supabase-data-api-replay.ts
-          - src/lib/supabase-json-ordered-write.ts
           - src/lib/supabase-rest.ts
           - src/lib/supabase-session.ts
-          - src/lib/unstructured.ts
           - src/lib/*-api-*.ts
           - src/lib/credential-safety.ts
       ownerRepo: cli
@@ -126,6 +118,7 @@ ownership:
           - tsconfig.build.json
           - .oxlintrc.json
           - test/**
+          - examples/**
           - scripts/**
           - src/lib/cli-repository-identity.ts
           - .github/dependabot.yml
@@ -156,8 +149,6 @@ coverage:
     - .docpact/config.yaml
     - docs/agents/**
     - docs/IMPLEMENTATION_GUIDE_CN.md
-    - docs/SKILLS_TO_CLI_MIGRATION_CHECKLIST_CN.md
-    - docs/TEMP_ISSUE_55_DIRECT_DEPS_TODO_CN.md
     - docs/release-runbook.md
     - docs/release-setup.md
     - .gitignore
@@ -176,6 +167,7 @@ coverage:
     - assets/study-contract/**
     - assets/study-renderer/**
     - test/**
+    - examples/**
     - scripts/**
     - .github/workflows/ai-doc-lint.yml
     - .github/dependabot.yml
@@ -232,18 +224,14 @@ routing:
         - src/lib/dotenv.ts
         - src/lib/env.ts
         - src/lib/http.ts
-        - src/lib/kb-search.ts
-        - src/lib/llm.ts
         - src/lib/oauth-loopback.ts
         - src/lib/oauth-pkce.ts
         - src/lib/remote.ts
         - src/lib/supabase-client.ts
         - src/lib/supabase-data-api-contract.ts
         - src/lib/supabase-data-api-replay.ts
-        - src/lib/supabase-json-ordered-write.ts
         - src/lib/supabase-rest.ts
         - src/lib/supabase-session.ts
-        - src/lib/unstructured.ts
         - src/lib/*-api-*.ts
         - src/lib/credential-safety.ts
     workflow-commands:
@@ -255,13 +243,11 @@ routing:
         - src/lib/dataset-*.ts
         - src/lib/errors.ts
         - src/lib/flow-*.ts
-        - src/lib/identity-preflight.ts
         - src/lib/io.ts
         - src/lib/lifecyclemodel-*.ts
         - src/lib/lca-release.ts
         - src/lib/package-version.ts
         - src/lib/process-*.ts
-        - src/lib/publish.ts
         - src/lib/review-*.ts
         - src/lib/run.ts
         - src/lib/runtime-rulesets.ts
@@ -282,8 +268,6 @@ routing:
         - docs/agents/runtime-distribution-contract.md
         - src/lib/batch/**
         - src/lib/state-lock.ts
-        - src/lib/dataset-save-draft-run.ts
-        - test/dataset-save-draft-execution-contract.test.ts
         - test/public-auth-identity-receipt.test.ts
         - test/public-batch*.test.ts
         - test/public-command-spec.test.ts
@@ -309,7 +293,6 @@ routing:
         - src/lib/tidas-sdk-package-validator.ts
         - src/lib/validation.ts
         - test/fixtures/tidas-sdk/**
-        - docs/TEMP_ISSUE_55_DIRECT_DEPS_TODO_CN.md
     validation-release:
       paths:
         - .gitignore
@@ -329,7 +312,6 @@ routing:
         - docs/release-setup.md
     skills-handoff:
       paths:
-        - docs/SKILLS_TO_CLI_MIGRATION_CHECKLIST_CN.md
         - README.md
     proof:
       paths:
@@ -374,8 +356,6 @@ docInventory:
     - docs/agents/repo-validation.md
     - docs/agents/repo-architecture.md
     - docs/IMPLEMENTATION_GUIDE_CN.md
-    - docs/SKILLS_TO_CLI_MIGRATION_CHECKLIST_CN.md
-    - docs/TEMP_ISSUE_55_DIRECT_DEPS_TODO_CN.md
     - docs/release-runbook.md
     - docs/release-setup.md
 
@@ -478,14 +458,14 @@ rules:
     scope: repo
     repo: cli
     triggers:
+      - path: docs/*.md
+        kind: maintainer-doc
+      - path: docs/reference/**
+        kind: reference-doc
       - path: DEV_CN.md
         kind: maintainer-doc
       - path: docs/IMPLEMENTATION_GUIDE_CN.md
         kind: implementation-guide
-      - path: docs/SKILLS_TO_CLI_MIGRATION_CHECKLIST_CN.md
-        kind: historical-audit
-      - path: docs/TEMP_ISSUE_55_DIRECT_DEPS_TODO_CN.md
-        kind: historical-todo
     requiredDocs:
       - path: AGENTS.md
         mode: review_or_update
@@ -495,11 +475,7 @@ rules:
         mode: review_or_update
       - path: docs/IMPLEMENTATION_GUIDE_CN.md
         mode: review_or_update
-      - path: docs/SKILLS_TO_CLI_MIGRATION_CHECKLIST_CN.md
-        mode: must_exist
-      - path: docs/TEMP_ISSUE_55_DIRECT_DEPS_TODO_CN.md
-        mode: must_exist
-    reason: Active maintainer guides must stay aligned, while retained non-auth historical docs remain discoverable without being rewritten for unrelated current-toolchain changes.
+    reason: Active maintainer guides describe current command, runtime and development contracts.
   - id: cli-command-surface-contract
     scope: repo
     repo: cli
@@ -530,6 +506,10 @@ rules:
     scope: repo
     repo: cli
     triggers:
+      - path: src/lib/**
+        kind: shared-runtime
+      - path: examples/**
+        kind: command-example
       - path: src/application/**
         kind: command-logic
       - path: src/adapters/**
@@ -552,8 +532,6 @@ rules:
         kind: shared-runtime
       - path: src/lib/flow-*.ts
         kind: command-logic
-      - path: src/lib/identity-preflight.ts
-        kind: command-logic
       - path: src/lib/io.ts
         kind: shared-runtime
       - path: src/lib/lifecyclemodel-*.ts
@@ -563,8 +541,6 @@ rules:
       - path: src/lib/package-version.ts
         kind: package-runtime
       - path: src/lib/process-*.ts
-        kind: command-logic
-      - path: src/lib/publish.ts
         kind: command-logic
       - path: src/lib/review-*.ts
         kind: command-logic
@@ -620,10 +596,6 @@ rules:
         kind: public-library-runtime
       - path: src/lib/state-lock.ts
         kind: public-library-lock-runtime
-      - path: src/lib/dataset-save-draft-run.ts
-        kind: public-library-dogfood
-      - path: test/dataset-save-draft-execution-contract.test.ts
-        kind: public-library-dogfood-proof
       - path: test/public-auth-identity-receipt.test.ts
         kind: public-library-proof
       - path: test/public-batch*.test.ts
@@ -686,10 +658,6 @@ rules:
         kind: env-contract
       - path: src/lib/http.ts
         kind: transport
-      - path: src/lib/kb-search.ts
-        kind: remote-adapter
-      - path: src/lib/llm.ts
-        kind: remote-adapter
       - path: src/lib/oauth-loopback.ts
         kind: oauth-loopback-runtime
       - path: src/lib/oauth-pkce.ts
@@ -702,14 +670,10 @@ rules:
         kind: remote-adapter
       - path: src/lib/supabase-data-api-replay.ts
         kind: remote-adapter
-      - path: src/lib/supabase-json-ordered-write.ts
-        kind: remote-adapter
       - path: src/lib/supabase-rest.ts
         kind: remote-adapter
       - path: src/lib/supabase-session.ts
         kind: session-runtime
-      - path: src/lib/unstructured.ts
-        kind: remote-adapter
       - path: src/lib/*-api-*.ts
         kind: remote-adapter
       - path: src/lib/credential-safety.ts
@@ -837,13 +801,7 @@ rules:
         kind: command-logic
       - path: src/lib/dataset-remote-verify.ts
         kind: command-logic
-      - path: src/lib/dataset-save-draft-reference-intent.ts
-        kind: command-logic
-      - path: src/lib/dataset-save-draft-run.ts
-        kind: command-logic
       - path: test/dataset-exact-reference-intent.test.ts
-        kind: validation
-      - path: test/dataset-save-draft-exact-reference.test.ts
         kind: validation
     requiredDocs:
       - path: docs/agents/exact-reference-intent-contract.md
