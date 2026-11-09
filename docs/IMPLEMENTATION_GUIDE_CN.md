@@ -886,7 +886,7 @@ outputs/evidence-search-declaration.json
 
 `dataset verify-remote --reference-intent-file` 接受显式、绑定消费者/项目/当前账户/内容/评审文件的精确引用意图。它只对实际匹配的 reference occurrence 应用例外；root、未声明引用、缺失/不可见版本及变化后的 owner/state/payload/latest 证据仍阻断。现有身份凭据和 RLS GET 传输归 CLI 所有，Foundry 只负责选择、快照、传递与 handoff/readback 绑定。完整字段、哈希域及失败语义见 [精确引用意图契约](agents/exact-reference-intent-contract.md)。
 
-原生 resulting Process 的 `generatedFromLifecycleModel` 输出显式 Model 类型，verifier 同时兼容该完整 Process 字段路径的历史无类型对象。Model 前序仅在完整 `lifeCycleModelDataSet/administrativeInformation/publicationAndOwnership/common:referenceToPrecedingDataSetVersion` 字段或其直接数组项，将 schema 合法的 `other external file` 与精确一致的 `../lifecyclemodels/<UUID>_<version>.xml` 识别为 Model；不访问该 URI。旧版本仍遵循上述精确引用意图，已发布替代关系、发布闭包及科学验收不由类型识别代替。
+原生 resulting Process 的 `generatedFromLifecycleModel` 输出显式 Model 类型，verifier 同时兼容该完整 Process 字段路径的历史无类型对象。新增推断绑定当前已选中的数据集根：Model 前序仅在完整 `lifeCycleModelDataSet/administrativeInformation/publicationAndOwnership/common:referenceToPrecedingDataSetVersion` 字段或其直接数组项，将 schema 合法的 `@type: other external file` 与精确一致的 `../lifecyclemodels/<UUID>_<version>.xml` 识别为 Model；不访问该 URI，既有显式数据集类型继续走原路由。旧版本仍遵循上述精确引用意图，已发布替代关系、发布闭包及科学验收不由类型识别代替。
 
 `qa process` 现在固定的是“本地 process QA 契约层”。
 

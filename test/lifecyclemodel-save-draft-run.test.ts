@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {
+  collectRemoteReferences,
   runDatasetRemoteVerify,
   type RemoteDatasetLookupRequest,
 } from '../src/lib/dataset-remote-verify.js';
@@ -216,6 +217,25 @@ test('SDK-valid Model predecessors resolve by exact version in read-only candida
       );
     });
   }
+});
+
+test('SDK-valid explicitly typed predecessors retain their existing table routing', () => {
+  const id = '123e4567-e89b-12d3-a456-426614174000';
+  const payload = makeSchemaValidLifecyclemodel({
+    'common:referenceToPrecedingDataSetVersion': {
+      '@type': 'process data set',
+      '@refObjectId': id,
+      '@version': '01.00.000',
+      '@uri': `../processes/${id}_01.00.000.xml`,
+      'common:shortDescription': makeMultilangText('Explicitly typed predecessor'),
+    },
+  });
+  const schema = validateLifecyclemodelPayload(payload);
+  assert.equal(schema.ok, true, JSON.stringify(schema.issues));
+  const predecessor = collectRemoteReferences([payload]).find((reference) =>
+    reference.path.endsWith('/common:referenceToPrecedingDataSetVersion'),
+  );
+  assert.equal(predecessor?.table, 'processes');
 });
 
 const VALIDATION_OK = () => ({

@@ -359,36 +359,41 @@ function tableFromPath(pathExpression: string): RemoteDatasetTable | null {
 
 function tableFromReference(
   value: JsonObject,
-  type: string | null,
-  pathExpression: string,
+  reference: RemoteDatasetReference,
+  rootTable: RemoteDatasetTable | null,
   arrayItem: boolean,
 ): RemoteDatasetTable | null {
-  const typedTable = tableFromType(type);
   if (
-    pathExpression ===
-    '/processDataSet/processInformation/dataSetInformation/generatedFromLifecycleModel'
+    rootTable === 'processes' &&
+    reference.path ===
+      '/processDataSet/processInformation/dataSetInformation/generatedFromLifecycleModel'
   ) {
     // The native producer historically omitted type on this exact extension.
     // Publish consumes id/version here; generic aliases must not redirect verification.
-    return (type === null || typedTable === 'lifecyclemodels') &&
-      firstNonEmpty(value['@refObjectId'], value.refObjectId, value.id) ===
-        firstNonEmpty(value.id) &&
-      firstNonEmpty(value['@version'], value.version) === firstNonEmpty(value.version)
+    return [value.type, value['@type']].every(
+      (type) =>
+        type === undefined ||
+        (typeof type === 'string' && tableFromType(type) === 'lifecyclemodels'),
+    ) &&
+      reference.id === firstNonEmpty(value.id) &&
+      reference.version === firstNonEmpty(value.version)
       ? 'lifecyclemodels'
       : null;
   }
   const predecessor =
     '/lifeCycleModelDataSet/administrativeInformation/publicationAndOwnership/common:referenceToPrecedingDataSetVersion';
   if (
-    pathExpression === predecessor ||
-    (arrayItem && pathExpression.slice(0, pathExpression.lastIndexOf('/')) === predecessor)
+    reference.table === null &&
+    rootTable === 'lifecyclemodels' &&
+    (reference.path === predecessor ||
+      (arrayItem && reference.path.slice(0, reference.path.lastIndexOf('/')) === predecessor))
   ) {
     // TIDAS GlobalReferenceType has no Model label. Recognize only the exact
     // local Model locator in this context; the URI is never fetched or trusted
     // as an alternative identity, version or reference-policy exception.
     const id = value['@refObjectId'];
     const version = value['@version'];
-    return normalizeTableToken(type) === 'other external file' &&
+    return value['@type'] === 'other external file' &&
       typeof id === 'string' &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(id) &&
       typeof version === 'string' &&
@@ -397,7 +402,7 @@ function tableFromReference(
       ? 'lifecyclemodels'
       : null;
   }
-  return typedTable ?? tableFromPath(pathExpression);
+  return reference.table;
 }
 
 function shortDescription(value: unknown): string | null {
@@ -484,6 +489,7 @@ function referenceFromRecord(
   rowIndex: number,
   value: JsonObject,
   pathExpression: string,
+  rootTable: RemoteDatasetTable | null,
   arrayItem: boolean,
 ): RemoteDatasetReference | null {
   const id = firstNonEmpty(value['@refObjectId'], value.refObjectId, value.id);
@@ -491,17 +497,18 @@ function referenceFromRecord(
     return null;
   }
   const type = firstNonEmpty(value['@type'], value.type);
-  const table = tableFromReference(value, type, pathExpression, arrayItem);
-  return {
+  const reference: RemoteDatasetReference = {
     row_index: rowIndex,
     role: 'reference',
-    table,
+    table: tableFromType(type) ?? tableFromPath(pathExpression),
     type,
     id,
     version: firstNonEmpty(value['@version'], value.version),
     path: pathExpression,
     short_description: shortDescription(value['common:shortDescription']),
   };
+  reference.table = tableFromReference(value, reference, rootTable, arrayItem);
+  return reference;
 }
 
 function flowReferenceFromRecord(
@@ -529,6 +536,7 @@ function collectReferencesFromValue(
   value: unknown,
   pathExpression: string,
   references: RemoteDatasetReference[],
+  rootTable: RemoteDatasetTable | null,
   arrayItem = false,
 ): void {
   if (isFoundryTracePath(pathExpression)) {
@@ -542,6 +550,7 @@ function collectReferencesFromValue(
         entry,
         pointerPath(pathExpression, index),
         references,
+        rootTable,
         true,
       ),
     );
@@ -552,7 +561,7 @@ function collectReferencesFromValue(
     return;
   }
 
-  const ref = referenceFromRecord(rowIndex, value, pathExpression, arrayItem);
+  const ref = referenceFromRecord(rowIndex, value, pathExpression, rootTable, arrayItem);
   if (ref) {
     references.push(ref);
   }
@@ -561,7 +570,13 @@ function collectReferencesFromValue(
     references.push(flowRef);
   }
   for (const [key, nested] of Object.entries(value)) {
-    collectReferencesFromValue(rowIndex, nested, pointerPath(pathExpression, key), references);
+    collectReferencesFromValue(
+      rowIndex,
+      nested,
+      pointerPath(pathExpression, key),
+      references,
+      rootTable,
+    );
   }
 }
 
@@ -573,7 +588,7 @@ export function collectRemoteReferences(rows: JsonObject[]): RemoteDatasetRefere
     if (root) {
       references.push({ ...root, row_index: index });
     }
-    collectReferencesFromValue(index, payload, '', references);
+    collectReferencesFromValue(index, payload, '', references, root?.table ?? null);
   });
   return references;
 }

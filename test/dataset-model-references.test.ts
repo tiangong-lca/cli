@@ -156,6 +156,84 @@ test('native provenance cannot be redirected by conflicting generic reference al
   assert.equal(referenceAt(row, provenancePath)?.table, 'lifecyclemodels');
 });
 
+test('context inference requires the canonical predecessor type', () => {
+  for (const changed of [
+    { '@type': undefined, type: 'other external file' },
+    { '@type': ' OTHER EXTERNAL FILE ' },
+  ]) {
+    const row = predecessorRow();
+    Object.assign(
+      row.lifeCycleModelDataSet.administrativeInformation.publicationAndOwnership[
+        'common:referenceToPrecedingDataSetVersion'
+      ],
+      changed,
+    );
+    assert.equal(referenceAt(row, predecessorPath)?.table, null);
+  }
+});
+
+test('context inference requires unambiguous native provenance types', () => {
+  for (const changed of [
+    { type: 'process data set', '@type': 'life cycle model data set' },
+    { type: 42 },
+    { type: null },
+    { type: '' },
+    { '@type': 42 },
+    { '@type': null },
+    { '@type': '' },
+  ]) {
+    const row = provenanceRow();
+    Object.assign(
+      row.processDataSet.processInformation.dataSetInformation.generatedFromLifecycleModel,
+      changed,
+    );
+    assert.equal(referenceAt(row, provenancePath)?.table, null, JSON.stringify(changed));
+  }
+});
+
+test('context inference preserves ordinary explicit reference type routes', () => {
+  for (const [type, table] of [
+    ['process data set', 'processes'],
+    ['life cycle model data set', 'lifecyclemodels'],
+  ] as const) {
+    const row = predecessorRow();
+    Object.assign(
+      row.lifeCycleModelDataSet.administrativeInformation.publicationAndOwnership[
+        'common:referenceToPrecedingDataSetVersion'
+      ],
+      {
+        '@type': type,
+        '@uri': `../${table}/${modelId}_${version}.xml`,
+      },
+    );
+    assert.equal(referenceAt(row, predecessorPath)?.table, table);
+  }
+});
+
+test('context inference is bound to the selected root', async (t) => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'cli-model-reference-root-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const row = { ...provenanceRow(), ...predecessorRow() };
+  assert.equal(referenceAt(row, predecessorPath)?.table, null);
+  assert.equal(referenceAt(row, provenancePath)?.table, 'lifecyclemodels');
+  const report = await runDatasetRemoteVerify({
+    inputPath: path.join(root, 'synthetic.json'),
+    rawInput: [row],
+    outDir: root,
+    rootPolicy: 'candidate',
+    lookupDatasetImpl: async (request) => ({
+      exact: { id: request.id, version: request.version },
+      latest: { id: request.id, version: request.version },
+      exact_source_url: null,
+      latest_source_url: null,
+    }),
+  });
+  assert.deepEqual(
+    report.blockers.map((blocker) => ({ code: blocker.code, path: blocker.path })),
+    [{ code: 'unsupported_type', path: predecessorPath }],
+  );
+});
+
 test('Model predecessor inference rejects external, mismatched and malformed locators', () => {
   const original = predecessorRow();
   const originalRef =
@@ -163,8 +241,6 @@ test('Model predecessor inference rejects external, mismatched and malformed loc
       'common:referenceToPrecedingDataSetVersion'
     ];
   const invalid: JsonObject[] = [
-    { '@type': 'process data set' },
-    { '@type': 'life cycle model data set' },
     { '@type': undefined },
     { '@refObjectId': undefined, id: modelId },
     { '@refObjectId': 'not-a-uuid', '@uri': `../lifecyclemodels/not-a-uuid_${version}.xml` },
