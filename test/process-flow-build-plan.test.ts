@@ -12,6 +12,7 @@ import {
   __testInternals,
 } from '../src/lib/process-flow-build-plan.js';
 import type { SafeParseSchema } from '../src/lib/tidas-sdk-validation.js';
+import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 
 const now = new Date('2026-05-22T00:00:00.000Z');
 const evidenceSourceId = '66666666-6666-6666-6666-666666666666';
@@ -199,6 +200,40 @@ function classificationItemsAt(
   assert.ok(Array.isArray(current), `expected ${pathSegments.join('.')} to be an array`);
   return current as Array<Record<string, unknown>>;
 }
+
+test('Flow BuildPlan rejects invalid planned and embedded reference factors before materializing', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-flow-reference-plan-'));
+  try {
+    const cases = [
+      flowPlan({ flow_property_plan: { mean_value: null } }),
+      flowPlan({
+        flowPropertyPlan: { ...flowPlan().flowPropertyPlan, meanValue: '1.00000000000000000001' },
+      }),
+      flowPlan({ payload: { flowDataSet: flowReferenceFixture('0.45') } }),
+    ];
+    for (const rawInput of cases) {
+      const options = { inputPath: 'flow-plan.json', rawInput, outDir: dir, now };
+      for (const run of [runFlowBuildPlanValidate, runFlowBuildPlanMaterialize]) {
+        const result = await run(options);
+        assert.equal(result.status, 'blocked');
+        assert.ok(result.blockers.some((issue) => issue.code === 'reference_property_not_one'));
+        assert.equal(existsSync(result.files.materialized_artifact ?? ''), false);
+      }
+    }
+    const normalized = await runFlowBuildPlanMaterialize({
+      inputPath: 'flow-plan.json',
+      rawInput: flowPlan({
+        flowPropertyPlan: { ...flowPlan().flowPropertyPlan, meanValue: '0.010e2' },
+      }),
+      outDir: dir,
+      now,
+    });
+    assert.equal(normalized.status, 'passed');
+    assert.equal(existsSync(normalized.files.materialized_artifact ?? ''), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('process build-plan validate passes and writes a gate report', async () => {
   const outDir = mkdtempSync(path.join(os.tmpdir(), 'process-build-plan-'));
@@ -1272,7 +1307,7 @@ test('build-plan internals cover evidence path normalization and SDK schema fall
         },
       },
       exchange_plan: {
-        exchanges: [null, { mean_amount: '0.75' }],
+        exchanges: [null, { mean_amount: '0.75' }, { mean_amount: 'invalid amount' }],
       },
       modelling_and_validation: {
         type_of_dataset: 'LCI result',
@@ -1317,6 +1352,7 @@ test('build-plan internals cover evidence path normalization and SDK schema fall
     .exchange as Array<Record<string, unknown>>;
   assert.equal(fallbackExchanges[1]?.['@dataSetInternalID'], '2');
   assert.equal(fallbackExchanges[1]?.meanAmount, '0.75');
+  assert.equal(fallbackExchanges[2]?.meanAmount, 'invalid amount');
   const sparseExchangeRef = fallbackExchanges[1]?.referenceToFlowDataSet as Record<string, unknown>;
   assert.equal(sparseExchangeRef['@type'], 'flow data set');
   assert.match(String(sparseExchangeRef['@refObjectId']), /^[0-9a-f-]{36}$/u);

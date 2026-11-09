@@ -1,3 +1,4 @@
+import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -47,7 +48,9 @@ function makeFlowRow(options: {
 }): JsonRecord {
   const payload = {
     flowDataSet: {
+      ...flowReferenceFixture(),
       flowInformation: {
+        ...flowReferenceFixture().flowInformation,
         dataSetInformation: {
           'common:UUID': options.id,
         },

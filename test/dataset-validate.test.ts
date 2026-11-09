@@ -1,3 +1,4 @@
+import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -96,6 +97,53 @@ const schemas = {
   },
 } satisfies RunDatasetValidateOptions['schemas'];
 
+test('Flow content validation uses the exact factor of the property selected by internal ID', async () => {
+  const payload = (referenceFactor: string, referenceId = '7') => ({
+    flowDataSet: {
+      flowInformation: {
+        quantitativeReference: { referenceToReferenceFlowProperty: referenceId },
+      },
+      flowProperties: {
+        flowProperty: [
+          { '@dataSetInternalID': '0', meanValue: '2.5' },
+          { '@dataSetInternalID': '7', meanValue: referenceFactor },
+        ],
+      },
+    },
+  });
+  const report = await runDatasetValidate({
+    inputPath: 'flow-reference-factors.json',
+    rawInput: [
+      payload('1.0'),
+      payload('0.45'),
+      payload('0'),
+      payload('1.00000000000000000001'),
+      payload('1', '99'),
+    ],
+    type: 'flow',
+    schemas,
+  });
+
+  assert.deepEqual(
+    report.rows.map((row) => ({
+      schema: row.validation_layers?.schema.status,
+      content: row.validation_layers?.content.status,
+      codes: row.issues.map((issue) => issue.code),
+    })),
+    [
+      { schema: 'passed', content: 'passed', codes: [] },
+      { schema: 'passed', content: 'failed', codes: ['reference_property_not_one'] },
+      { schema: 'passed', content: 'failed', codes: ['flow_property_mean_value_not_positive'] },
+      { schema: 'passed', content: 'failed', codes: ['reference_property_not_one'] },
+      { schema: 'passed', content: 'failed', codes: ['methodology_quant_ref_missing_target'] },
+    ],
+  );
+  assert.equal(
+    report.rows[1]?.issues[0]?.path,
+    'flowDataSet.flowProperties.flowProperty.1.meanValue',
+  );
+});
+
 test('runDatasetValidate validates local rows and writes split artifacts', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dataset-validate-'));
   const inputPath = path.join(dir, 'rows.jsonl');
@@ -114,7 +162,7 @@ test('runDatasetValidate validates local rows and writes split artifacts', async
     {
       id: 'flow-ok',
       version: '01.01.000',
-      json_ordered: { flowDataSet: {} },
+      json_ordered: { flowDataSet: flowReferenceFixture() },
     },
   ]);
 
@@ -296,7 +344,9 @@ test('runDatasetValidate blocks import traces and source-gap sentinels for non-p
         id: 'flow-import-gap',
         json_ordered: {
           flowDataSet: {
+            ...flowReferenceFixture(),
             flowInformation: {
+              ...flowReferenceFixture().flowInformation,
               dataSetInformation: {
                 name: {
                   baseName: { '@xml:lang': 'en', '#text': 'carbon dioxide' },

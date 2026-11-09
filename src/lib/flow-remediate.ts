@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { writeJsonArtifact, writeJsonLinesArtifact, writeTextArtifact } from './artifacts.js';
 import { CliError } from './errors.js';
+import { collectFlowReferencePropertyIssues } from './flow-reference-properties.js';
 import {
   coerceText,
   deepGet,
@@ -42,7 +43,7 @@ const GENERIC_MASS_HINTS = new Set([
 ]);
 
 type FlowValidationIssue = {
-  validator: 'tidas_sdk';
+  validator: 'tidas_sdk' | 'flow_reference_properties';
   path: string;
   message: string;
   code: string;
@@ -449,28 +450,6 @@ function infer_flow_property_descriptor_from_hint(value: unknown): FlowPropertyD
   return null;
 }
 
-function build_flow_property_item(
-  descriptor: FlowPropertyDescriptor,
-  internalId: string,
-  meanValue: string,
-): JsonRecord {
-  return {
-    '@dataSetInternalID': internalId,
-    meanValue,
-    referenceToFlowPropertyDataSet: {
-      '@type': 'flow property data set',
-      '@refObjectId': descriptor.uuid,
-      '@uri': build_local_dataset_uri(
-        'flow property data set',
-        descriptor.uuid,
-        descriptor.version,
-      ),
-      '@version': descriptor.version,
-      'common:shortDescription': [{ '@xml:lang': 'en', '#text': descriptor.name }],
-    },
-  };
-}
-
 function normalize_flow_properties(
   dataset: JsonRecord,
   fixes: string[],
@@ -483,7 +462,6 @@ function normalize_flow_properties(
   const unresolved: FlowValidationIssue[] = [];
   let repairedUnknownUuid = false;
   let filledMissingUuid = false;
-  let usedDefaultMassFallback = false;
 
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index];
@@ -501,8 +479,6 @@ function normalize_flow_properties(
       ? item.referenceToFlowPropertyDataSet
       : null;
     const hint = reference?.['common:shortDescription'] ?? reference;
-    const internalId = coerceText(item['@dataSetInternalID']) || String(index);
-    const meanValue = coerceText(item.meanValue) || '1.0';
     const refUuid = coerceText(reference?.['@refObjectId']).toLowerCase();
     const refVersion =
       coerceText(reference?.['@version']) || version_from_uri(coerceText(reference?.['@uri']));
@@ -541,31 +517,34 @@ function normalize_flow_properties(
       continue;
     }
 
-    normalizedItems.push(build_flow_property_item(descriptor, internalId, meanValue));
+    const uri = coerceText(reference?.['@uri']);
+    normalizedItems.push({
+      ...item,
+      referenceToFlowPropertyDataSet: {
+        ...reference,
+        '@type': 'flow property data set',
+        '@refObjectId': descriptor.uuid,
+        '@uri':
+          uri && refUuid === descriptor.uuid
+            ? uri
+            : build_local_dataset_uri(
+                'flow property data set',
+                descriptor.uuid,
+                descriptor.version,
+              ),
+        '@version': descriptor.version,
+        'common:shortDescription': reference?.['common:shortDescription'] ?? [
+          { '@xml:lang': 'en', '#text': descriptor.name },
+        ],
+      },
+    });
   }
 
   if (!normalizedItems.length) {
-    if (!items.length) {
-      normalizedItems.push(
-        build_flow_property_item(
-          {
-            uuid: DEFAULT_MASS_FLOW_PROPERTY_UUID,
-            name: DEFAULT_MASS_FLOW_PROPERTY_NAME,
-            version: DEFAULT_MASS_FLOW_PROPERTY_VERSION,
-          },
-          '0',
-          '1.0',
-        ),
-      );
-      usedDefaultMassFallback = true;
-    } else {
-      delete flowPropertiesBlock.flowProperty;
-      return { items: [], unresolved };
-    }
+    return { items: [], unresolved };
   }
 
-  flowPropertiesBlock.flowProperty =
-    normalizedItems.length === 1 ? normalizedItems[0] : normalizedItems;
+  flowPropertiesBlock.flowProperty = Array.isArray(rawItems) ? normalizedItems : normalizedItems[0];
   fixes.push('normalize_flow_properties');
   if (repairedUnknownUuid) {
     fixes.push('repair_unknown_flow_property_uuid_from_short_description');
@@ -573,48 +552,7 @@ function normalize_flow_properties(
   if (filledMissingUuid) {
     fixes.push('fill_missing_flow_property_uuid_from_short_description');
   }
-  if (usedDefaultMassFallback) {
-    fixes.push('set_default_mass_flow_property');
-  }
   return { items: normalizedItems, unresolved };
-}
-
-function normalize_quantitative_reference(
-  dataset: JsonRecord,
-  normalizedFlowProperties: JsonRecord[],
-  fixes: string[],
-  unresolved: FlowValidationIssue[],
-): void {
-  const flowInformation = isRecord(dataset.flowInformation) ? dataset.flowInformation : {};
-  dataset.flowInformation = flowInformation;
-  const quantitativeReference = isRecord(flowInformation.quantitativeReference)
-    ? flowInformation.quantitativeReference
-    : {};
-  flowInformation.quantitativeReference = quantitativeReference;
-
-  if (!normalizedFlowProperties.length) {
-    unresolved.push({
-      validator: 'tidas_sdk',
-      path: 'flowDataSet.flowInformation.quantitativeReference.referenceToReferenceFlowProperty',
-      message:
-        'Cannot infer referenceToReferenceFlowProperty without any valid flowProperty entries',
-      code: 'missing_flow_properties',
-    });
-    return;
-  }
-
-  const allowedIds = new Set(
-    normalizedFlowProperties
-      .map((item) => coerceText(item['@dataSetInternalID']))
-      .filter((value) => value.length > 0),
-  );
-  const current = coerceText(quantitativeReference.referenceToReferenceFlowProperty);
-  if (!allowedIds.has(current)) {
-    quantitativeReference.referenceToReferenceFlowProperty = coerceText(
-      normalizedFlowProperties[0]?.['@dataSetInternalID'],
-    );
-    fixes.push('set_reference_to_reference_flow_property');
-  }
 }
 
 function normalize_technology_multilang_fields(dataset: JsonRecord, fixes: string[]): void {
@@ -831,9 +769,15 @@ function remediate_row(row: JsonRecord, deps: FlowRemediationDeps): FlowRemediat
     fixes.push('set_compliance_block');
   }
 
+  // Diagnose the original relation before any reference metadata repair can change its shape.
+  residualUnresolved.push(
+    ...collectFlowReferencePropertyIssues(payload).map((issue): FlowValidationIssue => ({
+      ...issue,
+      validator: 'flow_reference_properties',
+    })),
+  );
   const flowProperties = normalize_flow_properties(flowDataSet, fixes);
   residualUnresolved.push(...flowProperties.unresolved);
-  normalize_quantitative_reference(flowDataSet, flowProperties.items, fixes, residualUnresolved);
   normalize_technology_multilang_fields(flowDataSet, fixes);
   normalize_technical_specification(flowDataSet, fixes);
 
@@ -886,7 +830,7 @@ function remediate_row(row: JsonRecord, deps: FlowRemediationDeps): FlowRemediat
     fixes.push('remove_empty_reference_to_preceding_dataset_version');
   }
 
-  const validation = validate_flow_payload(payload, deps);
+  const validation = validate_flow_payload(structuredClone(payload), deps);
   const finalReasons =
     validation.success === true
       ? residualUnresolved
@@ -946,7 +890,7 @@ function build_prompt(manualRows: JsonRecord[], manualFile: string, promptFile: 
 2. 保持相同 UUID，不要改 id。
 3. state_code=0 的 flow 保持当前 common:dataSetVersion 不变。
 4. state_code=100 的 flow 已经完成 deterministic version bump，并已补 common:referenceToPrecedingDataSetVersion；除非绝对必要，不要再次 bump version。
-5. 优先补齐合法的 flowProperties.flowProperty 和 flowInformation.quantitativeReference.referenceToReferenceFlowProperty，让数据先通过本地 TIDAS SDK 校验。
+5. 依据原始资料核对参考属性指针与换算因子。参考属性的 meanValue 必须为 1，其他属性换算因子必须为有限正值。
 6. 不要无故重写 classification、命名、comment；如果必须改，改动最小，并在结果里保留必要说明。
 7. 每条输出仍按一行一个 JSON object 的 JSONL 形式写入。
 8. 修复成功的行把 reason 置为 []；如果仍无法修复，单独另存并写明残留原因。
@@ -1060,7 +1004,6 @@ export const __testInternals = {
   assert_input_file,
   assert_out_dir,
   build_dataset_format_reference,
-  build_flow_property_item,
   build_output_files,
   build_prompt,
   build_local_dataset_uri,
@@ -1072,7 +1015,6 @@ export const __testInternals = {
   normalize_multilang_entries,
   normalize_multilang_field,
   normalize_name_block,
-  normalize_quantitative_reference,
   normalize_reference_block,
   parse_validation_error,
   remediate_row,

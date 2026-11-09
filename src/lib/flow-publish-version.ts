@@ -2,7 +2,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
-import { collectImportContentIssues } from './dataset-validate.js';
+import { collectDatasetContentIssues } from './dataset-validate.js';
 import {
   buildDatasetCommandTransport,
   createDatasetRecord,
@@ -391,7 +391,7 @@ function validate_publish_flow_row(
     if (!validation.ok) {
       issues.push(...validation.issues);
     }
-    issues.push(...collectImportContentIssues(payload));
+    issues.push(...collectDatasetContentIssues(payload, 'flow'));
   }
 
   return {

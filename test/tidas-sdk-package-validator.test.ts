@@ -7,6 +7,7 @@ import {
   __testInternals,
   createTidasSdkPackageValidator,
 } from '../src/lib/tidas-sdk-package-validator.js';
+import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 
 type SafeParseIssue = {
   code?: string;
@@ -935,10 +936,11 @@ test('categoryValidate logs pass and failure cases while deduping repeated schem
   const originalError = console.error;
 
   writeText(path.join(flowsDir, 'invalid.json'), '{invalid-json');
-  writeJson(path.join(flowsDir, 'passed.json'), { kind: 'pass' });
-  writeJson(path.join(flowsDir, 'schema.json'), { kind: 'schema' });
-  writeJson(path.join(flowsDir, 'empty.json'), { kind: 'empty' });
-  writeJson(path.join(flowsDir, 'throw.json'), { kind: 'throw' });
+  for (const kind of ['passed', 'schema', 'empty', 'throw']) {
+    writeJson(path.join(flowsDir, `${kind}.json`), { kind, flowDataSet: flowReferenceFixture() });
+  }
+  writeJson(path.join(flowsDir, 'nonunit.json'), { flowDataSet: flowReferenceFixture('0.45') });
+  writeJson(path.join(flowsDir, 'scalar.json'), 1);
   writeText(path.join(flowsDir, 'notes.md'), '# ignored');
 
   console.info = (...args: unknown[]) => {
@@ -996,15 +998,21 @@ test('categoryValidate logs pass and failure cases while deduping repeated schem
 
     assert.equal(report.category, 'flows');
     assert.equal(report.ok, false);
-    assert.equal(report.summary.issue_count, 4);
-    assert.equal(report.summary.error_count, 4);
+    assert.equal(report.summary.issue_count, 5);
+    assert.equal(report.summary.error_count, 5);
     assert.deepEqual(
       report.issues.map((issue: { issue_code: string }) => issue.issue_code).sort(),
-      ['invalid_json', 'schema_error', 'validation_error', 'validation_error'],
+      [
+        'invalid_json',
+        'reference_property_not_one',
+        'schema_error',
+        'validation_error',
+        'validation_error',
+      ],
     );
-    assert.equal(infoLogs.length, 1);
-    assert.match(infoLogs[0] as string, /passed\.json PASSED/u);
-    assert.equal(errorLogs.length, 3);
+    assert.equal(infoLogs.length, 2);
+    assert.match(infoLogs.join('\n'), /passed\.json PASSED/u);
+    assert.equal(errorLogs.length, 4);
     assert.match(errorLogs.join('\n'), /Duplicate schema issue/u);
     assert.match(errorLogs.join('\n'), /Schema validation failed/u);
     assert.match(errorLogs.join('\n'), /schema crashed/u);

@@ -24,6 +24,7 @@ function makeFlowEnvelope(options: {
   baseName?: unknown;
   flowPropertyRef?: unknown;
   propertyInternalId?: string;
+  referenceInternalId?: string;
   meanValue?: string;
   permanentUri?: string;
   precedingRef?: unknown;
@@ -34,7 +35,7 @@ function makeFlowEnvelope(options: {
       ? undefined
       : {
           '@dataSetInternalID': options.propertyInternalId ?? '7',
-          meanValue: options.meanValue ?? '2.5',
+          meanValue: options.meanValue ?? '1.0',
           referenceToFlowPropertyDataSet: options.flowPropertyRef ?? {
             '@refObjectId': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             '@uri': '../flowproperties/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa_01.00.000.xml',
@@ -66,7 +67,8 @@ function makeFlowEnvelope(options: {
             CASNumber: '',
           },
           quantitativeReference: {
-            referenceToReferenceFlowProperty: '999',
+            referenceToReferenceFlowProperty:
+              options.referenceInternalId ?? options.propertyInternalId ?? '7',
           },
           technology: {
             technologicalApplicability: 'general',
@@ -124,7 +126,9 @@ test('runFlowRemediate writes legacy round1 artifacts and splits valid versus ma
       id: '11111111-1111-1111-1111-111111111111',
       stateCode: 100,
       version: '01.01.000',
-      flowPropertyRef: null,
+      flowPropertyRef: {
+        '@refObjectId': DEFAULT_MASS_FLOW_PROPERTY_UUID,
+      },
       precedingRef: {},
     }),
     makeFlowEnvelope({
@@ -241,6 +245,53 @@ function deepFlowProperty(row: JsonRecord): JsonRecord {
   return (((flowProperties.flowProperty as JsonRecord) ?? {}).referenceToFlowPropertyDataSet ??
     {}) as JsonRecord;
 }
+
+test('Flow remediation preserves property metadata and sends unsafe reference relations to review', () => {
+  const reference = {
+    '@type': 'flow property data set',
+    '@refObjectId': DEFAULT_MASS_FLOW_PROPERTY_UUID,
+    '@version': '03.00.003',
+    '@uri': `../flowproperties/${DEFAULT_MASS_FLOW_PROPERTY_UUID}.xml`,
+    'common:shortDescription': { '@xml:lang': 'zh', '#text': '质量' },
+  };
+  const secondary = {
+    '@dataSetInternalID': '0',
+    meanValue: '2.50',
+    minimumValue: '2.1',
+    maximumValue: '2.9',
+    uncertaintyDistributionType: 'uniform',
+    'common:generalComment': { '@xml:lang': 'en', '#text': 'A measured conversion factor' },
+    referenceToFlowPropertyDataSet: reference,
+  };
+  for (const [pointer, factor, expected] of [
+    ['7', '1', []],
+    ['7', '0.45', ['reference_property_not_one']],
+    ['8', '1', ['methodology_quant_ref_missing_target']],
+    ['', '1', ['missing_quantitative_reference']],
+  ] as const) {
+    const row = makeFlowEnvelope({
+      id: '11111111-1111-1111-1111-111111111111',
+      referenceInternalId: pointer,
+      flowPropertyRef: reference,
+      meanValue: factor,
+    });
+    const dataset = (row.json_ordered as JsonRecord).flowDataSet as JsonRecord;
+    const block = dataset.flowProperties as JsonRecord;
+    block.flowProperty = [secondary, block.flowProperty];
+    const result = __testInternals.remediate_row(row, { loadSdkModule: makeSdkLoader() });
+    const repaired = (result.row.json_ordered as JsonRecord).flowDataSet as JsonRecord;
+    assert.deepEqual(repaired.flowProperties, block);
+    assert.deepEqual(
+      (repaired.flowInformation as JsonRecord).quantitativeReference,
+      (dataset.flowInformation as JsonRecord).quantitativeReference,
+    );
+    assert.deepEqual(
+      result.finalReasons.map((issue) => issue.code),
+      expected,
+    );
+    assert.equal(result.valid, expected.length === 0);
+  }
+});
 
 test('flow remediation helper utilities cover normalization and fallback branches', () => {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-flow-remediate-helpers-'));
@@ -395,35 +446,12 @@ test('flow remediation helper utilities cover normalization and fallback branche
     );
     assert.equal(__testInternals.infer_flow_property_descriptor_from_hint(null), null);
     assert.equal(__testInternals.infer_flow_property_descriptor_from_hint('volume'), null);
-    assert.deepEqual(
-      __testInternals.build_flow_property_item(
-        {
-          uuid: DEFAULT_MASS_FLOW_PROPERTY_UUID,
-          name: 'Mass',
-          version: '03.00.003',
-        },
-        '3',
-        '1.0',
-      ),
-      {
-        '@dataSetInternalID': '3',
-        meanValue: '1.0',
-        referenceToFlowPropertyDataSet: {
-          '@type': 'flow property data set',
-          '@refObjectId': DEFAULT_MASS_FLOW_PROPERTY_UUID,
-          '@uri': `../flowproperties/${DEFAULT_MASS_FLOW_PROPERTY_UUID}_03.00.003.xml`,
-          '@version': '03.00.003',
-          'common:shortDescription': [{ '@xml:lang': 'en', '#text': 'Mass' }],
-        },
-      },
-    );
-
     const emptyDataset: JsonRecord = { flowProperties: {} };
     const emptyFixes: string[] = [];
     const emptyProperties = __testInternals.normalize_flow_properties(emptyDataset, emptyFixes);
-    assert.equal(emptyProperties.items.length, 1);
+    assert.equal(emptyProperties.items.length, 0);
     assert.equal(emptyProperties.unresolved.length, 0);
-    assert.ok(emptyFixes.includes('set_default_mass_flow_property'));
+    assert.deepEqual(emptyFixes, []);
 
     const invalidDataset: JsonRecord = {
       flowProperties: {
@@ -465,42 +493,6 @@ test('flow remediation helper utilities cover normalization and fallback branche
     const unresolvedProperties = __testInternals.normalize_flow_properties(unresolvedDataset, []);
     assert.equal(unresolvedProperties.items.length, 0);
     assert.equal(unresolvedProperties.unresolved[0]?.code, 'unknown_flow_property_uuid');
-
-    const quantDataset: JsonRecord = {
-      flowInformation: {
-        quantitativeReference: {
-          referenceToReferenceFlowProperty: 'missing',
-        },
-      },
-    };
-    const quantFixes: string[] = [];
-    const quantUnresolved: Array<{ code: string }> = [];
-    __testInternals.normalize_quantitative_reference(
-      quantDataset,
-      [{ '@dataSetInternalID': '8' }],
-      quantFixes,
-      quantUnresolved as never,
-    );
-    assert.equal(
-      ((quantDataset.flowInformation as JsonRecord).quantitativeReference as JsonRecord)
-        .referenceToReferenceFlowProperty as string,
-      '8',
-    );
-    assert.ok(quantFixes.includes('set_reference_to_reference_flow_property'));
-
-    const quantDatasetWithoutProperties: JsonRecord = {
-      flowInformation: {
-        quantitativeReference: {},
-      },
-    };
-    const missingQuantUnresolved: Array<{ code: string }> = [];
-    __testInternals.normalize_quantitative_reference(
-      quantDatasetWithoutProperties,
-      [],
-      [],
-      missingQuantUnresolved as never,
-    );
-    assert.equal(missingQuantUnresolved[0]?.code, 'missing_flow_properties');
 
     assert.deepEqual(
       __testInternals.parse_validation_error({
@@ -694,41 +686,6 @@ test('flow remediation helpers cover repaired UUIDs, missing nested blocks, and 
     /Unknown flow property UUID/u,
   );
 
-  const quantDatasetWithScalar: JsonRecord = {
-    flowInformation: {
-      quantitativeReference: '',
-    },
-  };
-  const quantScalarFixes: string[] = [];
-  const quantScalarUnresolved: Array<{ code: string }> = [];
-  __testInternals.normalize_quantitative_reference(
-    quantDatasetWithScalar,
-    [{ '@dataSetInternalID': '11' }],
-    quantScalarFixes,
-    quantScalarUnresolved as never,
-  );
-  assert.equal(
-    ((quantDatasetWithScalar.flowInformation as JsonRecord).quantitativeReference as JsonRecord)
-      .referenceToReferenceFlowProperty as string,
-    '11',
-  );
-  assert.deepEqual(quantScalarUnresolved, []);
-
-  const quantDatasetWithoutFlowInformation: JsonRecord = {};
-  __testInternals.normalize_quantitative_reference(
-    quantDatasetWithoutFlowInformation,
-    [{ '@dataSetInternalID': '12' }],
-    [],
-    [] as never,
-  );
-  assert.equal(
-    (
-      (quantDatasetWithoutFlowInformation.flowInformation as JsonRecord)
-        .quantitativeReference as JsonRecord
-    ).referenceToReferenceFlowProperty as string,
-    '12',
-  );
-
   const minimalRow = __testInternals.remediate_row(
     {
       id: '66666666-6666-6666-6666-666666666666',
@@ -738,7 +695,7 @@ test('flow remediation helpers cover repaired UUIDs, missing nested blocks, and 
     },
     { loadSdkModule: makeSdkLoader() },
   );
-  assert.equal(minimalRow.valid, true);
+  assert.equal(minimalRow.valid, false);
   const minimalFlowDataSet = ((minimalRow.row.json_ordered as JsonRecord).flowDataSet ??
     {}) as JsonRecord;
   const minimalAdministrative = (minimalFlowDataSet.administrativeInformation ?? {}) as JsonRecord;
@@ -766,7 +723,7 @@ test('flow remediation helpers cover repaired UUIDs, missing nested blocks, and 
     },
     { loadSdkModule: makeSdkLoader() },
   );
-  assert.equal(anonymousMinimalRow.valid, true);
+  assert.equal(anonymousMinimalRow.valid, false);
 
   const actualValidation = __testInternals.validate_flow_payload({ flowDataSet: {} }, {});
   assert.equal(actualValidation.success, false);
@@ -807,14 +764,9 @@ test('flow remediation helpers cover repaired UUIDs, missing nested blocks, and 
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-flow-remediate-zero-manual-'));
   const inputFile = path.join(dir, 'rows.jsonl');
   const outDir = path.join(dir, 'out');
-  writeJsonl(inputFile, [
-    {
-      id: '77777777-7777-7777-7777-777777777777',
-      json_ordered: {
-        flowDataSet: {},
-      },
-    },
-  ]);
+  const row = makeFlowEnvelope({ id: '77777777-7777-7777-7777-777777777777' });
+  delete row.state_code;
+  writeJsonl(inputFile, [row]);
 
   try {
     const report = await runFlowRemediate(

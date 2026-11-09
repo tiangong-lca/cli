@@ -88,7 +88,9 @@ function sampleFlowRow() {
     version: '01.01.000',
     json_ordered: {
       flowDataSet: {
+        ...flowReferenceFixture(),
         flowInformation: {
+          ...flowReferenceFixture().flowInformation,
           dataSetInformation: {
             'common:UUID': 'flow-1',
             name: [{ '@xml:lang': 'en', '#text': 'Battery electrolyte' }],
@@ -1044,3 +1046,4 @@ test('executeCli returns help and parse errors for dataset bilingual', async () 
   assert.equal(invalidValidateFlags.exitCode, 2);
   assert.match(invalidValidateFlags.stderr, /INVALID_ARGS/u);
 });
+import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
