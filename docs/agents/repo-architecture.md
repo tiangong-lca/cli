@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-07
-lastReviewedCommit: 2ed5b82102ac80e56c2d4c7f0fe8ab00e4a471fa
-lastReviewedNote: 'CLI #466: reviewed version-only 0.1.29 preparation on merged #377 source; eight bound fixture values advance, while runtime, dependency lock, exports and release authority remain unchanged.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: a6ddc452edaa2ae58d1ff452096fd2599e83b85f
+lastReviewedNote: 'CLI #469 locates the shared Flow property content rule and its writer checks.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -52,6 +52,8 @@ The `src/runtime.ts` public facade and bounded `src/lib/runtime/**` owners expos
 Managed-host launch selection stays in the generic CLI manager. Dedicated protocol/server/receiver modules hand the exact verified manifest to a declared Node host through a one-use IPC handshake. Original manifest bytes, selected host fields and application argv are owned snapshots; the receiver uses the existing cache/compatibility owners and shared work-directory guards. Product hosts retain their own task, account and business authorization. Cancellation ends handshake admission before child termination, and execution leases remain until output/process closure.
 
 `dataset-save-draft-reference-intent.ts` composes the shared #289 strict selection/evaluator and complete-body observation with the owner execution contract. `dataset-save-draft-run.ts` owns fresh preflight/predispatch, action ledger and recovery; `dataset-command.ts` awaits admission before POST. Default gates and the original ledger domain remain unchanged. [The exact-reference contract](exact-reference-intent-contract.md#guarded-flow-owner-drafts) defines caller snapshots and admission fields.
+
+`flow-reference-properties.ts` owns the Flow reference pointer and conversion factor check. BuildPlan, QA, local validation, remediation qualification and draft and publication preparation consume the same rule. The create/save adapter checks the outgoing body before admitting dispatch.
 
 ## Repo Shape
 

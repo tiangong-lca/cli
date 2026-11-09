@@ -31,9 +31,9 @@ checkPaths:
   - test/auth-identity*.test.ts
   - test/public-auth-identity-receipt.test.ts
   - test/lca-release*.test.ts
-lastReviewedAt: 2026-11-07
-lastReviewedCommit: 2ed5b82102ac80e56c2d4c7f0fe8ab00e4a471fa
-lastReviewedNote: 'CLI #466: reviewed version-only 0.1.29 preparation on merged #377 source; eight bound fixture values advance, while runtime, dependency lock, exports and release authority remain unchanged.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: a6ddc452edaa2ae58d1ff452096fd2599e83b85f
+lastReviewedNote: 'CLI #469 documents Flow reference factor validation and local publication preparation.'
 ---
 
 Review note, 2026-10-07: CLI #407 prepares the separate version-only 0.1.26 release from reviewed allocation/reference PR #406 at main `0a476fee7569af67f4197a1469bb97666d9911e9`. The existing helper selected 0.1.26 from repository and npm latest 0.1.25, proved the target unpublished, and the canonical tag read found no cli-v0.1.26. Package identity and eight directly bound fixture values advance; runtime, exact SDK 0.5.1 dependency, pnpm lock, exports, authentication and workflows remain unchanged. Publication and installed/Foundry managed acceptance still require the existing exact-head four-platform gate, automatic merge tag, native pnpm Trusted Publishing/provenance, credential-free consumers and exact workspace integration.
@@ -594,7 +594,7 @@ Review note, 2026-09-21: CLI #283 (workspace #1432 campaign) also adds the narro
 
 For `dataset maintenance apply`, explicitly passing `--max-parallel 1..8` opts into the destructive flow-convergence profile. It accepts only a non-empty, unique-target, flow delete-only plan whose current and projected reference impacts are both zero. Before dispatch it completes a fresh SELECT-only scan of every process visible to the owner session and rejects any inbound edge. For a separately governed all-process check, pair `--global-inbound-proof /absolute/proof.json` with `--approve-global-inbound-proof <sha256>`; the proof must be fresh, SELECT-only, complete, zero-inbound, and bound to the exact project, actor, plan, and ordered target set, and it is validated before the live scan is skipped. The CLI never runs raw SQL. Each action writes append-only `PREPARED` and `DISPATCHED` evidence before its protected owner-session RPC, then records `COMMITTED` only after exact absent readback. An ambiguous action is read back, marked `UNKNOWN`, and never replayed automatically; independent actions continue. Omit `--max-parallel` to retain ordinary maintenance apply behavior.
 
-For `flow publish-version`, canonical flow payloads are validated locally with `FlowSchema` before remote visibility planning or writes. The command always writes `flow-publish-version-gate-report.json`; blocked rows are written to the remote-failure JSONL without calling the remote service.
+For `flow publish-version`, canonical Flow payloads pass local `FlowSchema` and content checks before remote visibility planning or writes. The property selected by `referenceToReferenceFlowProperty` must have a unique internal ID and `meanValue` exactly equal to 1. Every other property needs a finite positive factor. The command writes `flow-publish-version-gate-report.json` and records blocked rows in the remote-failure JSONL.
 
 For `process publish-build`, canonical process payloads are validated locally with `ProcessSchema` before publish handoff artifacts are written. The gate report is `reports/process-publish-schema-gate.json`.
 

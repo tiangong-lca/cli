@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-07
-lastReviewedCommit: 2ed5b82102ac80e56c2d4c7f0fe8ab00e4a471fa
-lastReviewedNote: 'CLI #466: reviewed version-only 0.1.29 preparation on merged #377 source; eight bound fixture values advance, while runtime, dependency lock, exports and release authority remain unchanged.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: a6ddc452edaa2ae58d1ff452096fd2599e83b85f
+lastReviewedNote: 'CLI #469 records Flow factor regression and dispatch coverage.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -156,6 +156,7 @@ Facts that matter:
 - every Node workflow bootstraps through pinned `pnpm/setup` v3.1.1 with Node 24.19.0 and installs with `pnpm install --frozen-lockfile`; publishing uses native pnpm OIDC/provenance
 - `pnpm release:verify-published -- --version <x.y.z> --expected-git-head <release-merge-sha>` is the post-publish cryptographic Sigstore/registry-signature/tarball/public-consumer gate; it fixes pnpm 11.24.0, replaces user/global package-manager configs, scans every production dependency branch, and passes no TianGong or registry credential into the clean consumer
 - `process save-draft`, `lifecyclemodel save-draft`, ordered `dataset save-draft --execution-contract`, dataset governance commands such as curation queue build/next/verify, BuildPlan gates, publish schema/verification gates, and the newer process maintenance commands are expected to preserve `100%` coverage even when they add schema-validation, rewrite, recovery, or fallback branches
+- Flow reference property tests cover a non-first pointer, exact decimal equality, invalid secondary factors and duplicate IDs. Check the content layer independently of the SDK result and verify that rejected writes reach neither the dispatch callback nor the transport.
 - dataset save-draft scheduler dogfood must leave the complete dependency prefix serial and keep `executeAction` as the only owner of durable attempt-before-dispatch, exact readback, UNKNOWN/no-replay, row reports, and report bytes; a generic batch failure may stop new suffix claims but cannot synthesize a command outcome
 - execution-contract owner-token tests must use the real session runtime with controlled OAuth responses: fresh multi-action sessions make zero token-endpoint requests, near-expiry or expired sessions refresh on demand without per-action forced rotation, and serial/parallel actions use the current token for transport. Token user-id or email drift must fail before attempt creation and dispatch; retain existing durable-attempt, readback and no-replay proof.
 - the stored draft is verified with the same real validator on a clone, and tests must prove it: a before with a placeholder reference description, a schema failure or a second authoring gap is refused even when the candidate would repair it, and the stored-draft verdict is a required input of the admission decision rather than an assumption from structural similarity
