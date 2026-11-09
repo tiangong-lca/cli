@@ -20,9 +20,9 @@ checkPaths:
   - src/cli.ts
   - test/dataset-exact-reference-intent.test.ts
   - test/dataset-save-draft-exact-reference.test.ts
-lastReviewedAt: 2026-09-11
-lastReviewedCommit: 577d6fdf6ffb9de594b098a166c6b1f2ac3657f1
-lastReviewedNote: 'Reviewed for CLI #289: explicit consumer/reference/review binding, fresh actor identity, current latest payload observations and unchanged root/default policies.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: a6ddc452edaa2ae58d1ff452096fd2599e83b85f
+lastReviewedNote: 'CLI #469 documents Flow content admission before a new guarded attempt.'
 related:
   - ../../AGENTS.md
   - ./repo-validation.md
@@ -131,6 +131,8 @@ Moving a control file changes relative path resolution. A host that stages revie
 `dataset save-draft --type flow --input <rows> --execution-contract <contract> --reference-intent-file <intent> --dry-run|--commit` selects the same strict v1 intent and review files. Select exactly one nonempty option. This path requires a Flow-only execution contract; it adds no fields to `dataset-save-draft-execution-contract.v1`. Every complete ordered input consumer is bound, including consumers without a selected occurrence. Ordinary save-draft and contracts without this selection keep their existing policy.
 
 The CLI evaluates every selected reference occurrence. Repeated table/UUID/version observations may share transport reads within one action's admission pass, but one selected path never exempts another undeclared path. Selected and visible-latest complete bodies, embedded identities, owner and state must match the reviewed facts; exact reads must return one row. The explicit visible-latest observation is distinct from default latest-published lookup. Roots, malformed or unused declarations, private foreign rows and unsupported states remain ineligible.
+
+New Flow writes must pass the reference-property content check before admission. A missing or ambiguous pointer or an invalid factor fails locally before an attempt is consumed. Previously consumed actions follow their existing recovery rules.
 
 Both preflight and immediate pre-dispatch verify the current authenticated actor/project and fresh reference bodies. Immediate pre-dispatch uses a new observation cache, rechecks the exact insert absence or owner-draft before image, renews the dispatch token with owner checks, and synchronously rechecks complete input and intent/review bytes. The transport awaits this gate, then the CLI durably appends the attempt before the one mutation request. A failed gate emits no request or attempt. Reference observations are not a database lock or an atomic transaction across requests; guarded writes and subsequent independent exact readback remain required.
 

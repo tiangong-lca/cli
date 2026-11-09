@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
 import { CliError } from './errors.js';
+import { collectFlowReferencePropertyIssues } from './flow-reference-properties.js';
 import {
   coerceText,
   datasetPayloadFromRow,
@@ -1083,6 +1084,17 @@ export async function runFlowReviewedPublishData(
     policy: flowPublishPolicy,
     originalRows: originalFlowRows,
   });
+  const invalidFlows = prepared.plans.flatMap((plan) => {
+    const issues = collectFlowReferencePropertyIssues(datasetPayloadFromRow(plan.row));
+    return issues.length ? [{ id: plan.entity_id, version: plan.original_version, issues }] : [];
+  });
+  if (invalidFlows.length > 0) {
+    throw new CliError('Flow reference properties block reviewed publication preparation.', {
+      code: 'FLOW_PUBLISH_REVIEWED_REFERENCE_PROPERTIES_INVALID',
+      exitCode: 1,
+      details: { flows: invalidFlows },
+    });
+  }
   const preparedProcesses = prepare_process_rows({
     rows: inputProcessRows,
     policy: processPublishPolicy,

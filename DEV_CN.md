@@ -22,9 +22,9 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: '2026-11-07'
-lastReviewedCommit: '3ede655'
-lastReviewedNote: 'CLI #377: reviewed input/result correction and primary-only capability admission. Full local gate passes at 100% coverage; package version, release workflow and publication prerequisites remain unchanged.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: a6ddc452edaa2ae58d1ff452096fd2599e83b85f
+lastReviewedNote: 'CLI #469 documents local Flow remediation and preparation checks.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -693,6 +693,7 @@ Derivative rebuild 的 apply 成功只表示 guarded RPC 已返回 `accepted`/`q
 
 - 读取单个 invalid flow JSON / JSONL 输入
 - 执行 deterministic round1 remediation
+- 参考指针缺失、歧义或换算因子不合格的行进入人工队列，保留原指针、因子和有效属性的元数据
 - 输出历史兼容的 `remediated_all`、`ready_for_mcp`、`manual_queue`、`audit`、`report`、`prompt` 工件
 
 这个命令当前只负责本地 round1 remediation，不负责远端 publish、round2 重试或后续产品侧再生逻辑。
@@ -700,7 +701,7 @@ Derivative rebuild 的 apply 成功只表示 guarded RPC 已返回 `accepted`/`q
 `tiangong-lca flow publish-version` 现在已经承担 flow governance 的第一个 CLI 远端写入切片，负责：
 
 - 读取单个 ready-for-publish flow JSON / JSONL 输入
-- 用 `FlowSchema` 对 canonical flow payload 执行本地 publish gate
+- 用 `FlowSchema` 和共享的参考属性内容规则对 canonical flow payload 执行本地 publish gate
 - 输出 `flow-publish-version-gate-report.json`
 - 从 `TIANGONG_LCA_API_BASE_URL` 推导 Supabase REST 预检路径与 Edge Function dataset command 路径；支持 project root、`/functions/v1`、`/rest/v1` 三种 base URL 形态
 - dry-run 通过精确版本可见性预检决定 `would_insert` / `would_update_existing` / failure；commit 则在同一条预检链上调用 `app_dataset_create` / `app_dataset_save_draft`

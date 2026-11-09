@@ -1,5 +1,6 @@
 // data-api-relations: contacts, flowproperties, flows, lciamethods, lifecyclemodels, processes, sources, unitgroups
 import { CliError } from './errors.js';
+import { assertFlowReferencePropertyWriteAdmission } from './flow-reference-properties.js';
 import type { FetchLike, ResponseLike } from './http.js';
 import {
   buildSnapshotCompleteness,
@@ -925,6 +926,7 @@ export async function saveDraftMaintenanceRow(options: {
   ruleVerification: boolean | null;
   audit: JsonObject;
 }): Promise<JsonObject> {
+  if (options.table === 'flows') assertFlowReferencePropertyWriteAdmission(options.payload);
   return invokeMaintenanceRpc({
     context: options.context,
     rpc: 'cmd_dataset_save_draft',

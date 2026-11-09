@@ -10,7 +10,7 @@ import * as tidasSdk from '@tiangong-lca/tidas-sdk';
 import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 import { createBatchContract, runBoundedBatch, type BatchJsonValue } from '../batch.js';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
-import { collectImportContentIssues } from './dataset-validate.js';
+import { collectDatasetContentIssues } from './dataset-validate.js';
 import {
   DRAFT_REPAIR_ADMISSION_SCHEMA,
   DRAFT_REPAIR_POLICY,
@@ -899,7 +899,7 @@ function validatePayload(
   // isolated so execution-contract hashing, dispatch, and readback all use the exact input.
   const validationPayload = structuredClone(payload);
   const outcome = validateSchemaWithDeepFallback(schema, validationPayload, createEntity);
-  const contentIssues = collectImportContentIssues(payload);
+  const contentIssues = collectDatasetContentIssues(payload, type);
   const { additional_multilingual_issues, ...evidence } = buildDatasetValidationLayers(
     payload,
     outcome,

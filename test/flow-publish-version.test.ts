@@ -1,3 +1,4 @@
+import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -47,7 +48,9 @@ function makeFlowRow(options: {
 }): JsonRecord {
   const payload = {
     flowDataSet: {
+      ...flowReferenceFixture(),
       flowInformation: {
+        ...flowReferenceFixture().flowInformation,
         dataSetInformation: {
           'common:UUID': options.id,
         },
@@ -689,6 +692,56 @@ test('runFlowPublishVersion blocks import placeholder content before remote plan
     assert.equal(
       ((failures[0].reason as JsonRecord[])[0] as JsonRecord).validator,
       'import_content',
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Flow publication reports reference property failures as content issues before remote planning', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-flow-publish-factor-'));
+  const inputFile = path.join(dir, 'flows.jsonl');
+  const row = makeFlowRow({ id: 'flow-nonunit' });
+  const dataset = (row.json_ordered as JsonRecord).flowDataSet as JsonRecord;
+  dataset.flowProperties = flowReferenceFixture('0.45').flowProperties;
+  const dangling = makeFlowRow({ id: 'flow-missing-target' });
+  const danglingDataset = (dangling.json_ordered as JsonRecord).flowDataSet as JsonRecord;
+  const flowInformation = danglingDataset.flowInformation as JsonRecord;
+  flowInformation.quantitativeReference = { referenceToReferenceFlowProperty: '9' };
+  try {
+    writeJsonl(inputFile, [row, dangling]);
+    const report = await runFlowPublishVersion({
+      inputFile,
+      outDir: path.join(dir, 'out'),
+      commit: false,
+      fetchImpl: () => assert.fail('Content rejection must precede remote planning'),
+      validateFlowPayloadImpl: VALIDATION_OK,
+    });
+    assert.equal(report.flow_gate.status, 'blocked');
+    const failures = readFileSync(report.files.remote_failed, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    assert.deepEqual(
+      failures
+        .flatMap((failure) => failure.reason)
+        .map(({ validator, stage, code }: JsonRecord) => ({
+          validator,
+          stage,
+          code,
+        })),
+      [
+        {
+          validator: 'flow_reference_properties',
+          stage: 'content_gate',
+          code: 'reference_property_not_one',
+        },
+        {
+          validator: 'flow_reference_properties',
+          stage: 'content_gate',
+          code: 'methodology_quant_ref_missing_target',
+        },
+      ],
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });

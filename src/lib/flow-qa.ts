@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node
 import path from 'node:path';
 import { writeJsonArtifact, writeJsonLinesArtifact, writeTextArtifact } from './artifacts.js';
 import { CliError } from './errors.js';
+import { inspectFlowReferenceProperties } from './flow-reference-properties.js';
 import {
   coerceText,
   deepGet,
@@ -390,49 +391,9 @@ function classificationLeaf(flow: JsonRecord): { class_id: string; text: string;
   };
 }
 
-function flowProperties(flow: JsonRecord): JsonRecord[] {
-  return listify(deepGet(flow, ['flowProperties', 'flowProperty'])).filter(isRecord);
-}
-
-function pickReferenceFlowProperty(flow: JsonRecord): {
-  prop: JsonRecord | null;
-  internalId: string;
-} {
-  const props = flowProperties(flow);
-
-  for (const prop of props) {
-    const internalId = coerceText(prop['@dataSetInternalID']);
-    if (internalId === '0') {
-      return {
-        prop,
-        internalId,
-      };
-    }
-  }
-
-  if (props.length) {
-    return {
-      prop: props[0],
-      internalId: coerceText(props[0]['@dataSetInternalID']),
-    };
-  }
-
-  return {
-    prop: null,
-    internalId: '',
-  };
-}
-
-function quantitativeReferenceInternalId(flow: JsonRecord): string {
-  return coerceText(
-    deepGet(flow, ['flowInformation', 'quantitativeReference', 'referenceToReferenceFlowProperty']),
-  );
-}
-
 function flowPropertyRef(prop: JsonRecord): {
   uuid: string;
   version: string;
-  internal_id: string;
   short_name_en: string;
 } {
   const ref = isRecord(prop.referenceToFlowPropertyDataSet)
@@ -441,7 +402,6 @@ function flowPropertyRef(prop: JsonRecord): {
   return {
     uuid: findUuidInNode(ref),
     version: coerceText(ref?.['@version']),
-    internal_id: coerceText(prop['@dataSetInternalID']),
     short_name_en: langTextForLang(ref?.['common:shortDescription'], 'en'),
   };
 }
@@ -478,7 +438,6 @@ function createRuleFinding(
   options?: {
     fixability?: string;
     evidence?: JsonRecord;
-    action?: string;
     ruleSource?: string;
   },
 ): FlowRuleFinding {
@@ -495,7 +454,6 @@ function createRuleFinding(
     source: 'rule',
     ...(options?.ruleSource ? { rule_source: options.ruleSource } : {}),
     ...(options?.evidence ? { evidence: options.evidence } : {}),
-    ...(options?.action ? { action: options.action } : {}),
   };
 }
 
@@ -533,6 +491,7 @@ function applyMethodologyChecks(
   flowUuidValue: string,
   baseVersion: string,
   ruleSource: string,
+  properties = inspectFlowReferenceProperties(flow),
 ): FlowRuleFinding[] {
   const findings: FlowRuleFinding[] = [];
   const allowedTypes = new Set(['elementary flow', 'product flow', 'waste flow']);
@@ -596,28 +555,12 @@ function applyMethodologyChecks(
     );
   }
 
-  const quantId = quantitativeReferenceInternalId(flow);
-  const propertyIds = new Set(
-    flowProperties(flow)
-      .map((prop) => coerceText(prop['@dataSetInternalID']))
-      .filter(Boolean),
-  );
-  if (quantId && !propertyIds.has(quantId)) {
+  for (const issue of properties.issues) {
     findings.push(
-      createRuleFinding(
-        flowUuidValue,
-        baseVersion,
-        'error',
-        'methodology_quant_ref_missing_target',
-        'referenceToReferenceFlowProperty points to a non-existing flowProperty internal ID.',
-        {
-          evidence: {
-            referenceToReferenceFlowProperty: quantId,
-            available_internal_ids: [...propertyIds].sort(),
-          },
-          ruleSource,
-        },
-      ),
+      createRuleFinding(flowUuidValue, baseVersion, 'error', issue.code, issue.message, {
+        evidence: { path: issue.path, reference_internal_id: properties.referenceId },
+        ruleSource,
+      }),
     );
   }
 
@@ -700,6 +643,7 @@ function buildFlowSummaryAndRuleFindings(
   const typeOfDataset = flowType(flow);
   const names = nameTexts(flow);
   const leaf = classificationLeaf(flow);
+  const properties = inspectFlowReferenceProperties(flow);
   const summary: FlowSummary = {
     flow_uuid: flowUuidValue,
     base_version: baseVersion,
@@ -715,7 +659,7 @@ function buildFlowSummaryAndRuleFindings(
     },
     flow_property: {},
     quantitative_reference: {
-      reference_flow_property_internal_id: quantitativeReferenceInternalId(flow),
+      reference_flow_property_internal_id: properties.referenceId,
     },
     unitgroup: {
       uuid: '',
@@ -799,25 +743,14 @@ function buildFlowSummaryAndRuleFindings(
     );
   }
 
-  const { prop, internalId } = pickReferenceFlowProperty(flow);
-  if (!prop) {
-    findings.push(
-      createRuleFinding(
-        flowUuidValue,
-        baseVersion,
-        'error',
-        'missing_flow_property',
-        'No flowProperties.flowProperty entry found.',
-      ),
-    );
-  } else {
-    const ref = flowPropertyRef(prop);
+  if (properties.reference) {
+    const ref = flowPropertyRef(properties.reference);
     summary.flow_property = {
-      selected_internal_id: internalId || ref.internal_id,
+      selected_internal_id: properties.referenceId,
       referenced_uuid: ref.uuid,
       referenced_version: ref.version,
       referenced_short_name_en: ref.short_name_en,
-      available_count: flowProperties(flow).length,
+      available_count: properties.propertyCount,
     };
 
     if (!ref.uuid) {
@@ -828,54 +761,15 @@ function buildFlowSummaryAndRuleFindings(
           'error',
           'invalid_flow_property_reference',
           'Could not parse flow property UUID from referenceToFlowPropertyDataSet.',
-          {
-            evidence: {
-              selected_internal_id: internalId || ref.internal_id,
-            },
-          },
-        ),
-      );
-    }
-
-    const quantId = summary.quantitative_reference.reference_flow_property_internal_id;
-    if (!quantId) {
-      findings.push(
-        createRuleFinding(
-          flowUuidValue,
-          baseVersion,
-          'warning',
-          'missing_quantitative_reference',
-          'referenceToReferenceFlowProperty is missing.',
-          {
-            fixability: 'auto',
-            evidence: {
-              expected_internal_id: internalId || ref.internal_id,
-            },
-          },
-        ),
-      );
-    } else if (internalId && quantId !== internalId) {
-      findings.push(
-        createRuleFinding(
-          flowUuidValue,
-          baseVersion,
-          'warning',
-          'quantitative_reference_mismatch',
-          'Quantitative reference internal ID differs from selected reference flowProperty internal ID.',
-          {
-            fixability: 'auto',
-            evidence: {
-              quant_ref_internal_id: quantId,
-              expected_internal_id: internalId,
-            },
-            action: 'Align quantitative reference internal ID to the selected flowProperty.',
-          },
+          { evidence: { selected_internal_id: properties.referenceId } },
         ),
       );
     }
   }
 
-  findings.push(...applyMethodologyChecks(flow, flowUuidValue, baseVersion, methodologyRuleSource));
+  findings.push(
+    ...applyMethodologyChecks(flow, flowUuidValue, baseVersion, methodologyRuleSource, properties),
+  );
 
   summary.rule_signals = findings.slice(0, 20).map((finding) => ({
     rule_id: coerceText(finding.rule_id),

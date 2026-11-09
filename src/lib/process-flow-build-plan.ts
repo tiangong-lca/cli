@@ -5,6 +5,10 @@ import { withOptionalReviewReportReference } from './tidas-review-report-optiona
 import { writeJsonArtifact } from './artifacts.js';
 import { CliError } from './errors.js';
 import {
+  collectFlowReferencePropertyIssues,
+  flowPropertyFactor,
+} from './flow-reference-properties.js';
+import {
   cloneJson,
   detectDatasetKind,
   isRecord,
@@ -797,8 +801,6 @@ function buildCanonicalFlowPayload(plan: JsonObject, inputPath: string): JsonObj
       'administrative_information.version',
     ]),
   );
-  const propertyMean =
-    firstToken(plan, ['flow_property_plan.mean_value', 'flowPropertyPlan.meanValue']) ?? '1.0';
   const flowType = normalizeFlowType(
     firstToken(plan, [
       'target.flow_type',
@@ -880,7 +882,7 @@ function buildCanonicalFlowPayload(plan: JsonObject, inputPath: string): JsonObj
         flowProperty: {
           '@dataSetInternalID': '0',
           referenceToFlowPropertyDataSet: flowPropertyReference(plan),
-          meanValue: normalizeAmount(propertyMean),
+          meanValue: '1',
         },
       },
     },
@@ -1176,6 +1178,31 @@ function makeFinding(
     : { code, severity, message };
 }
 
+function flowPlanPropertyBlockers(plan: JsonObject): GateFinding[] {
+  const embedded = firstValue(plan, ['payload', 'materialized_payload', 'materializedPayload']);
+  if (isRecord(embedded)) {
+    const embeddedKind = detectDatasetKind(embedded);
+    if (embeddedKind && embeddedKind !== 'flow') return [];
+    return collectFlowReferencePropertyIssues(unwrapDatasetPayload(embedded)).map((issue) =>
+      makeFinding(issue.code, 'blocker', issue.message, issue.path),
+    );
+  }
+
+  const snakePath = 'flow_property_plan.mean_value';
+  const camelPath = 'flowPropertyPlan.meanValue';
+  const valuePath = valueAtPath(plan, snakePath) === undefined ? camelPath : snakePath;
+  const mean = valueAtPath(plan, valuePath);
+  if (mean === undefined || flowPropertyFactor(mean) === 'one') return [];
+  return [
+    makeFinding(
+      'reference_property_not_one',
+      'blocker',
+      'The reference flow property must have meanValue exactly 1.',
+      valuePath,
+    ),
+  ];
+}
+
 function evaluateUnitOfAnalysis(plan: JsonObject): {
   findings: GateFinding[];
   blockers: GateFinding[];
@@ -1293,7 +1320,7 @@ function evaluateUnitOfAnalysis(plan: JsonObject): {
 
 function evaluateBuildPlan(plan: JsonObject, kind: BuildPlanKind): Evaluation {
   const findings: GateFinding[] = [];
-  const blockers: GateFinding[] = [];
+  const blockers = kind === 'flow' ? flowPlanPropertyBlockers(plan) : [];
   const expectedKind = firstToken(plan, ['kind', 'dataset_kind', 'datasetKind']);
   if (expectedKind && expectedKind !== kind) {
     blockers.push(

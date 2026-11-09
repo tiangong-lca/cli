@@ -1,6 +1,7 @@
+import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { CliError } from '../src/lib/errors.js';
@@ -50,7 +51,9 @@ function makeFlowRow(options: {
 }): JsonRecord {
   const payload: JsonRecord = {
     flowDataSet: {
+      ...flowReferenceFixture(),
       flowInformation: {
+        ...flowReferenceFixture().flowInformation,
         dataSetInformation: {
           'common:UUID': options.id,
           name: {
@@ -298,6 +301,47 @@ test('runFlowReviewedPublishData writes flow-only dry-run artifacts and skips un
     ) as JsonRecord;
     assert.equal(compatReport.status, 'prepared_flow_publish_version');
     assert.equal(((compatReport.counts as JsonRecord).total_rows as number) ?? -1, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('reviewed publication rejects invalid Flow factors before preparing or writing dependent rows', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-reviewed-flow-factor-'));
+  const flowRowsFile = path.join(dir, 'flows.jsonl');
+  const processRowsFile = path.join(dir, 'processes.jsonl');
+  const flow = makeFlowRow({
+    id: 'flow-1',
+    extraPayload: { flowProperties: flowReferenceFixture('0.45').flowProperties },
+  });
+  const process = makeProcessRow({
+    id: 'process-1',
+    exchanges: [makeExchange({ flowId: 'flow-1', flowVersion: '01.00.001' })],
+  });
+  try {
+    writeJsonl(flowRowsFile, [flow]);
+    writeJsonl(processRowsFile, [process]);
+    for (const commit of [false, true]) {
+      const outDir = path.join(dir, String(commit));
+      await assert.rejects(
+        runFlowReviewedPublishData({
+          flowRowsFile,
+          processRowsFile,
+          outDir,
+          commit,
+          fetchImpl: () => assert.fail('No Flow or dependent Process request may be sent'),
+        }),
+        (error: unknown) => {
+          assert.ok(error instanceof CliError);
+          assert.equal(error.code, 'FLOW_PUBLISH_REVIEWED_REFERENCE_PROPERTIES_INVALID');
+          assert.match(JSON.stringify(error.details), /reference_property_not_one/u);
+          return true;
+        },
+      );
+      assert.equal(existsSync(path.join(outDir, 'prepared-flow-rows.json')), false);
+      assert.equal(existsSync(path.join(outDir, 'prepared-process-rows.json')), false);
+      assert.equal(existsSync(path.join(outDir, 'flow-version-map.json')), false);
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

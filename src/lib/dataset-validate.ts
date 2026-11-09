@@ -7,6 +7,7 @@ import path from 'node:path';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
 import { CliError } from './errors.js';
+import { collectFlowReferencePropertyIssues } from './flow-reference-properties.js';
 import {
   isRecord,
   materializeDatasetRows,
@@ -159,6 +160,12 @@ export function collectImportContentIssues(payload: unknown): DatasetValidateIss
   return issues;
 }
 
+export function collectDatasetContentIssues(payload: Record<string, unknown>, kind: DatasetKind) {
+  const issues = collectImportContentIssues(payload);
+  if (kind === 'flow') issues.push(...collectFlowReferencePropertyIssues(payload));
+  return issues;
+}
+
 function normalizeType(value: string | null | undefined): DatasetValidateType {
   const normalized = value?.trim().toLowerCase();
   if (!normalized) {
@@ -301,17 +308,17 @@ function validateRow(
     createEntity,
   );
   const requiredFieldIssues: DatasetValidateIssue[] = [];
-  const placeholderIssues = collectImportContentIssues(row.payload);
+  const contentIssues = collectDatasetContentIssues(row.payload, kind);
   const { additional_multilingual_issues, ...evidence } = buildDatasetValidationLayers(
     row.payload,
     outcome,
     requiredFieldIssues,
-    placeholderIssues,
+    contentIssues,
   );
   if (
     outcome.success &&
     requiredFieldIssues.length === 0 &&
-    placeholderIssues.length === 0 &&
+    contentIssues.length === 0 &&
     additional_multilingual_issues.length === 0
   ) {
     return {
@@ -334,7 +341,7 @@ function validateRow(
       code: issue.code ?? 'custom',
     })),
     ...requiredFieldIssues,
-    ...placeholderIssues,
+    ...contentIssues,
     ...additional_multilingual_issues,
   ];
 

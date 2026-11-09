@@ -68,6 +68,7 @@ function makeFlowRow(options: {
           flowProperty: [
             {
               '@dataSetInternalID': options.propertyInternalId ?? '0',
+              meanValue: '1.0',
               referenceToFlowPropertyDataSet: {
                 '@refObjectId': options.flowPropertyId ?? 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
                 '@version': '01.00.000',
@@ -92,6 +93,49 @@ function makeFlowDocument(options: Parameters<typeof makeFlowRow>[0]): JsonRecor
     flowDataSet: (row.json_ordered as JsonRecord).flowDataSet as JsonRecord,
   };
 }
+
+test('Flow QA selects the declared property and reports invalid or ambiguous factors without a guessed reference', () => {
+  const doc = makeFlowDocument({
+    id: '11111111-1111-1111-1111-111111111111',
+    quantRefInternalId: '7',
+    propertyInternalId: '7',
+  });
+  const properties = (doc.flowDataSet as JsonRecord).flowProperties as {
+    flowProperty: JsonRecord[];
+  };
+  const selected = properties.flowProperty[0]!;
+  properties.flowProperty.unshift({ '@dataSetInternalID': '0', meanValue: '2.5' });
+  const inspect = () => __testInternals.buildFlowSummaryAndRuleFindings(doc, 'built_in');
+
+  const control = inspect();
+  assert.equal(control.summary.flow_property.selected_internal_id, '7');
+  assert.deepEqual(control.findings, []);
+
+  selected.meanValue = '0.45';
+  const invalid = inspect();
+  assert.equal(invalid.summary.flow_property.selected_internal_id, '7');
+  assert.ok(
+    invalid.findings.some(
+      (finding) =>
+        finding.rule_id === 'reference_property_not_one' &&
+        finding.methodology_rule_id === 'tidas.flow.flow-property.mean-value.positive',
+    ),
+  );
+
+  properties.flowProperty.push({ ...selected });
+  const ambiguous = inspect();
+  assert.deepEqual(ambiguous.summary.flow_property, {});
+  assert.deepEqual(
+    ambiguous.findings.map((finding) => finding.rule_id),
+    ['flow_property_duplicate_internal_id'],
+  );
+
+  properties.flowProperty.pop();
+  selected.referenceToFlowPropertyDataSet = 'not-a-dataset-reference';
+  assert.ok(
+    inspect().findings.some((finding) => finding.rule_id === 'invalid_flow_property_reference'),
+  );
+});
 
 function createLlmFetch(outputText: string, observedBodies: unknown[] = []): FetchLike {
   return (async (_input, init) => {
@@ -447,7 +491,7 @@ test('flow-qa internals handle invalid input modes, fallback run-root resolution
     const rareRuleIds = rareSummary.findings.map((finding) => finding.rule_id);
     assert.ok(rareRuleIds.includes('elementary_flow_in_flow_qa'));
     assert.ok(rareRuleIds.includes('name_contains_emergy'));
-    assert.ok(rareRuleIds.includes('invalid_flow_property_reference'));
+    assert.ok(rareRuleIds.includes('flow_property_mean_value_not_positive'));
     assert.ok(rareRuleIds.includes('missing_quantitative_reference'));
     assert.ok(rareRuleIds.includes('methodology_missing_class_id'));
     assert.ok(rareRuleIds.includes('methodology_missing_cat_id'));
@@ -570,7 +614,7 @@ test('flow-qa helpers cover methodology fallbacks, similarity sorting, and trunc
               },
             },
           },
-          quantitativeReference: {},
+          quantitativeReference: { referenceToReferenceFlowProperty: '7' },
         },
         modellingAndValidation: {
           LCIMethodAndAllocation: {
@@ -597,7 +641,7 @@ test('flow-qa helpers cover methodology fallbacks, similarity sorting, and trunc
   assert.ok(detailedRuleIds.includes('methodology_missing_cat_id'));
   assert.ok(detailedRuleIds.includes('methodology_product_classification_level_gap'));
   assert.ok(detailedRuleIds.includes('methodology_elementary_classification_level_gap'));
-  assert.ok(detailedRuleIds.includes('missing_quantitative_reference'));
+  assert.ok(detailedRuleIds.includes('flow_property_mean_value_not_positive'));
   assert.equal(detailed.summary.names.primary_en, 'Fallback English');
   assert.equal(
     detailed.summary.flow_property.referenced_uuid,
@@ -901,10 +945,10 @@ test('flow-qa direct helpers cover rare fallback branches', () => {
     'built_in',
   );
   assert.equal(noUuidSummary.summary.flow_uuid, '(missing-uuid)');
-  assert.equal(noUuidSummary.summary.flow_property.selected_internal_id, '');
+  assert.deepEqual(noUuidSummary.summary.flow_property, {});
   const noUuidRuleIds = noUuidSummary.findings.map((finding) => finding.rule_id);
   assert.ok(noUuidRuleIds.includes('missing_classification_leaf'));
-  assert.ok(noUuidRuleIds.includes('invalid_flow_property_reference'));
+  assert.ok(noUuidRuleIds.includes('flow_property_invalid_internal_id'));
   assert.ok(noUuidRuleIds.includes('missing_quantitative_reference'));
   assert.deepEqual(
     __testInternals.methodologyRuleCounts([

@@ -58,6 +58,7 @@ import {
   runDatasetMaintenanceVerify,
 } from '../src/lib/dataset-maintenance-verify.js';
 import { CliError } from '../src/lib/errors.js';
+import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 import type { FetchLike, ResponseLike } from '../src/lib/http.js';
 import {
   buildSupabaseTestEnv,
@@ -1480,6 +1481,130 @@ function stripMaintenanceContentRange(fetchImpl: FetchLike): FetchLike {
     };
   };
 }
+
+test('Flow maintenance checks new desired factors and preserves readback of a prior success', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-flow-factor-'));
+  const remote = new FakeMaintenanceRemote('maintenance-flow-factor');
+  const id = '77777777-7777-4777-8777-777777777777';
+  const version = '01.00.000';
+  const before = flowPayload(id, version).flowDataSet as JsonObject;
+  const makeDesired = (meanValue: string) => {
+    const property = flowReferenceFixture(meanValue);
+    return {
+      flowDataSet: {
+        ...before,
+        ...property,
+        flowInformation: { ...(before.flowInformation as JsonObject), ...property.flowInformation },
+      },
+    };
+  };
+  remote.add('flows', id, makeDesired('1.0'));
+  const actionInput = scopeAction(remote, {
+    action_id: 'save-flow',
+    action: 'save_draft',
+    table: 'flows',
+    id,
+    desired_payload_path: 'desired.json',
+  });
+  const scopePath = path.join(root, 'scope.json');
+  const desiredPath = path.join(root, 'desired.json');
+  const planWith = async (mean: string, label: string) => {
+    writeFileSync(desiredPath, JSON.stringify(makeDesired(mean)));
+    const planDir = path.join(root, label);
+    const plan = await runDatasetMaintenancePlan({
+      scopePath,
+      operation: 'repair-references',
+      outDir: planDir,
+      env: remote.env,
+      fetchImpl: remote.fetch,
+    });
+    return { plan, planDir };
+  };
+  try {
+    writeFileSync(
+      scopePath,
+      JSON.stringify(
+        scopeValue(remote, [actionInput], {
+          operation: 'repair-references',
+        }),
+      ),
+    );
+    const { plan, planDir } = await planWith('0.45', 'invalid');
+    assert.equal(plan.status, 'blocked');
+    assert.deepEqual(
+      plan.actions[0]?.blockers.map((issue) => issue.code),
+      ['reference_property_not_one'],
+    );
+    const context = await resolveMaintenanceRemoteContext({
+      env: remote.env,
+      fetchImpl: remote.fetch,
+    });
+    const normalized = await planWith('1.0', 'normalized');
+    assert.equal(normalized.plan.status, 'ready');
+    const legacyPlan = {
+      ...normalized.plan,
+      actions: normalized.plan.actions.map((action) => ({
+        ...action,
+        desired_payload: plan.actions[0]!.desired_payload,
+      })),
+    };
+    legacyPlan.plan_sha256 = computePlanSha256(legacyPlan);
+    const progress = applyInternals.parseProgress(
+      legacyPlan,
+      path.join(root, 'missing-progress.jsonl'),
+    );
+    const current = await fetchMaintenanceAccountRows({ context, userId: remote.userId });
+    // A pre-existing plan may lack the new planning blocker.
+    assert.throws(
+      () =>
+        applyInternals.assertApplyPreconditions({
+          plan: legacyPlan,
+          planDir,
+          currentRows: current.rows,
+          progress,
+        }),
+      { code: 'FLOW_REFERENCE_PROPERTY_INVALID' },
+    );
+    await assert.rejects(
+      saveDraftMaintenanceRow({
+        context,
+        table: 'flows',
+        id,
+        version,
+        payload: makeDesired('0.45'),
+        audit: {},
+        modelId: null,
+        ruleVerification: null,
+      }),
+      { code: 'FLOW_REFERENCE_PROPERTY_INVALID' },
+    );
+    assert.deepEqual(remote.rpcOrder, []);
+
+    const saved = await runDatasetMaintenanceApply({
+      planPath: path.join(normalized.planDir, 'maintenance-plan.json'),
+      commit: true,
+      approvePlan: normalized.plan.plan_sha256,
+      confirm: remote.email,
+      env: remote.env,
+      fetchImpl: remote.fetch,
+    });
+    assert.equal(saved.summary.success, 1);
+    assert.deepEqual(remote.rpcOrder, ['cmd_dataset_save_draft']);
+
+    const action = legacyPlan.actions[0]!;
+    const historic = makeDesired('0.45');
+    progress.successes.set(action.action_id, successProgressEntry(legacyPlan, action));
+    applyInternals.assertApplyPreconditions({
+      plan: legacyPlan,
+      planDir,
+      progress,
+      currentRows: [{ ...current.rows[0]!, json_ordered: historic }],
+    });
+    assert.deepEqual(remote.rpcOrder, ['cmd_dataset_save_draft']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('row-level maintenance plans update-first closure, resumes failure, and verifies readback', async () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-row-'));
