@@ -43,6 +43,8 @@ The locked Model schema represents Model references using `@type: "other externa
 
 Both contexts use the ordinary exact/latest lookup and the explicit intent protocol below. A historical Model reference still needs content-bound review when a newer visible version exists. Missing or invisible targets and identity, owner, state or payload drift remain blocking. Type resolution does not certify the predecessor's published replacement relation, publication closure or scientific acceptance; those operation-specific requirements remain with their existing owners.
 
+Contextual inference belongs to `verify-remote`; the shared collector used by persisted maintenance plans and writer contracts retains its previous projection. `dataset references refresh-remote` leaves these exact Model provenance and predecessor occurrences unchanged, retaining their version blockers for explicit review instead of retargeting lineage or source identity to the latest version. Other refreshable references keep their existing behavior.
+
 ## Intent input
 
 The file is UTF-8 JSON with exactly these fields:

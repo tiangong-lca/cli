@@ -4,11 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {
-  collectRemoteReferences,
+  __testInternals,
   runDatasetRemoteVerify,
   type RemoteDatasetLookupRequest,
 } from '../src/lib/dataset-remote-verify.js';
 import type { JsonObject } from '../src/lib/dataset-local.js';
+
+const collectVerificationReferences = __testInternals.collectVerificationReferences;
 
 const modelId = '00000000-0000-4000-8000-000000000001';
 const processId = '00000000-0000-4000-8000-000000000002';
@@ -49,7 +51,7 @@ function predecessorRow() {
 }
 
 function referenceAt(row: JsonObject, occurrence: string) {
-  return collectRemoteReferences([row]).find((reference) => reference.path === occurrence);
+  return collectVerificationReferences([row]).find((reference) => reference.path === occurrence);
 }
 
 const provenancePath =
@@ -87,7 +89,7 @@ test('native provenance resolves only at its exact Process field and preserves M
       },
     },
   ]) {
-    const references = collectRemoteReferences([row]).filter(
+    const references = collectVerificationReferences([row]).filter(
       (reference) => reference.role === 'reference',
     );
     assert.equal(references.length, 1);
@@ -107,7 +109,7 @@ test('Model predecessor context accepts singleton and direct array occurrences w
         'common:referenceToPrecedingDataSetVersion': value,
       },
     );
-    const references = collectRemoteReferences([candidate]).filter(
+    const references = collectVerificationReferences([candidate]).filter(
       (item) => item.role === 'reference',
     );
     assert.deepEqual(
@@ -124,7 +126,7 @@ test('Model predecessor context accepts singleton and direct array occurrences w
   for (const value of [undefined, []]) {
     Object.assign(publication, { 'common:referenceToPrecedingDataSetVersion': value });
     assert.equal(
-      collectRemoteReferences([row]).filter((item) => item.role === 'reference').length,
+      collectVerificationReferences([row]).filter((item) => item.role === 'reference').length,
       0,
     );
   }
@@ -307,12 +309,12 @@ test('Model-shaped URIs outside the exact predecessor context remain unsupported
       },
     })),
   ]) {
-    const references = collectRemoteReferences([row]).filter((item) => item.role === 'reference');
+    const references = collectVerificationReferences([row]).filter((item) => item.role === 'reference');
     assert.equal(references.length, 1);
     assert.equal(references[0].table, null);
   }
   assert.equal(
-    collectRemoteReferences([{ other: { ...reference, '@type': 'source data set' } }])[0].table,
+    collectVerificationReferences([{ other: { ...reference, '@type': 'source data set' } }])[0].table,
     'sources',
   );
 });

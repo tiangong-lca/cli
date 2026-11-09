@@ -296,6 +296,21 @@ const PATH_TABLE_HINTS: Array<[RegExp, RemoteDatasetTable]> = [
   [/referenceToNameOfReviewerAndInstitution$/u, 'contacts'],
 ];
 
+const MODEL_PROVENANCE_PATH =
+  '/processDataSet/processInformation/dataSetInformation/generatedFromLifecycleModel';
+const MODEL_PREDECESSOR_PATH =
+  '/lifeCycleModelDataSet/administrativeInformation/publicationAndOwnership/common:referenceToPrecedingDataSetVersion';
+
+export function isFixedModelReference(
+  reference: Pick<RemoteDatasetReference, 'table' | 'path'>,
+): boolean {
+  return (
+    reference.table === 'lifecyclemodels' &&
+    (reference.path === MODEL_PROVENANCE_PATH ||
+      reference.path.replace(/\/(?:0|[1-9]\d*)$/u, '') === MODEL_PREDECESSOR_PATH)
+  );
+}
+
 const EMPTY_STATUS_COUNTS: Record<string, number> = {
   ok: 0,
   lookup_failed: 0,
@@ -363,11 +378,7 @@ function tableFromReference(
   rootTable: RemoteDatasetTable | null,
   arrayItem: boolean,
 ): RemoteDatasetTable | null {
-  if (
-    rootTable === 'processes' &&
-    reference.path ===
-      '/processDataSet/processInformation/dataSetInformation/generatedFromLifecycleModel'
-  ) {
+  if (rootTable === 'processes' && reference.path === MODEL_PROVENANCE_PATH) {
     // The native producer historically omitted type on this exact extension.
     // Publish consumes id/version here; generic aliases must not redirect verification.
     return [value.type, value['@type']].every(
@@ -380,13 +391,12 @@ function tableFromReference(
       ? 'lifecyclemodels'
       : null;
   }
-  const predecessor =
-    '/lifeCycleModelDataSet/administrativeInformation/publicationAndOwnership/common:referenceToPrecedingDataSetVersion';
   if (
     reference.table === null &&
     rootTable === 'lifecyclemodels' &&
-    (reference.path === predecessor ||
-      (arrayItem && reference.path.slice(0, reference.path.lastIndexOf('/')) === predecessor))
+    (reference.path === MODEL_PREDECESSOR_PATH ||
+      (arrayItem &&
+        reference.path.slice(0, reference.path.lastIndexOf('/')) === MODEL_PREDECESSOR_PATH))
   ) {
     // TIDAS GlobalReferenceType has no Model label. Recognize only the exact
     // local Model locator in this context; the URI is never fetched or trusted
@@ -580,7 +590,10 @@ function collectReferencesFromValue(
   }
 }
 
-export function collectRemoteReferences(rows: JsonObject[]): RemoteDatasetReference[] {
+function collectReferences(
+  rows: JsonObject[],
+  resolveModelContexts: boolean,
+): RemoteDatasetReference[] {
   const references: RemoteDatasetReference[] = [];
   rows.forEach((row, index) => {
     const payload = unwrapDatasetPayload(row);
@@ -588,9 +601,25 @@ export function collectRemoteReferences(rows: JsonObject[]): RemoteDatasetRefere
     if (root) {
       references.push({ ...root, row_index: index });
     }
-    collectReferencesFromValue(index, payload, '', references, root?.table ?? null);
+    collectReferencesFromValue(
+      index,
+      payload,
+      '',
+      references,
+      resolveModelContexts ? (root?.table ?? null) : null,
+    );
   });
   return references;
+}
+
+export function collectRemoteReferences(rows: JsonObject[]): RemoteDatasetReference[] {
+  // Maintenance plans and other writers bind this historical projection in
+  // persisted evidence. Model verification must not migrate those fingerprints.
+  return collectReferences(rows, false);
+}
+
+function collectVerificationReferences(rows: JsonObject[]): RemoteDatasetReference[] {
+  return collectReferences(rows, true);
 }
 
 function compareVersions(left: string | null, right: string | null): number {
@@ -1073,7 +1102,7 @@ export async function runDatasetRemoteVerify(
     requireNonEmpty(options.outDir, '--out-dir', 'DATASET_REMOTE_VERIFY_OUT_DIR_REQUIRED'),
   );
   const rows = readDatasetRowsInput(inputPath, options.rawInput);
-  const references = collectRemoteReferences(rows);
+  const references = collectVerificationReferences(rows);
   const intent =
     options.referenceIntentFile === undefined
       ? null
@@ -1354,6 +1383,7 @@ export const __testInternals = {
   buildRemotePayloadUrl,
   buildRemoteUrl,
   collectRemoteReferences,
+  collectVerificationReferences,
   compareVersions,
   isFoundryTracePath,
   lookupRemoteDatasetPayload,

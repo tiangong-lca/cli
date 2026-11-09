@@ -183,6 +183,8 @@ Exact-reference tests must cover default latest behavior, explicit older/public/
 
 Model reference regressions also bind the actual resulting-process producer, historical untyped provenance and typed compatibility, and real SDK acceptance of singleton/array Model predecessors encoded as `other external file`. Cover exact-context boundaries, conflicting type/URI/UUID/version combinations, missing/invisible targets, reviewed older Model references and unchanged root/content gates. The URI discriminator must never become an external network lookup. Synthetic proof remains separate from the original caller's qualified-runtime retest.
 
+Shared-consumer regressions preserve the historical maintenance reference fingerprint for unchanged rows. The real refresh/verifier chain must retain exact Model provenance and predecessor versions and their blockers, while ordinary references remain refreshable. Source-table inference in verification must not silently migrate persisted maintenance or write contracts.
+
 Guarded exact-reference Flow tests must exercise public save-draft dry-run/commit on the same full payloads accepted by verify-remote. Cover every repeated occurrence, undeclared/default policy, malformed and changed selections, fresh actor/project and complete selected/latest body proof, asynchronous predispatch rejection, before-image drift, immutable admission, consumed selection omission/change, lost-response exact readback and terminal UNKNOWN without replay. Fixtures use guarded synthetic transport; they do not replace the original caller/runtime qualification.
 
 ## Minimum PR Note Quality

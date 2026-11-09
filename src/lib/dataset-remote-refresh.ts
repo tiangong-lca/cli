@@ -11,6 +11,7 @@ import {
   type JsonObject,
 } from './dataset-local.js';
 import {
+  isFixedModelReference,
   runDatasetRemoteVerify,
   type DatasetRemoteVerificationReport,
   type RemoteVerificationCheck,
@@ -134,6 +135,7 @@ function referenceNodeForPatch(
 function refreshableCheck(check: RemoteVerificationCheck): boolean {
   return (
     check.role === 'reference' &&
+    !isFixedModelReference(check) &&
     Boolean(check.latest_version) &&
     ['missing_version', 'version_missing', 'version_outdated'].includes(check.status)
   );
