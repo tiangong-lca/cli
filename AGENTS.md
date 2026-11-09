@@ -39,9 +39,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-07
-lastReviewedCommit: 2ed5b82102ac80e56c2d4c7f0fe8ab00e4a471fa
-lastReviewedNote: 'CLI #466: reviewed version-only 0.1.29 preparation on merged #377 source; eight bound fixture values advance, while runtime, dependency lock, exports and release authority remain unchanged.'
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 5fcde75e54220e6fca0015b85f2a5c7996c50ba4
+lastReviewedNote: 'CLI #383/#348: reviewed bounded Model provenance and predecessor resolution, original exact-reference/root gates and required regression proof; schema, dependencies, package identity and release authority remain unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md

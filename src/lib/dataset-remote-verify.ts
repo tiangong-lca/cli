@@ -296,6 +296,24 @@ const PATH_TABLE_HINTS: Array<[RegExp, RemoteDatasetTable]> = [
   [/referenceToNameOfReviewerAndInstitution$/u, 'contacts'],
 ];
 
+const MODEL_PROVENANCE_PATH =
+  '/processDataSet/processInformation/dataSetInformation/generatedFromLifecycleModel';
+const MODEL_PREDECESSOR_PATH =
+  '/lifeCycleModelDataSet/administrativeInformation/publicationAndOwnership/common:referenceToPrecedingDataSetVersion';
+
+export function isFixedModelReference(
+  reference: Pick<RemoteDatasetReference, 'table' | 'path'>,
+  arrayItem: boolean,
+): boolean {
+  return (
+    reference.table === 'lifecyclemodels' &&
+    (reference.path === MODEL_PROVENANCE_PATH ||
+      reference.path === MODEL_PREDECESSOR_PATH ||
+      (arrayItem &&
+        reference.path.slice(0, reference.path.lastIndexOf('/')) === MODEL_PREDECESSOR_PATH))
+  );
+}
+
 const EMPTY_STATUS_COUNTS: Record<string, number> = {
   ok: 0,
   lookup_failed: 0,
@@ -355,6 +373,49 @@ function tableFromType(value: string | null): RemoteDatasetTable | null {
 function tableFromPath(pathExpression: string): RemoteDatasetTable | null {
   const pathEnd = pathExpression.split('/').filter(Boolean).at(-1) ?? '';
   return PATH_TABLE_HINTS.find(([pattern]) => pattern.test(pathEnd))?.[1] ?? null;
+}
+
+function tableFromReference(
+  value: JsonObject,
+  reference: RemoteDatasetReference,
+  rootTable: RemoteDatasetTable | null,
+  arrayItem: boolean,
+): RemoteDatasetTable | null {
+  if (rootTable === 'processes' && reference.path === MODEL_PROVENANCE_PATH) {
+    // The native producer historically omitted type on this exact extension.
+    // Publish consumes id/version here; generic aliases must not redirect verification.
+    return [value.type, value['@type']].every(
+      (type) =>
+        type === undefined ||
+        (typeof type === 'string' && tableFromType(type) === 'lifecyclemodels'),
+    ) &&
+      reference.id === firstNonEmpty(value.id) &&
+      reference.version === firstNonEmpty(value.version)
+      ? 'lifecyclemodels'
+      : null;
+  }
+  if (
+    reference.table === null &&
+    rootTable === 'lifecyclemodels' &&
+    (reference.path === MODEL_PREDECESSOR_PATH ||
+      (arrayItem &&
+        reference.path.slice(0, reference.path.lastIndexOf('/')) === MODEL_PREDECESSOR_PATH))
+  ) {
+    // TIDAS GlobalReferenceType has no Model label. Recognize only the exact
+    // local Model locator in this context; the URI is never fetched or trusted
+    // as an alternative identity, version or reference-policy exception.
+    const id = value['@refObjectId'];
+    const version = value['@version'];
+    return value['@type'] === 'other external file' &&
+      typeof id === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(id) &&
+      typeof version === 'string' &&
+      /^\d{2}\.\d{2}(\.\d{3})?$/u.test(version) &&
+      value['@uri'] === `../lifecyclemodels/${id}_${version}.xml`
+      ? 'lifecyclemodels'
+      : null;
+  }
+  return reference.table;
 }
 
 function shortDescription(value: unknown): string | null {
@@ -441,23 +502,26 @@ function referenceFromRecord(
   rowIndex: number,
   value: JsonObject,
   pathExpression: string,
+  rootTable: RemoteDatasetTable | null,
+  arrayItem: boolean,
 ): RemoteDatasetReference | null {
   const id = firstNonEmpty(value['@refObjectId'], value.refObjectId, value.id);
   if (!id) {
     return null;
   }
   const type = firstNonEmpty(value['@type'], value.type);
-  const table = tableFromType(type) ?? tableFromPath(pathExpression);
-  return {
+  const reference: RemoteDatasetReference = {
     row_index: rowIndex,
     role: 'reference',
-    table,
+    table: tableFromType(type) ?? tableFromPath(pathExpression),
     type,
     id,
     version: firstNonEmpty(value['@version'], value.version),
     path: pathExpression,
     short_description: shortDescription(value['common:shortDescription']),
   };
+  reference.table = tableFromReference(value, reference, rootTable, arrayItem);
+  return reference;
 }
 
 function flowReferenceFromRecord(
@@ -485,6 +549,8 @@ function collectReferencesFromValue(
   value: unknown,
   pathExpression: string,
   references: RemoteDatasetReference[],
+  rootTable: RemoteDatasetTable | null,
+  arrayItem = false,
 ): void {
   if (isFoundryTracePath(pathExpression)) {
     return;
@@ -492,7 +558,14 @@ function collectReferencesFromValue(
 
   if (Array.isArray(value)) {
     value.forEach((entry, index) =>
-      collectReferencesFromValue(rowIndex, entry, pointerPath(pathExpression, index), references),
+      collectReferencesFromValue(
+        rowIndex,
+        entry,
+        pointerPath(pathExpression, index),
+        references,
+        rootTable,
+        true,
+      ),
     );
     return;
   }
@@ -501,7 +574,7 @@ function collectReferencesFromValue(
     return;
   }
 
-  const ref = referenceFromRecord(rowIndex, value, pathExpression);
+  const ref = referenceFromRecord(rowIndex, value, pathExpression, rootTable, arrayItem);
   if (ref) {
     references.push(ref);
   }
@@ -510,11 +583,20 @@ function collectReferencesFromValue(
     references.push(flowRef);
   }
   for (const [key, nested] of Object.entries(value)) {
-    collectReferencesFromValue(rowIndex, nested, pointerPath(pathExpression, key), references);
+    collectReferencesFromValue(
+      rowIndex,
+      nested,
+      pointerPath(pathExpression, key),
+      references,
+      rootTable,
+    );
   }
 }
 
-export function collectRemoteReferences(rows: JsonObject[]): RemoteDatasetReference[] {
+function collectReferences(
+  rows: JsonObject[],
+  resolveModelContexts: boolean,
+): RemoteDatasetReference[] {
   const references: RemoteDatasetReference[] = [];
   rows.forEach((row, index) => {
     const payload = unwrapDatasetPayload(row);
@@ -522,9 +604,25 @@ export function collectRemoteReferences(rows: JsonObject[]): RemoteDatasetRefere
     if (root) {
       references.push({ ...root, row_index: index });
     }
-    collectReferencesFromValue(index, payload, '', references);
+    collectReferencesFromValue(
+      index,
+      payload,
+      '',
+      references,
+      resolveModelContexts ? (root?.table ?? null) : null,
+    );
   });
   return references;
+}
+
+export function collectRemoteReferences(rows: JsonObject[]): RemoteDatasetReference[] {
+  // Maintenance plans and other writers bind this historical projection in
+  // persisted evidence. Model verification must not migrate those fingerprints.
+  return collectReferences(rows, false);
+}
+
+function collectVerificationReferences(rows: JsonObject[]): RemoteDatasetReference[] {
+  return collectReferences(rows, true);
 }
 
 function compareVersions(left: string | null, right: string | null): number {
@@ -1007,7 +1105,7 @@ export async function runDatasetRemoteVerify(
     requireNonEmpty(options.outDir, '--out-dir', 'DATASET_REMOTE_VERIFY_OUT_DIR_REQUIRED'),
   );
   const rows = readDatasetRowsInput(inputPath, options.rawInput);
-  const references = collectRemoteReferences(rows);
+  const references = collectVerificationReferences(rows);
   const intent =
     options.referenceIntentFile === undefined
       ? null
@@ -1288,6 +1386,7 @@ export const __testInternals = {
   buildRemotePayloadUrl,
   buildRemoteUrl,
   collectRemoteReferences,
+  collectVerificationReferences,
   compareVersions,
   isFoundryTracePath,
   lookupRemoteDatasetPayload,
