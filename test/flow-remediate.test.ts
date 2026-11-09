@@ -293,6 +293,32 @@ test('Flow remediation preserves property metadata and sends unsafe reference re
   }
 });
 
+test('a Flow with an unresolved secondary property retains the whole property in the manual queue', () => {
+  const row = makeFlowEnvelope({ id: '11111111-1111-1111-1111-111111111111' });
+  const dataset = (row.json_ordered as JsonRecord).flowDataSet as JsonRecord;
+  const block = dataset.flowProperties as JsonRecord;
+  const unresolved = {
+    '@dataSetInternalID': '0',
+    meanValue: '42.5',
+    minimumValue: '40',
+    maximumValue: '45',
+    uncertaintyDistributionType: 'uniform',
+    referenceToFlowPropertyDataSet: { '@refObjectId': 'unresolved' },
+  };
+  block.flowProperty = [unresolved, block.flowProperty];
+  const result = __testInternals.remediate_row(row, { loadSdkModule: makeSdkLoader() });
+  const emitted = (result.row.json_ordered as JsonRecord).flowDataSet as JsonRecord;
+  assert.equal(result.valid, false);
+  assert.deepEqual(
+    result.finalReasons.map((issue) => issue.code),
+    ['unknown_flow_property_uuid'],
+  );
+  const properties = (emitted.flowProperties as JsonRecord).flowProperty as JsonRecord[];
+  assert.equal(properties.length, 2);
+  assert.deepEqual(properties[0], unresolved);
+  assert.equal(properties[1]?.['@dataSetInternalID'], '7');
+});
+
 test('flow remediation helper utilities cover normalization and fallback branches', () => {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-flow-remediate-helpers-'));
   const existingInput = path.join(tempDir, 'rows.jsonl');

@@ -11,6 +11,7 @@ import path from 'node:path';
 import { writeJsonArtifact } from './artifacts.js';
 import { collectRemoteReferences } from './dataset-remote-verify.js';
 import { CliError } from './errors.js';
+import { assertFlowReferencePropertyWriteAdmission } from './flow-reference-properties.js';
 import type { FetchLike } from './http.js';
 import { withStateFileLock } from './state-lock.js';
 import {
@@ -1327,6 +1328,9 @@ function assertApplyPreconditions(options: {
         code: 'DATASET_MAINTENANCE_ACTION_ROW_DRIFT',
         exitCode: 1,
       });
+    }
+    if (!alreadySucceeded && action.action === 'save_draft' && action.table === 'flows') {
+      assertFlowReferencePropertyWriteAdmission(loadDesiredPayload(options.planDir, action));
     }
   }
   const projected = finalProjectedRows({

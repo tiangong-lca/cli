@@ -53,7 +53,7 @@ Managed-host launch selection stays in the generic CLI manager. Dedicated protoc
 
 `dataset-save-draft-reference-intent.ts` composes the shared #289 strict selection/evaluator and complete-body observation with the owner execution contract. `dataset-save-draft-run.ts` owns fresh preflight/predispatch, action ledger and recovery; `dataset-command.ts` awaits admission before POST. Default gates and the original ledger domain remain unchanged. [The exact-reference contract](exact-reference-intent-contract.md#guarded-flow-owner-drafts) defines caller snapshots and admission fields.
 
-`flow-reference-properties.ts` owns the Flow reference pointer and conversion factor check. BuildPlan, QA, local validation, remediation qualification and draft and publication preparation consume the same rule. The create/save adapter checks the outgoing body before admitting dispatch.
+`flow-reference-properties.ts` owns the Flow reference pointer and conversion factor check. BuildPlan, QA, local validation, remediation qualification, draft and publication preparation, and ordinary Flow draft maintenance use the same rule. The platform and maintenance adapters both check the outgoing body before dispatch.
 
 ## Repo Shape
 

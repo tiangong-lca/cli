@@ -46,7 +46,7 @@ type FlowPublishOperation =
   | 'update_after_insert_error';
 
 type FlowPublishFailureReason = {
-  validator: 'remote_rest' | 'flow_schema' | 'import_content';
+  validator: 'remote_rest' | 'flow_schema' | 'import_content' | 'flow_reference_properties';
   stage: string;
   path: string;
   message: string;
@@ -477,16 +477,23 @@ function gate_failure_rows(
     return [
       failure_row(
         row,
-        flow.issues.map((issue) => ({
-          validator:
+        flow.issues.map((issue) => {
+          const ruleId = resolveRuntimeRuleId('flow-publish/default', issue.code);
+          const isReferenceProperty =
+            ruleId === 'tidas.flow.reference-property-unit.required' ||
+            ruleId === 'tidas.flow.flow-property.mean-value.positive';
+          const validator =
             issue.code === 'dataset_import_placeholder_content'
-              ? ('import_content' as const)
-              : ('flow_schema' as const),
-          stage: 'schema_gate',
-          path: issue.path,
-          message: issue.message,
-          code: issue.code,
-        })),
+              ? 'import_content'
+              : isReferenceProperty
+                ? 'flow_reference_properties'
+                : 'flow_schema';
+          return {
+            ...issue,
+            validator,
+            stage: isReferenceProperty ? 'content_gate' : 'schema_gate',
+          };
+        }),
       ),
     ];
   });

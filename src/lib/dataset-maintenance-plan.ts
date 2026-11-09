@@ -30,6 +30,7 @@ import {
   type JsonObject,
 } from './dataset-maintenance-contract.js';
 import { parseDerivativeSnapshotResponse } from './dataset-maintenance-derivatives.js';
+import { collectFlowReferencePropertyIssues } from './flow-reference-properties.js';
 import {
   inspectMaintenanceSupportPayload,
   maintenancePayloadIdentity,
@@ -431,6 +432,11 @@ export async function runDatasetMaintenancePlan(
             identity,
           ),
         );
+      }
+      if (action.table === 'flows') {
+        for (const issue of collectFlowReferencePropertyIssues(rawPayload)) {
+          actionBlockers.push(blocker(action, issue.code, issue.message, { path: issue.path }));
+        }
       }
     }
     let derivativeBefore: DatasetMaintenancePlanAction['derivative_before'];

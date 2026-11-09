@@ -454,10 +454,11 @@ function normalize_flow_properties(
   dataset: JsonRecord,
   fixes: string[],
 ): { items: JsonRecord[]; unresolved: FlowValidationIssue[] } {
-  const flowPropertiesBlock = isRecord(dataset.flowProperties) ? dataset.flowProperties : {};
-  dataset.flowProperties = flowPropertiesBlock;
+  if (!isRecord(dataset.flowProperties)) return { items: [], unresolved: [] };
+  const flowPropertiesBlock = dataset.flowProperties;
   const rawItems = flowPropertiesBlock.flowProperty;
   const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
+  const patchedItems = [...items];
   const normalizedItems: JsonRecord[] = [];
   const unresolved: FlowValidationIssue[] = [];
   let repairedUnknownUuid = false;
@@ -518,7 +519,7 @@ function normalize_flow_properties(
     }
 
     const uri = coerceText(reference?.['@uri']);
-    normalizedItems.push({
+    const normalizedItem = {
       ...item,
       referenceToFlowPropertyDataSet: {
         ...reference,
@@ -537,14 +538,16 @@ function normalize_flow_properties(
           { '@xml:lang': 'en', '#text': descriptor.name },
         ],
       },
-    });
+    };
+    patchedItems[index] = normalizedItem;
+    normalizedItems.push(normalizedItem);
   }
 
   if (!normalizedItems.length) {
     return { items: [], unresolved };
   }
 
-  flowPropertiesBlock.flowProperty = Array.isArray(rawItems) ? normalizedItems : normalizedItems[0];
+  flowPropertiesBlock.flowProperty = Array.isArray(rawItems) ? patchedItems : patchedItems[0];
   fixes.push('normalize_flow_properties');
   if (repairedUnknownUuid) {
     fixes.push('repair_unknown_flow_property_uuid_from_short_description');
@@ -769,15 +772,15 @@ function remediate_row(row: JsonRecord, deps: FlowRemediationDeps): FlowRemediat
     fixes.push('set_compliance_block');
   }
 
-  // Diagnose the original relation before any reference metadata repair can change its shape.
+  const flowProperties = normalize_flow_properties(flowDataSet, fixes);
+  residualUnresolved.push(...flowProperties.unresolved);
+  // Metadata repair retains all entries and their positions. Qualify the body we actually emit.
   residualUnresolved.push(
     ...collectFlowReferencePropertyIssues(payload).map((issue): FlowValidationIssue => ({
       ...issue,
       validator: 'flow_reference_properties',
     })),
   );
-  const flowProperties = normalize_flow_properties(flowDataSet, fixes);
-  residualUnresolved.push(...flowProperties.unresolved);
   normalize_technology_multilang_fields(flowDataSet, fixes);
   normalize_technical_specification(flowDataSet, fixes);
 
