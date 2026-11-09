@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-09
-lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
-lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 3af078a975dcf72adde340cc779935344057b41e
+lastReviewedNote: 'Reviewed shared Flow content validation and write admission against current command, maintenance/recovery, packaging, documentation and release boundaries.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -69,6 +69,7 @@ The complete gate verifies bundled public rules, lint/typecheck and Data API con
 | --- | --- |
 | Launcher, command parsing, help or results | Valid and invalid invocations, stdout/stderr and exit semantics, bounded JSON, artifacts and no-effect help; independent entrypoint tests. |
 | Dataset query/content/validation | Eight-type capability differences, explicit version selection without fallback, pagination/filter binding, exact references, pure patches/translations and real SDK findings. |
+| Flow reference properties | Singleton/array and non-positional ID resolution; invalid/duplicate IDs, missing targets, nonpositive/nonfinite factors and decimal values near one; unchanged input/uncertainty, separate schema/content verdicts, zero-dispatch create/save and maintenance refusal, package and native installed-consumer checks. |
 | Dataset create/save/delete | Valid five-type fixtures, create conflict/save missing refusal, actor/environment binding, content preconditions, stale state and role denial; unknown-outcome recovery without a second dispatch. |
 | Model and Source operations | Exact source identities and conservation; independent create/save after generation; attachment byte snapshots, upload/readback integrity, partial references and separate Source save. |
 | Review | One actual submission root and service-related scope, current role/RLS queries and materials, draft versus decision effects, rejected-record resubmission and same-request recovery. Administrator assignment/finalization stays separate. |

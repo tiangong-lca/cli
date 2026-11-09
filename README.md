@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - README.md
   - src/commands/**
-lastReviewedAt: 2026-11-09
-lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
-lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 3af078a975dcf72adde340cc779935344057b41e
+lastReviewedNote: 'Reviewed shared Flow content validation and write admission against current command, maintenance/recovery, packaging, documentation and release boundaries.'
 ---
 
 # TianGong LCA CLI
@@ -79,6 +79,8 @@ node bin/tiangong-lca.js dataset process validate --input process.json --output 
 `get` 必须显式选择精确版本或 `latest`，精确版本不存在时不回退。`--output` 保存完整内容，默认拒绝覆盖已有文件。未指定输出文件时 JSON 包含完整内容；人类输出只呈现摘要。
 
 `validate` 接收单个规范对象内容，复用现有结构、业务、多语言和适用分配检查；显式 `--checks references` 执行现有远程精确引用准入校验。报告区分实际检查与未覆盖的科学适用性和跨对象定量一致性。LCIA Method 仅支持契约和 schema 校验。
+
+Flow 业务校验按声明的内部 ID 唯一定位参考属性，要求所有属性因子为有限正数、参考因子精确等于十进制 1。`create/save` 在派发前执行相同检查；校验只报告具体字段问题，不自动归一化或修改数据。详见 [Flow 约束](docs/interfaces/datasets/flows.md#业务约束)。
 
 新入口的 JSON 返回业务结果、完整性和上下文。下一步提示仅包含说明与可选命令，回复模板为安装包中的 Markdown 路径。大校验报告可通过 `--output` 保存；终端只显示有界摘要。缺少模板时仍保留真实业务结果。
 

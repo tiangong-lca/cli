@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, realpathSync } from
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createBusinessBackend } from './cli-business-backend.js';
+import { businessFlowReferenceFixture } from './flow-reference-fixture.js';
 import {
   businessActor,
   businessReviewer,
@@ -131,6 +132,43 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
       await invoke(['dataset', command, '--help'], businessActor, 2, 'UNKNOWN_COMMAND');
     }
     assert.equal(backend.calls.length, 0, 'Retired paths must not contact the backend');
+    for (const factor of ['0.45', '0', '1.00000000000000000001', '1.0']) {
+      const content = businessFlowReferenceFixture(factor);
+      const file = jsonFile(content);
+      const result = await invoke(
+        ['dataset', 'flow', 'validate', '--input', file],
+        businessActor,
+        factor === '1.0' ? 0 : 1,
+      );
+      const validation = (result.data as Json).validation as Json;
+      const layers = validation.validation_layers as Record<string, Json>;
+      assert.equal(layers.schema!.status, 'passed');
+      assert.equal(layers.content!.status, factor === '1.0' ? 'passed' : 'failed');
+      assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), content);
+    }
+    const invalidFlow = businessFlowReferenceFixture('0.45');
+    const invalidIdentity = businessIdentity('flow', invalidFlow);
+    for (const action of ['create', 'save']) {
+      const result = await request(
+        'flow',
+        action,
+        {
+          ...binding(`invalid-flow-${action}`),
+          ...invalidIdentity,
+          content: invalidFlow,
+          ...(action === 'save' ? { expectedContent: businessFlowReferenceFixture() } : {}),
+        },
+        businessActor,
+        1,
+      );
+      assert.equal(result.outcome, 'precondition');
+      assert.equal((result.error as Json).code, 'VALIDATION_REQUIRED');
+    }
+    assert.equal(
+      backend.calls.filter((call) => call.path.startsWith('/functions/')).length,
+      0,
+      'Invalid Flow content must not dispatch a mutation',
+    );
     for (const type of writableTypes) {
       const content = businessFixture(type),
         identity = businessIdentity(type, content);

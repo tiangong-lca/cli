@@ -1,6 +1,7 @@
 import { assertProcessAllocationWriteAdmission } from './process-allocation-write-admission.js';
 import { semanticContextFromInput } from './process-semantic-validation.js';
 import { CliError } from './errors.js';
+import { assertFlowReferencePropertyWriteAdmission } from './flow-reference-properties.js';
 import type { FetchLike } from './http.js';
 import { postJson, requireRemoteOkPayload } from './http.js';
 import {
@@ -189,6 +190,7 @@ export async function createDatasetRecord(options: {
   extraData?: JsonObject;
   beforeDispatch?: () => void | Promise<void>;
 }): Promise<JsonObject> {
+  if (options.table === 'flows') assertFlowReferencePropertyWriteAdmission(options.payload);
   if (options.table === 'processes')
     await assertProcessAllocationWriteAdmission(
       options.payload,
@@ -236,6 +238,7 @@ export async function saveDraftDatasetRecord(options: {
   extraData?: JsonObject;
   beforeDispatch?: () => void | Promise<void>;
 }): Promise<JsonObject> {
+  if (options.table === 'flows') assertFlowReferencePropertyWriteAdmission(options.payload);
   if (options.table === 'processes')
     await assertProcessAllocationWriteAdmission(
       options.payload,

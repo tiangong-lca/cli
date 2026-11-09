@@ -1,3 +1,4 @@
+import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 import { processTransportFixture } from './helpers/process-allocation-fixture.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -89,7 +90,7 @@ test('dataset command helper posts create and save-draft payloads with normalize
     transport,
     table: 'flows',
     id: '11111111-1111-1111-1111-111111111111',
-    payload: { flowDataSet: {} },
+    payload: flowReferenceFixture(),
     extraData: {
       model_id: null,
       rule_verification: false,
@@ -117,9 +118,7 @@ test('dataset command helper posts create and save-draft payloads with normalize
   assert.deepEqual(JSON.parse(observed[0]?.body ?? '{}'), {
     table: 'flows',
     id: '11111111-1111-1111-1111-111111111111',
-    jsonOrdered: {
-      flowDataSet: {},
-    },
+    jsonOrdered: flowReferenceFixture(),
     modelId: null,
     ruleVerification: false,
   });
@@ -156,7 +155,7 @@ test('dataset command helper rejects ok:false application payloads', async () =>
         transport,
         table: 'flows',
         id: '44444444-4444-4444-4444-444444444444',
-        payload: { flowDataSet: {} },
+        payload: flowReferenceFixture(),
       }),
     (error) => {
       assert.ok(error instanceof CliError);
@@ -209,7 +208,7 @@ test('dataset command helper normalizes optional metadata helpers and rejects ma
         transport,
         table: 'flows',
         id: '55555555-5555-5555-5555-555555555555',
-        payload: { flowDataSet: {} },
+        payload: flowReferenceFixture(),
       }),
     (error) => {
       assert.ok(error instanceof CliError);

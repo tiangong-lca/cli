@@ -1,3 +1,4 @@
+import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -935,10 +936,10 @@ test('categoryValidate logs pass and failure cases while deduping repeated schem
   const originalError = console.error;
 
   writeText(path.join(flowsDir, 'invalid.json'), '{invalid-json');
-  writeJson(path.join(flowsDir, 'passed.json'), { kind: 'pass' });
-  writeJson(path.join(flowsDir, 'schema.json'), { kind: 'schema' });
-  writeJson(path.join(flowsDir, 'empty.json'), { kind: 'empty' });
-  writeJson(path.join(flowsDir, 'throw.json'), { kind: 'throw' });
+  writeJson(path.join(flowsDir, 'passed.json'), { ...flowReferenceFixture(), kind: 'pass' });
+  writeJson(path.join(flowsDir, 'schema.json'), { ...flowReferenceFixture(), kind: 'schema' });
+  writeJson(path.join(flowsDir, 'empty.json'), { ...flowReferenceFixture(), kind: 'empty' });
+  writeJson(path.join(flowsDir, 'throw.json'), { ...flowReferenceFixture(), kind: 'throw' });
   writeText(path.join(flowsDir, 'notes.md'), '# ignored');
 
   console.info = (...args: unknown[]) => {

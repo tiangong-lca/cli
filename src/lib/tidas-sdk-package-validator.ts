@@ -8,6 +8,7 @@ import {
 } from './tidas-sdk-validation.js';
 import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 import { TIDAS_LANGUAGE_CODE_SET } from './tidas-languages.js';
+import { collectFlowReferencePropertyIssues } from './flow-reference-properties.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -733,8 +734,15 @@ function categoryValidate(
       continue;
     }
 
+    const flowPayload = category === 'flows' ? asRecord(jsonItem) : null;
+    const flowContentIssues = flowPayload
+      ? collectFlowReferencePropertyIssues(flowPayload).map((issue) =>
+          makeIssue(category, fullPath, issue.path.split('.').join('/'), issue.message, issue.code),
+        )
+      : [];
     const itemIssues = dedupeIssues([
       ...collectSchemaIssues(schema, jsonItem, category, fullPath, createEntity),
+      ...flowContentIssues,
       ...collectFlowSchemaGapIssues(jsonItem, category, fullPath),
       ...collectLocalizedTextIssues(jsonItem, category, fullPath),
       ...collectClassificationIssues(jsonItem, category, fullPath),

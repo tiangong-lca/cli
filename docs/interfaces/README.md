@@ -12,9 +12,9 @@ whenToUpdate:
   - when the documented scope or behavior changes
 checkPaths:
   - docs/interfaces/**
-lastReviewedAt: 2026-11-09
-lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
-lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 3af078a975dcf72adde340cc779935344057b41e
+lastReviewedNote: 'Reviewed shared Flow content validation and write admission against current command, maintenance/recovery, packaging, documentation and release boundaries.'
 ---
 
 # CLI 目标接口设计

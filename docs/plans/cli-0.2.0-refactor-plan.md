@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
-lastReviewedAt: 2026-11-09
-lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
-lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 3af078a975dcf72adde340cc779935344057b41e
+lastReviewedNote: 'Reviewed shared Flow content validation and write admission against current command, maintenance/recovery, packaging, documentation and release boundaries.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -127,6 +127,8 @@ AGENTS 面向开发 AI，规定目录职责、依赖方向、新命令开发路�
 
 明确输入文件、输出产物、检查范围和引用证据。引用关系检查统一进入 `validate --checks references`，远程检查显式声明；引用字段允许直接编辑或使用通用 `patch`，按需独立 `save`，不新增专用检查或改写入口。补丁和翻译回填验证源内容及定位；聚合只生成候选 Process，不自动保存、提交审核或发布。Source 附件传输保持独立效果，上传成功与 Source 保存成功分别表达。
 
+Flow 参考属性的本地业务约束由同一纯校验器承载：内部 ID 有效且唯一，声明的参考指针唯一可解析，全部因子有限且为正，参考因子精确等于十进制 1。类型化校验、写入准入、维护计划/新写入前检及包校验复用规则；校验不自动归一化、换算或替换指针。保持结构与内容诊断分层，并验证历史成功恢复不重放。
+
 模型结果生成以 `dataset model build-resulting-process` 为主命令，`dataset model aggregate` 为长期支持的别名，两者共用参数解析、帮助契约、业务实现、结果呈现和测试用例。文档示例、推荐命令及结果中的 `operation` 统一采用主命令。验收使用两种入口运行相同成功、输入错误和业务失败用例，核对业务产物、默认值、结果语义、错误、退出码及规范化的动作名称一致，避免分别维护两套实现和测试。
 
 完成条件：命令可以脱离原生产工作流独立运行；相同确定性输入产生可比对的业务产物；错误、缺失证据和不适用规则准确表达；科学规则不因重构而退化。全部类型特有动作均有归属和验证，不能只完成共同动作。
@@ -179,6 +181,7 @@ AGENTS 面向开发 AI，规定目录职责、依赖方向、新命令开发路�
 | 列出并确认引用对象 | list-references、精确 get，必要时版本发现 | 清单保留引用位置，不逐一请求目标；目标存在及可访问由 get 确认；缺失信息不猜测。 |
 | 修改并校验引用关系 | 直接编辑或通用 patch、validate、独立 save | 目标存在但关系不匹配时校验失败；修改不自动追新或换算，未 save 前不改变远程内容。 |
 | 准备并创建数据 | 契约发现、本地校验、create、get | 内容与身份一致；冲突不更新已有对象；读回验证实际效果。 |
+| Flow 参考属性约束 | validate、create/save、维护计划/前检、包校验 | 单项/数组和非首项 ID 定位正确；零、负数、缺失/重复 ID、悬空指针及近似 1 返回字段问题；无隐式修正，失败不派发写入；源码外安装包使用相同规则。 |
 | 修改已有草稿 | get、patch、validate、save、get | 前置状态被验证；并发变化返回冲突；缺失目标不创建。 |
 | 生成模型结果 Process | graph、build-resulting-process、validate、独立 create 或 save | 依赖与投影明确，产物可追溯，生成本身不写入。 |
 | 模型结果生成别名 | 同一组用例分别调用 build-resulting-process 与 aggregate | 参数、默认值、帮助契约和业务结果一致；operation 与推荐命令统一使用主命令。 |
