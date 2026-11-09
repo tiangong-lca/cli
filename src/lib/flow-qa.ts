@@ -438,7 +438,6 @@ function createRuleFinding(
   options?: {
     fixability?: string;
     evidence?: JsonRecord;
-    action?: string;
     ruleSource?: string;
   },
 ): FlowRuleFinding {
@@ -455,7 +454,6 @@ function createRuleFinding(
     source: 'rule',
     ...(options?.ruleSource ? { rule_source: options.ruleSource } : {}),
     ...(options?.evidence ? { evidence: options.evidence } : {}),
-    ...(options?.action ? { action: options.action } : {}),
   };
 }
 
