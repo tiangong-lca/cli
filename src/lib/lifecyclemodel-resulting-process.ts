@@ -1692,6 +1692,7 @@ function buildResultingProcessPayload(options: {
   lciMethod.typeOfDataSet = typeOfDataSet;
 
   dataInfo.generatedFromLifecycleModel = {
+    type: 'life cycle model data set',
     id: options.sourceModelId,
     version: options.sourceModelVersion,
     role: options.role,

@@ -3,11 +3,16 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import {
+  runDatasetRemoteVerify,
+  type RemoteDatasetLookupRequest,
+} from '../src/lib/dataset-remote-verify.js';
 import { CliError } from '../src/lib/errors.js';
 import type { FetchLike } from '../src/lib/http.js';
 import {
   __testInternals,
   runLifecyclemodelSaveDraft,
+  validateLifecyclemodelPayload,
 } from '../src/lib/lifecyclemodel-save-draft-run.js';
 import {
   buildSupabaseTestEnv,
@@ -62,7 +67,9 @@ function makeMultilangText(text: string): Record<string, unknown> {
   return { '#text': text, '@xml:lang': 'en' };
 }
 
-function makeSchemaValidLifecyclemodel(): Record<string, unknown> {
+function makeSchemaValidLifecyclemodel(
+  publicationMetadata: Record<string, unknown> = {},
+): Record<string, unknown> {
   const id = '123e4567-e89b-12d3-a456-426614174000';
   const reference = makeGlobalReference(id);
   const text = makeMultilangText('Lifecycle model');
@@ -88,16 +95,24 @@ function makeSchemaValidLifecyclemodel(): Record<string, unknown> {
           classificationInformation: {
             'common:classification': {
               'common:class': [
-                { '@level': '0', '@classId': '0', '#text': 'Root' },
-                { '@level': '1', '@classId': '1', '#text': 'One' },
-                { '@level': '2', '@classId': '2', '#text': 'Two' },
-                { '@level': '3', '@classId': '3', '#text': 'Three' },
+                { '@level': '0', '@classId': 'A', '#text': 'Agriculture, forestry and fishing' },
+                {
+                  '@level': '1',
+                  '@classId': '01',
+                  '#text': 'Crop and animal production, hunting and related service activities',
+                },
+                { '@level': '2', '@classId': '011', '#text': 'Growing of non-perennial crops' },
+                {
+                  '@level': '3',
+                  '@classId': '0111',
+                  '#text': 'Growing of cereals (except rice), leguminous crops and oil seeds',
+                },
               ],
             },
           },
         },
         quantitativeReference: {
-          referenceToReferenceProcess: '1',
+          referenceToReferenceProcess: 1,
         },
         technology: {
           processes: {},
@@ -124,10 +139,12 @@ function makeSchemaValidLifecyclemodel(): Record<string, unknown> {
       administrativeInformation: {
         'common:commissionerAndGoal': {
           'common:referenceToCommissioner': reference,
+          'common:intendedApplications': text,
         },
         dataEntryBy: {
           'common:timeStamp': '2026-05-05T00:00:00.000Z',
           'common:referenceToDataSetFormat': reference,
+          'common:referenceToPersonOrEntityEnteringTheData': reference,
         },
         publicationAndOwnership: {
           'common:dataSetVersion': '01.01.000',
@@ -135,11 +152,71 @@ function makeSchemaValidLifecyclemodel(): Record<string, unknown> {
           'common:referenceToOwnershipOfDataSet': reference,
           'common:copyright': 'false',
           'common:licenseType': 'Other',
+          ...publicationMetadata,
         },
       },
     },
   };
 }
+
+test('SDK-valid Model predecessors resolve by exact version in read-only candidate verification', async (t) => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-lifecyclemodel-predecessor-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const id = '123e4567-e89b-12d3-a456-426614174000';
+  const version = '01.00.000';
+  const predecessorKey = 'common:referenceToPrecedingDataSetVersion';
+  const predecessor = {
+    '@type': 'other external file',
+    '@refObjectId': id,
+    '@version': version,
+    '@uri': `../lifecyclemodels/${id}_${version}.xml`,
+    'common:shortDescription': makeMultilangText('Previous Model version'),
+  };
+  const unsupportedInSchema = { ...predecessor, '@type': 'life cycle model data set' };
+
+  for (const variant of ['single', 'array'] as const) {
+    await t.test(variant, async () => {
+      const payload = makeSchemaValidLifecyclemodel({
+        [predecessorKey]: variant === 'single' ? predecessor : [predecessor],
+      });
+      const schema = validateLifecyclemodelPayload(payload);
+      assert.equal(schema.ok, true, JSON.stringify(schema.issues));
+      const retyped = validateLifecyclemodelPayload(
+        makeSchemaValidLifecyclemodel({
+          [predecessorKey]: variant === 'single' ? unsupportedInSchema : [unsupportedInSchema],
+        }),
+      );
+      assert.equal(retyped.ok, false);
+      assert.ok(retyped.issues.some((issue) => issue.path.includes(predecessorKey)));
+
+      const lookups: RemoteDatasetLookupRequest[] = [];
+      const report = await runDatasetRemoteVerify({
+        inputPath: path.join(dir, `${variant}.json`),
+        rawInput: [payload],
+        outDir: path.join(dir, variant),
+        rootPolicy: 'candidate',
+        lookupDatasetImpl: async (request) => {
+          lookups.push(request);
+          const latest = { id, version };
+          return {
+            exact: request.version === version ? latest : null,
+            latest,
+            exact_source_url: null,
+            latest_source_url: null,
+          };
+        },
+      });
+      assert.deepEqual(report.blockers, []);
+      assert.equal(report.counts.by_table.lifecyclemodels, 2);
+      assert.ok(
+        lookups.some(
+          (lookup) =>
+            lookup.table === 'lifecyclemodels' && lookup.id === id && lookup.version === version,
+        ),
+      );
+    });
+  }
+});
 
 const VALIDATION_OK = () => ({
   ok: true as const,

@@ -771,6 +771,12 @@ test('runLifecyclemodelBuildResultingProcess builds and aggregates a resulting p
     });
 
     assert.equal(dataSetInformation['common:UUID'], 'proc-demo-battery-pack-primary');
+    assert.deepEqual(dataSetInformation.generatedFromLifecycleModel, {
+      type: 'life cycle model data set',
+      id: 'lm-demo-battery-pack',
+      version: VERSION,
+      role: 'primary',
+    });
     assert.equal(quantitativeReference.referenceToReferenceFlow, '1');
     assert.deepEqual(flowIds, ['flow-battery-pack', 'flow-bms', 'flow-electricity']);
     assert.deepEqual(

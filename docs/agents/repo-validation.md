@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-07
-lastReviewedCommit: 2ed5b82102ac80e56c2d4c7f0fe8ab00e4a471fa
-lastReviewedNote: 'CLI #466: reviewed version-only 0.1.29 preparation on merged #377 source; eight bound fixture values advance, while runtime, dependency lock, exports and release authority remain unchanged.'
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 5fcde75e54220e6fca0015b85f2a5c7996c50ba4
+lastReviewedNote: 'CLI #383/#348: reviewed bounded Model provenance and predecessor resolution, original exact-reference/root gates and required regression proof; schema, dependencies, package identity and release authority remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -180,6 +180,8 @@ If the task changes control flow, add or update tests instead of using coverage-
 Process mass QA tests must prove count, canonical area-time and exact `kg*km`/`t*km` transport work are not added to kg. Freight-reference products retain `not_applicable` and null mass results; mixed mass/energy/volume/freight inventories select the exact reference unit occurrence, preserve its factor-one requirement and exclude both freight directions. Conflicting freight unit tags fail without implicit scale conversion. Mass-valued fuels and scaled mass units remain included, exact reference/version/occurrence conflicts and malformed selections fail closed, quantity and aggregate overflow remain actionable, zero-input ratios are not fabricated, and source quantities and selected reference files remain byte-stable. The CLI transport must retain every explicit reference file. Both the new unit owner and existing QA module remain subject to exact full-source coverage without exclusions; local focused coverage alone is not the release gate.
 
 Exact-reference tests must cover default latest behavior, explicit older/public/own-draft success, fresh actor/project mismatch, root and undeclared-reference preservation, role/path collisions, consumer/control-file drift, selected/latest owner/state/payload mismatch, missing transport evidence, exact-payload/review caching, and zero mutation through the real RLS adapter with controlled HTTP responses. The parser and verifier remain under the whole-source 100% gate. See [the protocol contract](exact-reference-intent-contract.md).
+
+Model reference regressions also bind the actual resulting-process producer, historical untyped provenance and typed compatibility, and real SDK acceptance of singleton/array Model predecessors encoded as `other external file`. Cover exact-context boundaries, conflicting type/URI/UUID/version combinations, missing/invisible targets, reviewed older Model references and unchanged root/content gates. The URI discriminator must never become an external network lookup. Synthetic proof remains separate from the original caller's qualified-runtime retest.
 
 Guarded exact-reference Flow tests must exercise public save-draft dry-run/commit on the same full payloads accepted by verify-remote. Cover every repeated occurrence, undeclared/default policy, malformed and changed selections, fresh actor/project and complete selected/latest body proof, asynchronous predispatch rejection, before-image drift, immutable admission, consumed selection omission/change, lost-response exact readback and terminal UNKNOWN without replay. Fixtures use guarded synthetic transport; they do not replace the original caller/runtime qualification.
 

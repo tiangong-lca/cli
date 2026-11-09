@@ -20,9 +20,9 @@ checkPaths:
   - src/cli.ts
   - test/dataset-exact-reference-intent.test.ts
   - test/dataset-save-draft-exact-reference.test.ts
-lastReviewedAt: 2026-09-11
-lastReviewedCommit: 577d6fdf6ffb9de594b098a166c6b1f2ac3657f1
-lastReviewedNote: 'Reviewed for CLI #289: explicit consumer/reference/review binding, fresh actor identity, current latest payload observations and unchanged root/default policies.'
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 5fcde75e54220e6fca0015b85f2a5c7996c50ba4
+lastReviewedNote: 'CLI #383/#348: reviewed bounded Model provenance and predecessor resolution, original exact-reference/root gates and required regression proof; schema, dependencies, package identity and release authority remain unchanged.'
 related:
   - ../../AGENTS.md
   - ./repo-validation.md
@@ -34,6 +34,14 @@ related:
 `dataset verify-remote --reference-intent-file <file>` checks an explicitly reviewed physical definition even when a newer visible version exists. It is read-only observation, not a write grant, database lock, schema-validation substitute or general exception to current-user RLS. Without this option, the existing latest-version and root policies retain their previous behavior and report shape.
 
 `dataset-exact-reference-intent.ts` owns strict local selection and observation evaluation. `dataset-remote-verify.ts` owns row/reference collection, the existing fresh auth-identity receipt, RLS GET transport, payload caching and report publication. Foundry owns explicit input selection, snapshot lineage and handoff/readback binding; it must not reproduce the CLI's eligibility policy.
+
+## Model reference contexts
+
+`lifecyclemodel build-resulting-process` emits `type: "life cycle model data set"` alongside the existing `id`, `version` and `role` at `/processDataSet/processInformation/dataSetInformation/generatedFromLifecycleModel`. Verification also recognizes historical untyped objects at that exact field. Explicit conflicting types or generic reference aliases that redirect the native `id`/`version` remain unsupported; arbitrary untyped objects and similarly named fields elsewhere do not identify Models.
+
+The locked Model schema represents `common:referenceToPrecedingDataSetVersion` using `other external file`. At `/lifeCycleModelDataSet/administrativeInformation/publicationAndOwnership/common:referenceToPrecedingDataSetVersion`, including its direct array items, verification recognizes a Model only when the reference has a canonical UUID/version and `@uri` exactly equals `../lifecyclemodels/<@refObjectId>_<@version>.xml`. The URI is a local format discriminator and is never fetched. Other paths, external URLs, conflicting types and mismatched locator identities do not gain Model inference. The original pointer, UUID, version and payload remain unchanged.
+
+Both contexts use the ordinary exact/latest lookup and the explicit intent protocol below. A historical Model reference still needs content-bound review when a newer visible version exists. Missing or invisible targets and identity, owner, state or payload drift remain blocking. Type resolution does not certify the predecessor's published replacement relation, publication closure or scientific acceptance; those operation-specific requirements remain with their existing owners.
 
 ## Intent input
 
