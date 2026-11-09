@@ -31,7 +31,12 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
     writeFileSync(file, JSON.stringify(value));
     return file;
   };
-  const invoke = async (args: string[], actor = businessActor, expectedExit = 0) => {
+  const invoke = async (
+    args: string[],
+    actor = businessActor,
+    expectedExit = 0,
+    expectedErrorCode?: string,
+  ) => {
     const child = spawn(process.execPath, [bin, ...args, '--json'], {
       cwd: directory,
       env: {
@@ -63,6 +68,12 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
       child.once('close', resolve);
     });
     assert.equal(code, expectedExit, `${args.join(' ')}\n${stderr}\n${stdout}`);
+    if (expectedErrorCode) {
+      assert.equal(stdout, '');
+      const error = JSON.parse(stderr) as { error: { code: string } };
+      assert.equal(error.error.code, expectedErrorCode);
+      return {};
+    }
     assert.equal(stderr, '');
     const value = JSON.parse(stdout) as Json;
     assert.ok(!stdout.includes('submitter-token') && !stdout.includes('reviewer-token'));
@@ -100,6 +111,26 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
     return JSON.parse(readFileSync(file, 'utf8')) as Json;
   };
   try {
+    for (const command of ['search', 'flow', 'process', 'lifecyclemodel', 'qa', 'publish']) {
+      await invoke([command, '--help'], businessActor, 2, 'UNKNOWN_COMMAND');
+    }
+    for (const command of [
+      'contract',
+      'context-pack',
+      'curation-queue',
+      'author',
+      'patch',
+      'save-draft',
+      'validate',
+      'support-cache',
+      'verify-remote',
+      'bilingual',
+      'evidence-search',
+      'references',
+    ]) {
+      await invoke(['dataset', command, '--help'], businessActor, 2, 'UNKNOWN_COMMAND');
+    }
+    assert.equal(backend.calls.length, 0, 'Retired paths must not contact the backend');
     for (const type of writableTypes) {
       const content = businessFixture(type),
         identity = businessIdentity(type, content);

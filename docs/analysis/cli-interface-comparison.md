@@ -189,18 +189,19 @@ Review submit 使用仅含一个元素的 `targets`，成员为 `type/id/version
 
 Auth 和 doctor 使用统一结果；Auth 回执本体位于 `data.receipt`，`--output` 保存原始回执。既有回执精确格式和公共解析器不变，Release、运行支撑和保留的专用接口继续以各自协议为准。下游正式接入以 CLI 发布后的适配为界，本次不修改调用仓库。
 
-## 旧入口处置与兼容边界
+## 旧入口处置与保留边界
 
-核心帮助和 `--help --json` 只发现新的业务入口及明确保留的运行、发布和文件包工具。新能力不再添加到旧工作流树。兼容接口不是新命令的自动回退，旧 upsert 或隐式选择不能当作 create/save 的别名。
+数据业务仅开放类型入口和 Review，旧业务兼容路径不再解析或执行。旧 upsert、隐式保存或自动追新不映射为 create/save。退出不是隐藏帮助或等待下游迁移；旧路径直接返回 `UNKNOWN_COMMAND`，无远程调用或写入。
 
-| 入口或实现 | 处置 | 边界与退出条件 |
+| 入口或实现 | 处置 | 边界 |
 | --- | --- | --- |
 | Process-only 样例、重复 Source 上传路由、原有 Doctor 和分类查询的重复解析 | 已被多类型命令和统一上下文替换，移除重复实现。 | 通过当前行为、安装和覆盖率验证，不保留两套新业务实现。 |
 | Model `aggregate` | 保留为 `build-resulting-process` 的正式别名。 | 相同请求、算法、结果及错误；不存在退出安排。 |
-| 原 `search/flow/process/lifecyclemodel/qa`、通用 Dataset 本地与批量旧路径 | 保留 0.1.x 调用兼容，退出新核心发现。 | 正式发布新 CLI 后，由相关下游采用新入口；确认调用及历史恢复记录迁移完成后再删除旧路径。本次不在下游执行这项工作。 |
+| 原 `search/flow/process/lifecyclemodel/qa/publish` | 移除帮助、解析、执行分派和旧注入接口。 | 查询改用类型入口；生产计划、批量发布准备和 QA 编排由调用方按真实能力组合，不提供同名兼容或自动转接。 |
+| 通用 Dataset `contract/context-pack/curation-queue/author/patch/save-draft/validate/support-cache/verify-remote/bilingual/evidence-search/references` | 移除整组旧入口。 | 契约、修改、校验、翻译和引用发现分别使用 `dataset <type> contract/patch/validate/translations/list-references`；持久化显式选择 create 或 save。旧工作流产物不直接作为新命令输入。 |
 | 受保护维护、专用 Study、Release、runtime/PCR 和文件包工具 | 保留各自现行契约，按职责与核心原子接口区分。 | 不是 create/save 或 Review 的等价别名。不得通过命令清理放宽授权、丢弃历史恢复或改变公共库协议；所属领域的后续归属调整独立处理。 |
 
-本次不为保留树添加新的业务编排，也不把保留的兼容行为作为目标设计的新增能力。新调用方使用类型入口和当前结构化帮助；旧版本的运行记录仍按其原始协议解释，不能用新版本展示格式重写历史证据。
+保留内部算法、授权校验和历史恢复记录的读取能力，不代表保留旧 CLI 入口，也不代表把这些实现开放为公共库。旧版本记录按原始协议解释，不用新展示格式重写；需要旧入口恢复的操作必须使用与记录匹配的历史版本。公共库四个子路径保持原契约。
 
 ## 新入口的组合与验收边界
 

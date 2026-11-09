@@ -12,9 +12,9 @@ whenToUpdate:
   - when the documented scope or behavior changes
 checkPaths:
   - docs/interfaces/**
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
-lastReviewedNote: 'CLI #468: Reviewed target design against qualification evidence; deferred Review extensions remain target-only and current admin phases are documented outside target contracts.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
+lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
 ---
 
 # CLI 目标接口设计

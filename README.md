@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - README.md
   - src/commands/**
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
-lastReviewedNote: 'CLI #468: reviewed default positive admission, installed business and recovery scenarios, typed Model provenance and JSONB reviewer filters; specialized contracts and release boundaries remain intact.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
+lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
 ---
 
 # TianGong LCA CLI
@@ -40,7 +40,7 @@ tiangong-lca --help --json
 | Dataset 查询与内容处理 | 八种对象按能力表提供类型入口；包含契约、精确读取、分页、引用清单、校验及可编辑对象的本地处理。 |
 | Dataset 写入与 Review | 适配现有业务服务：创建与保存分离、草稿删除、关联审核提交、当前审核查询、草稿意见及审核决定。服务边界见下文。 |
 | Model 结果生成 | `build-resulting-process` 为主命令，`aggregate` 为同实现别名；显式输入生成候选，不自动写入。 |
-| Release、运行支撑与旧命令 | 沿用既有行为，参见安装版本帮助及[原有命令参考](docs/reference/legacy-command-reference.md)。 |
+| 专项与运行支撑 | 受保护维护、Study、Release、runtime/PCR、分类维护与文件包工具保留各自契约。 |
 
 ## 安装与开始
 
@@ -103,13 +103,13 @@ Review 本次适配已有业务语义：`submit` 只接受一个起始对象，`
 
 `review comment` 保存审核者当前草稿，可能覆盖该草稿，不形成决定；`review decide` 记录当前审核者的通过或驳回决定，Process/Model 通过需要已有审核草稿。审核者分配和最终批准或驳回仍由现有管理员业务处理，当前 CLI 不提供这些独立动作。调用方查询实际状态后才能判断是否可修改或重新提交，不能将 decide 成功解释为审核单已结束。整包多起始对象、关闭关联、历史包、追加式独立意见及审核撤回属于后续目标设计，未开放的行为会明确拒绝。
 
-环境、认证、目录发现与业务能力使用统一结果；旧入口的兼容范围与退出条件见迁移对照；[服务能力对照](docs/analysis/cli-interface-comparison.md#现有业务服务与本次实施基线)记录实施基线，不把协议模拟描述为真实账号或部署验证。
+环境、认证、目录发现与业务能力使用统一结果；旧入口的移除范围与替代方式见迁移对照；[服务能力对照](docs/analysis/cli-interface-comparison.md#现有业务服务与本次实施基线)记录实施基线，不把协议模拟描述为真实账号或部署验证。
 
 ## 保留接口
 
-原有 `search/flow/process/lifecyclemodel/qa` 等路径按兼容范围保留，不作为新核心命令树继续扩展。专项维护、Study、运行支撑和 Release 保留各自的约束与协议；不能把它们机械改名为新的 Dataset 原子操作。已被替换的样例与重复路由已经移除。
+数据业务仅通过 `dataset <type> <action>` 和 `review <action>` 访问。原 `search/flow/process/lifecyclemodel/qa/publish` 及通用 Dataset 旧入口已移除，调用会返回 `UNKNOWN_COMMAND`，不会转接或执行。旧生产编排由调用方组合原子操作；下游升级在 Release 后独立进行，不作为移除入口的前置条件。
 
-兼容入口的退出条件是：新 CLI 已正式发布、相关下游完成新接口采用，并验证历史恢复记录仍可读取。下游迁移在 Release 后独立进行，本次不修改其代码。具体对应与保留原因见[迁移对照](docs/analysis/cli-interface-comparison.md#旧入口处置与兼容边界)。
+`dataset model aggregate` 是 `build-resulting-process` 的正式别名，继续保留。专项维护、Study、Release、runtime/PCR、分类维护及文件包工具保留独立契约；公共库接口与内部安全设施继续保留。具体清单及替代方式见[迁移对照](docs/analysis/cli-interface-comparison.md#旧入口处置与保留边界)。
 
 ## 开发与文档
 
@@ -125,6 +125,6 @@ pnpm prepush:gate
 - [接口设计](docs/interfaces/README.md)：最终能力和行为。
 - [实施计划](docs/plans/cli-0.2.0-refactor-plan.md)：阶段范围与进度。
 - [能力对照](docs/analysis/cli-interface-comparison.md)：旧能力与目标入口。
-- [原有命令参考](docs/reference/legacy-command-reference.md)：尚未迁移的使用方式及历史说明。
+- [历史命令参考](docs/reference/legacy-command-reference.md)：0.1.x 历史行为，不是当前可执行入口。
 
 下游迁移在 CLI 正式 Release 后由调用方分别推进，其完成状态不作为 CLI 验收条件。

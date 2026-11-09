@@ -261,9 +261,6 @@ test('prepush coverage covers CLI parser error and help branches', async () => {
     ['dataset', 'classification', 'path', '--help'],
     ['dataset', 'classification', 'audit', '--help'],
     ['dataset', 'classification', 'apply', '--help'],
-    ['dataset', 'curation-queue', 'next', '--help'],
-    ['dataset', 'curation-queue', 'verify', '--help'],
-    ['dataset', 'patch'],
   ]) {
     const result = await executeCli(args, makeDeps());
     assert.equal(result.exitCode, 0, args.join(' '));
@@ -331,63 +328,6 @@ test('prepush coverage covers CLI parser error and help branches', async () => {
     },
   );
   assert.equal(classificationApplyBlocked.exitCode, 1);
-
-  const curationNextBlocked = await executeCli(
-    ['dataset', 'curation-queue', 'next', '--queue-dir', 'queue'],
-    {
-      ...makeDeps(),
-      runDatasetCurationQueueNextImpl: async () => ({ status: 'blocked' }) as never,
-    },
-  );
-  assert.equal(curationNextBlocked.exitCode, 1);
-
-  const curationVerifyBlocked = await executeCli(
-    ['dataset', 'curation-queue', 'verify', '--queue-dir', 'queue'],
-    {
-      ...makeDeps(),
-      runDatasetCurationQueueVerifyImpl: async () => ({ status: 'blocked' }) as never,
-    },
-  );
-  assert.equal(curationVerifyBlocked.exitCode, 1);
-
-  const patchBlocked = await executeCli(
-    [
-      'dataset',
-      'patch',
-      'apply',
-      '--input',
-      'rows.jsonl',
-      '--patch',
-      'patch.json',
-      '--out',
-      'out.jsonl',
-    ],
-    {
-      ...makeDeps(),
-      runDatasetPatchApplyImpl: async () => ({ status: 'blocked' }) as never,
-    },
-  );
-  assert.equal(patchBlocked.exitCode, 1);
-
-  const patchCompleted = await executeCli(
-    [
-      'dataset',
-      'patch',
-      'apply',
-      '--input',
-      'rows.jsonl',
-      '--patch',
-      'patch.json',
-      '--out',
-      'out.jsonl',
-      '--json',
-    ],
-    {
-      ...makeDeps(),
-      runDatasetPatchApplyImpl: async () => ({ status: 'completed' }) as never,
-    },
-  );
-  assert.equal(patchCompleted.exitCode, 0);
 
   const maintenanceHelp = await executeCli(['dataset', 'maintenance'], makeDeps());
   assert.equal(maintenanceHelp.exitCode, 0);
@@ -488,42 +428,6 @@ test('prepush coverage covers CLI parser error and help branches', async () => {
     },
   );
   assert.equal(maintenanceVerifyFailed.exitCode, 1);
-
-  const lifecycleRows = await executeCli(
-    ['qa', 'lifecyclemodel', '--rows-file', 'models.jsonl', '--out-dir', 'qa-out'],
-    {
-      ...makeDeps(),
-      runLifecyclemodelQaImpl: async (options) =>
-        ({
-          schema_version: 1,
-          generated_at_utc: '2026-06-04T00:00:00.000Z',
-          status: 'completed_local_lifecyclemodel_qa',
-          run_id: 'run-1',
-          run_root: null,
-          rows_file: options.rowsFile ?? null,
-          input_mode: 'rows_file',
-          out_dir: options.outDir,
-          logic_version: 'lifecyclemodel-v1',
-          model_count: 0,
-          finding_count: 0,
-          severity_counts: { info: 0, warning: 0, blocker: 0 },
-          validation: { status: 'passed', model_count: 0, issue_count: 0 },
-          files: {
-            qa_input_summary: '/tmp/input.json',
-            materialization_summary: null,
-            model_summaries: '/tmp/models.jsonl',
-            findings: '/tmp/findings.jsonl',
-            qa_zh: '/tmp/zh.md',
-            qa_en: '/tmp/en.md',
-            timing: '/tmp/timing.md',
-            report: '/tmp/report.json',
-          },
-          model_summaries: [],
-          next_actions: [],
-        }) as never,
-    },
-  );
-  assert.equal(lifecycleRows.exitCode, 0);
 });
 
 test('prepush coverage covers dataset local and validate aliases', () => {

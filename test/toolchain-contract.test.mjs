@@ -358,7 +358,7 @@ test('active maintainer documentation exposes only pnpm package-management comma
     join(REPOSITORY_ROOT, 'docs', 'IMPLEMENTATION_GUIDE_CN.md'),
     'utf8',
   );
-  assert.match(implementationGuide, /^\| 命令组 \| 必需 env \|\n\| --- \| --- \|$/mu);
+  assert.match(implementationGuide, /^\| 命令组\s+\| 必需 env\s+\|\n\| -+ \| -+ \|$/mu);
   assert.doesNotMatch(implementationGuide, /\| 命令组 \| 必需 env \| \|/u);
 });
 

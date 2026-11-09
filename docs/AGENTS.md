@@ -14,9 +14,9 @@ checkPaths:
   - docs/**
   - AGENTS.md
   - .docpact/config.yaml
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
-lastReviewedNote: 'CLI #468: reviewed default positive admission, installed business and recovery scenarios, typed Model provenance and JSONB reviewer filters; specialized contracts and release boundaries remain intact.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
+lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

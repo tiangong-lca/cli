@@ -24,9 +24,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
-lastReviewedNote: 'CLI #468: reviewed default positive admission, installed business and recovery scenarios, typed Model provenance and JSONB reviewer filters; specialized contracts and release boundaries remain intact.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
+lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -251,4 +251,4 @@ All CI jobs use GitHub-hosted runners. The quality matrix covers Linux x64, Linu
 
 Review note, 2026-09-21: independently reviewed CLI #283 annual-volume commit d45ffb6. Existing values and language order are preserved; unknown annual evidence remains [] and an authoring gap, never a reference-flow/default-unit quantity. The separate schema, content and multilingual layers retain their own results. This document requires no additional annual-volume or release-policy change.
 
-Review note, CLI #468: the 0.2.0 foundation adds internal command/application/adapter/shared modules and installed reply-template Markdown assets. Package version, dependencies, exports, release authority and workflows remain unchanged. Package qualification must include the new read-only Process sample and template lookup; source changes alone are not publication evidence.
+The 0.2.0 candidate uses internal command/application/adapter/shared modules and installed Markdown reply templates. Package qualification includes typed Dataset/Review scenarios, template lookup and rejection of retired business/generic Dataset routes from a source-free native consumer. Package version, dependencies, exports, release authority and workflows retain their contracts; candidate validation is separate from publication evidence.

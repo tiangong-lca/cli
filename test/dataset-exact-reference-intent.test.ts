@@ -4,7 +4,6 @@ import path from 'node:path';
 import os from 'node:os';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { executeCli } from '../src/cli.js';
 import { buildSupabaseTestEnv, makeSupabaseAuthResponse } from './helpers/supabase-auth.js';
 import {
   runDatasetRemoteVerify,
@@ -167,32 +166,6 @@ test('missing explicitly selected reference intent fails before remote lookups o
   await assert.rejects(runDatasetRemoteVerify(f.options));
   assert.deepEqual(f.calls, []);
   assert.equal(fs.existsSync(f.options.outDir), false);
-});
-
-test('public verify rejects repeated or empty explicit intent options before its owner runs', async () => {
-  for (const selection of [
-    ['--reference-intent-file', ''],
-    ['--reference-intent-file', 'a', '--reference-intent-file=b'],
-  ]) {
-    let calls = 0;
-    const result = await executeCli(
-      ['dataset', 'verify-remote', '--input', 'rows.json', '--out-dir', 'verify', ...selection],
-      {
-        env: {},
-        fetchImpl: async () => {
-          throw new Error('Unexpected network request');
-        },
-        dotEnvStatus: { loaded: false, path: '/unused/.env', count: 0 },
-        runDatasetRemoteVerifyImpl: async () => {
-          calls++;
-          throw new Error('Unexpected owner invocation');
-        },
-      },
-    );
-    assert.equal(result.exitCode, 2);
-    assert.match(result.stderr, /DATASET_REFERENCE_INTENT_INVALID/u);
-    assert.equal(calls, 0);
-  }
 });
 
 test('a reference occurrence sharing a root path cannot override root latest-version policy', async (t) => {

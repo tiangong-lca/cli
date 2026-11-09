@@ -3,34 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { executeCli } from '../src/cli.js';
-import {
-  __testInternals,
-  runDatasetPatchApply,
-  type DatasetPatchApplyReport,
-} from '../src/lib/dataset-patch.js';
-import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
-
-const dotEnvStatus: DotEnvLoadResult = {
-  loaded: false,
-  path: '/tmp/.env',
-  count: 0,
-};
-
-function makeDeps() {
-  return {
-    env: {} as NodeJS.ProcessEnv,
-    dotEnvStatus,
-    fetchImpl: async () => ({
-      ok: true,
-      status: 200,
-      headers: {
-        get: () => 'application/json',
-      },
-      text: async () => JSON.stringify({ ok: true }),
-    }),
-  };
-}
+import { __testInternals, runDatasetPatchApply } from '../src/lib/dataset-patch.js';
 
 function writeJson(filePath: string, value: unknown): void {
   writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
@@ -911,70 +884,4 @@ test('runDatasetPatchApply blocks strict authoring patches that do not close pac
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-});
-
-test('executeCli routes dataset patch apply and maps blockers to exit code one', async () => {
-  const help = await executeCli(['dataset', 'patch', 'apply', '--help'], makeDeps());
-  assert.equal(help.exitCode, 0);
-  assert.match(help.stdout, /dataset patch apply/u);
-
-  const result = await executeCli(
-    [
-      'dataset',
-      'patch',
-      'apply',
-      '--json',
-      '--input',
-      'rows.jsonl',
-      '--patch',
-      'patches.json',
-      '--out',
-      'patched.jsonl',
-      '--out-dir',
-      'patch-out',
-      '--authoring-package-dir',
-      'packages',
-      '--require-authoring-package',
-      '--require-action-item-closure',
-    ],
-    {
-      ...makeDeps(),
-      runDatasetPatchApplyImpl: async (options): Promise<DatasetPatchApplyReport> => {
-        assert.equal(options.inputPath, 'rows.jsonl');
-        assert.equal(options.patchPath, 'patches.json');
-        assert.equal(options.outPath, 'patched.jsonl');
-        assert.equal(options.outDir, 'patch-out');
-        assert.equal(options.authoringPackageDir, 'packages');
-        assert.equal(options.requireAuthoringPackage, true);
-        assert.equal(options.requireActionItemClosure, true);
-        return {
-          schema_version: 1,
-          generated_at_utc: '2026-06-02T00:00:00.000Z',
-          input_path: options.inputPath,
-          patch_path: options.patchPath,
-          out_path: options.outPath,
-          status: 'blocked',
-          row_count: 1,
-          patch_count: 1,
-          operation_count: 1,
-          applied_operation_count: 0,
-          evidence_count: 0,
-          closed_action_item_count: 0,
-          blockers: [{ code: 'patch_test_failed', message: 'Patch test failed.' }],
-          files: {
-            patched_rows: options.outPath,
-            patch_evidence: null,
-            report: null,
-          },
-        };
-      },
-    },
-  );
-
-  assert.equal(result.exitCode, 1);
-  assert.equal(JSON.parse(result.stdout).status, 'blocked');
-
-  const invalidAction = await executeCli(['dataset', 'patch', 'plan'], makeDeps());
-  assert.equal(invalidAction.exitCode, 2);
-  assert.match(invalidAction.stderr, /DATASET_PATCH_ACTION_INVALID/u);
 });

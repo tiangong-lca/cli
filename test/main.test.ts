@@ -37,8 +37,8 @@ test('main writes stdout and stderr from CLI results', async () => {
 
     assert.equal(exitCode, 2);
     assert.equal(stdout, '');
-    assert.match(stderr, /"code":"INPUT_REQUIRED"/u);
-    assert.match(stderr, /Missing required --input value\./u);
+    assert.match(stderr, /"code":"UNKNOWN_COMMAND"/u);
+    assert.match(stderr, /Unknown command 'process auto-build'/u);
   } finally {
     process.stdout.write = originalStdoutWrite;
     process.stderr.write = originalStderrWrite;

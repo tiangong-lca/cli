@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
-lastReviewedNote: 'CLI #468: reviewed default positive admission, installed business and recovery scenarios, typed Model provenance and JSONB reviewer filters; specialized contracts and release boundaries remain intact.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
+lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -55,9 +55,10 @@ Managed-host launch selection stays in the generic CLI manager. Dedicated protoc
 
 ## 0.2.0 command layers
 
-`src/cli.ts` composes the typed Dataset, Review, environment and authentication adapters and delegates their public parsing and presentation to `src/commands/`. Retained specialized protocols and 0.1.x compatibility paths keep their existing dispatch and authorization; their scope and retirement condition are recorded in the migration comparison.
+`src/cli.ts` composes the typed Dataset, Review, environment and authentication adapters and delegates their public parsing and presentation to `src/commands/`. Retained specialized protocols keep their authorization and execution contracts. Old business roots and generic Dataset compatibility routes are removed; there is no alias or fallback dispatcher. The migration comparison records the exact removed surface.
 
-- `src/commands/`: strict CLI argument/help handling, bounded output and local artifact coordination.
+- `src/cli-deps.ts`: internal composition dependencies, result types and shared failure projection, without package exports.
+- `src/commands/`: strict CLI argument/help handling, bounded output and local artifact coordination. Auth service, Release, admin, package tools, classification maintenance and protected maintenance have bounded modules; their retained parsers and safety checks are unchanged.
 - `src/application/`: Dataset identity, query/cursor rules, content diff/patch, reference discovery and supplied-translation application; no filesystem or network transport.
 - `src/adapters/`: authenticated exact reads/search, existing contract and validation helpers, Model calculations, Source attachment transfer and explicit Dataset/Review mutations.
 - `src/shared/`: result types, safe file IO, error projection and installed template lookup.
@@ -154,9 +155,9 @@ The preferred interactive path is `auth login`: a registered public OAuth client
 
 ### Canonical support reads
 
-`dataset-support-cache.ts` owns the OAuth-only `dataset support-cache export` adapter. It reuses current-user identity and Data API/exact-count pagination owners, performs two bounded observations, and publishes private raw row artifacts with an atomic completion marker. Foundry owns cache summarization and mappings; this adapter makes no transaction-snapshot or write-authority claim.
+`dataset-support-cache.ts` retains the internal OAuth-only support export adapter; its former generic CLI route is removed. It reuses current-user identity and Data API/exact-count pagination owners, performs two bounded observations, and publishes private raw row artifacts with an atomic completion marker. Foundry owns cache summarization and mappings; this adapter makes no transaction-snapshot or write-authority claim.
 
-### Workflow command families
+### Retained internal workflow implementations
 
 The widest feature families currently live in:
 
@@ -169,22 +170,22 @@ The widest feature families currently live in:
 - `src/lib/publish.ts`
 - `src/lib/run.ts`
 
-These files own the public CLI semantics for those workflows.
+These files retain internal algorithms, domain reports and safety protocols. Removed workflow roots have no argv dispatcher. Retained public protocols and typed adapters reuse only the applicable operations.
 
 ### LCI/LCIA data-release transport
 
 `src/lib/lca-release.ts` is deliberately a narrow authenticated adapter, not a second release control plane:
 
-- `src/cli.ts` owns `release prepare|upload|finalize|approve|publish|readback-verify|unpublish|status|current|calculation-bundle|calculation-artifact|artifact-download` parsing, help, and human/JSON rendering.
+- `src/commands/release.ts` owns `release prepare|upload|finalize|approve|publish|readback-verify|unpublish|status|current|calculation-bundle|calculation-artifact|artifact-download` parsing, help, and human/JSON rendering.
 - The normal OAuth session supplies the user access token; the explicit headless actor token uses the same request adapter. No legacy bootstrap, service-role credential, or release-specific API key is accepted, and release payloads contain no credential-derived fingerprint.
 - Edge/Database assert the live `data_product_manager` role for private and mutating actions. CLI-side checks are input and integrity checks, never an authorization substitute.
 - Upload requires exactly the Unit Process and standalone LifecycleModel+Result profiles in both TIDAS and ILCD. Local size, SHA-256, media type, and profile/format cardinality are validated before requesting signed upload URLs.
 - Calculation Bundle projections, chunks, and ZIPs are file-first. The CLI writes atomically with private permissions, refuses overwrite without `--force`, and exposes downloaded bytes only after exact size and SHA-256 verification.
 - The result profile reuses existing TIDAS Process exchange and LCIA result structures. Schema identity/version policy and self-contained package closure are produced upstream by the release control plane and TIDAS tools, not reimplemented here.
 
-### Process maintenance and QA commands
+### Internal Process production and QA operations
 
-Recent process maintenance commands extend the same native CLI layer instead of introducing a secondary orchestration surface:
+The internal production and QA implementations remain in these owners after removal of their public workflow roots:
 
 - `src/lib/process-save-draft-run.ts`
 - `src/lib/process-payload-validation.ts`
@@ -199,27 +200,27 @@ Recent process maintenance commands extend the same native CLI layer instead of 
 
 These modules share one contract:
 
-- `src/cli.ts` owns subcommand registration, help, and exit semantics
-- `process/flow identity-preflight` owns embedded/local candidate scan inputs, explicit hybrid-search remote candidate inputs, identity/fingerprint comparison, duplicate/manual-review decisions, and `identity-candidate-sources.json` provenance artifacts before any build-plan or generation step
-- `process/flow build-plan` validates minimum authoring contracts and writes standard gate artifacts before downstream materialization or publish handoff; materialize now creates canonical `processDataSet` / `flowDataSet` wrappers from plan fields when no canonical payload is supplied. Plan-only Process generation requires an explicit, non-empty intended application and its evidence binding instead of synthesizing workflow prose. Embedded canonical payloads keep their own documentation under the existing schema check. Semantic assessment of field meaning stays with the author/reviewer workflow; the CLI does not infer research goals or blacklist scientific identifiers.
-- `process save-draft` validates canonical payloads with `ProcessSchema` before remote writes and accepts `--target-user-id` as an account/write guard that must match the current CLI auth user and any visible draft owner
-- `flow publish-version` and `process publish-build` validate canonical payloads with `FlowSchema` / `ProcessSchema` before publish planning or handoff artifacts proceed
-- Process dataset writers forward nullable `modelVersion` with `modelId`. `publish run` derives an exact source LifecycleModel identity from canonical Process metadata when present, rejects a version without an id, and persists that pair for resulting Processes; it does not discover or substitute the latest Model revision. Missing `modelVersion` deliberately preserves the database's legacy same-version fallback
-- `publish run` writes a deterministic `verification-report.json` next to the final publish report so downstream automation can read blockers without parsing execution details
+- Removed Process/Flow roots have no command registration, parsing or help. Internal file names and reports do not grant public execution.
+- The identity-preflight operation owns embedded/local candidate scan inputs, explicit hybrid-search remote candidate inputs, identity/fingerprint comparison, duplicate/manual-review decisions, and `identity-candidate-sources.json` provenance artifacts before any build-plan or generation step
+- The build-plan operation validates minimum authoring contracts and writes standard gate artifacts before downstream materialization or publish handoff; materialize now creates canonical `processDataSet` / `flowDataSet` wrappers from plan fields when no canonical payload is supplied. Plan-only Process generation requires an explicit, non-empty intended application and its evidence binding instead of synthesizing workflow prose. Embedded canonical payloads keep their own documentation under the existing schema check. Semantic assessment of field meaning stays with the author/reviewer workflow; the CLI does not infer research goals or blacklist scientific identifiers.
+- The internal Process draft operation validates canonical payloads with `ProcessSchema` before remote writes and accepts a target user id as an account/write guard that must match the current CLI auth user and any visible draft owner
+- Internal Flow version and Process publish-build operations validate canonical payloads with `FlowSchema` / `ProcessSchema` before publish planning or handoff artifacts proceed
+- Process dataset writers forward nullable `modelVersion` with `modelId`. The internal publish operation derives an exact source LifecycleModel identity from canonical Process metadata when present, rejects a version without an id, and persists that pair for resulting Processes; it does not discover or substitute the latest Model revision. Missing `modelVersion` deliberately preserves the database's legacy same-version fallback
+- The internal publish operation writes a deterministic `verification-report.json` next to the final publish report so downstream automation can read blockers without parsing execution details
 - `runtime-rulesets` verifies the released spec 0.2.3 public-rule identity/content, prefers the equivalent SDK 0.4.1 public API, falls back only when that API is unavailable, and composes CLI-owned severity/phase/blocker/profile/local-mapping policy. `dataset-contract-ruleset` separately derives the CLI context-pack projection; neither reads the retired SDK mixed ruleset asset.
-- maintenance and QA commands still emit artifact-first local outputs and remain covered by the strict `src/**/*.ts` coverage gate
+- internal maintenance and QA operations still emit artifact-first local outputs and remain covered by the strict `src/**/*.ts` coverage gate
 
-Process dimensional QA is split between `process-mass-balance.ts` (explicit exact reference evidence, unit-chain resolution, applicability and kg arithmetic) and `process-qa.ts` (existing classification, findings and artifact reports). `cli.ts` owns repeatable reference-file parsing and help. No remote lookup, dependency, credential path or Foundry-owned physical-unit implementation is added. Selected file and payload digests bind observations; canonical area-time and exact `kg*km`/`t*km` transport work are recognized nonmass units, while arbitrary composites remain unresolved. Transport work retains its quantities and references, stays outside material mass sums, and rejects unit tags that conflict with the selected reference-unit scale.
+Process dimensional QA is split between `process-mass-balance.ts` (explicit exact reference evidence, unit-chain resolution, applicability and kg arithmetic) and `process-qa.ts` (existing classification, findings and artifact reports). The old QA argv parsing and help are removed; internal operations still require explicit reference evidence. No remote lookup, dependency, credential path or Foundry-owned physical-unit implementation is added. Selected file and payload digests bind observations; canonical area-time and exact `kg*km`/`t*km` transport work are recognized nonmass units, while arbitrary composites remain unresolved. Transport work retains its quantities and references, stays outside material mass sums, and rejects unit tags that conflict with the selected reference-unit scale.
 
 Annual supply/production volume remains a separate evidence field. `process-required-fields.ts` preserves real single-object and multilingual values, recognizes only explicit historical missing markers, and retains unknown volume as `[]` with an authoring blocker. A quantitative reference or default/reference unit cannot supply annual production. `process-flow-build-plan.ts` preserves explicit annual input and emits an unknown array when evidence is absent. Legacy unresolved-trace metadata cannot waive the evidence requirement.
 
-`dataset-validation-layers.ts` binds recognized-row findings to the complete original payload using the existing canonical `sha256Json` contract. It projects separate `schema`, `authoring_evidence`, `content`, and `multilingual` results; SDK union language findings retain their complete field path, and the supplemental duplicate-language rule is confined to the annual-volume field rather than arbitrary classification arrays. Both Process draft command families consume `process-payload-validation.ts`; SDK parsing uses a deep clone and cannot alter execution-contract content. The aggregate invalid result is retained when authoring evidence is missing even if the SDK accepts the unknown representation. Layer results grant no write, publication, or provider-weight eligibility.
+`dataset-validation-layers.ts` binds recognized-row findings to the complete original payload using the existing canonical `sha256Json` contract. It projects separate `schema`, `authoring_evidence`, `content`, and `multilingual` results; SDK union language findings retain their complete field path, and the supplemental duplicate-language rule is confined to the annual-volume field rather than arbitrary classification arrays. The retained Process draft implementations consume `process-payload-validation.ts`; SDK parsing uses a deep clone and cannot alter execution-contract content. The aggregate invalid result is retained when authoring evidence is missing even if the SDK accepts the unknown representation. Layer results grant no write, publication, or provider-weight eligibility.
 
 `dataset-exact-reference-intent.ts` owns the [exact-reference input and evidence contract](exact-reference-intent-contract.md). `dataset-remote-verify.ts` retains row/reference collection, fresh actor identity, current-user RLS payload reads, observation caching and report output. Reference matching includes role so no path collision can change root policy. Current consumer and control-file facts are checked again before report publication; no mutation, retry or credential owner is added.
 
-### Dataset and lifecyclemodel governance commands
+### Internal Dataset operations and public protected maintenance
 
-Dataset-local governance now uses the same CLI-native command layer:
+The following owners retain local processing, guarded writes and specialized maintenance; only the selected typed adapters and protected maintenance routes expose current public behavior:
 
 - `src/lib/dataset-validate.ts`
 - `src/lib/dataset-save-draft-run.ts`
@@ -244,9 +245,9 @@ Dataset-local governance now uses the same CLI-native command layer:
 - `src/lib/lifecyclemodel-save-draft-run.ts`
 - `src/lib/lifecyclemodel-graph.ts`
 
-These modules keep validation, entity-level curation queue build/next/verify state, reference rewrites, RLS-scoped account and exact-row maintenance, save-draft preparation, graph extraction, and local artifact reports inside the CLI instead of routing through skills or MCP transports.
+These modules retain validation, curation state, reference rewrites, RLS-scoped maintenance, guarded draft preparation, graph extraction and artifact reports. Curation, reference-rewrite and generic draft routes are removed. The public surface uses typed Dataset actions plus the separately retained protected maintenance family.
 
-`lifecyclemodel-save-draft-run` selects create or update only after an exact visible-row lookup, then delegates to the existing actor-bound `save_lifecycle_model_bundle` Edge transport. The official Production OAuth client must be configured with the dedicated `EDGE-BUNDLE-01` database capability in addition to its retained general CLI, core read/write, and Next read/search grants; OAuth scopes do not grant database capabilities. The command report preserves the Edge application's sanitized `code` and `details` for actionable failures, but excludes the raw text held by the generic `REMOTE_REQUEST_FAILED` fallback.
+The internal `lifecyclemodel-save-draft-run` helper selects create or update after an exact visible-row lookup, then delegates to the existing actor-bound `save_lifecycle_model_bundle` Edge transport. The official Production OAuth client must be configured with the dedicated `EDGE-BUNDLE-01` database capability in addition to its retained general CLI, core read/write, and Next read/search grants; OAuth scopes do not grant database capabilities. The operation report preserves the Edge application's sanitized `code` and `details` for actionable failures, but excludes the raw text held by the generic `REMOTE_REQUEST_FAILED` fallback.
 
 Execution-contract mode in `dataset-save-draft-run` is deliberately action-scoped rather than report-directory-scoped. The immutable input binds each ordered row to an `action_id@desired_sha256`, expected insert/update operation, before hash, and earlier-only dependencies. The append-only ledger is rooted in stable platform user state and names one file per owner/project/action identity, so copying a contract or output directory cannot create a replay path. A durable attempt without an outcome is recovered by exact current-owner state-0 payload readback only; terminal and unknown actions are never dispatched again, while unrelated actions may continue. Issue #232 keeps the dependency prefix on its existing serial loop and delegates only unique-target suffix claims, exclusive keys, and fatal stop to `runBoundedBatch`; `executeAction` continues to own PREPARED/readback/no-replay and report ordering.
 

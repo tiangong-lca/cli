@@ -3,7 +3,9 @@ import test from 'node:test';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { executeCli } from '../src/cli.js';
+import { runLifecyclemodelBuildResultingProcess } from '../src/lib/lifecyclemodel-resulting-process.js';
+import { runDatasetValidate } from '../src/lib/dataset-validate.js';
+import { CliError, toErrorPayload } from '../src/lib/errors.js';
 import { processTransportFixture } from './helpers/process-allocation-fixture.js';
 
 type Json = Record<string, unknown>;
@@ -99,25 +101,24 @@ async function run(fixture: ReturnType<typeof setup>) {
     };
     const input = path.join(dir, 'request.json');
     writeFileSync(input, JSON.stringify(request));
-    const env = {
-      env: {},
-      dotEnvStatus: { loaded: false, path: '/private/tmp/.env', count: 0 },
-      fetchImpl: async () => {
-        throw new Error('offline fixture cannot fetch');
-      },
-    };
-    const result = await executeCli(
-      [
-        'lifecyclemodel',
-        'build-resulting-process',
-        '--input',
-        input,
-        '--out-dir',
-        path.join(dir, 'out'),
-        '--json',
-      ],
-      env,
-    );
+    let result;
+    try {
+      const report = await runLifecyclemodelBuildResultingProcess({
+        inputPath: input,
+        outDir: path.join(dir, 'out'),
+        env: {},
+        fetchImpl: async () => {
+          throw new Error('offline fixture cannot fetch');
+        },
+      });
+      result = { exitCode: 0, stdout: JSON.stringify(report), stderr: '' };
+    } catch (error) {
+      result = {
+        exitCode: error instanceof CliError ? error.exitCode : 1,
+        stdout: '',
+        stderr: JSON.stringify(toErrorPayload(error)),
+      };
+    }
     if (result.exitCode !== 0) return { result };
     const report = JSON.parse(result.stdout) as Json;
     const filesOut = obj(report.files);
@@ -128,20 +129,12 @@ async function run(fixture: ReturnType<typeof setup>) {
     const projection = JSON.parse(readFileSync(String(filesOut.projection_report), 'utf8')) as Json;
     const output = path.join(dir, 'output.json');
     writeFileSync(output, JSON.stringify(payload));
-    const validation = await executeCli(
-      [
-        'dataset',
-        'validate',
-        '--type',
-        'process',
-        '--input',
-        output,
-        '--out-dir',
-        path.join(dir, 'validated'),
-        '--json',
-      ],
-      env,
-    );
+    const validationReport = await runDatasetValidate({
+      type: 'process',
+      inputPath: output,
+      outDir: path.join(dir, 'validated'),
+    });
+    const validation = { exitCode: validationReport.counts.invalid > 0 ? 1 : 0 };
     return { result, payload, projection, validation, report };
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -155,7 +148,7 @@ function quantities(payload: Json) {
     item.meanAmount,
   ]);
 }
-test('public builder retains single-provider partial/excess residuals and cancels equal supply exactly once', async () => {
+test('result builder retains single-provider partial/excess residuals and cancels equal supply exactly once', async () => {
   for (const [supply, demand, direction, remaining] of [
     ['2', '5', 'Input', '3'],
     ['5', '2', 'Output', '3'],
@@ -177,7 +170,7 @@ test('public builder retains single-provider partial/excess residuals and cancel
     assert.deepEqual(built.projection!.qualification, { status: 'qualified', publish_ready: true });
   }
 });
-test('public builder rejects repeated/competing connections instead of repeatedly cancelling inventory', async () => {
+test('result builder rejects repeated/competing connections instead of repeatedly cancelling inventory', async () => {
   const fixture = setup();
   const connection = obj(fixture.instances[0].connections);
   connection.outputExchange = [
@@ -217,7 +210,7 @@ test('competing active providers are rejected but a disabled provider does not c
   assert.match((await run(mixed)).result.stderr, /Mixed exact Flow\/basis/);
   assert.match((await run(setup('2', '-5'))).result.stderr, /Mixed exact Flow\/basis/);
 });
-test('public builder resolves non-first integer, zero and legacy references without changing the source type', async () => {
+test('result builder resolves non-first integer, zero and legacy references without changing the source type', async () => {
   for (const reference of [1, 0, '1', { '@refObjectId': '1' }]) {
     const fixture = setup();
     delete fixture.instances[0].connections;
@@ -240,7 +233,7 @@ test('public builder resolves non-first integer, zero and legacy references with
     );
   }
 });
-test('public builder rejects explicit invalid/unresolved/duplicate instance references; absent reference retains deliberate fallback', async () => {
+test('result builder rejects explicit invalid/unresolved/duplicate instance references; absent reference retains deliberate fallback', async () => {
   for (const reference of [null, '', 1.5, {}, 'missing']) {
     const fixture = setup();
     fixture.reference = reference;

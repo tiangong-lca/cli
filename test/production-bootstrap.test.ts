@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -107,7 +107,7 @@ test('partial custom endpoints, identities, callbacks, and headless tokens never
   assert.equal(custom.oauthRedirectUri, 'http://127.0.0.1:55000/oauth/callback');
 });
 
-test('clean CLI auth and search use Production without repo env or a preexisting session', async () => {
+test('clean CLI auth uses Production without repo env or a preexisting session', async () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-production-bootstrap-'));
   const sessionFile = path.join(directory, 'private', 'session.json');
   const env = { TIANGONG_LCA_SESSION_FILE: sessionFile };
@@ -161,35 +161,6 @@ test('clean CLI auth and search use Production without repo env or a preexisting
     }
     assert.equal(networkCalls, 0);
     assert.equal(existsSync(sessionFile), false);
-    const inputPath = path.join(directory, 'search.json');
-    writeFileSync(inputPath, JSON.stringify({ query: 'electricity' }));
-    for (const family of ['flow', 'process', 'lifecyclemodel']) {
-      const result = await executeCli(
-        ['search', family, '--input', inputPath, '--dry-run', '--json'],
-        deps,
-      );
-      assert.equal(result.exitCode, 0, result.stderr);
-      assert.equal(
-        JSON.parse(result.stdout).request.url,
-        `${PROJECT}/functions/v1/${family}_hybrid_search`,
-      );
-      assert.equal(JSON.parse(result.stdout).request.headers['x-region'], 'us-east-1');
-    }
-    const custom = await executeCli(
-      [
-        'search',
-        'flow',
-        '--base-url',
-        'https://dev.supabase.co',
-        '--input',
-        inputPath,
-        '--dry-run',
-        '--json',
-      ],
-      deps,
-    );
-    assert.equal(custom.exitCode, 2);
-    assert.equal(networkCalls, 0);
     const login = await executeCli(['auth', 'login', '--json'], deps);
     assert.equal(login.exitCode, 0, login.stderr);
     assert.equal(browserCalls, 1);

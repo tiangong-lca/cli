@@ -4,27 +4,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { executeCli } from '../src/cli.js';
 import { __testInternals, runDatasetContract } from '../src/lib/dataset-contract.js';
-import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
-import type { FetchLike } from '../src/lib/http.js';
-
-const dotEnvStatus: DotEnvLoadResult = {
-  loaded: false,
-  path: '/tmp/.env',
-  count: 0,
-};
-
-const deps = {
-  env: {},
-  dotEnvStatus,
-  fetchImpl: (async () => ({
-    ok: true,
-    status: 200,
-    headers: { get: () => 'application/json' },
-    text: async () => JSON.stringify({ ok: true }),
-  })) as FetchLike,
-};
 
 function readJson(filePath: string): unknown {
   return JSON.parse(readFileSync(filePath, 'utf8'));
@@ -90,95 +70,6 @@ test('runDatasetContract writes process contract artifacts', async () => {
     ]);
     const context = readJson(report.files.ai_context_json ?? '') as { runtime_ruleset?: unknown };
     assert.deepEqual(context.runtime_ruleset, readJson(report.files.ruleset ?? ''));
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-test('executeCli exposes dataset contract and context-pack commands', async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-context-pack-'));
-  try {
-    const contractHelp = await executeCli(['dataset', 'contract', 'get', '--help'], deps);
-    assert.equal(contractHelp.exitCode, 0);
-    assert.match(contractHelp.stdout, /dataset contract get/u);
-
-    const namespaceHelp = await executeCli(['dataset', 'contract'], deps);
-    assert.equal(namespaceHelp.exitCode, 0);
-    assert.match(namespaceHelp.stdout, /dataset contract get/u);
-
-    const contractReport = {
-      schema_version: 1,
-      status: 'completed',
-      generated_at_utc: '2026-06-01T00:00:00.000Z',
-      mode: 'contract',
-      requested_type: 'process',
-      type: 'process',
-      profile: 'default',
-      includes: ['schema'],
-      source: 'sdk-contract-api',
-      manifest: {},
-      files: {
-        manifest: 'manifest.json',
-        schema: 'schema.json',
-        methodology: null,
-        ruleset: null,
-        ai_context_json: null,
-        ai_context_markdown: null,
-        report: 'contract-report.json',
-      },
-    } satisfies Awaited<ReturnType<typeof runDatasetContract>>;
-    const contractResult = await executeCli(
-      [
-        'dataset',
-        'contract',
-        'get',
-        '--type',
-        'process',
-        '--include',
-        'schema',
-        '--profile',
-        'ai-import',
-        '--out-dir',
-        dir,
-      ],
-      {
-        ...deps,
-        runDatasetContractImpl: async (options) => ({
-          ...contractReport,
-          requested_type: String(options.type),
-          type: String(options.type),
-          profile: options.profile === 'ai-import' ? 'ai-import' : 'default',
-        }),
-      },
-    );
-    assert.equal(contractResult.exitCode, 0);
-    assert.equal(JSON.parse(contractResult.stdout).type, 'process');
-    assert.equal(JSON.parse(contractResult.stdout).profile, 'ai-import');
-
-    const invalidAction = await executeCli(['dataset', 'contract', 'show'], deps);
-    assert.equal(invalidAction.exitCode, 2);
-    assert.match(invalidAction.stderr, /dataset contract action must be 'get'/u);
-
-    const invalidFlags = await executeCli(['dataset', 'contract', 'get', '--bad'], deps);
-    assert.equal(invalidFlags.exitCode, 2);
-    assert.match(invalidFlags.stderr, /INVALID_ARGS/u);
-
-    const help = await executeCli(['dataset', 'context-pack', '--help'], deps);
-    assert.equal(help.exitCode, 0);
-    assert.match(help.stdout, /dataset context-pack/u);
-
-    const result = await executeCli(
-      ['dataset', 'context-pack', '--type', 'flow', '--out-dir', dir, '--json'],
-      deps,
-    );
-    assert.equal(result.exitCode, 0);
-    const payload = JSON.parse(result.stdout) as {
-      type: string;
-      files: { schema: string; ai_context_json: string };
-    };
-    assert.equal(payload.type, 'flow');
-    assert.equal(existsSync(payload.files.schema), true);
-    assert.equal(existsSync(payload.files.ai_context_json), true);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -504,4 +395,13 @@ test('dataset contract keeps packaged SDK assets standalone outside a source che
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('contract include selection preserves defaults and explicit components', () => {
+  assert.deepEqual(__testInternals.normalizeIncludes('schema'), ['schema']);
+  assert.deepEqual(__testInternals.normalizeIncludes(undefined), [
+    'schema',
+    'methodology',
+    'ruleset',
+  ]);
 });

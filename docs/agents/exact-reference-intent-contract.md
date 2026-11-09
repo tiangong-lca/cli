@@ -20,9 +20,9 @@ checkPaths:
   - src/cli.ts
   - test/dataset-exact-reference-intent.test.ts
   - test/dataset-save-draft-exact-reference.test.ts
-lastReviewedAt: 2026-09-11
-lastReviewedCommit: 577d6fdf6ffb9de594b098a166c6b1f2ac3657f1
-lastReviewedNote: 'Reviewed for CLI #289: explicit consumer/reference/review binding, fresh actor identity, current latest payload observations and unchanged root/default policies.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
+lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
 related:
   - ../../AGENTS.md
   - ./repo-validation.md
@@ -31,7 +31,7 @@ related:
 
 # Exact reference intent
 
-`dataset verify-remote --reference-intent-file <file>` checks an explicitly reviewed physical definition even when a newer visible version exists. It is read-only observation, not a write grant, database lock, schema-validation substitute or general exception to current-user RLS. Without this option, the existing latest-version and root policies retain their previous behavior and report shape.
+The retained internal `runDatasetRemoteVerify({ referenceIntentFile, ... })` operation checks an explicitly reviewed physical definition even when a newer visible version exists. It is read-only observation, not a write grant, database lock, schema-validation substitute or general exception to current-user RLS. Without this selection, the existing latest-version and root policies retain their previous behavior and report shape.
 
 `dataset-exact-reference-intent.ts` owns strict local selection and observation evaluation. `dataset-remote-verify.ts` owns row/reference collection, the existing fresh auth-identity receipt, RLS GET transport, payload caching and report publication. Foundry owns explicit input selection, snapshot lineage and handoff/readback binding; it must not reproduce the CLI's eligibility policy.
 
@@ -128,7 +128,7 @@ Moving a control file changes relative path resolution. A host that stages revie
 
 ## Guarded Flow owner drafts
 
-`dataset save-draft --type flow --input <rows> --execution-contract <contract> --reference-intent-file <intent> --dry-run|--commit` selects the same strict v1 intent and review files. Select exactly one nonempty option. This path requires a Flow-only execution contract; it adds no fields to `dataset-save-draft-execution-contract.v1`. Every complete ordered input consumer is bound, including consumers without a selected occurrence. Ordinary save-draft and contracts without this selection keep their existing policy.
+The retained internal `runDatasetSaveDraft` operation accepts `type: 'flow'`, `inputPath`, `executionContractPath`, `referenceIntentFile` and explicit `commit`. A selected intent must be nonempty and requires a Flow-only execution contract; it adds no fields to `dataset-save-draft-execution-contract.v1`. Every complete ordered input consumer is bound, including consumers without a selected occurrence. Operations without this selection keep their existing policy. The former generic `dataset save-draft` and `dataset verify-remote` argv routes are removed; preserving this internal protocol does not expose them or add an exception to typed public create/save. Historical execution records remain bound to their original protocol and version.
 
 The CLI evaluates every selected reference occurrence. Repeated table/UUID/version observations may share transport reads within one action's admission pass, but one selected path never exempts another undeclared path. Selected and visible-latest complete bodies, embedded identities, owner and state must match the reviewed facts; exact reads must return one row. The explicit visible-latest observation is distinct from default latest-published lookup. Roots, malformed or unused declarations, private foreign rows and unsupported states remain ineligible.
 

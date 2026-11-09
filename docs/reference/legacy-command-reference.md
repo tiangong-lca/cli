@@ -2,7 +2,7 @@
 title: CLI 0.1.x command reference
 docType: reference
 scope: repo
-status: active
+status: historical
 authoritative: false
 owner: cli
 language: en
@@ -10,7 +10,7 @@ language: en
 
 # CLI 0.1.x command reference
 
-Retained from the README at e2b7a7a for commands not yet migrated to the 0.2.0 interface. Historical release notes below are not current publication evidence. Use the installed version's help for executable behavior and the [repository README](../../README.md) for the refactor entrypoint. This reference does not describe the new `dataset process` commands.
+Historical reference retained from the 0.1.x README at e2b7a7a. The 0.2.0 candidate removes the old business roots and generic Dataset compatibility routes shown here; these examples are not executable guidance for the candidate. Use the [repository README](../../README.md), installed help and [migration comparison](../analysis/cli-interface-comparison.md#旧入口处置与保留边界) for current behavior. Historical release notes are not current publication evidence.
 
 Review note, 2026-10-07: CLI #407 prepares the separate version-only 0.1.26 release from reviewed allocation/reference PR #406 at main `0a476fee7569af67f4197a1469bb97666d9911e9`. The existing helper selected 0.1.26 from repository and npm latest 0.1.25, proved the target unpublished, and the canonical tag read found no cli-v0.1.26. Package identity and eight directly bound fixture values advance; runtime, exact SDK 0.5.1 dependency, pnpm lock, exports, authentication and workflows remain unchanged. Publication and installed/Foundry managed acceptance still require the existing exact-head four-platform gate, automatic merge tag, native pnpm Trusted Publishing/provenance, credential-free consumers and exact workspace integration.
 

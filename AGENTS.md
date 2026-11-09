@@ -39,9 +39,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
-lastReviewedNote: 'CLI #468: reviewed default positive admission, installed business and recovery scenarios, typed Model provenance and JSONB reviewer filters; specialized contracts and release boundaries remain intact.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
+lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -73,7 +73,8 @@ The workspace AGENTS.md governs delivery, branch policy and integration. Resolve
 | Location | Owns |
 | --- | --- |
 | `bin/`, `src/main.ts` | Installed executable, platform admission, environment and process IO. |
-| `src/cli.ts` | Composition and legacy dispatch; new commands delegate to `src/commands/`. |
+| `src/cli.ts` | Composition and current routing; parsing and execution delegate to `src/commands/`. |
+| `src/cli-deps.ts` | Internal composition dependencies, IO result types and shared failure projection; not a public package export. |
 | `src/commands/` | Command paths, argument validation, help and translation between CLI IO and operations. |
 | `src/application/` | Atomic business operations and typed ports; no argv, filesystem or network transport. |
 | `src/adapters/` | Implement ports using existing auth, data access and validation helpers. |

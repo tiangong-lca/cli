@@ -3,16 +3,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { executeCli } from '../src/cli.js';
 import { runDatasetAuthor } from '../src/lib/dataset-author.js';
-import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
 import type { FetchLike } from '../src/lib/http.js';
-
-const dotEnvStatus: DotEnvLoadResult = {
-  loaded: false,
-  path: '/tmp/.env',
-  count: 0,
-};
 
 const fetchImpl = (async () => ({
   ok: true,
@@ -103,77 +95,6 @@ test('runDatasetAuthor can use default parser and contract implementations', asy
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-});
-
-test('executeCli exposes dataset author command', async () => {
-  const help = await executeCli(['dataset', 'author', '--help'], {
-    env: {},
-    dotEnvStatus,
-    fetchImpl,
-  });
-  assert.equal(help.exitCode, 0);
-  assert.match(help.stdout, /dataset author/u);
-
-  const result = await executeCli(
-    [
-      'dataset',
-      'author',
-      '--input',
-      'source.xlsx',
-      '--target-types',
-      'process',
-      '--out-dir',
-      'out',
-      '--prompt',
-      'make data',
-      '--provider',
-      'vision',
-      '--model',
-      'vision-model',
-      '--timeout-ms',
-      '1234',
-      '--json',
-    ],
-    {
-      env: {},
-      dotEnvStatus,
-      fetchImpl,
-      runDatasetAuthorImpl: async (options) => ({
-        schema_version: 1,
-        status: 'evidence_ready',
-        generated_at_utc: '2026-06-01T00:00:00.000Z',
-        input_path: `${options.inputPath}:${options.prompt}:${options.provider}:${options.model}:${options.timeoutMs}`,
-        target_types: Array.isArray(options.targetTypes) ? options.targetTypes : [],
-        files: {
-          source_extract: 'out/outputs/source-extract.json',
-          authoring_report: 'out/outputs/authoring-report.json',
-        },
-        context_packs: [],
-        next_actions: [],
-      }),
-    },
-  );
-  assert.equal(result.exitCode, 0);
-  assert.equal(
-    JSON.parse(result.stdout).input_path,
-    'source.xlsx:make data:vision:vision-model:1234',
-  );
-
-  const invalidUnknown = await executeCli(['dataset', 'author', '--unknown'], {
-    env: {},
-    dotEnvStatus,
-    fetchImpl,
-  });
-  assert.equal(invalidUnknown.exitCode, 2);
-  assert.match(invalidUnknown.stderr, /INVALID_ARGS/u);
-
-  const invalidTimeout = await executeCli(['dataset', 'author', '--timeout-ms', '0'], {
-    env: {},
-    dotEnvStatus,
-    fetchImpl,
-  });
-  assert.equal(invalidTimeout.exitCode, 2);
-  assert.match(invalidTimeout.stderr, /timeout-ms/u);
 });
 
 test('runDatasetAuthor validates required local inputs before parsing', async () => {

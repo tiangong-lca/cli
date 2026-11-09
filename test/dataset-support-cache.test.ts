@@ -5,7 +5,6 @@ import path from 'node:path';
 import test from 'node:test';
 import { createRequire, syncBuiltinESMExports } from 'node:module';
 import { mkdirSync } from 'node:fs';
-import { executeCli } from '../src/cli.js';
 import { runDatasetSupportCacheExport } from '../src/lib/dataset-support-cache.js';
 import type { FetchLike } from '../src/lib/http.js';
 import type { ResolvedSupabaseUserSession } from '../src/lib/supabase-session.js';
@@ -323,75 +322,6 @@ test('row, byte and elapsed-time limits prevent completion', async () => {
       /operation deadline/u,
     );
     assert.equal(existsSync(f.options.outDir), false);
-  } finally {
-    rmSync(f.root, { recursive: true, force: true });
-  }
-});
-
-test('CLI support export exposes help and validates dispatch before any remote work', async () => {
-  const deps = {
-    env: {},
-    dotEnvStatus: { loaded: false, path: '.env', count: 0 },
-    fetchImpl: async () => {
-      throw new Error('unexpected network');
-    },
-  };
-  for (const args of [
-    ['dataset', 'support-cache'],
-    ['dataset', 'support-cache', '--help'],
-    ['dataset', 'support-cache', '-h'],
-    ['dataset', 'support-cache', 'export', '--help'],
-  ]) {
-    const result = await executeCli(args, deps);
-    assert.equal(result.exitCode, 0);
-    assert.match(result.stdout, /support-cache export/u);
-  }
-  for (const args of [
-    ['dataset', 'support-cache', 'invalid'],
-    ['dataset', 'support-cache', 'export', '--unknown'],
-    ['dataset', 'support-cache', 'export', '--out-dir', 'unused-output', '--state-code', ''],
-    ['dataset', 'support-cache', 'export'],
-  ]) {
-    const result = await executeCli(args, deps);
-    assert.notEqual(result.exitCode, 0);
-  }
-  const f = fixture([]);
-  try {
-    const report = await runDatasetSupportCacheExport(f.options);
-    for (const flags of [[], ['--json']]) {
-      const result = await executeCli(
-        [
-          'dataset',
-          'support-cache',
-          'export',
-          '--out-dir',
-          'new-output',
-          '--state-code',
-          '100',
-          '--page-size',
-          '4',
-          '--timeout-ms',
-          '100',
-          '--expected-project-ref',
-          PROJECT,
-          '--expected-user-id',
-          USER,
-          ...flags,
-        ],
-        {
-          ...deps,
-          runDatasetSupportCacheExportImpl: async (options) => {
-            assert.equal(options.outDir, 'new-output');
-            assert.deepEqual(options.stateCodes, [100]);
-            assert.equal(options.pageSize, 4);
-            assert.equal(options.timeoutMs, 100);
-            return report;
-          },
-        },
-      );
-      assert.equal(result.exitCode, 0);
-      assert.deepEqual(JSON.parse(result.stdout), report);
-    }
   } finally {
     rmSync(f.root, { recursive: true, force: true });
   }

@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { executeCli } from '../src/cli.js';
+import { runDatasetSaveDraft } from '../src/lib/dataset-save-draft-run.js';
+import { runDatasetRemoteVerify } from '../src/lib/dataset-remote-verify.js';
+import { CliError, toErrorPayload } from '../src/lib/errors.js';
 import { collectRemoteReferences } from '../src/lib/dataset-remote-verify.js';
 import { sha256Json } from '../src/lib/dataset-maintenance-contract.js';
 import type { FetchLike } from '../src/lib/http.js';
@@ -285,20 +287,49 @@ function fixture(t: import('node:test').TestContext) {
     throw new Error(`Unexpected fixture request: ${url}`);
   };
   let run = 0;
-  const invoke = (verb: 'save-draft' | 'verify-remote', flags: string[]) =>
-    executeCli(
-      [
-        'dataset',
-        verb,
-        '--input',
-        input,
-        '--out-dir',
-        path.join(root, `run-${++run}`),
-        '--json',
-        ...flags,
-      ],
-      { env, dotEnvStatus: { loaded: false, path: path.join(root, '.env'), count: 0 }, fetchImpl },
-    );
+  // Exercise the retained guarded operation independently of retired argv routes.
+  const invoke = async (verb: 'save-draft' | 'verify-remote', flags: string[]) => {
+    const value = (flag: string) => {
+      const index = flags.indexOf(flag);
+      return index < 0 ? undefined : flags[index + 1];
+    };
+    const options = {
+      inputPath: input,
+      outDir: path.join(root, `run-${++run}`),
+      env,
+      fetchImpl,
+      ...(value('--reference-intent-file') === undefined
+        ? {}
+        : { referenceIntentFile: value('--reference-intent-file')! }),
+    };
+    try {
+      if (verb === 'verify-remote') {
+        const report = await runDatasetRemoteVerify({ ...options, rootPolicy: 'candidate' });
+        return {
+          exitCode: report.status === 'blocked_remote_verification' ? 1 : 0,
+          stdout: JSON.stringify(report),
+          stderr: '',
+        };
+      }
+      const report = await runDatasetSaveDraft({
+        ...options,
+        type: value('--type'),
+        executionContractPath: value('--execution-contract'),
+        commit: flags.includes('--commit'),
+      });
+      return {
+        exitCode: report.status === 'completed' ? 0 : 1,
+        stdout: JSON.stringify(report),
+        stderr: '',
+      };
+    } catch (error) {
+      return {
+        exitCode: error instanceof CliError ? error.exitCode : 1,
+        stdout: '',
+        stderr: JSON.stringify(toErrorPayload(error)),
+      };
+    }
+  };
   return {
     root,
     rows,
@@ -319,7 +350,7 @@ function fixture(t: import('node:test').TestContext) {
   };
 }
 
-test('public Flow owner preflight admits the same four exact Contact occurrences accepted by verify-remote', async (t) => {
+test('guarded Flow owner preflight admits the same four exact Contact occurrences accepted by verify-remote', async (t) => {
   const f = fixture(t);
   const verified = await f.invoke('verify-remote', [
     '--root-policy',
@@ -357,7 +388,7 @@ test('public Flow owner preflight admits the same four exact Contact occurrences
   assert.deepEqual(JSON.parse(fs.readFileSync(f.input, 'utf8')), f.rows);
 });
 
-test('public exact-reference commits retain action evidence and never renew consumed writes', async (t) => {
+test('guarded exact-reference commits retain action evidence and never renew consumed writes', async (t) => {
   const f = fixture(t);
   const flags = [
     '--type',
@@ -753,27 +784,6 @@ test('an old default-policy attempt cannot acquire a new exact admission during 
   assert.ok(report.rows.every((row: JsonObject) => row.reference_intent_admission === undefined));
 });
 
-test('public selection rejects duplicate, empty, unguarded and non-Flow invocations', async (t) => {
-  const f = fixture(t);
-  for (const flags of [
-    [...ownerFlags(f), '--reference-intent-file', f.intentFile],
-    ['--type', 'flow', '--execution-contract', f.contractFile, '--reference-intent-file', ''],
-    ['--type', 'flow', '--reference-intent-file', f.intentFile],
-    [
-      '--type',
-      'source',
-      '--execution-contract',
-      f.contractFile,
-      '--reference-intent-file',
-      f.intentFile,
-    ],
-  ]) {
-    const result = await f.invoke('save-draft', flags);
-    assert.notEqual(result.exitCode, 0);
-  }
-  assert.equal(f.writes.length, 0);
-});
-
 const corruptAdmissions: Record<string, (admission: JsonObject) => void> = {
   schema: (a) => {
     a.schema_version = 'unsupported';
@@ -869,4 +879,20 @@ test('an outcome cannot drop the admission bound by its original attempt', async
   const result = await f.invoke('save-draft', ownerFlags(f, true));
   assert.notEqual(result.exitCode, 0);
   assert.equal(f.writes.length, 2);
+});
+
+test('guarded exact selection cannot run without an execution contract', async (t) => {
+  const f = fixture(t);
+  await assert.rejects(
+    runDatasetSaveDraft({
+      inputPath: f.input,
+      type: 'flow',
+      referenceIntentFile: f.intentFile,
+      outDir: path.join(f.root, 'rejected'),
+      env: f.env,
+      fetchImpl: f.fetchImpl,
+    }),
+    /Flow-only --execution-contract/,
+  );
+  assert.equal(f.writes.length, 0);
 });

@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
-lastReviewedNote: 'CLI #468: reviewed default positive admission, installed business and recovery scenarios, typed Model provenance and JSONB reviewer filters; specialized contracts and release boundaries remain intact.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
+lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -82,22 +82,11 @@ Process ownership-version changes require focused `dataset-command`, `process-sa
 
 Process intended-application generation tests use the real SDK through the public build-plan functions. Prove absent/blank inputs produce the native missing-field report and no materialized artifact, explicit bilingual values survive both plan aliases, evidence binding is required, and all embedded-payload aliases preserve their existing bodies without duplicate plan metadata. These checks establish input presence and preservation, not natural-language correctness or a universal keyword ban.
 
-### Process purpose public-command proof
+### Retired routes and retained scientific proof
 
-Run the public launcher separately from the function-level tests:
+`test/cli-retired-entrypoints.test.ts` verifies removed roots and generic Dataset routes reject namespace, help and execution forms with exit 2, empty stdout and structured `UNKNOWN_COMMAND` stderr. Rejection performs no network work. The packed-consumer business lane repeats these checks from a native process outside the checkout while retaining successful typed Dataset/Review scenarios and original-request recovery.
 
-```bash
-pnpm build
-node scripts/ci/prove-process-intended-applications.mjs --out-dir /tmp/process-purpose-proof
-```
-
-Choose a new evidence directory outside the checkout for each run. The script uses the synthetic [plan fixture](../../test/fixtures/process-intended-applications-plan.json) and spawns `bin/tiangong-lca.js process build-plan` with real SDK validation, default exit policy and a minimal environment. It imports no production helper or mock. It asserts both `validate` and `materialize` reject a missing purpose or its missing canonical evidence binding with exit 1, the exact native blocker and no payload. It then checks bilingual materialization and byte-identical preservation of an embedded payload without duplicate purpose metadata.
-
-`proof.json` records timestamps, runtime version and hashes, checkout HEAD/clean status when available, argv, exit codes, gate/payload hashes, payload absence and the resulting bilingual field. Each case retains its exact input, stdout, stderr and native gate/payload files. CLI input/output paths are relative to the evidence directory; the displayed launcher and working-directory paths use `<cli>` and `<evidence-dir>` so the report is shareable without host paths or account configuration. Inspect and retain these actual outputs, rather than citing test source or a gate-success claim alone.
-
-For a differential replay, pass `--cli-bin /absolute/path/to/cli/bin/tiangong-lca.js --expect legacy` to use a separately selected, exact baseline package. That mode verifies the old fallback and missing-binding acceptance; it does not weaken the production CLI. Running the default `explicit` expectation against that baseline must fail. A published package's version/hash is package evidence, not proof of a Git source revision unless that mapping is independently established.
-
-Rebuild and rerun on the final clean commit, and publish the actual exact-head summary with links to this script/fixture and inspectable gate/payload excerpts. Keep large raw outputs outside Git. Full `pnpm prepush:gate` and Docpact remain required; preserve their actual command, exit and output evidence separately. Contributor-run proof must not be described as trusted reviewer execution or maintainer acceptance of the stricter existing-caller contract. That compatibility decision remains with the repository maintainer before merge.
+Removed facade-only tests do not establish a retained contract. Domain, scientific and guarded-write tests continue directly through internal operations: allocation and boundary conservation, real SDK validation, exact-reference admission, awaited pre-dispatch checks, consumed attempts and immutable recovery evidence. The old `process build-plan` launcher proof script is removed with its public route; its scientific build-plan tests remain internal. New public behavior is qualified through typed commands and installed consumers.
 
 Annual-volume changes require the real SDK Process schema in `process-annual-volume-policy.test.ts`, not an injected passing validator. Prove schema-valid unknown arrays remain authoring gaps; real quantities (including `9999 kg/year`) and language order survive; malformed shapes remain diagnosable; reference amounts and default units never become annual production; and historical trace metadata cannot bypass validation. Compare the two Process draft command families' complete validation results and exact payload digests. Nested SDK union language errors and duplicate annual-language entries must be reported accurately without treating classification hierarchies as multilingual fields. The private real-case lane freezes source inputs before RED and replays those same inputs after the fix; credential or service failures are not product RED evidence.
 

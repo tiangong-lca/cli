@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 958fce639abee412147272e850f61dfc52fbdbd8
-lastReviewedNote: 'CLI #468: reviewed default positive admission, installed business and recovery scenarios, typed Model provenance and JSONB reviewer filters; specialized contracts and release boundaries remain intact.'
+lastReviewedAt: 2026-11-09
+lastReviewedCommit: 53445506f65c6822fdc4e7262ba5c31158c67f6e
+lastReviewedNote: 'CLI #468: reviewed retirement of old business and generic Dataset entrypoints, retained internal safety protocols and formal Model alias, bounded command modules and native negative qualification; release authority is unchanged.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -162,7 +162,9 @@ AGENTS 面向开发 AI，规定目录职责、依赖方向、新命令开发路�
 
 按前置核查清单，删除已被替代的入口、帮助及无引用实现，收敛核心命令树。研究、生产编排及专项运维流程退出核心范围时，在本仓完成入口和依赖清理，并记录移除后的使用边界；本次不在下游仓库重建这些流程。
 
-语义完全一致的入口在分支开发期间可以临时转接；upsert、隐式保存、自动追新等旧行为不能直接映射成新动作。所有过渡入口在验收前明确最终处置，不保留没有退出条件的兼容层。旧调用路径可在“新 CLI 正式发布、相关下游采用新入口并验证历史恢复记录”完成前保留原协议；这些退出条件属于 Release 后的调用方迁移，不能因此在本轮修改下游。设计明确保留的 `aggregate` 属于主命令的正式别名，不作为待删除的旧入口；它不等于保留旧的 `lifecyclemodel` 命令层级。旧恢复记录、历史产物及公共库接口的兼容需求单独核查，不能随命令清理误删恢复能力。
+删除 `search/flow/process/lifecyclemodel/qa/publish` 和通用 Dataset `contract/context-pack/curation-queue/author/patch/save-draft/validate/support-cache/verify-remote/bilingual/evidence-search/references` 的帮助、解析、执行分派及旧依赖注入。旧入口直接返回 `UNKNOWN_COMMAND`，不保留转接、隐式保存或自动追新；拒绝测试必须证明无网络请求或写入，源码外安装包也执行这项检查。
+
+`dataset model aggregate` 是主命令的正式别名；专项受保护维护、分类维护、Study、Release、runtime/PCR 和文件包工具保留各自契约。内部算法、安全设施、历史证据与公共库协议单独核查，删除旧 CLI 不得移除领域与防重复写入测试。原来借旧入口验证这些性质的测试改为直接调用内部操作，新入口另有独立行为及安装包验证。旧入口删除不等待下游迁移，也不因此修改下游代码。
 
 下游迁移说明包括旧命令到新命令映射、移除项、参数与输出变化、创建和保存的语义差异、错误与恢复方式，以及基于新命令的使用示例。无法一对一映射的旧流程说明应由调用方组合哪些原子能力，不伪造等价替代命令。
 
@@ -204,6 +206,6 @@ AGENTS 面向开发 AI，规定目录职责、依赖方向、新命令开发路�
 | M3：核心业务能力齐备 | 第 7、8 步完成，独立写入与审核通过验收。                |
 | M4：候选版本可评审   | 第 9、10 步完成，清理、安装包、场景验收和迁移资料齐备。 |
 
-实施状态：基础分层和核心能力迁移已完成，环境、认证和目录发现接入统一结果；合法内容的默认校验路径、安装包连续业务场景和跨进程恢复纳入验收。核心帮助、重复实现清理、兼容入口退出条件与调用方迁移说明已按能力对照整理。真实本地服务、安装包协议验证和四平台 CI 分别记录，不依据本地覆盖率认定候选版本的所有环境验收完成。目标设计与本次业务服务基线的差异按第 8 步处理，未实施的扩展不计为已有能力。
+实施状态：基础分层和核心能力迁移已完成，环境、认证和目录发现接入统一结果；合法内容的默认校验路径、安装包连续业务场景和跨进程恢复纳入验收。核心帮助、重复实现清理、旧兼容入口删除与拒绝证明、调用方迁移说明已按能力对照整理。真实本地服务、安装包协议验证和四平台 CI 分别记录，不依据本地覆盖率认定候选版本的所有环境验收完成。目标设计与本次业务服务基线的差异按第 8 步处理，未实施的扩展不计为已有能力。
 
 当前交付事实、源码身份、验证证据和剩余事项保存在对应 Issue/PR。计划不替代交付记录，也不以阶段描述代替代码、服务集成或发布证据。正式发布后的下游升级独立进行。
