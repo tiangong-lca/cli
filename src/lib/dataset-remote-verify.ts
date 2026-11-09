@@ -303,11 +303,14 @@ const MODEL_PREDECESSOR_PATH =
 
 export function isFixedModelReference(
   reference: Pick<RemoteDatasetReference, 'table' | 'path'>,
+  arrayItem: boolean,
 ): boolean {
   return (
     reference.table === 'lifecyclemodels' &&
     (reference.path === MODEL_PROVENANCE_PATH ||
-      reference.path.replace(/\/(?:0|[1-9]\d*)$/u, '') === MODEL_PREDECESSOR_PATH)
+      reference.path === MODEL_PREDECESSOR_PATH ||
+      (arrayItem &&
+        reference.path.slice(0, reference.path.lastIndexOf('/')) === MODEL_PREDECESSOR_PATH))
   );
 }
 

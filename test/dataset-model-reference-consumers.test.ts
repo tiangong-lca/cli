@@ -155,7 +155,7 @@ test('refresh-remote still updates ordinary references beside fixed Model proven
     '@version': older,
   };
   Object.assign(row.processDataSet.processInformation.dataSetInformation, {
-    otherReference: ordinary,
+    otherReference: [ordinary],
   });
   Object.assign(row.processDataSet, {
     exchanges: {
@@ -198,9 +198,50 @@ test('refresh-remote still updates ordinary references beside fixed Model proven
     row.processDataSet.processInformation.dataSetInformation.generatedFromLifecycleModel,
   );
   assert.equal(
-    output.processDataSet.processInformation.dataSetInformation.otherReference['@version'],
+    output.processDataSet.processInformation.dataSetInformation.otherReference[0]['@version'],
     newer,
   );
   assert.equal(output.processDataSet.exchanges.exchange.referenceToFlowDataSet['@version'], newer);
   assert.deepEqual(row, original);
+});
+
+test('refresh-remote distinguishes a numeric object field from a predecessor array item', async (t) => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'cli-model-numeric-reference-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const row = modelRow();
+  const predecessor =
+    row.lifeCycleModelDataSet.administrativeInformation.publicationAndOwnership[
+      'common:referenceToPrecedingDataSetVersion'
+    ];
+  assert.ok(!Array.isArray(predecessor));
+  Object.assign(predecessor, {
+    0: { '@type': 'life cycle model data set', '@refObjectId': modelId, '@version': older },
+  });
+  const report = await runDatasetRemoteRefresh({
+    inputPath: path.join(directory, 'input.json'),
+    rawInput: [row],
+    outPath: path.join(directory, 'output.jsonl'),
+    outDir: directory,
+    rootPolicy: 'candidate',
+    runDatasetRemoteVerifyImpl: (options) =>
+      runDatasetRemoteVerify({
+        ...options,
+        lookupDatasetImpl: async (request) => ({
+          exact: { id: request.id, version: request.version },
+          latest: { id: request.id, version: newer },
+          exact_source_url: null,
+          latest_source_url: null,
+        }),
+      }),
+  });
+  assert.equal(report.counts.patched_references, 1);
+  assert.equal(report.counts.refreshable_references, 1);
+  assert.deepEqual(
+    report.remaining_blockers.map((blocker) => blocker.path),
+    [predecessorPath],
+  );
+  const output = JSON.parse(readFileSync(report.files.output_rows, 'utf8')).lifeCycleModelDataSet
+    .administrativeInformation.publicationAndOwnership['common:referenceToPrecedingDataSetVersion'];
+  assert.equal(output['@version'], older);
+  assert.equal(output[0]['@version'], newer);
 });

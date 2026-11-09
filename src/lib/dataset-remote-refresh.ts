@@ -132,10 +132,13 @@ function referenceNodeForPatch(
   return isRecord(node) ? node : null;
 }
 
-function refreshableCheck(check: RemoteVerificationCheck): boolean {
+function refreshableCheck(check: RemoteVerificationCheck, payload: JsonObject = {}): boolean {
   return (
     check.role === 'reference' &&
-    !isFixedModelReference(check) &&
+    !isFixedModelReference(
+      check,
+      Array.isArray(valueAtPointer(payload, check.path.slice(0, check.path.lastIndexOf('/')))),
+    ) &&
     Boolean(check.latest_version) &&
     ['missing_version', 'version_missing', 'version_outdated'].includes(check.status)
   );
@@ -148,7 +151,9 @@ function applyRemoteRefreshPatches(
   const patchedRows = cloneJson(rows);
   const patches: DatasetRemoteRefreshPatch[] = [];
 
-  for (const check of checks.filter(refreshableCheck)) {
+  for (const check of checks.filter((entry) =>
+    refreshableCheck(entry, unwrapDatasetPayload(rows[entry.row_index] ?? {})),
+  )) {
     const row = patchedRows[check.row_index];
     if (!row || !check.latest_version) {
       continue;
@@ -254,7 +259,9 @@ export async function runDatasetRemoteRefresh(
     counts: {
       rows: rows.length,
       pre_refresh_blockers: preReport.blockers.length,
-      refreshable_references: checks.filter(refreshableCheck).length,
+      refreshable_references: checks.filter((check) =>
+        refreshableCheck(check, unwrapDatasetPayload(rows[check.row_index] ?? {})),
+      ).length,
       patched_references: patches.length,
       post_refresh_blockers: postReport.blockers.length,
     },
