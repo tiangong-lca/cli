@@ -309,12 +309,15 @@ test('Model-shaped URIs outside the exact predecessor context remain unsupported
       },
     })),
   ]) {
-    const references = collectVerificationReferences([row]).filter((item) => item.role === 'reference');
+    const references = collectVerificationReferences([row]).filter(
+      (item) => item.role === 'reference',
+    );
     assert.equal(references.length, 1);
     assert.equal(references[0].table, null);
   }
   assert.equal(
-    collectVerificationReferences([{ other: { ...reference, '@type': 'source data set' } }])[0].table,
+    collectVerificationReferences([{ other: { ...reference, '@type': 'source data set' } }])[0]
+      .table,
     'sources',
   );
 });
