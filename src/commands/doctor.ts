@@ -1,5 +1,5 @@
 import { parseArgs } from 'node:util';
-import type { DoctorReport } from '../lib/env.js';
+import type { DoctorReport } from '../lib/config/env.js';
 import type { CliRuntimeDescriptor } from '../lib/runtime/types.js';
 import { result, CommandInputError, type CommandIO } from '../shared/command-result.js';
 import { attachReplyTemplate, renderResult } from '../shared/command-presentation.js';

@@ -21,9 +21,9 @@ import {
   runStudyExportFiles,
   verifyStudyExportBundle,
   verifyStudyExportDirectory,
-} from '../src/lib/study-export.js';
-import type { FetchLike } from '../src/lib/http.js';
-import { studyDigest, studyJson } from '../src/lib/study-protocol.js';
+} from '../src/lib/study/export.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
+import { studyDigest, studyJson } from '../src/lib/study/protocol.js';
 import { exportEnvironment, signedExportFixture } from './helpers/study-export-fixture.js';
 
 const roots: string[] = [];

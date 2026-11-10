@@ -4,7 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { executeCli } from './cli.js';
-import { loadDotEnv } from './lib/dotenv.js';
+import { loadDotEnv } from './lib/config/dotenv.js';
 import { usesTaskEnvironment } from './commands/root-arguments.js';
 import { runtimePlatform } from './lib/runtime/descriptor.js';
 import { toErrorPayload } from './shared/errors.js';

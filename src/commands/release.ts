@@ -1,11 +1,11 @@
 import { parseArgs } from 'node:util';
 import { CliError } from '../shared/errors.js';
-import { stringifyJson } from '../lib/io.js';
+import { stringifyJson } from '../lib/platform/io.js';
 import {
   LCA_RELEASE_ACTIONS,
   renderLcaReleaseReport,
   type LcaReleaseAction,
-} from '../lib/lca-release.js';
+} from '../lib/release/lca-release.js';
 
 import type { ResolvedCliDeps, CliResult } from './ports.js';
 function renderLcaReleaseHelp(): string {

@@ -1,9 +1,9 @@
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { runDatasetRemoteVerify } from '../lib/dataset-remote-verify.js';
+import { runDatasetRemoteVerify } from '../lib/dataset/remote-verify.js';
 import type { JsonObject } from '../application/dataset-types.js';
-import type { FetchLike } from '../lib/http.js';
+import type { FetchLike } from '../lib/transport/http.js';
 
 export async function checkDatasetReferences(
   content: JsonObject,

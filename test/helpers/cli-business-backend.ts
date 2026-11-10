@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { JsonObject, DatasetType } from '../../src/application/dataset-types.js';
-import type { FetchLike } from '../../src/lib/http.js';
+import type { FetchLike } from '../../src/lib/transport/http.js';
 import {
   businessActor,
   businessReviewer,

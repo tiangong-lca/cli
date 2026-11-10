@@ -1,7 +1,7 @@
 import { contentDigest as mutationDigest } from '../shared/json-content-digest.js';
 import { existsSync, lstatSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { withBatchRunLock } from '../lib/batch/run-lock.js';
+import { withBatchRunLock } from '../lib/locks/run-lock.js';
 import { CommandInputError } from '../shared/command-result.js';
 import { writeCommandOutput } from '../shared/command-files.js';
 

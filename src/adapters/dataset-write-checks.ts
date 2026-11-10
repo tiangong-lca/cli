@@ -2,7 +2,7 @@ import type { DatasetType, JsonObject } from '../application/dataset-types.js';
 import { datasetValidation } from './dataset-local.js';
 import { checkDatasetReferences } from './dataset-references.js';
 import { CommandInputError } from '../shared/command-result.js';
-import type { FetchLike } from '../lib/http.js';
+import type { FetchLike } from '../lib/transport/http.js';
 
 export async function qualifyDatasetWrite(
   type: DatasetType,

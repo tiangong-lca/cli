@@ -6,7 +6,7 @@ const repoRoot = path.resolve(__dirname, '..', '..');
 async function main() {
   const { CLI_LEGACY_LAST_VERSION, cliRepositoryIdentity } = await import(
     require('node:url').pathToFileURL(
-      path.join(repoRoot, 'src', 'lib', 'cli-repository-identity.ts'),
+      path.join(repoRoot, 'scripts', 'ci', 'repository-identity.ts'),
     ).href
   );
 

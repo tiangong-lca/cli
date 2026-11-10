@@ -7,7 +7,7 @@ import path from 'node:path';
 import {
   __testInternals,
   createTidasSdkPackageValidator,
-} from '../src/lib/tidas-sdk-package-validator.js';
+} from '../src/lib/validation/tidas-sdk-package-validator.js';
 
 type SafeParseIssue = {
   code?: string;

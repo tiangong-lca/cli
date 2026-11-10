@@ -5,11 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { executeCli } from '../src/cli.js';
 import { CliError } from '../src/shared/errors.js';
-import { loadStudyCodec } from '../src/lib/study-codec.js';
-import { readStudyIntent } from '../src/lib/study-intent.js';
-import { runStudyRequest } from '../src/lib/study-transport.js';
-import { STUDY_REPORT_SCHEMA, studyObject } from '../src/lib/study-protocol.js';
-import type { FetchLike } from '../src/lib/http.js';
+import { loadStudyCodec } from '../src/lib/study/codec.js';
+import { readStudyIntent } from '../src/lib/study/intent.js';
+import { runStudyRequest } from '../src/lib/study/transport.js';
+import { STUDY_REPORT_SCHEMA, studyObject } from '../src/lib/study/protocol.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 
 const ACTOR = '11111111-1111-4111-8111-111111111111';
 const RUN_A = '22222222-2222-4222-8222-222222222222';

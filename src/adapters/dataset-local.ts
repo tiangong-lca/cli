@@ -6,13 +6,13 @@ import {
   type JsonObject,
   type DatasetPorts,
 } from '../application/dataset-types.js';
-import { readDatasetContract } from '../lib/dataset-contract.js';
-import { runDatasetValidate } from '../lib/dataset-validate.js';
+import { readDatasetContract } from '../lib/dataset/contract.js';
+import { runDatasetValidate } from '../lib/dataset/validate.js';
 import {
   validateSchemaWithDeepFallback,
   type SafeParseSchema,
   type SdkValidationFactory,
-} from '../lib/tidas-sdk-validation.js';
+} from '../lib/validation/tidas-sdk-validation.js';
 
 const schemas = {
   flow: 'Flow',

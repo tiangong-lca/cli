@@ -1,10 +1,9 @@
-export class BatchContractError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options);
-    this.name = 'BatchContractError';
-  }
-}
-
+import { BatchContractError } from '../locks/errors.js';
+export {
+  BatchContractError,
+  BatchRunLockTimeoutError,
+  BatchRunLockIdentityConflictError,
+} from '../locks/errors.js';
 export class BatchMutationRetryError extends BatchContractError {
   constructor() {
     super('Mutation batches reject automatic retry; use explicit readback recovery instead.');
@@ -60,51 +59,5 @@ export class BatchItemResourceDriftError extends BatchContractError {
     super(`Batch item ${itemId} exclusive resource key drifted before claim.`);
     this.name = 'BatchItemResourceDriftError';
     this.itemId = itemId;
-  }
-}
-
-export class BatchRunLockTimeoutError extends Error {
-  readonly code = 'BATCH_RUN_LOCK_TIMEOUT' as const;
-  readonly runPath: string;
-  readonly lockPath: string;
-  readonly identitySha256: string;
-  readonly waitedMs: number;
-  readonly owner: Readonly<Record<string, unknown>> | null;
-
-  constructor(options: {
-    runPath: string;
-    lockPath: string;
-    identitySha256: string;
-    waitedMs: number;
-    owner: Readonly<Record<string, unknown>> | null;
-  }) {
-    super(`Timed out after ${options.waitedMs}ms acquiring batch run lock: ${options.lockPath}`);
-    this.name = 'BatchRunLockTimeoutError';
-    this.runPath = options.runPath;
-    this.lockPath = options.lockPath;
-    this.identitySha256 = options.identitySha256;
-    this.waitedMs = options.waitedMs;
-    this.owner = options.owner;
-  }
-}
-
-export class BatchRunLockIdentityConflictError extends Error {
-  readonly code = 'BATCH_RUN_LOCK_IDENTITY_CONFLICT' as const;
-  readonly runPath: string;
-  readonly activeIdentitySha256: string;
-  readonly requestedIdentitySha256: string;
-
-  constructor(options: {
-    runPath: string;
-    activeIdentitySha256: string;
-    requestedIdentitySha256: string;
-  }) {
-    super(
-      `Batch run path is already locked by another identity in this process: ${options.runPath}`,
-    );
-    this.name = 'BatchRunLockIdentityConflictError';
-    this.runPath = options.runPath;
-    this.activeIdentitySha256 = options.activeIdentitySha256;
-    this.requestedIdentitySha256 = options.requestedIdentitySha256;
   }
 }

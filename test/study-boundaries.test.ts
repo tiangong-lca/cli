@@ -23,20 +23,20 @@ import {
   studyDigest,
   studyApiVersion,
   studyJson,
-} from '../src/lib/study-protocol.js';
+} from '../src/lib/study/protocol.js';
 import {
   instantiateStudyCodec,
   loadStudyCodec,
   STUDY_CODEC_CANDIDATE_ENV,
   STUDY_CODEC_MANIFEST_SHA256,
-} from '../src/lib/study-codec.js';
+} from '../src/lib/study/codec.js';
 import {
   persistStudyIntent,
   readStudyBytes,
   readStudyIntent,
   readStudyJson,
-} from '../src/lib/study-intent.js';
-import { createStudyAuthFetch, verifyStudyArtifact } from '../src/lib/study-transport.js';
+} from '../src/lib/study/intent.js';
+import { createStudyAuthFetch, verifyStudyArtifact } from '../src/lib/study/transport.js';
 
 const roots: string[] = [];
 function temporary() {

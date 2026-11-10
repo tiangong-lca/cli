@@ -6,7 +6,7 @@ import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { withMutationJournal } from '../src/adapters/private-mutation-journal.js';
 import { contentDigest } from '../src/shared/json-content-digest.js';
-import { sha256Json, stableJsonText } from '../src/lib/canonical-json-hash.js';
+import { sha256Json, stableJsonText } from '../src/lib/platform/canonical-json-hash.js';
 
 test('private storage preserves existing insertion-order journal names and caller-owned receipt shape', async (t) => {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'cli-journal-contract-'));

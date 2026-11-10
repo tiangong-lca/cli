@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getCliContractRuleset } from '../src/lib/dataset-contract-ruleset.js';
-import { getVerifiedPublicRuleSelection } from '../src/lib/runtime-rulesets.js';
+import { getCliContractRuleset } from '../src/lib/dataset/contract-ruleset.js';
+import { getVerifiedPublicRuleSelection } from '../src/lib/validation/runtime-rulesets.js';
 test('contracts expose every exact public definition and no retired workflow policy', () => {
   assert.equal(getCliContractRuleset('contact'), undefined);
   for (const kind of ['flow', 'process'] as const) {

@@ -3,9 +3,9 @@ import {
   requireSupabaseRestRuntime,
   deriveSupabaseFunctionsBaseUrl,
   buildSupabaseAuthHeaders,
-} from '../lib/supabase-client.js';
-import { resolveSupabaseUserSession } from '../lib/supabase-session.js';
-import { postJson, type FetchLike } from '../lib/http.js';
+} from '../lib/transport/supabase-client.js';
+import { resolveSupabaseUserSession } from '../lib/auth/supabase-session.js';
+import { postJson, type FetchLike } from '../lib/transport/http.js';
 import { CliError } from '../shared/errors.js';
 
 export function datasetSearcher(

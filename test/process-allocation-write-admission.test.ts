@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertProcessAllocationWriteAdmission } from '../src/lib/process-allocation-write-admission.js';
+import { assertProcessAllocationWriteAdmission } from '../src/lib/validation/process-allocation-write-admission.js';
 import { allocationFixture } from './helpers/process-allocation-fixture.js';
 
 type Json = Record<string, unknown>;

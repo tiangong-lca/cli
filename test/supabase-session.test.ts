@@ -12,11 +12,11 @@ import { createRequire, syncBuiltinESMExports } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import type { ResponseLike } from '../src/lib/http.js';
+import type { ResponseLike } from '../src/lib/transport/http.js';
 import { loadDistModule } from './helpers/load-dist-module.js';
-import { __testInternals } from '../src/lib/supabase-session.js';
-import type { SupabaseRestRuntime } from '../src/lib/supabase-client.js';
-import { fingerprintSecret } from '../src/lib/credential-safety.js';
+import { __testInternals } from '../src/lib/auth/supabase-session.js';
+import type { SupabaseRestRuntime } from '../src/lib/transport/supabase-client.js';
+import { fingerprintSecret } from '../src/lib/auth/credential-safety.js';
 
 const require = createRequire(import.meta.url);
 const mutableFs = require('node:fs') as typeof import('node:fs');
@@ -566,8 +566,9 @@ test('internal session helpers cover refresh null paths, direct resolve branches
 });
 
 test('state-lock helpers behave the same from the built dist module', async () => {
-  const module =
-    await loadDistModule<typeof import('../src/lib/state-lock.js')>('src/lib/state-lock.js');
+  const module = await loadDistModule<typeof import('../src/lib/locks/state-lock.js')>(
+    'src/lib/locks/state-lock.js',
+  );
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-state-lock-dist-'));
   const statePath = path.join(dir, 'state.json');
   const lockPath = module.lockPathForState(statePath);

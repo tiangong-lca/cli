@@ -11,9 +11,9 @@ import {
   admitStudyCodecCandidate,
   STUDY_V6_CODEC_CANDIDATE_ENV,
   STUDY_V6_CODEC_MANIFEST_SHA256,
-} from '../src/lib/study-codec.js';
-import { runStudyRequest, verifyStudyArtifact } from '../src/lib/study-transport.js';
-import { readStudyIntent } from '../src/lib/study-intent.js';
+} from '../src/lib/study/codec.js';
+import { runStudyRequest, verifyStudyArtifact } from '../src/lib/study/transport.js';
+import { readStudyIntent } from '../src/lib/study/intent.js';
 import {
   STUDY_METHOD_SCHEMA,
   STUDY_METHOD_COMMANDS,
@@ -21,9 +21,9 @@ import {
   studyJson,
   parseStudyResponse,
   prepareStudyRequest,
-} from '../src/lib/study-protocol.js';
-import { studyRendererRoot } from '../src/lib/study-renderer.js';
-import type { FetchLike } from '../src/lib/http.js';
+} from '../src/lib/study/protocol.js';
+import { studyRendererRoot } from '../src/lib/study/renderer.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const ACTOR = id(9),
   STUDY = id(1),

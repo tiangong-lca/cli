@@ -9,7 +9,7 @@ import {
   __testInternals,
   runDatasetValidate,
   type RunDatasetValidateOptions,
-} from '../src/lib/dataset-validate.js';
+} from '../src/lib/dataset/validate.js';
 import {
   datasetIdentity,
   datasetRoot,
@@ -19,7 +19,7 @@ import {
   readDatasetRowsInput,
   trimToken,
   unwrapDatasetPayload,
-} from '../src/lib/dataset-local.js';
+} from '../src/lib/dataset/local.js';
 
 function writeJsonl(filePath: string, rows: unknown[]): void {
   writeFileSync(filePath, `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`, 'utf8');

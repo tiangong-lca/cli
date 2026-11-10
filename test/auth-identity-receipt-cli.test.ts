@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { executeCli, type CliDeps } from '../src/cli.js';
-import type { RunAuthIdentityReceiptOptions } from '../src/lib/auth-identity-receipt.js';
-import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
+import type { RunAuthIdentityReceiptOptions } from '../src/lib/auth/auth-identity-receipt.js';
+import type { DotEnvLoadResult } from '../src/lib/config/dotenv.js';
 import { CliError } from '../src/shared/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import { buildSupabaseTestEnv } from './helpers/supabase-auth.js';
 
 const dotEnvStatus: DotEnvLoadResult = {

@@ -1,10 +1,11 @@
+import { POSITIVE_INTEGER_TEXT } from './base.js';
 import { closeSync, existsSync, fchmodSync, fsyncSync, openSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { CliError } from '../../../shared/errors.js';
-import { orderedAliasBatches } from '../../dataset-maintenance-alias-request.js';
+
 import { appendStableJsonLine, readJsonFile, readJsonLinesIfPresent } from '../contract/files.js';
 import { isJsonObject } from '../contract/values.js';
-import { sha256Json, stableJsonText } from '../../canonical-json-hash.js';
+import { sha256Json, stableJsonText } from '../../platform/canonical-json-hash.js';
 import type {
   DatasetMaintenancePlan,
   DatasetMaintenancePlanAction,
@@ -14,8 +15,8 @@ import {
   derivativePlanAction,
   parseDerivativeSubmitResponse,
   type DatasetMaintenanceDerivativeSubmitProof,
-} from '../../dataset-maintenance-derivatives.js';
-import type { DatasetMaintenanceRemoteContext } from '../../dataset-maintenance-remote.js';
+} from '../derivatives.js';
+import type { DatasetMaintenanceRemoteContext } from '../remote.js';
 import {
   type ParallelDeleteExecutionStatus,
   type ParallelDeleteExecutionEntry,
@@ -24,11 +25,6 @@ import {
   type DerivativeSubmitProgressEntry,
   type DerivativeSubmitProgressState,
   type DerivativeAdmissionAttempt,
-  type AliasBatchProgressEntry,
-  type AliasPlanProgressEntry,
-  type AliasPlanProgressState,
-  type AliasBatchProgressState,
-  POSITIVE_INTEGER_TEXT,
   errorMessage,
   ABSENT_READBACK_SHA256,
   parallelDeleteDesiredSha256,
@@ -239,29 +235,14 @@ export function parseProgress(plan: DatasetMaintenancePlan, progressPath: string
       value.audit_context.action_id !== action.action_id ||
       value.audit_context.reason_code !== action.reason_code ||
       value.audit_context.source !== 'tiangong-lca dataset maintenance apply' ||
-      (action.action === 'update_json_ordered' &&
-        (value.target_mode !== 'owner_draft' ||
-          value.audit_context.target_mode !== 'owner_draft' ||
-          value.batch_id !== action.batch_id ||
-          typeof value.batch_request_sha256 !== 'string' ||
-          !/^[a-f0-9]{64}$/u.test(value.batch_request_sha256) ||
-          typeof value.database_audit_id !== 'string' ||
-          !POSITIVE_INTEGER_TEXT.test(value.database_audit_id) ||
-          typeof value.summary_audit_id !== 'string' ||
-          !POSITIVE_INTEGER_TEXT.test(value.summary_audit_id) ||
-          typeof value.plan_request_sha256 !== 'string' ||
-          !/^[a-f0-9]{64}$/u.test(value.plan_request_sha256) ||
-          typeof value.plan_summary_audit_id !== 'string' ||
-          !POSITIVE_INTEGER_TEXT.test(value.plan_summary_audit_id))) ||
-      (action.action !== 'update_json_ordered' &&
-        ('target_mode' in value ||
-          'target_mode' in value.audit_context ||
-          'batch_id' in value ||
-          'batch_request_sha256' in value ||
-          'database_audit_id' in value ||
-          'summary_audit_id' in value ||
-          'plan_request_sha256' in value ||
-          'plan_summary_audit_id' in value)) ||
+      'target_mode' in value ||
+      'target_mode' in value.audit_context ||
+      'batch_id' in value ||
+      'batch_request_sha256' in value ||
+      'database_audit_id' in value ||
+      'summary_audit_id' in value ||
+      'plan_request_sha256' in value ||
+      'plan_summary_audit_id' in value ||
       !['success', 'failed'].includes(String(value.result)) ||
       (value.result === 'success' && typeof value.remote_result_sha256 !== 'string') ||
       (value.result === 'failed' && value.remote_result_sha256 !== null)
@@ -392,153 +373,6 @@ export function validateDerivativeAdmissionAttempt(options: {
     });
   }
   return value as DerivativeAdmissionAttempt;
-}
-
-export function parseAliasBatchProgress(
-  plan: DatasetMaintenancePlan,
-  progressPath: string,
-): AliasBatchProgressState {
-  const batches = new Map(plan.alias_batches!.map((batch) => [batch.batch_id, batch]));
-  const entries = readJsonLinesIfPresent(progressPath).map((value) => {
-    const batch =
-      isJsonObject(value) && typeof value.batch_id === 'string'
-        ? batches.get(value.batch_id)
-        : null;
-    if (
-      !isJsonObject(value) ||
-      value.schema_version !== 1 ||
-      value.plan_sha256 !== plan.plan_sha256 ||
-      value.operation_id !== plan.operation_id ||
-      !batch ||
-      value.target_mode !== 'owner_draft' ||
-      value.dimension !== batch.dimension ||
-      value.factor !== batch.factor ||
-      !isJsonObject(value.actor) ||
-      value.actor.user_id !== plan.account.user_id ||
-      value.actor.email !== plan.account.email ||
-      typeof value.started_at_utc !== 'string' ||
-      typeof value.ended_at_utc !== 'string' ||
-      value.row_count !== batch.summary.rows ||
-      value.exchange_count !== batch.summary.exchanges ||
-      value.result !== 'success' ||
-      typeof value.batch_request_sha256 !== 'string' ||
-      !/^[a-f0-9]{64}$/u.test(value.batch_request_sha256) ||
-      typeof value.idempotent_replay !== 'boolean' ||
-      typeof value.summary_audit_id !== 'string' ||
-      !POSITIVE_INTEGER_TEXT.test(value.summary_audit_id) ||
-      typeof value.plan_request_sha256 !== 'string' ||
-      !/^[a-f0-9]{64}$/u.test(value.plan_request_sha256) ||
-      typeof value.plan_summary_audit_id !== 'string' ||
-      !POSITIVE_INTEGER_TEXT.test(value.plan_summary_audit_id) ||
-      value.error !== null
-    ) {
-      throw new CliError('Alias batch progress contains an invalid or foreign entry.', {
-        code: 'DATASET_MAINTENANCE_ALIAS_PROGRESS_INVALID',
-        exitCode: 1,
-        details: value,
-      });
-    }
-    return value as AliasBatchProgressEntry;
-  });
-  const successes = new Map<string, AliasBatchProgressEntry>();
-  for (const entry of entries) {
-    if (successes.has(entry.batch_id)) {
-      throw new CliError('Alias batch progress contains duplicate success proof.', {
-        code: 'DATASET_MAINTENANCE_ALIAS_PROGRESS_INVALID',
-        exitCode: 1,
-        details: { batch_id: entry.batch_id },
-      });
-    }
-    successes.set(entry.batch_id, entry);
-  }
-  return { entries, successes };
-}
-
-export function parseAliasPlanProgress(
-  plan: DatasetMaintenancePlan,
-  progressPath: string,
-): AliasPlanProgressState {
-  const expectedBatches = orderedAliasBatches(plan);
-  const entries = readJsonLinesIfPresent(progressPath).map((value) => {
-    const batchProofs = isJsonObject(value) && Array.isArray(value.batches) ? value.batches : [];
-    const validBatchProofs =
-      batchProofs.length === expectedBatches.length &&
-      batchProofs.every((proof, index) => {
-        const batch = expectedBatches[index]!;
-        return Boolean(
-          isJsonObject(proof) &&
-          proof.batch_id === batch.batch_id &&
-          proof.dimension === batch.dimension &&
-          typeof proof.batch_request_sha256 === 'string' &&
-          /^[a-f0-9]{64}$/u.test(proof.batch_request_sha256) &&
-          typeof proof.summary_audit_id === 'string' &&
-          POSITIVE_INTEGER_TEXT.test(proof.summary_audit_id),
-        );
-      });
-    const batchRequestHashes = batchProofs
-      .filter(isJsonObject)
-      .map((proof) => proof.batch_request_sha256);
-    const batchSummaryAuditIds = batchProofs
-      .filter(isJsonObject)
-      .map((proof) => proof.summary_audit_id);
-    if (
-      !isJsonObject(value) ||
-      value.schema_version !== 1 ||
-      value.plan_sha256 !== plan.plan_sha256 ||
-      value.operation_id !== plan.operation_id ||
-      value.target_mode !== 'owner_draft' ||
-      !isJsonObject(value.actor) ||
-      value.actor.user_id !== plan.account.user_id ||
-      value.actor.email !== plan.account.email ||
-      typeof value.started_at_utc !== 'string' ||
-      typeof value.ended_at_utc !== 'string' ||
-      value.batch_count !== 2 ||
-      value.row_count !== 52 ||
-      value.exchange_count !== 59 ||
-      !['success', 'failed'].includes(String(value.result)) ||
-      (value.result === 'success' &&
-        (typeof value.plan_request_sha256 !== 'string' ||
-          !/^[a-f0-9]{64}$/u.test(value.plan_request_sha256) ||
-          typeof value.idempotent_replay !== 'boolean' ||
-          typeof value.summary_audit_id !== 'string' ||
-          !POSITIVE_INTEGER_TEXT.test(value.summary_audit_id) ||
-          !validBatchProofs ||
-          new Set(batchRequestHashes).size !== 2 ||
-          new Set(batchSummaryAuditIds).size !== 2 ||
-          batchSummaryAuditIds.includes(value.summary_audit_id) ||
-          value.error !== null)) ||
-      (value.result === 'failed' &&
-        (value.plan_request_sha256 !== null ||
-          value.idempotent_replay !== null ||
-          value.summary_audit_id !== null ||
-          batchProofs.length !== 0 ||
-          typeof value.error !== 'string'))
-    ) {
-      throw new CliError('Alias plan progress contains an invalid or foreign entry.', {
-        code: 'DATASET_MAINTENANCE_ALIAS_PLAN_PROGRESS_INVALID',
-        exitCode: 1,
-        details: value,
-      });
-    }
-    return value as AliasPlanProgressEntry;
-  });
-  let success: AliasPlanProgressEntry | null = null;
-  let latestFailure: AliasPlanProgressEntry | null = null;
-  for (const entry of entries) {
-    if (entry.result === 'success') {
-      if (success) {
-        throw new CliError('Alias plan progress contains duplicate success proof.', {
-          code: 'DATASET_MAINTENANCE_ALIAS_PLAN_PROGRESS_INVALID',
-          exitCode: 1,
-        });
-      }
-      success = entry;
-      latestFailure = null;
-    } else if (!success) {
-      latestFailure = entry;
-    }
-  }
-  return { entries, success, latestFailure };
 }
 
 export function appendParallelDeleteProgress(options: {

@@ -10,10 +10,13 @@ import {
   type JsonObject,
 } from '../application/dataset-types.js';
 import { CommandInputError } from '../shared/command-result.js';
-import { runDatasetSourceUploadAttachments } from '../lib/dataset-source-upload-attachments.js';
-import type { FetchLike } from '../lib/http.js';
-import { createSupabaseDataClient, requireSupabaseRestRuntime } from '../lib/supabase-client.js';
-import { createSupabaseDataRuntime } from '../lib/supabase-session.js';
+import { runDatasetSourceUploadAttachments } from '../lib/dataset/source-upload-attachments.js';
+import type { FetchLike } from '../lib/transport/http.js';
+import {
+  createSupabaseDataClient,
+  requireSupabaseRestRuntime,
+} from '../lib/transport/supabase-client.js';
+import { createSupabaseDataRuntime } from '../lib/auth/supabase-session.js';
 
 export async function uploadSourceAttachments(
   request: JsonObject,

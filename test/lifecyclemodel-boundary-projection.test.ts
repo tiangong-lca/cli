@@ -3,8 +3,8 @@ import test from 'node:test';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { runLifecyclemodelBuildResultingProcess } from '../src/lib/lifecyclemodel-resulting-process.js';
-import { runDatasetValidate } from '../src/lib/dataset-validate.js';
+import { runLifecyclemodelBuildResultingProcess } from '../src/lib/model/resulting-process.js';
+import { runDatasetValidate } from '../src/lib/dataset/validate.js';
 import { CliError, toErrorPayload } from '../src/shared/errors.js';
 import { processTransportFixture } from './helpers/process-allocation-fixture.js';
 

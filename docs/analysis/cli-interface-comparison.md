@@ -69,7 +69,7 @@ language: zh-CN
 | `process auto-build/resume-build/batch-build/publish-build`、`lifecyclemodel auto-build/orchestrate/publish-build/publish-resulting-process` | 生产运行骨架、恢复交接、递归组装和发布交接。 | 编排归 Foundry/Skills；保留可单独定义的内容处理与读写原语。 |
 | `dataset author` | 文档解析并准备内容契约包，返回 evidence-ready。 | 文档理解与作者流程归调用方；契约获取保留。不能将它描述为已直接生成完整科学数据。 |
 | `dataset evidence-search plan/run`、`curation-queue build/next/verify` | 证据检索策略、证据充分性评估与生产队列。 | 外层研究/生产流程；不纳入核心 Dataset 业务状态。 |
-| `dataset maintenance clear-account/plan/apply/verify` 及受保护流程 | 受约束写入原语与专项范围、冻结、审批、执行混合。 | 普通精确对象删除归 Dataset；通用执行与恢复保护保留，账号清理及专项计划归运维流程。现有授权不得随迁移放宽。 |
+| `dataset maintenance clear-account/plan/apply/verify` 与专项流程 | 受约束写入原语与专项范围、冻结、审批、执行混合。 | 普通精确对象删除归 Dataset；通用执行与恢复保护保留，普通维护保留当前账号、草稿、引用及读回保护；Alias、Length×time、Flow-identity 专项流程退出 CLI。本次不重建下游运维流程。 |
 | `admin embedding-run`、维护中的衍生重建 | 管理及衍生数据运维。 | 不进入普通环境诊断或 Dataset 作者接口；保留在独立受治理运维范围。 |
 | `publish run` | 收集输入、关系、校验和发布执行的组合入口。 | 按真实对象与效果拆分；不与数据产品 Release 机械合并。 |
 | `release prepare/upload/finalize/approve/publish/readback-verify/unpublish` | 产品发布及证据登记。 | 现有命令及契约原样保留，本轮不优化。 |
@@ -146,11 +146,11 @@ CLI 进一步明确了实际默认值与范围披露、有界摘要、分页继�
 ## 证据入口
 
 - [命令帮助和分派](../../src/cli.ts)：主帮助 `renderMainHelp`、各类型帮助、`executeCli`。
-- [Dataset 命令传输](../../src/lib/dataset-command.ts)：独立创建、草稿保存与删除。
+- [Dataset 命令传输](../../src/lib/dataset/command.ts)：独立创建、草稿保存与删除。
 - [类型化写入](../../src/adapters/dataset-write.ts)：创建与保存的独立意图、前置检查和原请求恢复。
-- [模型聚合](../../src/lib/lifecyclemodel-resulting-process.ts)、[模型 bundle 保存](../../src/lib/lifecyclemodel-bundle-save.ts)：本地内容计算与关联持久化边界。
-- [内容契约](../../src/lib/dataset-contract.ts)：八种类型的内容契约与上下文投影。
-- [Release 适配器](../../src/lib/lca-release.ts)：完整动作集合和文件完整性约束。
+- [模型聚合](../../src/lib/model/resulting-process.ts)、[模型 bundle 保存](../../src/lib/model/bundle-save.ts)：本地内容计算与关联持久化边界。
+- [内容契约](../../src/lib/dataset/contract.ts)：八种类型的内容契约与上下文投影。
+- [Release 适配器](../../src/lib/release/lca-release.ts)：完整动作集合和文件完整性约束。
 - [架构契约](../agents/repo-architecture.md)、[仓库契约](../../AGENTS.md)：当前实现及治理边界。
 
 ## 现有业务服务与本次实施基线
@@ -197,7 +197,7 @@ Auth 和 doctor 使用统一结果；Auth 回执本体位于 `data.receipt`，`-
 | Model `aggregate` | 保留为 `build-resulting-process` 的正式别名。 | 相同请求、算法、结果及错误；不存在退出安排。 |
 | 原 `search/flow/process/lifecyclemodel/qa/publish` | 移除帮助、解析、执行分派和旧注入接口。 | 查询改用类型入口；生产计划、批量发布准备和 QA 编排由调用方按真实能力组合，不提供同名兼容或自动转接。 |
 | 通用 Dataset `contract/context-pack/curation-queue/author/patch/save-draft/validate/support-cache/verify-remote/bilingual/evidence-search/references` | 移除整组旧入口。 | 契约、修改、校验、翻译和引用发现分别使用 `dataset <type> contract/patch/validate/translations/list-references`；持久化显式选择 create 或 save。旧工作流产物不直接作为新命令输入。 |
-| 受保护维护、专用 Study、Release、runtime/PCR 和文件包工具 | 保留各自现行契约，按职责与核心原子接口区分。 | 不是 create/save 或 Review 的等价别名。不得通过命令清理放宽授权、丢弃历史恢复或改变公共库协议；所属领域的后续归属调整独立处理。 |
+| 普通维护、专用 Study、Release、runtime/PCR 和文件包工具 | 保留各自现行契约，按职责与核心原子接口区分。 | 不是 create/save 或 Review 的等价别名。不得通过命令清理放宽授权、丢弃历史恢复或改变公共库协议；所属领域的后续归属调整独立处理。 |
 
 当前适配器和公共协议使用的算法、授权校验与恢复设施继续保留；只服务于退役工作流的实现及专属测试、示例从源码和安装包移除。旧版本记录按原始协议由匹配的历史版本解释，不用新展示格式重写，也不作为当前公共深层接口。公共库四个子路径保持原契约。
 

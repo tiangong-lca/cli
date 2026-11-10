@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
-lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -55,13 +55,13 @@ pnpm dev
 
 数据能力使用 `dataset <type> <action>`，审核使用 `review <action>`。`create` 和 `save` 是不同写入意图，查询必须明确选择精确版本或 `latest`。本地修改、校验、Model 结果生成和 Source 附件传输不自动保存对象。`dataset model aggregate` 保留为 `build-resulting-process` 的正式别名。
 
-旧 `search/flow/process/lifecyclemodel/qa/publish` 以及通用 Dataset 工作流入口已经删除；它们返回 `UNKNOWN_COMMAND`，不执行转接。受保护维护、分类维护、Study、Release、admin、runtime/PCR 和文件包工具按独立契约保留。准确范围见[能力对照](docs/analysis/cli-interface-comparison.md#旧入口处置与保留边界)。
+旧 `search/flow/process/lifecyclemodel/qa/publish` 以及通用 Dataset 工作流入口已经删除；它们返回 `UNKNOWN_COMMAND`，不执行转接。普通维护、分类维护、Study、Release、admin、runtime/PCR 和文件包工具按独立契约保留。准确范围见[能力对照](docs/analysis/cli-interface-comparison.md#旧入口处置与保留边界)。
 
 `src/cli.ts` 仅组合当前入口，`src/cli-deps.ts` 定义内部依赖。解析与呈现在 `src/commands/`，纯业务操作在 `src/application/`，服务适配在 `src/adapters/`。复用 `src/lib/` 的规则和安全设施；不要为了复用内部实现重新开放已删除命令或增加公共深层导出。
 
 ## 配置与身份
 
-配置项说明见 `.env.example`；启动过程由 `src/main.ts`、`src/lib/dotenv.ts` 和 `src/lib/env.ts` 负责。Runtime 命令不加载项目 `.env`。官方公共 OAuth 配置可使用默认值，自定义环境必须提供完整且匹配的配置，不能混用默认身份或目标。
+配置项说明见 `.env.example`；启动过程由 `src/main.ts`、`src/lib/config/dotenv.ts` 和 `src/lib/config/env.ts` 负责。Runtime 命令不加载项目 `.env`。官方公共 OAuth 配置可使用默认值，自定义环境必须提供完整且匹配的配置，不能混用默认身份或目标。
 
 交互登录使用 OAuth/PKCE；headless 访问只通过获准的环境或秘密注入边界使用短期令牌，不持久化或自动刷新。令牌、密码、授权码及私有会话不得进入 argv、日志、fixture、产物或 Git。Auth 的在线身份回执放在 `data.receipt`，`--output` 可保存原始安全回执。`doctor` 的本地观察和显式在线健康检查不代表账号业务权限。
 

@@ -1,8 +1,8 @@
 version: 1
 layout: repo
 lastReviewedAt: '2026-11-10'
-lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
-lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories, specialized repair retirement, preserved ordinary maintenance and shared concurrency/public library boundaries.'
 
 catalog:
   repos:
@@ -61,55 +61,39 @@ ownership:
           - src/command-spec.ts
           - src/runtime.ts
           - src/lib/runtime/**
-          - assets/runtime/**
-          - src/lib/batch/**
-          - src/lib/artifacts.ts
-          - src/lib/canonical-json-hash.ts
+          - src/lib/release/**
+          - src/lib/locks/**
+          - src/lib/platform/**
+          - src/lib/validation/**
           - src/lib/maintenance/**
-          - src/lib/model-result/**
+          - src/lib/model/**
+          - src/lib/dataset/**
+          - src/lib/study/**
+          - src/lib/pcr/**
+          - src/lib/batch/**
           - src/lib/process-statistics/**
-          - src/lib/resulting-process-allocation.ts
-          - src/lib/dataset-command.ts
-          - src/lib/dataset-*.ts
-          - src/shared/errors.ts
-          - src/lib/flow-*.ts
-          - src/lib/unitgroup-*.ts
-          - src/lib/io.ts
-          - src/lib/lifecyclemodel-*.ts
-          - src/lib/lca-release.ts
-          - src/lib/study-*.ts
+          - assets/runtime/**
           - assets/study-contract/**
           - assets/study-renderer/**
-          - src/lib/package-version.ts
-          - src/lib/process-*.ts
-          - src/lib/review-*.ts
-          - src/lib/run.ts
-          - src/lib/runtime-rulesets.ts
-          - src/lib/pcr-snapshot-*.ts
-          - src/lib/state-lock.ts
-          - src/lib/tidas-languages.ts
-          - src/lib/tidas-sdk-validation.ts
-          - src/lib/tidas-sdk-package-validator.ts
-          - src/lib/validation.ts
       ownerRepo: cli
     - id: remote-session-and-adapters
       paths:
         include:
           - .env.example
-          - src/lib/auth-identity-receipt.ts
-          - src/lib/dotenv.ts
-          - src/lib/env.ts
-          - src/lib/http.ts
-          - src/lib/oauth-loopback.ts
-          - src/lib/oauth-pkce.ts
-          - src/lib/remote.ts
-          - src/lib/supabase-client.ts
-          - src/lib/supabase-data-api-contract.ts
-          - src/lib/supabase-data-api-replay.ts
-          - src/lib/supabase-rest.ts
-          - src/lib/supabase-session.ts
-          - src/lib/*-api-*.ts
-          - src/lib/credential-safety.ts
+          - src/lib/auth/auth-identity-receipt.ts
+          - src/lib/config/dotenv.ts
+          - src/lib/config/env.ts
+          - src/lib/transport/http.ts
+          - src/lib/auth/oauth-loopback.ts
+          - src/lib/auth/oauth-pkce.ts
+          - src/lib/transport/remote.ts
+          - src/lib/transport/supabase-client.ts
+          - src/lib/transport/supabase-data-api-contract.ts
+          - src/lib/transport/supabase-data-api-replay.ts
+          - src/lib/transport/supabase-rest.ts
+          - src/lib/auth/supabase-session.ts
+          - src/lib/transport/*-api-*.ts
+          - src/lib/auth/credential-safety.ts
       ownerRepo: cli
     - id: tests-release-and-automation
       paths:
@@ -125,7 +109,7 @@ ownership:
           - test/**
           - examples/**
           - scripts/**
-          - src/lib/cli-repository-identity.ts
+          - scripts/ci/repository-identity.ts
           - .github/dependabot.yml
           - .github/workflows/quality-gate.yml
           - .github/workflows/publish.yml
@@ -199,7 +183,7 @@ routing:
     study-commands:
       paths:
         - src/commands/study.ts
-        - src/lib/study-*.ts
+        - src/lib/study/**
         - assets/study-contract/**
         - assets/study-renderer/**
         - test/study-*.test.ts
@@ -227,44 +211,31 @@ routing:
       paths:
         - .env.example
         - src/auth-identity-receipt.ts
-        - src/lib/auth-identity-receipt.ts
-        - src/lib/dotenv.ts
-        - src/lib/env.ts
-        - src/lib/http.ts
-        - src/lib/oauth-loopback.ts
-        - src/lib/oauth-pkce.ts
-        - src/lib/remote.ts
-        - src/lib/supabase-client.ts
-        - src/lib/supabase-data-api-contract.ts
-        - src/lib/supabase-data-api-replay.ts
-        - src/lib/supabase-rest.ts
-        - src/lib/supabase-session.ts
-        - src/lib/*-api-*.ts
-        - src/lib/credential-safety.ts
+        - src/lib/auth/auth-identity-receipt.ts
+        - src/lib/config/dotenv.ts
+        - src/lib/config/env.ts
+        - src/lib/transport/http.ts
+        - src/lib/auth/oauth-loopback.ts
+        - src/lib/auth/oauth-pkce.ts
+        - src/lib/transport/remote.ts
+        - src/lib/transport/supabase-client.ts
+        - src/lib/transport/supabase-data-api-contract.ts
+        - src/lib/transport/supabase-data-api-replay.ts
+        - src/lib/transport/supabase-rest.ts
+        - src/lib/auth/supabase-session.ts
+        - src/lib/transport/*-api-*.ts
+        - src/lib/auth/credential-safety.ts
     workflow-commands:
       paths:
-        - src/lib/artifacts.ts
-        - src/lib/canonical-json-hash.ts
+        - src/lib/dataset/**
+        - src/lib/validation/**
+        - src/lib/model/**
         - src/lib/maintenance/**
-        - src/lib/model-result/**
-        - src/lib/process-statistics/**
-        - src/lib/resulting-process-allocation.ts
-        - src/lib/dataset-command.ts
-        - src/lib/dataset-*.ts
+        - src/lib/pcr/**
+        - src/lib/release/**
+        - src/lib/platform/**
+        - src/lib/locks/**
         - src/shared/errors.ts
-        - src/lib/flow-*.ts
-        - src/lib/unitgroup-*.ts
-        - src/lib/io.ts
-        - src/lib/lifecyclemodel-*.ts
-        - src/lib/lca-release.ts
-        - src/lib/package-version.ts
-        - src/lib/process-*.ts
-        - src/lib/review-*.ts
-        - src/lib/run.ts
-        - src/lib/runtime-rulesets.ts
-        - src/lib/pcr-snapshot-*.ts
-        - src/lib/state-lock.ts
-        - src/lib/tidas-languages.ts
         - docs/IMPLEMENTATION_GUIDE_CN.md
     public-library:
       paths:
@@ -277,8 +248,9 @@ routing:
         - src/lib/runtime/**
         - assets/runtime/**
         - docs/agents/runtime-distribution-contract.md
+        - src/lib/locks/**
         - src/lib/batch/**
-        - src/lib/state-lock.ts
+        - src/lib/locks/state-lock.ts
         - test/public-auth-identity-receipt.test.ts
         - test/public-batch*.test.ts
         - test/public-command-spec.test.ts
@@ -291,8 +263,8 @@ routing:
         - src/cli.ts
         - src/cli-deps.ts
         - src/cli-composition.ts
-        - src/lib/lca-release.ts
-        - src/lib/http.ts
+        - src/lib/release/lca-release.ts
+        - src/lib/transport/http.ts
         - test/lca-release*.test.ts
         - README.md
         - DEV_CN.md
@@ -301,9 +273,9 @@ routing:
         - docs/agents/repo-validation.md
     tidas-sdk-validation:
       paths:
-        - src/lib/tidas-sdk-validation.ts
-        - src/lib/tidas-sdk-package-validator.ts
-        - src/lib/validation.ts
+        - src/lib/validation/tidas-sdk-validation.ts
+        - src/lib/validation/tidas-sdk-package-validator.ts
+        - src/lib/validation/validation.ts
         - test/fixtures/tidas-sdk/**
     validation-release:
       paths:
@@ -380,7 +352,7 @@ rules:
     scope: repo
     repo: cli
     triggers:
-      - path: src/lib/study-*.ts
+      - path: src/lib/study/**
         kind: study-consumer
       - path: src/commands/study.ts
         kind: study-command
@@ -523,7 +495,7 @@ rules:
     repo: cli
     triggers:
       - path: src/lib/**
-        kind: shared-runtime
+        kind: capability-runtime
       - path: examples/**
         kind: command-example
       - path: src/application/**
@@ -534,52 +506,6 @@ rules:
         kind: shared-runtime
       - path: assets/reply-templates/**
         kind: artifact-runtime
-      - path: src/lib/artifacts.ts
-        kind: artifact-runtime
-      - path: src/lib/canonical-json-hash.ts
-        kind: shared-runtime
-      - path: src/lib/resulting-process-allocation.ts
-        kind: command-logic
-      - path: src/lib/dataset-command.ts
-        kind: command-logic
-      - path: src/lib/dataset-*.ts
-        kind: command-logic
-      - path: src/shared/errors.ts
-        kind: shared-runtime
-      - path: src/lib/flow-*.ts
-        kind: command-logic
-      - path: src/lib/unitgroup-*.ts
-        kind: validation-runtime
-      - path: src/lib/io.ts
-        kind: shared-runtime
-      - path: src/lib/lifecyclemodel-*.ts
-        kind: command-logic
-      - path: src/lib/lca-release.ts
-        kind: command-logic
-      - path: src/lib/package-version.ts
-        kind: package-runtime
-      - path: src/lib/process-*.ts
-        kind: command-logic
-      - path: src/lib/review-*.ts
-        kind: command-logic
-      - path: src/lib/run.ts
-        kind: command-logic
-      - path: src/lib/pcr-snapshot-*.ts
-        kind: command-logic
-      - path: src/lib/runtime-rulesets.ts
-        kind: command-logic
-      - path: src/lib/state-lock.ts
-        kind: artifact-runtime
-      - path: src/lib/tidas-languages.ts
-        kind: validation-runtime
-      - path: src/lib/tidas-sdk-validation.ts
-        kind: validation-runtime
-      - path: src/lib/tidas-review-report-optionality.ts
-        kind: validation-runtime
-      - path: src/lib/tidas-sdk-package-validator.ts
-        kind: validation-runtime
-      - path: src/lib/validation.ts
-        kind: validation-runtime
     requiredDocs:
       - path: docs/agents/existing-runtime-contract.md
         mode: review_or_update
@@ -606,13 +532,15 @@ rules:
         kind: public-library-runtime
       - path: src/batch.ts
         kind: public-library-runtime
+      - path: src/lib/locks/**
+        kind: shared-lock-runtime
       - path: src/lib/batch/**
         kind: public-library-internal-runtime
       - path: src/command-spec.ts
         kind: public-library-runtime
       - path: src/runtime.ts
         kind: public-library-runtime
-      - path: src/lib/state-lock.ts
+      - path: src/lib/locks/state-lock.ts
         kind: public-library-lock-runtime
       - path: test/public-auth-identity-receipt.test.ts
         kind: public-library-proof
@@ -670,33 +598,33 @@ rules:
         kind: env-template
       - path: src/auth-identity-receipt.ts
         kind: auth-public-parser
-      - path: src/lib/auth-identity-receipt.ts
+      - path: src/lib/auth/auth-identity-receipt.ts
         kind: auth-runtime
-      - path: src/lib/dotenv.ts
+      - path: src/lib/config/dotenv.ts
         kind: env-loading
-      - path: src/lib/env.ts
+      - path: src/lib/config/env.ts
         kind: env-contract
-      - path: src/lib/http.ts
+      - path: src/lib/transport/http.ts
         kind: transport
-      - path: src/lib/oauth-loopback.ts
+      - path: src/lib/auth/oauth-loopback.ts
         kind: oauth-loopback-runtime
-      - path: src/lib/oauth-pkce.ts
+      - path: src/lib/auth/oauth-pkce.ts
         kind: oauth-protocol-runtime
-      - path: src/lib/remote.ts
+      - path: src/lib/transport/remote.ts
         kind: remote-adapter
-      - path: src/lib/supabase-client.ts
+      - path: src/lib/transport/supabase-client.ts
         kind: remote-adapter
-      - path: src/lib/supabase-data-api-contract.ts
+      - path: src/lib/transport/supabase-data-api-contract.ts
         kind: remote-adapter
-      - path: src/lib/supabase-data-api-replay.ts
+      - path: src/lib/transport/supabase-data-api-replay.ts
         kind: remote-adapter
-      - path: src/lib/supabase-rest.ts
+      - path: src/lib/transport/supabase-rest.ts
         kind: remote-adapter
-      - path: src/lib/supabase-session.ts
+      - path: src/lib/auth/supabase-session.ts
         kind: session-runtime
-      - path: src/lib/*-api-*.ts
+      - path: src/lib/transport/*-api-*.ts
         kind: remote-adapter
-      - path: src/lib/credential-safety.ts
+      - path: src/lib/auth/credential-safety.ts
         kind: auth-runtime
     requiredDocs:
       - path: AGENTS.md
@@ -734,7 +662,7 @@ rules:
     scope: repo
     repo: cli
     triggers:
-      - path: src/lib/cli-repository-identity.ts
+      - path: scripts/ci/repository-identity.ts
         kind: versioned-release-identity
       - path: .gitignore
         kind: package-manager-guard
@@ -817,9 +745,9 @@ rules:
     triggers:
       - path: docs/agents/exact-reference-intent-contract.md
         kind: doc-contract
-      - path: src/lib/dataset-exact-reference-*.ts
+      - path: src/lib/dataset/exact-reference-*.ts
         kind: command-logic
-      - path: src/lib/dataset-remote-verify.ts
+      - path: src/lib/dataset/remote-verify.ts
         kind: command-logic
       - path: test/dataset-exact-reference-intent.test.ts
         kind: validation
@@ -836,7 +764,7 @@ rules:
         kind: pcr-command
       - path: docs/agents/pcr-snapshot-contract.md
         kind: governed-doc
-      - path: src/lib/pcr-snapshot-*.ts
+      - path: src/lib/pcr/**
         kind: command-logic
       - path: test/pcr-snapshot.test.ts
         kind: validation

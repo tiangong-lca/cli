@@ -1,7 +1,7 @@
-import { buildLifecyclemodelBundlePlan } from '../lib/lifecyclemodel-bundle-save.js';
-import type { DatasetCommandTransport } from '../lib/dataset-command.js';
-import { buildSupabaseAuthHeaders } from '../lib/supabase-client.js';
-import { postJson } from '../lib/http.js';
+import { buildLifecyclemodelBundlePlan } from '../lib/model/bundle-save.js';
+import type { DatasetCommandTransport } from '../lib/dataset/command.js';
+import { buildSupabaseAuthHeaders } from '../lib/transport/supabase-client.js';
+import { postJson } from '../lib/transport/http.js';
 import { CommandInputError } from '../shared/command-result.js';
 import { isObject, type JsonObject } from '../application/dataset-types.js';
 

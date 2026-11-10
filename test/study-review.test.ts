@@ -6,16 +6,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { executeCli } from '../src/cli.js';
 import { CliError } from '../src/shared/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
-import { loadStudyCodec } from '../src/lib/study-codec.js';
-import { readStudyIntent } from '../src/lib/study-intent.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
+import { loadStudyCodec } from '../src/lib/study/codec.js';
+import { readStudyIntent } from '../src/lib/study/intent.js';
 import {
   prepareStudyRequest,
   studyDigest,
   STUDY_REVIEW_SCHEMA,
-} from '../src/lib/study-protocol.js';
-import { runStudyRequest } from '../src/lib/study-transport.js';
-import { verifyStudyExportBundle, runStudyExportFiles } from '../src/lib/study-export.js';
+} from '../src/lib/study/protocol.js';
+import { runStudyRequest } from '../src/lib/study/transport.js';
+import { verifyStudyExportBundle, runStudyExportFiles } from '../src/lib/study/export.js';
 import { signedExportFixture, EXPORT_TIME } from './helpers/study-export-fixture.js';
 const ACTOR = '11111111-1111-4111-8111-111111111111',
   OTHER = '22222222-2222-4222-8222-222222222222',

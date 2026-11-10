@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
 import { CliError } from '../shared/errors.js';
-import { stringifyJson } from '../lib/io.js';
+import { stringifyJson } from '../lib/platform/io.js';
 
 import type { ResolvedCliDeps, CliResult } from './ports.js';
 function renderDatasetClassificationHelp(): string {

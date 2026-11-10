@@ -9,7 +9,7 @@ import {
   runDatasetRemoteVerify,
   collectRemoteReferences,
   __testInternals,
-} from '../src/lib/dataset-remote-verify.js';
+} from '../src/lib/dataset/remote-verify.js';
 
 const version = '00.00.001',
   newer = '00.00.002';
@@ -228,7 +228,7 @@ function checks(report: Awaited<ReturnType<typeof runDatasetRemoteVerify>>) {
     .split('\n')
     .map(
       (line) =>
-        JSON.parse(line) as import('../src/lib/dataset-remote-verify.js').RemoteVerificationCheck,
+        JSON.parse(line) as import('../src/lib/dataset/remote-verify.js').RemoteVerificationCheck,
     );
 }
 

@@ -1,7 +1,10 @@
-import { createSupabaseDataClient, requireSupabaseRestRuntime } from '../lib/supabase-client.js';
-import { createSupabaseDataRuntime } from '../lib/supabase-session.js';
-import { fetchCurrentUser } from '../lib/auth-identity-receipt.js';
-import type { FetchLike } from '../lib/http.js';
+import {
+  createSupabaseDataClient,
+  requireSupabaseRestRuntime,
+} from '../lib/transport/supabase-client.js';
+import { createSupabaseDataRuntime } from '../lib/auth/supabase-session.js';
+import { fetchCurrentUser } from '../lib/auth/auth-identity-receipt.js';
+import type { FetchLike } from '../lib/transport/http.js';
 import { isObject } from '../application/dataset-types.js';
 import { CliError } from '../shared/errors.js';
 

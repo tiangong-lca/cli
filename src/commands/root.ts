@@ -1,5 +1,5 @@
 import { CliError } from '../shared/errors.js';
-import type { DotEnvLoadResult } from '../lib/dotenv.js';
+import type { DotEnvLoadResult } from '../lib/config/dotenv.js';
 type RootFlags = {
   help: boolean;
   version: boolean;

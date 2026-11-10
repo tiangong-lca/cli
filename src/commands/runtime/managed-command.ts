@@ -2,7 +2,7 @@ import { parseArgs } from 'node:util';
 import fs from 'node:fs';
 import path from 'node:path';
 import { CliError } from '../../shared/errors.js';
-import type { FetchLike } from '../../lib/http.js';
+import type { FetchLike } from '../../lib/transport/http.js';
 import { loadTrustedRuntimeManifest } from '../../lib/runtime/manifest.js';
 import {
   ensureRuntimeComponents,

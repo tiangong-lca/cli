@@ -4,8 +4,8 @@ import test from 'node:test';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { runLifecyclemodelBuildResultingProcess } from '../src/lib/lifecyclemodel-resulting-process.js';
-import { validateProcessPayload } from '../src/lib/process-payload-validation.js';
+import { runLifecyclemodelBuildResultingProcess } from '../src/lib/model/resulting-process.js';
+import { validateProcessPayload } from '../src/lib/validation/process-payload-validation.js';
 import { allocationFixture } from './helpers/process-allocation-fixture.js';
 
 type Json = Record<string, unknown>;
@@ -133,14 +133,14 @@ test('result generator conserves 10@60/40 + 20@30/70, provenance and real unchan
   );
   assert.equal(obj(report.validation).ok, true);
   const builtJson =
-    await loadDistModule<typeof import('../src/lib/dataset-json.js')>('src/lib/dataset-json.js');
+    await loadDistModule<typeof import('../src/lib/dataset/json.js')>('src/lib/dataset/json.js');
   const cloned = builtJson.cloneJson(payload);
   assert.deepEqual(cloned, payload);
   obj(cloned.processDataSet)['synthetic:mutated'] = true;
   assert.equal(obj(payload.processDataSet)['synthetic:mutated'], undefined);
   const builtValidator = await loadDistModule<
-    typeof import('../src/lib/process-payload-validation.js')
-  >('src/lib/process-payload-validation.js');
+    typeof import('../src/lib/validation/process-payload-validation.js')
+  >('src/lib/validation/process-payload-validation.js');
   assert.equal(
     builtValidator.summarizeProcessPayloadValidation(
       builtValidator.validateProcessPayload(payload, undefined, undefined, fixture.context),

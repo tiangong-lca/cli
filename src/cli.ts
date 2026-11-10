@@ -17,9 +17,9 @@ import { rootHelp } from './commands/help.js';
 import { runRuntimeCommand } from './commands/runtime/command.js';
 import { runPcrCommand } from './commands/pcr.js';
 import { runStudyCommand } from './commands/study.js';
-import { readRuntimeEnv } from './lib/env.js';
+import { readRuntimeEnv } from './lib/config/env.js';
 import { CliError } from './shared/errors.js';
-import { loadCliPackageVersion } from './lib/package-version.js';
+import { loadCliPackageVersion } from './lib/platform/package-version.js';
 
 import { cliFailure, type CliDeps, type CliResult } from './cli-deps.js';
 import { executeAuthService } from './commands/auth-service.js';

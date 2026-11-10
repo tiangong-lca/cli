@@ -2,7 +2,7 @@ import { parseArgs } from 'node:util';
 import type {
   DatasetClassificationChildrenReport,
   DatasetClassificationPathReport,
-} from '../lib/dataset-classification.js';
+} from '../lib/dataset/classification.js';
 import { text } from '../application/dataset-types.js';
 import { contentDigest } from '../application/dataset-content.js';
 import { queryCursor, nextCursor } from '../application/dataset-discovery.js';

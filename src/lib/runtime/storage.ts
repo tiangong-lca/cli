@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { withBatchRunLock } from '../../batch.js';
+import { withBatchRunLock } from '../locks/run-lock.js';
 import { runtimeError } from './files.js';
 const marker = Buffer.from('{"schema":"tiangong-lca.runtime-cache.v1"}\n');
 

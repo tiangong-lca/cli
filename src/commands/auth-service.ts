@@ -1,15 +1,15 @@
 import { parseArgs } from 'node:util';
-import { selectLoopbackAuthDiagnostic, runLoopbackAuthDiagnostic } from '../lib/study-transport.js';
+import { selectLoopbackAuthDiagnostic, runLoopbackAuthDiagnostic } from '../lib/study/transport.js';
 import { CliError } from '../shared/errors.js';
-import { stringifyJson } from '../lib/io.js';
-import { loadCliPackageVersion } from '../lib/package-version.js';
-import { requireSupabaseRestRuntime } from '../lib/supabase-client.js';
+import { stringifyJson } from '../lib/platform/io.js';
+import { loadCliPackageVersion } from '../lib/platform/package-version.js';
+import { requireSupabaseRestRuntime } from '../lib/transport/supabase-client.js';
 
-import { OAUTH_LOGIN_TIMEOUT_MAX_MS } from '../lib/oauth-loopback.js';
+import { OAUTH_LOGIN_TIMEOUT_MAX_MS } from '../lib/auth/oauth-loopback.js';
 import {
   AUTH_IDENTITY_MAX_TIMEOUT_MS,
   AUTH_IDENTITY_RECEIPT_SCHEMA,
-} from '../lib/auth-identity-receipt.js';
+} from '../lib/auth/auth-identity-receipt.js';
 
 import { cliFailure } from '../shared/legacy-command-result.js';
 import type { ResolvedCliDeps, CliResult } from './ports.js';

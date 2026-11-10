@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - docs/interfaces/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
-lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 ---
 
 # CLI 目标接口设计
@@ -71,6 +71,7 @@ tiangong-lca release publish
 - Release 面向产品版本、内容清单和交付产物。数据入库、草稿保存、数据审核、发布批准和公开发布具有不同的成功条件。
 - 本地处理生成候选内容，远程写入显式使用 `create` 或 `save`。转换、聚合、补丁和附件上传不隐式保存数据集。
 - 环境与账号管理不承担业务修复。业务状态查询归属相应对象；安装缓存和会话状态不能替代业务结果。
+- 专项数据修复流程的范围选择、审批批次与任务编排由调用方工作流承担。CLI 保留通用维护原语及其安全约束；Batch 调度是公共库能力，不建立业务命令入口。
 
 ## 原子操作与组合
 

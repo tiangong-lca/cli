@@ -3,7 +3,7 @@ import path from 'node:path';
 import { requireContent, object, text, type JsonObject } from '../application/dataset-types.js';
 import { datasetReader } from './dataset-read.js';
 import { CommandInputError } from '../shared/command-result.js';
-import type { FetchLike } from '../lib/http.js';
+import type { FetchLike } from '../lib/transport/http.js';
 
 export function resolveRequestFile(file: unknown, inputPath: string): string {
   const value = text(file, 'file reference');

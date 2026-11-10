@@ -6,13 +6,13 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadDistModule } from './helpers/load-dist-module.js';
 import { CliError } from '../src/shared/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import {
   __testInternals,
   runLifecyclemodelBuildResultingProcess,
-} from '../src/lib/lifecyclemodel-resulting-process.js';
-import { normalizeLifecyclemodelResultingProcessRequest } from '../src/lib/model-result/request.js';
-import { type LifecyclemodelResultingProcessRequest } from '../src/lib/model-result/base.js';
+} from '../src/lib/model/resulting-process.js';
+import { normalizeLifecyclemodelResultingProcessRequest } from '../src/lib/model/result/request.js';
+import { type LifecyclemodelResultingProcessRequest } from '../src/lib/model/result/base.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,
@@ -25,9 +25,9 @@ type PublicationKey = 'publicationAndOwnership' | 'common:publicationAndOwnershi
 const VERSION = '00.00.001';
 
 async function loadDistLifecyclemodelModule(): Promise<
-  typeof import('../src/lib/lifecyclemodel-resulting-process.js')
+  typeof import('../src/lib/model/resulting-process.js')
 > {
-  return loadDistModule('src/lib/lifecyclemodel-resulting-process.js');
+  return loadDistModule('src/lib/model/resulting-process.js');
 }
 
 async function loadDistLifecyclemodelTestInternals(): Promise<typeof __testInternals> {

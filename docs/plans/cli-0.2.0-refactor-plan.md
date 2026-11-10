@@ -14,8 +14,8 @@ checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
-lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -79,7 +79,7 @@ AGENTS 面向开发 AI，规定目录职责、依赖方向、新命令开发路�
 
 划分 `src/commands`（入口与参数）、`src/application`（业务操作与端口）、`src/adapters`（服务适配）和 `src/shared`（公共结果、文件及呈现）。入口组合依赖，业务层不处理 argv 或 IO，适配层复用已验证的现有能力。`src/lib` 逐步迁移，不进行大规模机械搬迁，不创建空领域目录或插件框架。
 
-完成条件：目录包含真实职责，完整源码边界和运行时循环由测试检查，生产默认依赖在组合入口选择；业务判断、IO 与命令呈现分别归属。既有专项协议和公共导出保持可用；新增目录和模板资产纳入 Docpact 路由。
+完成条件：目录包含真实职责，完整源码边界和运行时循环由测试检查，生产默认依赖在组合入口选择；业务判断、IO 与命令呈现分别归属。既有保留协议和公共导出保持可用；新增目录和模板资产纳入 Docpact 路由。
 
 ## 前置核查：命令迁移清单与服务依赖表
 
@@ -168,7 +168,7 @@ Flow 参考属性的本地业务约束由同一纯校验器承载：内部 ID �
 
 删除 `search/flow/process/lifecyclemodel/qa/publish` 和通用 Dataset `contract/context-pack/curation-queue/author/patch/save-draft/validate/support-cache/verify-remote/bilingual/evidence-search/references` 的帮助、解析、执行分派及旧依赖注入。旧入口直接返回 `UNKNOWN_COMMAND`，不保留转接、隐式保存或自动追新；拒绝测试必须证明无网络请求或写入，源码外安装包也执行这项检查。
 
-`dataset model aggregate` 是主命令的正式别名；专项受保护维护、分类维护、Study、Release、runtime/PCR 和文件包工具保留各自契约。按当前入口与公共库的真实依赖保留算法、安全设施及其测试；移除只服务于退役工作流的实现、包装层、测试和示例。当前校验和防重复写入性质仍须完整验证。历史日志使用匹配版本解释，新命令不提供旧工作流恢复 API。安装包验证必须证明已退役实现不再打包。旧入口删除不等待下游迁移，也不因此修改下游代码。
+`dataset model aggregate` 是主命令的正式别名；专项普通维护、分类维护、Study、Release、runtime/PCR 和文件包工具保留各自契约。按当前入口与公共库的真实依赖保留算法、安全设施及其测试；移除只服务于退役工作流的实现、包装层、测试和示例。当前校验和防重复写入性质仍须完整验证。历史日志使用匹配版本解释，新命令不提供旧工作流恢复 API。安装包验证必须证明已退役实现不再打包。旧入口删除不等待下游迁移，也不因此修改下游代码。
 
 下游迁移说明包括旧命令到新命令映射、移除项、参数与输出变化、创建和保存的语义差异、错误与恢复方式，以及基于新命令的使用示例。无法一对一映射的旧流程说明应由调用方组合哪些原子能力，不伪造等价替代命令。
 
@@ -221,4 +221,12 @@ Flow 参考属性的本地业务约束由同一纯校验器承载：内部 ID �
 - 原始 JSON 在业务入口校验，内部动作及派发使用有限类型；Model、统计和附件操作明确区分，不归入笼统的 local 操作。
 - 生产依赖只在组合入口选择，专项命令的参数解析归 commands；外层选项不改变子进程参数和独立协议。
 - 维护契约、执行、Model 计算和纯统计按职责拆分；新模块遵循文件大小原则，历史产物哈希和恢复语义保持精确。
-- 边界测试覆盖全部源码及运行时导入图，行为与安装包测试继续在原有 100% 门禁下验证。维护 profile 的当前准入和历史证据用途分别记录，不按名称推断退役关系。
+- 边界测试覆盖全部源码及运行时导入图，行为与安装包测试继续在原有 100% 门禁下验证。普通维护保留准入与恢复保护；专项修复入口及专属实现退役，历史证据由匹配原版本解释。
+
+## 专项清理与基础设施边界
+
+- 移除 Alias-v1/v2、Length×time、Flow-identity 的规划、冻结、审批、执行入口及专属实现、RPC 消费、测试和打包资产。不把历史审批或已消费尝试改作普通维护授权，不在下游仓库重建流程。
+- 保留普通维护 `plan/apply/verify/clear-account`、衍生重建及对象操作的现有身份、完整分页、引用闭包、科学校验和读回恢复约束。
+- `lib` 按 auth/config/transport、dataset/validation/model/maintenance、study/pcr/release/runtime、locks 和 platform 的实际职责组织。同步导入、资产定位、验证脚本和文档治理。
+- Batch 调度器只由公共库消费。CLI 内部直接依赖共享并发原语；四个公共导出、函数/错误类身份、锁路径、哈希和恢复规则保持兼容，不迁移下游。
+- 本地验收覆盖退役入口零副作用拒绝、运行时导入边界、公共库声明与安装包、现存业务测试及原有全量覆盖率门禁。验证不能以删除普通业务断言、降低覆盖率或增加忽略项替代。

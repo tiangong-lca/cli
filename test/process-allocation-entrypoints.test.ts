@@ -4,10 +4,10 @@ import * as sdk from '@tiangong-lca/tidas-sdk';
 import {
   analyzeProcessPayloadSemantics,
   semanticContextFromInput,
-} from '../src/lib/process-semantic-validation.js';
-import { validateProcessPayload } from '../src/lib/process-payload-validation.js';
-import { runDatasetValidate } from '../src/lib/dataset-validate.js';
-import { sha256Json } from '../src/lib/canonical-json-hash.js';
+} from '../src/lib/validation/process-semantic-validation.js';
+import { validateProcessPayload } from '../src/lib/validation/process-payload-validation.js';
+import { runDatasetValidate } from '../src/lib/dataset/validate.js';
+import { sha256Json } from '../src/lib/platform/canonical-json-hash.js';
 
 type Json = Record<string, unknown>;
 const nested = (value: unknown) => value as Json;

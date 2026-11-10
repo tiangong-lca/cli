@@ -8,9 +8,9 @@ import { CliError } from '../src/shared/errors.js';
 import {
   __testInternals,
   runDatasetSourceUploadAttachments,
-} from '../src/lib/dataset-source-upload-attachments.js';
-import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
-import type { FetchLike, ResponseLike } from '../src/lib/http.js';
+} from '../src/lib/dataset/source-upload-attachments.js';
+import type { DotEnvLoadResult } from '../src/lib/config/dotenv.js';
+import type { FetchLike, ResponseLike } from '../src/lib/transport/http.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,

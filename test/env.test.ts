@@ -7,7 +7,7 @@ import {
   maskSecret,
   readRuntimeEnv,
   resolveEnv,
-} from '../src/lib/env.js';
+} from '../src/lib/config/env.js';
 
 test('resolveEnv prefers a present env key', () => {
   const resolved = resolveEnv(
@@ -156,7 +156,8 @@ test('buildDoctorReport records canonical TianGong LCA env keys', () => {
 });
 
 test('built runtime and source expose the same official bootstrap and doctor behavior', async () => {
-  const built = await loadDistModule<typeof import('../src/lib/env.js')>('src/lib/env.js');
+  const built =
+    await loadDistModule<typeof import('../src/lib/config/env.js')>('src/lib/config/env.js');
   assert.deepEqual(built.readRuntimeEnv({}), readRuntimeEnv({}));
   assert.equal(
     built.resolveEnv({ key: 'A', required: false, description: 'demo' }, {}).present,

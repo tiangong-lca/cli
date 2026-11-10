@@ -8,7 +8,7 @@ import {
   parseExactContentRange,
   type DatasetMaintenancePage,
   type DatasetMaintenanceTableCompleteness,
-} from '../src/lib/dataset-maintenance-pagination.js';
+} from '../src/lib/maintenance/pagination.js';
 
 type Row = { id: string; version: string };
 

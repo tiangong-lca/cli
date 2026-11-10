@@ -4,10 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { executeCli, type CliDeps } from '../src/cli.js';
-import { buildDoctorReport, readRuntimeEnv } from '../src/lib/env.js';
+import { buildDoctorReport, readRuntimeEnv } from '../src/lib/config/env.js';
 import { CliError } from '../src/shared/errors.js';
-import { requireSupabaseRestRuntime } from '../src/lib/supabase-client.js';
-import { loginWithSupabaseOAuth } from '../src/lib/supabase-session.js';
+import { requireSupabaseRestRuntime } from '../src/lib/transport/supabase-client.js';
+import { loginWithSupabaseOAuth } from '../src/lib/auth/supabase-session.js';
 
 const PROJECT = 'https://qgzvkongdjqiiamzbbts.supabase.co';
 const CLIENT = '1837c6d3-3c9d-48e0-bbf7-b532b78f9f76';

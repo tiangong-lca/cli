@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
-import { readRuntimeEnv } from '../lib/env.js';
+import { readRuntimeEnv } from '../lib/config/env.js';
 import { CliError } from '../shared/errors.js';
-import { executeRemoteCommand, getRemoteCommandHelp } from '../lib/remote.js';
+import { executeRemoteCommand, getRemoteCommandHelp } from '../lib/transport/remote.js';
 
 import type { ResolvedCliDeps, CliResult } from './ports.js';
 function renderAdminHelp(): string {

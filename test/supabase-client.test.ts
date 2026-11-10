@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CliError } from '../src/shared/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import {
   buildSupabaseAuthHeaders,
   createSupabaseDataClient,
@@ -13,7 +13,7 @@ import {
   runSupabaseArrayQuery,
   runSupabaseMutation,
   runSupabaseQuery,
-} from '../src/lib/supabase-client.js';
+} from '../src/lib/transport/supabase-client.js';
 
 type PostgrestErrorLike = {
   code: string;

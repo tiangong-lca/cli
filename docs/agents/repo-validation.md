@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
-lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -103,13 +103,13 @@ Process allocation checks use actual pinned SDK documents and exact Flow evidenc
 
 Create never becomes update, save never becomes insert, and missing exact reads never select latest implicitly. Ordinary save retains server content CAS. Model writes and deletes disclose preflight-only comparisons where the service offers no revision parameter. A dispatch with uncertain effect preserves its original request; neither command repetition, a new output path nor missing reply templates permit replay. Source uploads and Model generation never implicitly save content.
 
-Protected maintenance tests retain complete PostgREST exact-count traversal, owner/state/target/plan closure, content drift checks and audited platform-command/RPC transport. Derivative rebuild admits only the reviewed exact Process scope and reports accepted/queued separately from verified completion. Protected alias execution keeps server-derived ordered gates, immutable per-attempt evidence, at most one admission and status/readback-only recovery. Freeze is read-only; approval sealing is offline and preserves exact reviewed bytes and timestamps. Flow-identity execution retains ordered server-ledger progress and changes only its declared references. Never substitute SQL, service-role, raw REST writes, queue calls or generic fallbacks.
+Ordinary maintenance tests retain complete PostgREST exact-count traversal, owner/state/target/plan closure, content drift checks, reference closure, durable progress and audited platform-command/RPC transport. Derivative rebuild admits only the reviewed exact Process scope and reports accepted/queued separately from verified completion. Retired repair entrypoints, flags, scopes and packaged modules must be absent or rejected before IO. Never substitute SQL, service-role, raw REST writes, queue calls or generic fallbacks.
 
 ## OAuth and public primitives
 
 OAuth regressions cover PKCE/state/exact loopback callbacks, private atomic session storage, token rotation before profile success, expiry and refresh locking, terminal rejection versus transient failures, concurrent state drift and safe redacted errors. Headless tokens require explicit complete targets, online identity checks and process-only caching. Credential, provider-message and session-path leakage is forbidden. [Live-account testing](live-case-testing.md) requires separate explicit authorization; deterministic gates contain no live account credentials.
 
-Public receipt parsing retains exact safe fields and object identity. CommandSpec execution remains shell-free and bound artifacts are rehashed. Batch scheduling retains claim-time identity/content/policy/resource binding, bounded concurrency and timers, FIFO key ordering, fatal-claim closure, awaited event delivery and drainage of in-flight work. A canonical run directory remains one cross-process lock domain; changing identity cannot bypass it. Public-library architecture, declaration and ESM/CJS/bin consumer tests stay independent of business command cleanup.
+Public receipt parsing retains exact safe fields and object identity. CommandSpec execution remains shell-free and bound artifacts are rehashed. Batch scheduling retains claim-time identity/content/policy/resource binding, bounded concurrency and timers, FIFO key ordering, fatal-claim closure, awaited event delivery and drainage of in-flight work. A canonical run directory remains one cross-process lock domain; changing identity cannot bypass it. Public-library architecture, declaration and ESM/CJS/bin consumer tests stay independent of business command cleanup. The core CLI runtime import closure excludes the Batch facade and scheduler; shared lock and public lock functions/errors retain identity and lock-domain behavior.
 
 ## Specialized runtime and Study proof
 
@@ -145,7 +145,7 @@ Each published CLI version maps to exactly one source identity; no version may c
 
 The repository id is the continuity anchor across the migration (identical on both sides); the owner id differs and the legacy owner id stays bound only to historical evidence. Mixed fields across the two profiles are rejected. `scripts/ci/release-context.sh` enforces the current profile (name, numeric repository/owner ids, tag-ref dispatch binding) and is executed against real git fixtures by `test/workflow-release-context.test.mjs`; the verifier enforces the same profile through certificate OIDs, exact SAN/issuer, signed workflow/source/event/builder fields, one tarball subject and one resolved dependency. CT and Rekor remain mandatory.
 
-Publication floor: new-identity publication (tag creation and release) requires a version above the frozen legacy ceiling `CLI_LEGACY_LAST_VERSION` (0.1.14), as classified by the shared `src/lib/cli-repository-identity.ts` helper via `scripts/ci/check-publication-floor.cjs`. The publish release-context guard rejects legacy-ceiling versions for both tag pushes and exact-tag dispatch, and the tag-creation automation enforces the same floor before creating `cli-v*` refs, so an unused lower/backport version can never be published under the current identity and become unverifiable. This rule does not select the next release version; unchanged-version main source PRs remain no-release. Historical tags and registry packages stay immutable.
+Publication floor: new-identity publication (tag creation and release) requires a version above the frozen legacy ceiling `CLI_LEGACY_LAST_VERSION` (0.1.14), as classified by the shared `scripts/ci/repository-identity.ts` helper via `scripts/ci/check-publication-floor.cjs`. The publish release-context guard rejects legacy-ceiling versions for both tag pushes and exact-tag dispatch, and the tag-creation automation enforces the same floor before creating `cli-v*` refs, so an unused lower/backport version can never be published under the current identity and become unverifiable. This rule does not select the next release version; unchanged-version main source PRs remain no-release. Historical tags and registry packages stay immutable.
 
 The event SHA and workflow-definition SHA are separate facts (`github.sha` and `github.workflow_sha`). Both tag pushes and exact-tag dispatch must match the resolved release commit; a moved tag or divergent workflow fails before publication. The workflow regression reads the actual YAML-to-shell bindings so one SHA cannot be substituted for the other. The shared source policy is loaded as ESM by the private CommonJS helpers without requiring a build or application runtime imports.
 

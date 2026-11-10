@@ -12,8 +12,8 @@ import {
   STUDY_CODEC_CANDIDATE_ENV,
   STUDY_V3_CODEC_CANDIDATE_ENV,
   STUDY_V4_CODEC_CANDIDATE_ENV,
-} from '../src/lib/study-codec.js';
-import { studyDigest } from '../src/lib/study-protocol.js';
+} from '../src/lib/study/codec.js';
+import { studyDigest } from '../src/lib/study/protocol.js';
 import { CliError } from '../src/shared/errors.js';
 
 const code = Buffer.from('export const fixture = true;');
@@ -164,8 +164,8 @@ test('The portable module must expose the exact codec ABI and version', () => {
 test('Codec discovery supports source and built package layouts without a sibling fallback', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'study-codec-paths-'));
   try {
-    const source = pathToFileURL(path.join(root, 'package/src/lib/study-codec.ts')).href;
-    const built = pathToFileURL(path.join(root, 'package/dist/src/lib/study-codec.js')).href;
+    const source = pathToFileURL(path.join(root, 'package/src/lib/study/codec.ts')).href;
+    const built = pathToFileURL(path.join(root, 'package/dist/src/lib/study/codec.js')).href;
     codeError(() => studyCodecRoot(source), 'STUDY_CONTRACT_MISSING');
     const assets = path.join(root, 'package/assets/study-contract/v2');
     mkdirSync(assets, { recursive: true });

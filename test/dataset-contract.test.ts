@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { __testInternals as internals, readDatasetContract } from '../src/lib/dataset-contract.js';
+import { __testInternals as internals, readDatasetContract } from '../src/lib/dataset/contract.js';
 
 test('current SDK contracts keep rule ownership and real canonical schema content', async () => {
   const require = createRequire(import.meta.url);

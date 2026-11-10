@@ -9,14 +9,14 @@ import {
   datasetRoot,
   detectDatasetKind,
   unwrapDatasetPayload,
-} from '../src/lib/dataset-local.js';
+} from '../src/lib/dataset/local.js';
 
-import { __testInternals as contractInternals } from '../src/lib/dataset-contract.js';
+import { __testInternals as contractInternals } from '../src/lib/dataset/contract.js';
 
-import { __testInternals as validateInternals } from '../src/lib/dataset-validate.js';
+import { __testInternals as validateInternals } from '../src/lib/dataset/validate.js';
 
-import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
-import type { FetchLike } from '../src/lib/http.js';
+import type { DotEnvLoadResult } from '../src/lib/config/dotenv.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,

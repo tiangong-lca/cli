@@ -1,4 +1,4 @@
-import { sha256Json } from '../../canonical-json-hash.js';
+import { sha256Json } from '../../platform/canonical-json-hash.js';
 import { CliError } from '../../../shared/errors.js';
 import type {
   JsonObject,

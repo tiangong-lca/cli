@@ -4,8 +4,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { executeCli } from '../src/cli.js';
-import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
-import type { FetchLike } from '../src/lib/http.js';
+import type { DotEnvLoadResult } from '../src/lib/config/dotenv.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,

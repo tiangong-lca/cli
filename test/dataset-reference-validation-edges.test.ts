@@ -7,10 +7,10 @@ import test from 'node:test';
 import {
   __testInternals as remoteVerifyInternals,
   runDatasetRemoteVerify,
-} from '../src/lib/dataset-remote-verify.js';
+} from '../src/lib/dataset/remote-verify.js';
 
-import { __testInternals as processRequiredInternals } from '../src/lib/process-required-fields.js';
-import { __testInternals as supabaseClientInternals } from '../src/lib/supabase-client.js';
+import { __testInternals as processRequiredInternals } from '../src/lib/validation/process-required-fields.js';
+import { __testInternals as supabaseClientInternals } from '../src/lib/transport/supabase-client.js';
 
 import {
   buildSupabaseTestEnv,

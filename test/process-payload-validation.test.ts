@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
-import { sha256Json } from '../src/lib/canonical-json-hash.js';
+import { sha256Json } from '../src/lib/platform/canonical-json-hash.js';
 import {
   __testInternals,
   summarizeProcessPayloadValidation,
   validateProcessPayload,
-} from '../src/lib/process-payload-validation.js';
+} from '../src/lib/validation/process-payload-validation.js';
 
 // Every report must carry the exact payload hash and all four layer statuses, so the layer
 // contract is asserted by name and value rather than by the shape of the whole report.

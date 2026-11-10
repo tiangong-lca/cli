@@ -1,15 +1,15 @@
+import { loadMaintenanceDesiredPayload } from '../desired-payload.js';
 import { CliError } from '../../../shared/errors.js';
-import type { FetchLike } from '../../http.js';
-import { loadMaintenanceDesiredPayload } from '../../dataset-maintenance-alias-request.js';
-import { sha256Json } from '../../canonical-json-hash.js';
+import type { FetchLike } from '../../transport/http.js';
+
+import { sha256Json } from '../../platform/canonical-json-hash.js';
 import type {
   DatasetMaintenancePlan,
-  DatasetMaintenanceAliasBatchPlan,
   DatasetMaintenancePlanAction,
   DatasetMaintenanceProgressEntry,
   JsonObject,
 } from '../contract/types.js';
-import type { DatasetMaintenanceDerivativeSubmitProof } from '../../dataset-maintenance-derivatives.js';
+import type { DatasetMaintenanceDerivativeSubmitProof } from '../derivatives.js';
 
 export type DatasetMaintenanceApplyReport = {
   schema_version: 1;
@@ -44,9 +44,6 @@ export type DatasetMaintenanceApplyReport = {
     apply_progress: string;
     commit_report: string;
     attempt_report: string;
-    alias_plan_progress?: string;
-    alias_batch_progress?: string;
-    alias_exchange_progress?: string;
     derivative_submit_progress?: string;
     derivative_admission_attempt?: string;
     execution_log?: string;
@@ -56,14 +53,6 @@ export type DatasetMaintenanceApplyReport = {
     rpc_transaction_log: 'public.command_audit_log';
     source: 'tiangong-lca dataset maintenance apply';
     correlation_fields: string[];
-  };
-  alias_plan_proof?: {
-    plan_request_sha256: string;
-    summary_audit_id: string;
-    batch_count: 2;
-    row_count: 52;
-    exchange_count: 59;
-    idempotent_replay: boolean;
   };
   derivative_admission?: DatasetMaintenanceDerivativeSubmitProof & {
     admission: 'accepted';
@@ -209,102 +198,6 @@ export type DerivativeAdmissionAttempt = {
   prepared_at_utc: string;
 };
 
-export type AliasBatchProgressEntry = {
-  schema_version: 1;
-  plan_sha256: string;
-  operation_id: string;
-  batch_id: string;
-  target_mode: 'owner_draft';
-  dimension: DatasetMaintenanceAliasBatchPlan['dimension'];
-  factor: string;
-  actor: { user_id: string; email: string };
-  started_at_utc: string;
-  ended_at_utc: string;
-  batch_request_sha256: string;
-  idempotent_replay: boolean;
-  row_count: number;
-  exchange_count: number;
-  summary_audit_id: string;
-  plan_request_sha256: string;
-  plan_summary_audit_id: string;
-  result: 'success';
-  error: null;
-};
-
-export type AliasPlanBatchProof = {
-  batch_id: string;
-  dimension: DatasetMaintenanceAliasBatchPlan['dimension'];
-  batch_request_sha256: string;
-  summary_audit_id: string;
-};
-
-export type AliasPlanProgressEntry = {
-  schema_version: 1;
-  plan_sha256: string;
-  operation_id: string;
-  target_mode: 'owner_draft';
-  actor: { user_id: string; email: string };
-  started_at_utc: string;
-  ended_at_utc: string;
-  plan_request_sha256: string | null;
-  idempotent_replay: boolean | null;
-  batch_count: 2;
-  row_count: 52;
-  exchange_count: 59;
-  summary_audit_id: string | null;
-  batches: AliasPlanBatchProof[];
-  result: 'success' | 'failed';
-  error: string | null;
-};
-
-export type AliasPlanProgressState = {
-  entries: AliasPlanProgressEntry[];
-  success: AliasPlanProgressEntry | null;
-  latestFailure: AliasPlanProgressEntry | null;
-};
-
-export type AliasBatchProgressState = {
-  entries: AliasBatchProgressEntry[];
-  successes: Map<string, AliasBatchProgressEntry>;
-};
-
-export type AliasRpcAuditProof = {
-  action_id: string;
-  table: DatasetMaintenancePlanAction['table'];
-  id: string;
-  version: string;
-  audit_id: string;
-};
-
-export type AliasRpcResult = {
-  target_visibility: 'owner_draft';
-  batch_request_sha256: string;
-  idempotent_replay: boolean;
-  exchange_count: number;
-  summary_audit_id: string;
-  audits: Map<string, AliasRpcAuditProof>;
-  raw: JsonObject;
-};
-
-export type AliasPlanRpcResult = {
-  target_visibility: 'owner_draft';
-  plan_request_sha256: string;
-  idempotent_replay: boolean;
-  batch_count: 2;
-  row_count: 52;
-  exchange_count: 59;
-  summary_audit_id: string;
-  batches: Map<DatasetMaintenanceAliasBatchPlan['dimension'], AliasRpcResult>;
-  raw: JsonObject;
-};
-
-export type RetiredAliasExecutionProof = {
-  rpc: AliasPlanRpcResult;
-  after_by_action: Map<string, string>;
-};
-
-export const POSITIVE_INTEGER_TEXT = /^[1-9]\d*$/u;
-
 export function clock(options: RunDatasetMaintenanceApplyOptions): string {
   return (options.now ?? new Date()).toISOString();
 }
@@ -342,3 +235,5 @@ export function loadDesiredPayload(
 ): JsonObject {
   return loadMaintenanceDesiredPayload(planDir, action);
 }
+
+export const POSITIVE_INTEGER_TEXT = /^[1-9]\d*$/u;

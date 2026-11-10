@@ -13,15 +13,15 @@ whenToUpdate:
   - Study wire versions, codec provenance, commands or request retention change
   - analysis/report/export verification or renderer provenance changes
 checkPaths:
-  - src/lib/study-*.ts
+  - src/lib/study/**
   - src/cli.ts
   - assets/study-contract/**
   - assets/study-renderer/**
   - test/study-*.test.ts
   - docs/agents/study-cli-contract.md
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
-lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 related:
   - ../../AGENTS.md
   - repo-architecture.md

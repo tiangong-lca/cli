@@ -1,8 +1,12 @@
+import type { BatchJsonValue } from '../locks/types.js';
+export type {
+  BatchJsonPrimitive,
+  BatchJsonValue,
+  BatchJsonObject,
+  BatchRunLockOptions,
+  BatchRunLockReceipt,
+} from '../locks/types.js';
 export const MAX_BATCH_CONCURRENCY = 64 as const;
-
-export type BatchJsonPrimitive = boolean | null | number | string;
-export type BatchJsonValue = BatchJsonPrimitive | BatchJsonValue[] | BatchJsonObject;
-export type BatchJsonObject = { [key: string]: BatchJsonValue };
 
 export type BatchContract<TIdentity extends BatchJsonValue = BatchJsonValue> = {
   identity: TIdentity;
@@ -196,22 +200,6 @@ export type BatchStopContext<TInput, TOutput> = Readonly<{
 
 export type BatchClock = Readonly<{ now: () => number }>;
 export type BatchSleep = (milliseconds: number) => Promise<void>;
-
-export type BatchRunLockOptions<TIdentity extends BatchJsonValue> = Readonly<{
-  runPath: string;
-  identity: TIdentity;
-  reason: string;
-  timeoutMs?: number;
-  pollMs?: number;
-  sleep?: BatchSleep;
-}>;
-
-export type BatchRunLockReceipt = Readonly<{
-  run_path: string;
-  state_path: string;
-  lock_path: string;
-  identity_sha256: string;
-}>;
 
 export type BatchExclusiveKeyContext<TInput> = Readonly<{
   item: TInput;

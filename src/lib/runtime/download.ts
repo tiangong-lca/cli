@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
-import type { FetchLike } from '../http.js';
+import type { FetchLike } from '../transport/http.js';
 import { runtimeError } from './files.js';
 import { distributionUrl } from './manifest-values.js';
 import { writeAll } from './storage.js';

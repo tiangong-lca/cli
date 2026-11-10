@@ -1,4 +1,4 @@
-import type { DatasetMaintenanceSnapshotCompleteness } from '../../dataset-maintenance-pagination.js';
+import type { DatasetMaintenanceSnapshotCompleteness } from '../pagination.js';
 
 export type JsonObject = Record<string, unknown>;
 
@@ -14,17 +14,11 @@ export const MAINTENANCE_SCAN_TABLES = [
 
 export type DatasetMaintenanceMutableTable = (typeof MAINTENANCE_MUTABLE_TABLES)[number];
 export type DatasetMaintenanceSupportTable = (typeof MAINTENANCE_SUPPORT_TABLES)[number];
-export type DatasetMaintenanceActionTable = DatasetMaintenanceMutableTable | 'flowproperties';
+export type DatasetMaintenanceActionTable = DatasetMaintenanceMutableTable;
 export type DatasetMaintenanceScanTable = (typeof MAINTENANCE_SCAN_TABLES)[number];
 export type DatasetMaintenanceOperation =
-  | 'delete'
-  | 'retire'
-  | 'redo-import'
-  | 'repair-references'
-  | 'merge-support-aliases'
-  | 'rebuild-derivatives';
-export type DatasetMaintenanceActionKind =
-  'save_draft' | 'delete' | 'update_json_ordered' | 'rebuild_derivatives';
+  'delete' | 'retire' | 'redo-import' | 'repair-references' | 'rebuild-derivatives';
+export type DatasetMaintenanceActionKind = 'save_draft' | 'delete' | 'rebuild_derivatives';
 export type DatasetMaintenanceTargetMode = 'owner_draft';
 
 export const DERIVATIVE_REBUILD_COMPONENTS = ['extracted_md', 'embedding_ft'] as const;
@@ -46,58 +40,6 @@ export type DatasetMaintenanceDerivativeSnapshot = {
   snapshot_sha256: string;
 };
 
-export type DatasetMaintenanceAliasDimension = 'time' | 'length_time';
-
-export type DatasetMaintenanceEntityRef = {
-  id: string;
-  version: string;
-};
-
-export type DatasetMaintenanceAliasBatch = {
-  batch_id: string;
-  dimension: DatasetMaintenanceAliasDimension;
-  factor: string;
-  source: {
-    unitgroup: DatasetMaintenanceEntityRef;
-    flowproperty: DatasetMaintenanceEntityRef;
-  };
-  target: {
-    unitgroup: DatasetMaintenanceEntityRef;
-    flowproperty: DatasetMaintenanceEntityRef;
-  };
-};
-
-export type DatasetMaintenanceExchangeInstance = {
-  exchange_index: number;
-  data_set_internal_id: string;
-  flow_id: string;
-  flow_version: string;
-  direction: 'Input' | 'Output';
-  before_exchange_sha256: string;
-  before_mean_amount: string;
-  before_resulting_amount: string;
-};
-
-export type DatasetMaintenanceAliasMutation =
-  | { kind: 'flowproperty_unitgroup_reference' }
-  | {
-      kind: 'flow_flowproperty_reference';
-      flow_property_internal_id: string;
-      source_flowproperty_id: string;
-      source_flowproperty_version: string;
-    }
-  | {
-      kind: 'process_exchange_amounts';
-      exchanges: Array<{
-        index: number;
-        internal_id: string;
-        flow_id: string;
-        flow_version: string;
-        direction: 'Input' | 'Output';
-        before_exchange_sha256: string;
-      }>;
-    };
-
 export type DatasetMaintenanceScopeAction = {
   action_id: string;
   action: DatasetMaintenanceActionKind;
@@ -109,8 +51,6 @@ export type DatasetMaintenanceScopeAction = {
   reason_code: string;
   reason: string;
   evidence: unknown[];
-  batch_id?: string;
-  exchange_instances?: DatasetMaintenanceExchangeInstance[];
   desired_payload_path?: string;
   expected_before_sha256?: string;
   components?: DatasetMaintenanceDerivativeComponent[];
@@ -127,7 +67,6 @@ export type DatasetMaintenanceScope = {
   source_import_run_id?: string;
   source_lineage?: unknown;
   target_mode?: DatasetMaintenanceTargetMode;
-  alias_batches?: DatasetMaintenanceAliasBatch[];
   actions: DatasetMaintenanceScopeAction[];
 };
 
@@ -191,57 +130,13 @@ export type DatasetMaintenancePlanAction = DatasetMaintenanceScopeAction & {
     sha256: string;
   } | null;
   blockers: DatasetMaintenanceBlocker[];
-  alias_mutation?: DatasetMaintenanceAliasMutation;
   derivative_before?: DatasetMaintenanceDerivativeSnapshot;
   rollback: {
-    strategy:
-      | 'save_before_snapshot'
-      | 'restore_deleted_before_snapshot'
-      | 'restore_atomic_alias_before_snapshot'
-      | 'none_derivative_only';
+    strategy: 'save_before_snapshot' | 'restore_deleted_before_snapshot' | 'none_derivative_only';
     before_payload_sha256: string | null;
     before_payload: JsonObject | null;
     model_id: string | null;
     rule_verification: boolean | null;
-  };
-};
-
-export type DatasetMaintenanceAliasExchangeRewrite = DatasetMaintenanceExchangeInstance & {
-  action_id: string;
-  process_id: string;
-  process_version: string;
-  after_mean_amount: string;
-  after_resulting_amount: string;
-  after_exchange_sha256: string;
-};
-
-export type DatasetMaintenanceAliasBatchPlan = DatasetMaintenanceAliasBatch & {
-  action_ids: string[];
-  target_snapshots: {
-    unitgroup: DatasetMaintenanceRowSnapshot | null;
-    flowproperty: DatasetMaintenanceRowSnapshot | null;
-    source_unitgroup: DatasetMaintenanceRowSnapshot | null;
-  };
-  conversion_evidence: {
-    source_unitgroup_payload_sha256: string | null;
-    source_reference_unit: JsonObject | null;
-    target_conversion_unit: JsonObject | null;
-  };
-  exchange_rewrites: DatasetMaintenanceAliasExchangeRewrite[];
-  summary: {
-    rows: number;
-    flowproperties: number;
-    flows: number;
-    processes: number;
-    exchanges: number;
-    amount_fields: number;
-    unrelated_exchanges: number;
-  };
-  postconditions: {
-    source_unitgroup_incoming_refs: number;
-    source_flowproperty_flow_refs: number;
-    target_flow_refs: number;
-    target_exchange_refs: number;
   };
 };
 
@@ -287,11 +182,9 @@ export type DatasetMaintenancePlan = {
     maintenance_plan: string;
     dry_run_report: string;
     payload_dir: string;
-    exchange_rewrite_plan?: string;
     derivative_baseline?: string;
   };
   actions: DatasetMaintenancePlanAction[];
-  alias_batches?: DatasetMaintenanceAliasBatchPlan[];
   protected_rows: DatasetMaintenanceProtectedRow[];
   blockers: DatasetMaintenanceBlocker[];
 };
@@ -326,7 +219,6 @@ export type DatasetMaintenanceProgressEntry = {
   result: 'success' | 'failed';
   error: string | null;
   rollback: DatasetMaintenancePlanAction['rollback'];
-  batch_id?: string;
   target_mode?: DatasetMaintenanceTargetMode;
   batch_request_sha256?: string;
   database_audit_id?: string;

@@ -10,8 +10,8 @@ import {
   type RemoteDatasetLookupRequest,
   type RemoteDatasetPayloadLookup,
   type RemoteVerificationCheck,
-} from '../src/lib/dataset-remote-verify.js';
-import type { FetchLike } from '../src/lib/http.js';
+} from '../src/lib/dataset/remote-verify.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,

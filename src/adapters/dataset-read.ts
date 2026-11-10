@@ -8,10 +8,13 @@ import {
   type DatasetQuery,
   type DatasetPage,
 } from '../application/dataset-types.js';
-import { createSupabaseDataClient, requireSupabaseRestRuntime } from '../lib/supabase-client.js';
-import { createSupabaseDataRuntime } from '../lib/supabase-session.js';
-import type { FetchLike } from '../lib/http.js';
-import { normalizeSupabaseProcessPayload } from '../lib/supabase-rest.js';
+import {
+  createSupabaseDataClient,
+  requireSupabaseRestRuntime,
+} from '../lib/transport/supabase-client.js';
+import { createSupabaseDataRuntime } from '../lib/auth/supabase-session.js';
+import type { FetchLike } from '../lib/transport/http.js';
+import { normalizeSupabaseProcessPayload } from '../lib/transport/supabase-rest.js';
 import { CliError } from '../shared/errors.js';
 
 export function datasetReader(env: NodeJS.ProcessEnv, fetchImpl: FetchLike) {

@@ -1,11 +1,15 @@
-import { buildDoctorReport, hasProductionProfileMismatch, readRuntimeEnv } from '../lib/env.js';
+import {
+  buildDoctorReport,
+  hasProductionProfileMismatch,
+  readRuntimeEnv,
+} from '../lib/config/env.js';
 import { describeCliRuntime } from '../runtime.js';
 import {
   requireSupabaseRestRuntime,
   deriveSupabaseProjectBaseUrl,
-} from '../lib/supabase-client.js';
-import type { FetchLike } from '../lib/http.js';
-import type { DotEnvLoadResult } from '../lib/dotenv.js';
+} from '../lib/transport/supabase-client.js';
+import type { FetchLike } from '../lib/transport/http.js';
+import type { DotEnvLoadResult } from '../lib/config/dotenv.js';
 
 export function doctorPorts(
   env: NodeJS.ProcessEnv,

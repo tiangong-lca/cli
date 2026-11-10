@@ -4,7 +4,9 @@ import path from 'node:path';
 import { loadDistModule } from './helpers/load-dist-module.js';
 
 test('compiled HTTP transport preserves an explicit application rejection', async () => {
-  const compiled = await loadDistModule<typeof import('../src/lib/http.js')>('src/lib/http.js');
+  const compiled = await loadDistModule<typeof import('../src/lib/transport/http.js')>(
+    'src/lib/transport/http.js',
+  );
   assert.throws(
     () =>
       compiled.requireRemoteOkPayload(
@@ -20,9 +22,9 @@ test('compiled HTTP transport preserves an explicit application rejection', asyn
 });
 
 test('compiled Model source snapshots and default artifact layout retain their contracts', async () => {
-  const compiled = await loadDistModule<
-    typeof import('../src/lib/lifecyclemodel-resulting-process.js')
-  >('src/lib/lifecyclemodel-resulting-process.js');
+  const compiled = await loadDistModule<typeof import('../src/lib/model/resulting-process.js')>(
+    'src/lib/model/resulting-process.js',
+  );
   const input = { lifeCycleModelDataSet: { exact: 'snapshot' } };
   const selected = compiled.__testInternals.loadSourceModel({
     source_model: { json_ordered: input },

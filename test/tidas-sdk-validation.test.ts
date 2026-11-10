@@ -8,7 +8,7 @@ import {
   validationIssues,
   validationSucceeded,
   type SdkValidationFactory,
-} from '../src/lib/tidas-sdk-validation.js';
+} from '../src/lib/validation/tidas-sdk-validation.js';
 
 test('tidas sdk validation helpers keep schema success on the fast path', () => {
   let factoryCalls = 0;

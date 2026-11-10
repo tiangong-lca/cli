@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { withBatchRunLock } from '../../batch.js';
+import { withBatchRunLock } from '../locks/run-lock.js';
 import { contentHash, hashRuntimeFile, runtimeError } from './files.js';
 import { assertTrustedManifest, componentKey } from './manifest.js';
 import { assertRuntimeHost, inspectRuntimeHost } from './host.js';

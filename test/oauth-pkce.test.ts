@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CliError } from '../src/shared/errors.js';
-import type { FetchLike, ResponseLike } from '../src/lib/http.js';
+import type { FetchLike, ResponseLike } from '../src/lib/transport/http.js';
 import {
   __testInternals,
   buildOAuthAuthorizationUrl,
@@ -10,7 +10,7 @@ import {
   fetchOAuthUserInfo,
   refreshOAuthTokens,
   requireOAuthClientId,
-} from '../src/lib/oauth-pkce.js';
+} from '../src/lib/auth/oauth-pkce.js';
 import { loadDistModule } from './helpers/load-dist-module.js';
 
 const CLIENT_ID = '123e4567-e89b-42d3-a456-426614174000';
@@ -400,8 +400,9 @@ test('OAuth UserInfo verifies server identity and never accepts a missing token'
 });
 
 test('OAuth PKCE protocol behaves identically from the built runtime', async () => {
-  const built =
-    await loadDistModule<typeof import('../src/lib/oauth-pkce.js')>('src/lib/oauth-pkce.js');
+  const built = await loadDistModule<typeof import('../src/lib/auth/oauth-pkce.js')>(
+    'src/lib/auth/oauth-pkce.js',
+  );
   assert.equal(built.requireOAuthClientId(CLIENT_ID), CLIENT_ID);
   const values = built.createOAuthPkceValues((size) => new Uint8Array(size).fill(9));
   assert.match(

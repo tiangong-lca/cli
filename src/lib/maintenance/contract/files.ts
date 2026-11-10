@@ -1,4 +1,4 @@
-import { sha256Text, stableJsonText } from '../../canonical-json-hash.js';
+import { sha256Text, stableJsonText } from '../../platform/canonical-json-hash.js';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { CliError } from '../../../shared/errors.js';

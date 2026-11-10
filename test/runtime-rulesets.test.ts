@@ -4,7 +4,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { __testInternals, getVerifiedPublicRuleSelection } from '../src/lib/runtime-rulesets.js';
+import {
+  __testInternals,
+  getVerifiedPublicRuleSelection,
+} from '../src/lib/validation/runtime-rulesets.js';
 
 test('runtime rule source loader verifies paths, hashes, and index identity', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'cli-public-rules-'));

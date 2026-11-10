@@ -1,20 +1,20 @@
-import type { DotEnvLoadResult } from '../lib/dotenv.js';
-import type { FetchLike } from '../lib/http.js';
+import type { DotEnvLoadResult } from '../lib/config/dotenv.js';
+import type { FetchLike } from '../lib/transport/http.js';
 import type {
   inspectSupabaseAuthStatus,
   loginWithSupabaseOAuth,
   logoutSupabaseUserSession,
-} from '../lib/supabase-session.js';
+} from '../lib/auth/supabase-session.js';
 import type {
   AuthIdentityReceipt,
   RunAuthIdentityReceiptOptions,
-} from '../lib/auth-identity-receipt.js';
-import type { LcaReleaseReport, RunLcaReleaseOptions } from '../lib/lca-release.js';
-import type { RunValidationOptions, ValidationRunReport } from '../lib/validation.js';
+} from '../lib/auth/auth-identity-receipt.js';
+import type { LcaReleaseReport, RunLcaReleaseOptions } from '../lib/release/lca-release.js';
+import type { RunValidationOptions, ValidationRunReport } from '../lib/validation/validation.js';
 import type {
   DatasetImportLcaReport,
   RunDatasetImportLcaConvertOptions,
-} from '../lib/dataset-import-lca.js';
+} from '../lib/dataset/import-lca.js';
 import type {
   DatasetClassificationApplyReport,
   DatasetClassificationAuditReport,
@@ -24,31 +24,15 @@ import type {
   RunDatasetClassificationAuditOptions,
   RunDatasetClassificationChildrenOptions,
   RunDatasetClassificationPathOptions,
-} from '../lib/dataset-classification.js';
+} from '../lib/dataset/classification.js';
 import type {
   DatasetMaintenanceClearAccountReport,
   RunDatasetMaintenanceClearAccountOptions,
-} from '../lib/dataset-maintenance-clear-account.js';
-import type { runDatasetMaintenancePlan } from '../lib/dataset-maintenance-plan.js';
-import type { runDatasetMaintenanceApply } from '../lib/dataset-maintenance-apply.js';
-import type { freezeDatasetMaintenanceProtected } from '../lib/dataset-maintenance-protected-freeze.js';
-import type {
-  DatasetMaintenanceProtectedReport,
-  RunDatasetMaintenanceProtectedOptions,
-} from '../lib/dataset-maintenance-protected-run.js';
-import type { AliasV2ProtectedReport } from '../lib/dataset-alias-v2-protected.js';
-import type { sealDatasetMaintenanceProtectedApproval } from '../lib/dataset-maintenance-protected-seal.js';
-import type { runDatasetMaintenanceVerify } from '../lib/dataset-maintenance-verify.js';
-import type { runFlowIdentityPlanFromFiles } from '../lib/dataset-maintenance-flow-identity-command.js';
-import type { captureFlowIdentity } from '../lib/dataset-maintenance-flow-identity-capture.js';
-import type { freezeFlowIdentity } from '../lib/dataset-maintenance-flow-identity-freeze.js';
-import type { sealFlowIdentityApproval } from '../lib/dataset-maintenance-flow-identity-seal.js';
-import type {
-  freezeFlowIdentityRecovery,
-  sealFlowIdentityRecoveryApproval,
-} from '../lib/dataset-maintenance-flow-identity-recovery.js';
-import type { runFlowIdentity } from '../lib/dataset-maintenance-flow-identity-run.js';
-import type { verifyFlowIdentity } from '../lib/dataset-maintenance-flow-identity-verify.js';
+} from '../lib/maintenance/clear-account.js';
+import type { runDatasetMaintenancePlan } from '../lib/maintenance/plan.js';
+import type { runDatasetMaintenanceApply } from '../lib/maintenance/apply.js';
+
+import type { runDatasetMaintenanceVerify } from '../lib/maintenance/verify.js';
 
 export type CliDeps = {
   env: NodeJS.ProcessEnv;
@@ -82,20 +66,7 @@ export type CliDeps = {
   ) => Promise<DatasetMaintenanceClearAccountReport>;
   runDatasetMaintenancePlanImpl?: typeof runDatasetMaintenancePlan;
   runDatasetMaintenanceApplyImpl?: typeof runDatasetMaintenanceApply;
-  freezeDatasetMaintenanceProtectedImpl?: typeof freezeDatasetMaintenanceProtected;
-  runDatasetMaintenanceProtectedImpl?: (
-    options: RunDatasetMaintenanceProtectedOptions,
-  ) => Promise<DatasetMaintenanceProtectedReport | AliasV2ProtectedReport>;
-  sealDatasetMaintenanceProtectedApprovalImpl?: typeof sealDatasetMaintenanceProtectedApproval;
   runDatasetMaintenanceVerifyImpl?: typeof runDatasetMaintenanceVerify;
-  runFlowIdentityPlanFromFilesImpl?: typeof runFlowIdentityPlanFromFiles;
-  captureFlowIdentityImpl?: typeof captureFlowIdentity;
-  freezeFlowIdentityImpl?: typeof freezeFlowIdentity;
-  sealFlowIdentityApprovalImpl?: typeof sealFlowIdentityApproval;
-  freezeFlowIdentityRecoveryImpl?: typeof freezeFlowIdentityRecovery;
-  sealFlowIdentityRecoveryApprovalImpl?: typeof sealFlowIdentityRecoveryApproval;
-  runFlowIdentityImpl?: typeof runFlowIdentity;
-  verifyFlowIdentityImpl?: typeof verifyFlowIdentity;
 };
 
 export type CliResult = {

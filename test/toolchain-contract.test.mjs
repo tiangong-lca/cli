@@ -1424,7 +1424,9 @@ function assertModuleHostBehavior(consumerRoot, compilerRoot, expectedVersion) {
   });
   writeFileSync(
     deepAuthHostPath,
-    [`await import('${PACKAGE_JSON.name}/dist/src/lib/auth-identity-receipt.js');`, ''].join('\n'),
+    [`await import('${PACKAGE_JSON.name}/dist/src/lib/auth/auth-identity-receipt.js');`, ''].join(
+      '\n',
+    ),
     { encoding: 'utf8', flag: 'wx' },
   );
   writeFileSync(
@@ -1565,6 +1567,11 @@ function assertPackedFiles(fileMetadata) {
       /(?:^|\/)(?:package-lock\.json|pnpm-lock\.ya?ml)$/u.test(path),
   );
 
+  assert.deepEqual(
+    packedFiles.filter((file) => /^dist\/src\/lib\/[^/]+\.(?:js|d\.ts)(?:\.map)?$/u.test(file)),
+    [],
+    'Internal helpers must ship under their capability owner, without flat compatibility copies',
+  );
   const retired = readJson(join(REPOSITORY_ROOT, 'test/fixtures/retired-cli-modules.json'));
   const retiredFiles = packedFiles.filter((file) =>
     retired.some((stem) => file.startsWith(`${stem}.`)),

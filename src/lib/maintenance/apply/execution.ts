@@ -1,5 +1,6 @@
+import { POSITIVE_INTEGER_TEXT } from './base.js';
 import { CliError } from '../../../shared/errors.js';
-import { sha256Json } from '../../canonical-json-hash.js';
+import { sha256Json } from '../../platform/canonical-json-hash.js';
 import { snapshotRemoteRow } from '../contract/values.js';
 import { writeImmutableJson } from '../contract/files.js';
 import type {
@@ -15,7 +16,7 @@ import {
   parseDerivativeSnapshotResponse,
   parseDerivativeSubmitResponse,
   type DatasetMaintenanceDerivativeSubmitProof,
-} from '../../dataset-maintenance-derivatives.js';
+} from '../derivatives.js';
 import {
   applyMaintenanceDerivativeRebuild,
   deleteMaintenanceRow,
@@ -23,12 +24,11 @@ import {
   fetchMaintenanceExactRows,
   saveDraftMaintenanceRow,
   type DatasetMaintenanceRemoteContext,
-} from '../../dataset-maintenance-remote.js';
+} from '../remote.js';
 import {
   type ParallelDeleteExecutionState,
   type ProgressState,
   type DerivativeAdmissionAttempt,
-  POSITIVE_INTEGER_TEXT,
   errorMessage,
   ABSENT_READBACK_SHA256,
   parallelDeleteDesiredSha256,
@@ -123,12 +123,6 @@ export async function executeAction(options: {
       afterSha256: readbackSnapshot.row_sha256,
       remoteResultSha256: sha256Json(remoteResult),
     };
-  }
-  if (options.action.action === 'update_json_ordered') {
-    throw new CliError('Atomic alias actions must execute through the whole-plan RPC.', {
-      code: 'DATASET_MAINTENANCE_ALIAS_SEQUENTIAL_WRITE_FORBIDDEN',
-      exitCode: 1,
-    });
   }
   if (options.action.action !== 'delete') {
     throw new CliError(`Unsupported maintenance action: ${options.action.action}`, {

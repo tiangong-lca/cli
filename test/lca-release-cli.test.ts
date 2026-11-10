@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { executeCli } from '../src/cli.js';
-import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
-import type { FetchLike } from '../src/lib/http.js';
-import type { LcaReleaseReport, RunLcaReleaseOptions } from '../src/lib/lca-release.js';
+import type { DotEnvLoadResult } from '../src/lib/config/dotenv.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
+import type { LcaReleaseReport, RunLcaReleaseOptions } from '../src/lib/release/lca-release.js';
 import { buildSupabaseTestEnv } from './helpers/supabase-auth.js';
 
 const dotEnvStatus: DotEnvLoadResult = {

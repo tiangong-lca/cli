@@ -10,8 +10,8 @@ import {
   runDatasetClassificationAudit,
   runDatasetClassificationChildren,
   runDatasetClassificationPath,
-} from '../src/lib/dataset-classification.js';
-import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
+} from '../src/lib/dataset/classification.js';
+import type { DotEnvLoadResult } from '../src/lib/config/dotenv.js';
 
 const dotEnvStatus: DotEnvLoadResult = {
   loaded: false,

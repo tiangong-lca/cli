@@ -1,7 +1,7 @@
 import { datasetTables, editableTypes, object, text } from '../application/dataset-types.js';
 import { listContentReferences, contentDigest } from '../application/dataset-content.js';
 import { CommandInputError } from '../shared/command-result.js';
-import type { FetchLike } from '../lib/http.js';
+import type { FetchLike } from '../lib/transport/http.js';
 import { reviewReader } from './review-read.js';
 import { datasetReader } from './dataset-read.js';
 

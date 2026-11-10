@@ -8,12 +8,12 @@ import {
   __testInternals as classificationInternals,
   runDatasetClassificationApply,
   runDatasetClassificationAudit,
-} from '../src/lib/dataset-classification.js';
+} from '../src/lib/dataset/classification.js';
 
 import {
   __testInternals as maintenanceInternals,
   runDatasetMaintenanceClearAccount,
-} from '../src/lib/dataset-maintenance-clear-account.js';
+} from '../src/lib/maintenance/clear-account.js';
 
 import {
   buildSupabaseTestEnv,

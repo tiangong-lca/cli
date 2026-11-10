@@ -1,5 +1,5 @@
 import { parseArgs } from 'node:util';
-import type { FetchLike } from '../../lib/http.js';
+import type { FetchLike } from '../../lib/transport/http.js';
 import { runRuntimeExecCommand } from './exec-command.js';
 import { runManagedRuntimeCommand } from './managed-command.js';
 import { CliError } from '../../shared/errors.js';

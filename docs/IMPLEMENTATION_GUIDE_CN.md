@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
-lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -48,7 +48,7 @@ related:
 | 共享       | `src/shared/`                   | 小型结果、文件、模板设施。                       |
 | 已有实现   | `src/lib/`                      | 当前能力复用的领域算法、授权和专用协议。         |
 
-依赖从组合流向命令、业务与适配。业务层不导入 argv、文件或网络 API。Auth 服务、Release、admin、包工具、分类维护和受保护维护分模块承载，不回填到主入口。代码文件原则上不超过 1000 行；按职责拆分，不压缩代码凑行数。
+依赖从组合流向命令、业务与适配。业务层不导入 argv、文件或网络 API。Auth 服务、Release、admin、包工具、分类维护和普通维护分模块承载，不回填到主入口。代码文件原则上不超过 1000 行；按职责拆分，不压缩代码凑行数。
 
 ## 数据业务
 
@@ -56,7 +56,7 @@ Dataset 按八种类型的能力表开放命令：Flow、Process、Model、Sourc
 
 查询通过同一类型入口使用精确身份、明确的 latest 选择、分页和引用位置清单。`list-references` 是本地引用发现，目标是否存在由 get 确认；关系有效性由 validate 检查。patch 和翻译应用产生候选内容，save 读取显式写入请求，二者不互相代替。
 
-Flow 参考属性规则由纯模块 `src/lib/flow-reference-properties.ts` 统一实现，供类型化业务校验、create/save 准入、维护计划与新写入前检、维护保存和整包校验复用。规则遵循随包公共规则来源，按唯一内部 ID 解析指针，以精确十进制判断参考因子等于 1，并检查全部因子为有限正数。诊断保留字段路径；模块不修正数据或编排工作流。既有成功记录的恢复仍只核对原结果，不重新派发历史写入。
+Flow 参考属性规则由纯模块 `src/lib/validation/flow-reference-properties.ts` 统一实现，供类型化业务校验、create/save 准入、维护计划与新写入前检、维护保存和整包校验复用。规则遵循随包公共规则来源，按唯一内部 ID 解析指针，以精确十进制判断参考因子等于 1，并检查全部因子为有限正数。诊断保留字段路径；模块不修正数据或编排工作流。既有成功记录的恢复仍只核对原结果，不重新派发历史写入。
 
 Unit Group 内部 ID 与参考单位关系检查由纯校验器同时接入类型入口和包校验。Source 附件字段不参与数据集引用清单。Review 在调用业务端口前验证输入/输出文件分离，文件写出时仍检查同一文件及硬链接，避免输出覆盖请求。
 
@@ -76,20 +76,20 @@ Review 适配已有业务语义：一个起始对象、服务端默认关联、�
 
 核心业务 JSON 包含真实结果、完整性、警告及有界下一步建议。`nextActions` 只包含说明与可选完整命令；`replyTemplate` 为包内 Markdown 路径。模板丢失不改变业务事实，不触发业务重试。Auth 回执本体及其公共解析协议保留；Doctor 区分本地观察和显式在线健康检查。
 
-旧 `search/flow/process/lifecyclemodel/qa/publish` 与通用 Dataset 兼容入口已删除，没有隐藏路由或自动转接。调用方按真实能力组合原子操作，Release 后独立采用新版本。受保护维护、Study、分类维护、Release、admin、runtime/PCR、文件包工具及四个公共库子路径保留自身协议。
+旧 `search/flow/process/lifecyclemodel/qa/publish` 与通用 Dataset 兼容入口已删除，没有隐藏路由或自动转接。调用方按真实能力组合原子操作，Release 后独立采用新版本。普通维护、Study、分类维护、Release、admin、runtime/PCR、文件包工具及四个公共库子路径保留自身协议。
 
 [已有安全约束](agents/existing-runtime-contract.md)、[精确引用](agents/exact-reference-intent-contract.md)、[Study](agents/study-cli-contract.md)、[runtime](agents/runtime-distribution-contract.md) 与 [PCR](agents/pcr-snapshot-contract.md) 各自维护协议细节。保留当前适配器和专用协议实际依赖的算法与恢复设施。已退役工作流及其专属日志只能由匹配的历史版本解释，不新增公共深层 API。
 
 ## 环境选择
 
-具体配置由 `.env.example` 和 `src/lib/env.ts` 维护；以下只区分是否需要远程身份，不复制环境实例值。
+具体配置由 `.env.example` 和 `src/lib/config/env.ts` 维护；以下只区分是否需要远程身份，不复制环境实例值。
 
 | 命令组 | 必需 env |
 | --- | --- |
 | 本地 Dataset 内容处理、doctor、runtime describe | 不要求远程凭据；runtime 不加载项目 `.env`。 |
 | 交互 Auth 与远程 Dataset/Review | 官方公共配置可用默认值，用户通过 OAuth 建立会话；自定义目标要求完整且匹配的配置。 |
 | Headless 远程操作 | 显式 API 目标、publishable key、access-token 模式及短期令牌，只从获准环境或秘密边界注入。 |
-| Release、Study、runtime/PCR 执行与专项维护 | 按各自契约检查额外配置、权限与输入；安装不代表授权。 |
+| Release、Study、runtime/PCR 执行与普通维护 | 按各自契约检查额外配置、权限与输入；安装不代表授权。 |
 
 ## 验证
 

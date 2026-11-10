@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { executeCli } from '../src/cli.js';
 import { CliError } from '../src/shared/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import {
   selectLoopbackAuthDiagnostic,
   runLoopbackAuthDiagnostic,
-} from '../src/lib/study-transport.js';
-import { AUTH_IDENTITY_MAX_TIMEOUT_MS } from '../src/lib/auth-identity-receipt.js';
+} from '../src/lib/study/transport.js';
+import { AUTH_IDENTITY_MAX_TIMEOUT_MS } from '../src/lib/auth/auth-identity-receipt.js';
 import { buildSupabaseTestEnv } from './helpers/supabase-auth.js';
 
 const ACTOR = '11111111-1111-4111-8111-111111111111',

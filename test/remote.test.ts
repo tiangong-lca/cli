@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { executeRemoteCommand, getRemoteCommandHelp } from '../src/lib/remote.js';
+import { executeRemoteCommand, getRemoteCommandHelp } from '../src/lib/transport/remote.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,

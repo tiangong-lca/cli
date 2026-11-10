@@ -6,10 +6,10 @@ import {
 } from '../application/dataset-types.js';
 import { CommandInputError } from '../shared/command-result.js';
 import { datasetReader } from './dataset-read.js';
-import { resolveDatasetCommandTransport } from '../lib/dataset-command.js';
-import { fetchCurrentUser } from '../lib/auth-identity-receipt.js';
+import { resolveDatasetCommandTransport } from '../lib/dataset/command.js';
+import { fetchCurrentUser } from '../lib/auth/auth-identity-receipt.js';
 import { calculateStatistics as summarizeObservedProcesses } from '../lib/process-statistics/summary.js';
-import type { FetchLike } from '../lib/http.js';
+import type { FetchLike } from '../lib/transport/http.js';
 
 export async function processStatistics(
   request: JsonObject,

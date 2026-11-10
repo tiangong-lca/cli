@@ -40,8 +40,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
-lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -79,7 +79,7 @@ The workspace AGENTS.md governs delivery, branch policy and integration. Resolve
 | `src/application/` | Atomic business operations and typed ports; no argv, filesystem or network transport. |
 | `src/adapters/` | Implement ports using existing auth, data access and validation helpers. |
 | `src/shared/` | Small reusable result, file and reply-template facilities; no domain workflow. |
-| `src/lib/` | Protocol, scientific and data helpers; command argument/help handling belongs to `src/commands/`, including retained specialized commands. |
+| `src/lib/` | Protocol, scientific and data helpers; command argument/help handling belongs to `src/commands/`, with capability owners in dedicated subdirectories. |
 | `assets/reply-templates/` | Markdown guidance included in installed packages. |
 | `test/` | Behavioral, adapter, architecture and installation tests. |
 | `docs/interfaces/` | Final target interface design, not progress logs. |
@@ -113,11 +113,13 @@ A missing template never changes business facts or repeats an operation. Declare
 ## Runtime safeguards
 
 - `create` and `save` remain distinct intentions; conflicts and missing targets never trigger an upsert. Unknown mutations are readback-only without a proven idempotency contract.
-- Never broaden current-user RLS, actor/environment binding, exact references or protected maintenance authorization. CLI carries no service-role credential and performs no raw database mutation fallback.
+- Never broaden current-user RLS, actor/environment binding, exact references or ordinary maintenance authorization. CLI carries no service-role credential and performs no raw database mutation fallback.
 - Preserve OAuth/PKCE, private session storage, credential redaction, identity receipts, run locks and bounded batch recovery. Credentials never enter argv, logs, templates or results.
 - Reuse scientific rules from their owners. Missing evidence and unsupported calculations remain explicit; AI-facing convenience must not invent numerical facts.
 - Keep the four public library subpaths and their consumers intact. New internal directories are not package exports. Application use cases own Dataset/Review preconditions and acknowledgment interpretation; adapters own authentication, transport and private journal IO. Commands derive continuations from returned facts. Common journal storage never decides replay or readback policy.
 - Release commands and runtime/PCR child-process protocols retain their current contracts. Downstream adoption belongs to later, independent work after CLI release.
+
+Alias, Length×time and Flow-identity repair workflows are outside the CLI. Do not restore their entrypoints or reinterpret their historical plans through ordinary maintenance. Generic maintenance and scientific validation keep their existing safeguards. Batch scheduling remains a public library API; core commands consume shared concurrency primitives directly.
 
 Detailed existing command and runtime invariants are in [existing runtime safeguards](docs/agents/existing-runtime-contract.md). Specialized [Study](docs/agents/study-cli-contract.md), [exact-reference](docs/agents/exact-reference-intent-contract.md), [runtime](docs/agents/runtime-distribution-contract.md) and [PCR](docs/agents/pcr-snapshot-contract.md) contracts continue to govern their retained paths.
 

@@ -2,11 +2,11 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { requireContent, object, type JsonObject } from '../application/dataset-types.js';
 import { contentDigest, listContentReferences } from '../application/dataset-content.js';
-import { datasetIdentity, unwrapDatasetPayload } from '../lib/dataset-local.js';
+import { datasetIdentity, unwrapDatasetPayload } from '../lib/dataset/local.js';
 import { datasetReader } from './dataset-read.js';
 import { resolveRequestFile } from './model-input.js';
 import { CommandInputError } from '../shared/command-result.js';
-import type { FetchLike } from '../lib/http.js';
+import type { FetchLike } from '../lib/transport/http.js';
 
 export async function stageModelProcesses(
   sources: JsonObject,

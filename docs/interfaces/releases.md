@@ -32,4 +32,4 @@ tiangong-lca release artifact-download --artifact-id <artifact-id> --output rele
 
 Dataset 负责数据集内容；Review 负责单对象或审核包的提交、重新提交及审核单处理；Release 负责数据产品发布。数据保存、审核决定和产品发布是不同的业务结果。本轮对象类型补全不调整 Release 与服务端之间的既有协议。
 
-现有行为及约束见[架构说明](../agents/repo-architecture.md#lcilcia-data-release-transport)、[命令入口](../../src/cli.ts)和 [Release 适配器](../../src/lib/lca-release.ts)。
+现有行为及约束见[架构说明](../agents/repo-architecture.md#lcilcia-data-release-transport)、[命令入口](../../src/cli.ts)和 [Release 适配器](../../src/lib/release/lca-release.ts)。

@@ -6,12 +6,9 @@ import test from 'node:test';
 import {
   __testInternals as applyInternals,
   runDatasetMaintenanceApply,
-} from '../src/lib/dataset-maintenance-apply.js';
-import {
-  computePlanSha256,
-  parseMaintenancePlan,
-} from '../src/lib/dataset-maintenance-contract.js';
-import { sha256Json, sha256Text } from '../src/lib/canonical-json-hash.js';
+} from '../src/lib/maintenance/apply.js';
+import { computePlanSha256, parseMaintenancePlan } from '../src/lib/maintenance/contract.js';
+import { sha256Json, sha256Text } from '../src/lib/platform/canonical-json-hash.js';
 import { parseMaintenanceScope } from '../src/lib/maintenance/contract/scope.js';
 import { readJsonLinesIfPresent } from '../src/lib/maintenance/contract/files.js';
 import {
@@ -25,19 +22,19 @@ import {
   parseDerivativeSnapshotResponse,
   parseDerivativeStatusResponse,
   parseDerivativeSubmitResponse,
-} from '../src/lib/dataset-maintenance-derivatives.js';
-import { runDatasetMaintenancePlan } from '../src/lib/dataset-maintenance-plan.js';
+} from '../src/lib/maintenance/derivatives.js';
+import { runDatasetMaintenancePlan } from '../src/lib/maintenance/plan.js';
 import {
   applyMaintenanceDerivativeRebuild,
   fetchMaintenanceDerivativeSnapshot,
   readMaintenanceDerivativeRebuild,
   resolveMaintenanceRemoteContext,
-} from '../src/lib/dataset-maintenance-remote.js';
+} from '../src/lib/maintenance/remote.js';
 import {
   __testInternals as verifyInternals,
   runDatasetMaintenanceVerify,
-} from '../src/lib/dataset-maintenance-verify.js';
-import type { FetchLike, ResponseLike } from '../src/lib/http.js';
+} from '../src/lib/maintenance/verify.js';
+import type { FetchLike, ResponseLike } from '../src/lib/transport/http.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,

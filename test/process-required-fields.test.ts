@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   collectProcessPlaceholderIssues,
   collectProcessRequiredFieldIssues,
-} from '../src/lib/process-required-fields.js';
+} from '../src/lib/validation/process-required-fields.js';
 test('process required field issue collector detects missing and invalid annual volumes', () => {
   const validRequiredStructures = {
     validation: {

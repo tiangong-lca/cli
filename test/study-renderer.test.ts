@@ -14,7 +14,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CliError } from '../src/shared/errors.js';
-import { studyDigest } from '../src/lib/study-protocol.js';
+import { studyDigest } from '../src/lib/study/protocol.js';
 import {
   assertStudyRenderer,
   admitStudyRendererCandidate,
@@ -25,8 +25,8 @@ import {
   STUDY_RENDERER_ARCHIVE_SHA256,
   STUDY_RENDERER_CANDIDATE_ENV,
   STUDY_RENDERER_MANIFEST_SHA256,
-} from '../src/lib/study-renderer.js';
-import { importStudyModule } from '../src/lib/study-codec.js';
+} from '../src/lib/study/renderer.js';
+import { importStudyModule } from '../src/lib/study/codec.js';
 import { exportEnvironment, exportView } from './helpers/study-export-fixture.js';
 
 function fails(run: () => unknown, code: string) {
@@ -141,8 +141,8 @@ test('Renderer ABI, layout and explicit development policy cannot select arbitra
     fails(() => assertStudyRenderer(value), 'STUDY_RENDERER_INVALID');
   const root = mkdtempSync(path.join(os.tmpdir(), 'study-renderer-layout-'));
   try {
-    const source = pathToFileURL(path.join(root, 'src/lib/study-renderer.ts')).href;
-    const built = pathToFileURL(path.join(root, 'dist/src/lib/study-renderer.js')).href;
+    const source = pathToFileURL(path.join(root, 'src/lib/study/renderer.ts')).href;
+    const built = pathToFileURL(path.join(root, 'dist/src/lib/study/renderer.js')).href;
     fails(() => studyRendererRoot(source), 'STUDY_RENDERER_MISSING');
     const assets = path.join(root, 'assets/study-renderer/v1');
     mkdirSync(path.join(assets, 'package'), { recursive: true });
@@ -296,9 +296,9 @@ test('Renderer2 is a separately pinned profile and never widens the original ren
     STUDY_V2_RENDERER_ARCHIVE_SHA256,
     STUDY_V2_RENDERER_MANIFEST_SHA256,
     STUDY_V2_RENDERER_CANDIDATE_ENV,
-  } = await import('../src/lib/study-renderer.js');
+  } = await import('../src/lib/study/renderer.js');
   const root = studyRendererRoot(
-    new URL('../src/lib/study-renderer.ts', import.meta.url).href,
+    new URL('../src/lib/study/renderer.ts', import.meta.url).href,
     'v2',
   );
   assert(root.endsWith(path.join('assets', 'study-renderer', 'v2')));
@@ -343,8 +343,8 @@ test('Renderer2 is a separately pinned profile and never widens the original ren
 test('Renderer2 layout selection does not fall back to an existing v1 directory', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'study-renderer-v2-layout-'));
   try {
-    const source = pathToFileURL(path.join(root, 'src/lib/study-renderer.ts')).href;
-    const built = pathToFileURL(path.join(root, 'dist/src/lib/study-renderer.js')).href;
+    const source = pathToFileURL(path.join(root, 'src/lib/study/renderer.ts')).href;
+    const built = pathToFileURL(path.join(root, 'dist/src/lib/study/renderer.js')).href;
     const old = path.join(root, 'assets/study-renderer/v1/package');
     mkdirSync(old, { recursive: true });
     writeFileSync(path.join(old, 'manifest.json'), '{}');

@@ -15,9 +15,9 @@ checkPaths:
   - test/live-oauth-harness.test.ts
   - package.json
   - test/toolchain-contract.test.mjs
-lastReviewedAt: 2026-11-09
-lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
-lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 related:
   - repo-validation.md
   - repo-architecture.md
@@ -52,7 +52,7 @@ This driver reads identity only and does not mutate business data. OAuth login i
 
 Missing credentials, browser dependencies, CAPTCHA/MFA, rejected login, network failure or a timeout are environment/service evidence, never a product RED. Preserve a genuine failing product case before its implementation change, then rerun the same case after the fix and after refactoring. Record private evidence locations locally and publish only redacted conclusions in the tracked task. Workspace #980 owns the later Foundry boundary RED/GREEN, business draft and no-replay cases.
 
-## Owner-draft LifecycleModel bundle qualification
+## Owner-draft Model bundle qualification
 
 The read-only `live:oauth` driver remains unchanged. A Production LifecycleModel write qualification is a separate, explicitly authorized maintainer case using its isolated OAuth session and a new private case directory outside Git. The operator must supply a disposable, schema-valid canonical LifecycleModel fixture whose identity is reserved for that case; neither the fixture nor its identifiers may enter a public Issue, PR, command log, or repository file.
 
@@ -61,8 +61,8 @@ Before any dataset mutation, verify that the JWT client matches the bundled offi
 The case order is fixed:
 
 1. Confirm the fixture identity is absent from the authenticated user's visible scope.
-2. Run `lifecyclemodel save-draft --commit` to create it, then read back the exact ID/version, current user, `state_code=0`, and canonical payload.
-3. Change one harmless fixture-owned payload field, run the same command to update it, and repeat exact owner/state/payload readback.
+2. Run `dataset model create --commit` with its explicit input to create it, then read back the exact ID/version, current user, `state_code=0`, and canonical payload.
+3. Change one harmless fixture-owned payload field, run `dataset model save --commit` with exact target and current content preconditions to update it, and repeat exact owner/state/payload readback.
 4. Delete the fixture only through the authorized actor-bound bundle path and verify exact absence.
 
 Do not retry an ambiguous mutation. Preserve the private action/readback evidence locally and publish only fixed `create_passed`, `update_passed`, `cleanup_passed`, and overall status fields. If cleanup cannot be proven, record a blocker and the private recovery location; never claim a passed disposable case with residual data.

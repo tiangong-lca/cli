@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node
 import os from 'node:os';
 import path from 'node:path';
 import { CliError } from '../src/shared/errors.js';
-import type { FetchLike, ResponseLike } from '../src/lib/http.js';
+import type { FetchLike, ResponseLike } from '../src/lib/transport/http.js';
 import {
   __testInternals,
   renderLcaReleaseReport,
@@ -13,8 +13,8 @@ import {
   type LcaReleaseAction,
   type LcaReleaseReport,
   type RunLcaReleaseOptions,
-} from '../src/lib/lca-release.js';
-import { __testInternals as sessionInternals } from '../src/lib/supabase-session.js';
+} from '../src/lib/release/lca-release.js';
+import { __testInternals as sessionInternals } from '../src/lib/auth/supabase-session.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,

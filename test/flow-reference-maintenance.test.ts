@@ -3,13 +3,13 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { __testInternals as applyInternals } from '../src/lib/dataset-maintenance-apply.js';
-import { runDatasetMaintenancePlan } from '../src/lib/dataset-maintenance-plan.js';
+import { __testInternals as applyInternals } from '../src/lib/maintenance/apply.js';
+import { runDatasetMaintenancePlan } from '../src/lib/maintenance/plan.js';
 import {
   saveDraftMaintenanceRow,
   type DatasetMaintenanceRemoteContext,
-} from '../src/lib/dataset-maintenance-remote.js';
-import { sha256Json } from '../src/lib/canonical-json-hash.js';
+} from '../src/lib/maintenance/remote.js';
+import { sha256Json } from '../src/lib/platform/canonical-json-hash.js';
 import {
   type DatasetMaintenanceRemoteRow,
   type DatasetMaintenanceProgressEntry,

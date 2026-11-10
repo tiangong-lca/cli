@@ -3,15 +3,15 @@ import os from 'node:os';
 import { executeDatasetWrite } from '../application/dataset-write.js';
 import { datasetKinds, datasetTables, type DatasetPorts } from '../application/dataset-types.js';
 import { withMutationJournal } from './private-mutation-journal.js';
-import { datasetIdentity } from '../lib/dataset-local.js';
+import { datasetIdentity } from '../lib/dataset/local.js';
 import {
   resolveDatasetCommandTransport,
   createDatasetRecord,
   saveDraftDatasetRecord,
   deleteDatasetRecord,
-} from '../lib/dataset-command.js';
-import { fetchCurrentUser } from '../lib/auth-identity-receipt.js';
-import type { FetchLike } from '../lib/http.js';
+} from '../lib/dataset/command.js';
+import { fetchCurrentUser } from '../lib/auth/auth-identity-receipt.js';
+import type { FetchLike } from '../lib/transport/http.js';
 import { datasetReader } from './dataset-read.js';
 import { qualifyDatasetWrite } from './dataset-write-checks.js';
 import { writeModelDraft } from './model-write.js';

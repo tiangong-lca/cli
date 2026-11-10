@@ -108,3 +108,22 @@ test('declaration-only operation and protocol ports have no runtime exports', as
   ])
     assert.deepEqual(Object.keys(module), []);
 });
+
+test('core CLI import closure excludes the Batch facade and scheduling implementation', () => {
+  const files = readModules(path.join(root, 'dist', 'src'), '.js');
+  const seen = new Set();
+  function visit(file) {
+    if (seen.has(file)) return;
+    seen.add(file);
+    const source = files.get(file);
+    assert.equal(typeof source, 'string', file);
+    for (const ref of imports(source))
+      if (ref.startsWith('.')) visit(path.resolve(path.dirname(file), ref));
+  }
+  visit(path.join(root, 'dist/src/main.js'));
+  assert.ok(seen.has(path.join(root, 'dist/src/lib/locks/run-lock.js')));
+  for (const file of seen) {
+    assert.notEqual(file, path.join(root, 'dist/src/batch.js'));
+    assert.ok(!file.startsWith(path.join(root, 'dist/src/lib/batch/')), file);
+  }
+});

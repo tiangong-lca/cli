@@ -3,16 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { snapshotFixture } from './helpers/pcr-snapshot.js';
-import {
-  ensurePcrSnapshot,
-  inspectPcrSnapshot,
-  defaultPcrCache,
-} from '../src/lib/pcr-snapshot-cache.js';
+import { ensurePcrSnapshot, inspectPcrSnapshot, defaultPcrCache } from '../src/lib/pcr/cache.js';
 import {
   selectPublishedSnapshot,
   publishedVersions,
   metadataBytes,
-} from '../src/lib/pcr-snapshot-release.js';
+} from '../src/lib/pcr/release.js';
 import { runPcrCommand } from '../src/commands/pcr.js';
 import {
   inspectPcrTool,
@@ -21,7 +17,7 @@ import {
   executePinnedPcr,
   pcrIntegrityVerified,
   verifyPinnedPcrIntegrity,
-} from '../src/lib/pcr-snapshot-tool.js';
+} from '../src/lib/pcr/tool.js';
 import {
   parsePin,
   parseJson,
@@ -40,11 +36,11 @@ import {
   AUDITED_HISTORICAL_CONTENT,
   HISTORICAL_CONTENT_COMPATIBILITY,
   isAuditedHistoricalContent,
-} from '../src/lib/pcr-snapshot-contract.js';
+} from '../src/lib/pcr/contract.js';
 import { executeCli } from '../src/cli.js';
 import { main } from '../src/main.js';
 import Module, { syncBuiltinESMExports } from 'node:module';
-import type { FetchLike } from '../src/lib/http.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 
 test('new online task pins exact release while resume ignores newer publication; status does not create state', async (t) => {
   const f = snapshotFixture();

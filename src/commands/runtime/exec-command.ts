@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
 import { CliError } from '../../shared/errors.js';
-import type { FetchLike } from '../../lib/http.js';
+import type { FetchLike } from '../../lib/transport/http.js';
 import { loadTrustedRuntimeManifest } from '../../lib/runtime/manifest.js';
 import { executeRuntimeLaunch } from '../../lib/runtime/execute.js';
 export async function runRuntimeExecCommand(

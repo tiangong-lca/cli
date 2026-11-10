@@ -5,121 +5,11 @@ import {
   type DatasetMaintenanceOperation,
   type DatasetMaintenanceActionKind,
   DERIVATIVE_REBUILD_COMPONENTS,
-  type DatasetMaintenanceAliasDimension,
-  type DatasetMaintenanceEntityRef,
-  type DatasetMaintenanceAliasBatch,
-  type DatasetMaintenanceExchangeInstance,
   type DatasetMaintenanceScopeAction,
   type DatasetMaintenanceScope,
 } from './types.js';
 import { token, isJsonObject, maintenanceRowKey, requireToken } from './values.js';
 import { safeActionFileName } from './files.js';
-
-export function parseEntityRef(value: unknown, label: string): DatasetMaintenanceEntityRef {
-  if (!isJsonObject(value)) {
-    throw new CliError(`Maintenance scope ${label} must be an object.`, {
-      code: 'DATASET_MAINTENANCE_SCOPE_INVALID',
-      exitCode: 2,
-    });
-  }
-  return {
-    id: requireToken(value.id, `${label}.id`),
-    version: requireToken(value.version, `${label}.version`),
-  };
-}
-
-export function parseAliasBatch(value: unknown, index: number): DatasetMaintenanceAliasBatch {
-  const label = `alias_batches[${index}]`;
-  if (!isJsonObject(value) || !isJsonObject(value.source) || !isJsonObject(value.target)) {
-    throw new CliError(`Maintenance scope ${label} must include source and target objects.`, {
-      code: 'DATASET_MAINTENANCE_SCOPE_INVALID',
-      exitCode: 2,
-    });
-  }
-  const dimension = requireToken(value.dimension, `${label}.dimension`);
-  const factors: Record<DatasetMaintenanceAliasDimension, string> = {
-    time: '0.00011415525114155251',
-    length_time: '1000',
-  };
-  if (!(dimension in factors)) {
-    throw new CliError(`Unsupported alias-rewrite dimension: ${dimension}`, {
-      code: 'DATASET_MAINTENANCE_ALIAS_DIMENSION_INVALID',
-      exitCode: 2,
-    });
-  }
-  const factor = requireToken(value.factor, `${label}.factor`);
-  if (factor !== factors[dimension as DatasetMaintenanceAliasDimension]) {
-    throw new CliError(`Alias-rewrite factor does not match dimension ${dimension}.`, {
-      code: 'DATASET_MAINTENANCE_ALIAS_FACTOR_INVALID',
-      exitCode: 2,
-    });
-  }
-  return {
-    batch_id: requireToken(value.batch_id, `${label}.batch_id`),
-    dimension: dimension as DatasetMaintenanceAliasDimension,
-    factor,
-    source: {
-      unitgroup: parseEntityRef(value.source.unitgroup, `${label}.source.unitgroup`),
-      flowproperty: parseEntityRef(value.source.flowproperty, `${label}.source.flowproperty`),
-    },
-    target: {
-      unitgroup: parseEntityRef(value.target.unitgroup, `${label}.target.unitgroup`),
-      flowproperty: parseEntityRef(value.target.flowproperty, `${label}.target.flowproperty`),
-    },
-  };
-}
-
-export function parseExchangeInstance(
-  value: unknown,
-  actionIndex: number,
-  exchangeIndex: number,
-): DatasetMaintenanceExchangeInstance {
-  const label = `actions[${actionIndex}].exchange_instances[${exchangeIndex}]`;
-  if (
-    !isJsonObject(value) ||
-    typeof value.exchange_index !== 'number' ||
-    !Number.isInteger(value.exchange_index) ||
-    value.exchange_index < 0
-  ) {
-    throw new CliError(
-      `Maintenance scope ${label}.exchange_index must be a non-negative integer.`,
-      {
-        code: 'DATASET_MAINTENANCE_SCOPE_INVALID',
-        exitCode: 2,
-      },
-    );
-  }
-  const beforeExchangeSha256 = requireToken(
-    value.before_exchange_sha256,
-    `${label}.before_exchange_sha256`,
-  );
-  if (!/^[a-f0-9]{64}$/u.test(beforeExchangeSha256)) {
-    throw new CliError(`Maintenance scope ${label}.before_exchange_sha256 is invalid.`, {
-      code: 'DATASET_MAINTENANCE_SCOPE_INVALID',
-      exitCode: 2,
-    });
-  }
-  const direction = requireToken(value.direction, `${label}.direction`);
-  if (!['Input', 'Output'].includes(direction)) {
-    throw new CliError(`Maintenance scope ${label}.direction must be Input or Output.`, {
-      code: 'DATASET_MAINTENANCE_SCOPE_INVALID',
-      exitCode: 2,
-    });
-  }
-  return {
-    exchange_index: value.exchange_index as number,
-    data_set_internal_id: requireToken(value.data_set_internal_id, `${label}.data_set_internal_id`),
-    flow_id: requireToken(value.flow_id, `${label}.flow_id`),
-    flow_version: requireToken(value.flow_version, `${label}.flow_version`),
-    direction: direction as 'Input' | 'Output',
-    before_exchange_sha256: beforeExchangeSha256,
-    before_mean_amount: requireToken(value.before_mean_amount, `${label}.before_mean_amount`),
-    before_resulting_amount: requireToken(
-      value.before_resulting_amount,
-      `${label}.before_resulting_amount`,
-    ),
-  };
-}
 
 export function parseAction(
   value: unknown,
@@ -135,19 +25,16 @@ export function parseAction(
   }
   const action = requireToken(value.action, `actions[${index}].action`);
   const table = requireToken(value.table, `actions[${index}].table`);
-  if (!['save_draft', 'delete', 'update_json_ordered', 'rebuild_derivatives'].includes(action)) {
+  if (!['save_draft', 'delete', 'rebuild_derivatives'].includes(action)) {
     throw new CliError(`Unsupported maintenance action: ${action}`, {
       code: 'DATASET_MAINTENANCE_ACTION_UNSUPPORTED',
       exitCode: 2,
     });
   }
-  const aliasAction = action === 'update_json_ordered';
   const derivativeAction = action === 'rebuild_derivatives';
   const allowedTable = derivativeAction
     ? table === 'processes'
-    : aliasAction
-      ? ['flowproperties', 'flows', 'processes'].includes(table)
-      : (MAINTENANCE_MUTABLE_TABLES as readonly string[]).includes(table);
+    : (MAINTENANCE_MUTABLE_TABLES as readonly string[]).includes(table);
   if (!allowedTable) {
     throw new CliError(
       `Maintenance cannot mutate protected or unsupported dataset table: ${table}`,
@@ -157,14 +44,9 @@ export function parseAction(
       },
     );
   }
-  if (
-    (operation === 'merge-support-aliases' && !aliasAction) ||
-    (operation === 'rebuild-derivatives' && !derivativeAction) ||
-    (!['merge-support-aliases', 'rebuild-derivatives'].includes(operation) &&
-      (aliasAction || derivativeAction))
-  ) {
+  if ((operation === 'rebuild-derivatives') !== derivativeAction) {
     throw new CliError(`Maintenance operation ${operation} cannot contain ${action} actions.`, {
-      code: 'DATASET_MAINTENANCE_OPERATION_ACTION_MISMATCH',
+      code: 'DATASET_MAINTENANCE_OPERATION_UNSUPPORTED',
       exitCode: 2,
     });
   }
@@ -203,39 +85,9 @@ export function parseAction(
       },
     );
   }
-  const batchId = token(value.batch_id);
-  if (aliasAction !== Boolean(batchId)) {
-    throw new CliError(
-      aliasAction
-        ? `Maintenance alias action ${index} requires batch_id.`
-        : `Maintenance non-alias action ${index} cannot include batch_id.`,
-      {
-        code: 'DATASET_MAINTENANCE_ALIAS_BATCH_BINDING_INVALID',
-        exitCode: 2,
-      },
-    );
-  }
-  const exchangeInstances = Array.isArray(value.exchange_instances)
-    ? value.exchange_instances.map((entry, exchangeIndex) =>
-        parseExchangeInstance(entry, index, exchangeIndex),
-      )
-    : [];
-  if (
-    aliasAction &&
-    ((table === 'processes' && exchangeInstances.length === 0) ||
-      (table !== 'processes' && exchangeInstances.length > 0))
-  ) {
-    throw new CliError(
-      `Alias action ${index} exchange_instances must be non-empty only for processes.`,
-      {
-        code: 'DATASET_MAINTENANCE_ALIAS_EXCHANGE_SCOPE_INVALID',
-        exitCode: 2,
-      },
-    );
-  }
-  if (!aliasAction && 'exchange_instances' in value) {
-    throw new CliError(`Maintenance non-alias action ${index} cannot include exchange_instances.`, {
-      code: 'DATASET_MAINTENANCE_ALIAS_EXCHANGE_SCOPE_INVALID',
+  if ('batch_id' in value || 'exchange_instances' in value || 'alias_mutation' in value) {
+    throw new CliError('Specialized repair action fields are not supported.', {
+      code: 'DATASET_MAINTENANCE_ACTION_UNSUPPORTED',
       exitCode: 2,
     });
   }
@@ -265,17 +117,6 @@ export function parseAction(
       exitCode: 2,
     });
   }
-  const exchangeKeys = new Set(
-    exchangeInstances.map(
-      (entry) => `${entry.exchange_index}\u0000${entry.data_set_internal_id}\u0000${entry.flow_id}`,
-    ),
-  );
-  if (exchangeKeys.size !== exchangeInstances.length) {
-    throw new CliError(`Alias action ${index} contains duplicate exchange instances.`, {
-      code: 'DATASET_MAINTENANCE_ALIAS_EXCHANGE_SCOPE_INVALID',
-      exitCode: 2,
-    });
-  }
   const expectedBeforeSha256 = token(value.expected_before_sha256);
   if (expectedBeforeSha256 && !/^[a-f0-9]{64}$/u.test(expectedBeforeSha256)) {
     throw new CliError(`Maintenance action ${index} expected_before_sha256 is invalid.`, {
@@ -295,8 +136,6 @@ export function parseAction(
     reason_code: requireToken(value.reason_code, `actions[${index}].reason_code`),
     reason: requireToken(value.reason, `actions[${index}].reason`),
     evidence: value.evidence,
-    ...(batchId ? { batch_id: batchId } : {}),
-    ...(exchangeInstances.length ? { exchange_instances: exchangeInstances } : {}),
     ...(desiredPayloadPath ? { desired_payload_path: desiredPayloadPath } : {}),
     ...(expectedBeforeSha256 ? { expected_before_sha256: expectedBeforeSha256 } : {}),
     ...(derivativeAction ? { components: [...DERIVATIVE_REBUILD_COMPONENTS] } : {}),
@@ -315,14 +154,9 @@ export function parseMaintenanceScope(
   }
   const operation = requireToken(value.operation, 'operation');
   if (
-    ![
-      'delete',
-      'retire',
-      'redo-import',
-      'repair-references',
-      'merge-support-aliases',
-      'rebuild-derivatives',
-    ].includes(operation)
+    !['delete', 'retire', 'redo-import', 'repair-references', 'rebuild-derivatives'].includes(
+      operation,
+    )
   ) {
     throw new CliError(`Unsupported maintenance operation: ${operation}`, {
       code: 'DATASET_MAINTENANCE_OPERATION_UNSUPPORTED',
@@ -350,12 +184,11 @@ export function parseMaintenanceScope(
   );
   const targetMode = token(value.target_mode);
   if (
-    (['merge-support-aliases', 'rebuild-derivatives'].includes(operation) &&
-      targetMode !== 'owner_draft') ||
-    (!['merge-support-aliases', 'rebuild-derivatives'].includes(operation) && targetMode !== null)
+    (operation === 'rebuild-derivatives' && targetMode !== 'owner_draft') ||
+    (operation !== 'rebuild-derivatives' && targetMode !== null)
   ) {
     throw new CliError(
-      'merge-support-aliases and rebuild-derivatives require target_mode=owner_draft; other operations forbid target_mode.',
+      'rebuild-derivatives requires target_mode=owner_draft; other operations forbid target_mode.',
       {
         code: 'DATASET_MAINTENANCE_TARGET_MODE_INVALID',
         exitCode: 2,
@@ -363,20 +196,11 @@ export function parseMaintenanceScope(
       },
     );
   }
-  const aliasBatches = Array.isArray(value.alias_batches)
-    ? value.alias_batches.map(parseAliasBatch)
-    : [];
-  if (
-    (operation === 'merge-support-aliases' && aliasBatches.length !== 2) ||
-    (operation !== 'merge-support-aliases' && aliasBatches.length !== 0)
-  ) {
-    throw new CliError(
-      'merge-support-aliases requires exactly two alias_batches; other operations forbid them.',
-      {
-        code: 'DATASET_MAINTENANCE_ALIAS_BATCH_SCOPE_INVALID',
-        exitCode: 2,
-      },
-    );
+  if ('alias_batches' in value) {
+    throw new CliError('Specialized repair batches are not supported.', {
+      code: 'DATASET_MAINTENANCE_OPERATION_UNSUPPORTED',
+      exitCode: 2,
+    });
   }
   if (operation === 'rebuild-derivatives' && actions.length !== 1) {
     throw new CliError('rebuild-derivatives requires exactly one action.', {
@@ -384,25 +208,7 @@ export function parseMaintenanceScope(
       exitCode: 2,
     });
   }
-  if (aliasBatches.length) {
-    const batchIds = new Set(aliasBatches.map((batch) => batch.batch_id));
-    const dimensions = new Set(aliasBatches.map((batch) => batch.dimension));
-    if (
-      batchIds.size !== 2 ||
-      dimensions.size !== 2 ||
-      !dimensions.has('time') ||
-      !dimensions.has('length_time') ||
-      actions.some((action) => !action.batch_id || !batchIds.has(action.batch_id))
-    ) {
-      throw new CliError(
-        'Alias batches and action batch_id bindings are incomplete or duplicate.',
-        {
-          code: 'DATASET_MAINTENANCE_ALIAS_BATCH_SCOPE_INVALID',
-          exitCode: 2,
-        },
-      );
-    }
-  }
+
   const actionIds = new Set<string>();
   const rowKeys = new Set<string>();
   const payloadNames = new Set<string>();
@@ -444,7 +250,6 @@ export function parseMaintenanceScope(
     ...(sourceImportRunId ? { source_import_run_id: sourceImportRunId } : {}),
     ...('source_lineage' in value ? { source_lineage: value.source_lineage } : {}),
     ...(targetMode === 'owner_draft' ? { target_mode: targetMode } : {}),
-    ...(aliasBatches.length ? { alias_batches: aliasBatches } : {}),
     actions,
   };
 }

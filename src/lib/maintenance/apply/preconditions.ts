@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { collectRemoteReferences } from '../../dataset-remote-verify.js';
+import { collectRemoteReferences } from '../../dataset/remote-verify.js';
 import { CliError } from '../../../shared/errors.js';
-import { assertFlowReferencePropertyWriteAdmission } from '../../flow-reference-properties.js';
+import { assertFlowReferencePropertyWriteAdmission } from '../../validation/flow-reference-properties.js';
 import {
   MAINTENANCE_SCAN_TABLES,
   type DatasetMaintenancePlan,
@@ -11,19 +11,15 @@ import {
 } from '../contract/types.js';
 import { isJsonObject, maintenanceRowKey, snapshotRemoteRow } from '../contract/values.js';
 import { readJsonFile } from '../contract/files.js';
-import { sha256Json, sha256Text } from '../../canonical-json-hash.js';
-import { maintenanceProjectedReferenceFingerprint } from '../../dataset-maintenance-plan.js';
-import { isSnapshotCompletenessCompatible } from '../../dataset-maintenance-pagination.js';
-import {
-  fetchMaintenanceExactRows,
-  type DatasetMaintenanceRemoteContext,
-} from '../../dataset-maintenance-remote.js';
+import { sha256Json, sha256Text } from '../../platform/canonical-json-hash.js';
+import { maintenanceProjectedReferenceFingerprint } from '../plan.js';
+import { isSnapshotCompletenessCompatible } from '../pagination.js';
+import { type DatasetMaintenanceRemoteContext } from '../remote.js';
 import {
   GLOBAL_INBOUND_PROOF_MAX_AGE_MS,
   SHA256_PATTERN,
   type ParallelDeleteGlobalInboundProof,
   type ProgressState,
-  type AliasPlanProgressState,
   errorMessage,
   loadDesiredPayload,
 } from './base.js';
@@ -304,7 +300,7 @@ export function finalProjectedRows(options: {
 }): DatasetMaintenanceRemoteRow[] {
   const projected = new Map(options.rows.map((row) => [maintenanceRowKey(row), { ...row }]));
   for (const action of options.plan.actions.filter((entry) =>
-    ['save_draft', 'update_json_ordered'].includes(entry.action),
+    ['save_draft'].includes(entry.action),
   )) {
     const row = projected.get(maintenanceRowKey(action));
     if (row) {
@@ -327,57 +323,9 @@ export function assertApplyPreconditions(options: {
   planDir: string;
   currentRows: DatasetMaintenanceRemoteRow[];
   progress: ProgressState;
-  aliasPlanProgress?: AliasPlanProgressState;
   attemptedDeleteActionIds?: Set<string>;
 }): void {
   const current = new Map(options.currentRows.map((row) => [maintenanceRowKey(row), row]));
-  const aliasBatchStates = new Map<string, 'before' | 'desired'>();
-  for (const batch of options.plan.alias_batches ?? []) {
-    const states = batch.action_ids.map((actionId) => {
-      const action = options.plan.actions.find((entry) => entry.action_id === actionId)!;
-      const row = current.get(maintenanceRowKey(action));
-      const snapshot = row ? snapshotRemoteRow(row) : null;
-      if (
-        row?.state_code === 0 &&
-        row.user_id === action.expected_user_id &&
-        snapshot?.row_sha256 === action.before?.row_sha256
-      ) {
-        return 'before' as const;
-      }
-      if (
-        row?.state_code === 0 &&
-        row.user_id === action.expected_user_id &&
-        snapshot?.payload_sha256 === action.desired_payload?.sha256 &&
-        row.model_id === action.before?.model_id &&
-        row.rule_verification === action.before?.rule_verification
-      ) {
-        return 'desired' as const;
-      }
-      return 'invalid' as const;
-    });
-    const unique = new Set(states);
-    if (unique.size !== 1 || unique.has('invalid')) {
-      throw new CliError(`Atomic alias batch row state drifted: ${batch.batch_id}`, {
-        code: 'DATASET_MAINTENANCE_ALIAS_BATCH_DRIFT',
-        exitCode: 1,
-        details: { batch_id: batch.batch_id, states },
-      });
-    }
-    aliasBatchStates.set(batch.batch_id, states[0] as 'before' | 'desired');
-  }
-  if (aliasBatchStates.size) {
-    const planStates = new Set(aliasBatchStates.values());
-    if (
-      planStates.size !== 1 ||
-      (Boolean(options.aliasPlanProgress?.success) && !planStates.has('desired'))
-    ) {
-      throw new CliError('Atomic alias plan rows are split across dimension states.', {
-        code: 'DATASET_MAINTENANCE_ALIAS_PLAN_DRIFT',
-        exitCode: 1,
-        details: { batches: Object.fromEntries(aliasBatchStates) },
-      });
-    }
-  }
   const baselineKeys = new Set([
     ...options.plan.protected_rows.map(maintenanceRowKey),
     ...options.plan.actions.filter((action) => action.before).map(maintenanceRowKey),
@@ -433,10 +381,7 @@ export function assertApplyPreconditions(options: {
       });
     }
     const currentSnapshot = snapshotRemoteRow(currentRow);
-    if (action.action === 'update_json_ordered') {
-      aliasBatchStates.get(action.batch_id!)!;
-      continue;
-    }
+
     if (alreadySucceeded) {
       const expectedPayloadSha256 = sha256Json(loadDesiredPayload(options.planDir, action));
       if (
@@ -507,46 +452,5 @@ export function validateApprovalRecord(options: {
       code: 'DATASET_MAINTENANCE_APPROVAL_RECORD_MISMATCH',
       exitCode: 1,
     });
-  }
-}
-
-export async function assertAliasSupportSnapshots(options: {
-  plan: DatasetMaintenancePlan;
-  context: DatasetMaintenanceRemoteContext;
-}): Promise<void> {
-  if (options.plan.target_mode !== 'owner_draft') {
-    throw new CliError('Alias apply requires target_mode=owner_draft.', {
-      code: 'DATASET_MAINTENANCE_TARGET_MODE_INVALID',
-      exitCode: 2,
-    });
-  }
-  for (const batch of options.plan.alias_batches!) {
-    const snapshots = [
-      batch.target_snapshots.unitgroup!,
-      batch.target_snapshots.flowproperty!,
-      batch.target_snapshots.source_unitgroup!,
-    ];
-    for (const snapshot of snapshots) {
-      const exact = await fetchMaintenanceExactRows({
-        context: options.context,
-        table: snapshot.table,
-        id: snapshot.id,
-        version: snapshot.version,
-      });
-      const current =
-        exact.rows.length === 1 && exact.rows[0] ? snapshotRemoteRow(exact.rows[0]) : null;
-      if (
-        !current ||
-        current.user_id !== options.plan.account.user_id ||
-        current.state_code !== 0 ||
-        current.row_sha256 !== snapshot.row_sha256
-      ) {
-        throw new CliError(`Alias support row drifted for batch ${batch.batch_id}.`, {
-          code: 'DATASET_MAINTENANCE_ALIAS_SUPPORT_DRIFT',
-          exitCode: 1,
-          details: { table: snapshot.table, id: snapshot.id, version: snapshot.version },
-        });
-      }
-    }
   }
 }

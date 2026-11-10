@@ -12,7 +12,7 @@ import {
   makeSupabaseAuthResponse,
 } from './helpers/supabase-auth.js';
 import type { JsonObject } from '../src/application/dataset-types.js';
-import type { FetchLike } from '../src/lib/http.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 
 const env = buildSupabaseTestEnv({ TIANGONG_LCA_AUTH_MODE: 'access-token' });
 function setup(

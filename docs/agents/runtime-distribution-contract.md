@@ -19,8 +19,8 @@ checkPaths:
   - test/runtime-*.test.ts
   - package.json
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
-lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 related:
   - docs/agents/repo-architecture.md
   - docs/agents/repo-validation.md
@@ -59,7 +59,7 @@ The compatibility manifest must bind exact component versions, archive/content d
 
 POSIX/PowerShell bootstrap scripts are generic C1 release assets and require no Node/pnpm. Their adjacent skill-delivered `bootstrap-lock.json` separately binds script bytes, bootstrap protocol and the already published product manifest URL/digest. C1 scripts must not embed an unpublished F1 digest. Neither task input nor an environment variable can replace the trust anchor. Rosetta selection requires actual Apple Silicon hardware proof and must select native arm64; Intel Mac, Windows arm64 and Linux musl do not receive a fallback.
 
-Full release qualification requires all four supported CI hosts, no-global-Node/pnpm copied bootstrap cases, interruption/concurrency/corruption tests, exact 100% source coverage and an independently verified public C1 package. Foundry F1/component/cold-start qualification follows in its owning repository and the workspace integration task. No local routine registry publish or new credential fallback is introduced.
+Full release qualification requires all four supported CI hosts, no-global-Node/pnpm copied bootstrap cases, interruption/locks/corruption tests, exact 100% source coverage and an independently verified public C1 package. Foundry F1/component/cold-start qualification follows in its owning repository and the workspace integration task. No local routine registry publish or new credential fallback is introduced.
 
 ## Managed components and execution
 

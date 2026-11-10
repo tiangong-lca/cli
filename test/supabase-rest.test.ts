@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CliError } from '../src/shared/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import {
   deriveSupabaseRestBaseUrl,
   fetchExactOrLatestProcessRow,
   normalizeSupabaseProcessPayload,
   requireSupabaseRestRuntime,
   type SupabaseDataRuntime,
-} from '../src/lib/supabase-rest.js';
+} from '../src/lib/transport/supabase-rest.js';
 
 function jsonFetch(
   responses: unknown[],

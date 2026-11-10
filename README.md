@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
-lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 ---
 
 # TianGong LCA CLI
@@ -40,7 +40,7 @@ tiangong-lca --help --json
 | Dataset 查询与内容处理 | 八种对象按能力表提供类型入口；包含契约、精确读取、分页、引用清单、校验及可编辑对象的本地处理。 |
 | Dataset 写入与 Review | 适配现有业务服务：创建与保存分离、草稿删除、关联审核提交、当前审核查询、草稿意见及审核决定。服务边界见下文。 |
 | Model 结果生成 | `build-resulting-process` 为主命令，`aggregate` 为同实现别名；显式输入生成候选，不自动写入。 |
-| 专项与运行支撑 | 受保护维护、Study、Release、runtime/PCR、分类维护与文件包工具保留各自契约。 |
+| 专项与运行支撑 | 普通维护、Study、Release、runtime/PCR、分类维护与文件包工具保留各自契约。 |
 
 ## 安装与开始
 
@@ -115,7 +115,7 @@ Review 本次适配已有业务语义：`submit` 只接受一个起始对象，`
 
 数据业务仅通过 `dataset <type> <action>` 和 `review <action>` 访问。原 `search/flow/process/lifecyclemodel/qa/publish` 及通用 Dataset 旧入口已移除，调用会返回 `UNKNOWN_COMMAND`，不会转接或执行。旧生产编排由调用方组合原子操作；下游升级在 Release 后独立进行，不作为移除入口的前置条件。
 
-`dataset model aggregate` 是 `build-resulting-process` 的正式别名，继续保留。专项维护、Study、Release、runtime/PCR、分类维护及文件包工具保留独立契约；公共库接口与当前能力共用的规则、安全设施继续保留。已退役工作流的实现、专属测试和示例不进入当前安装包。具体清单及替代方式见[迁移对照](docs/analysis/cli-interface-comparison.md#旧入口处置与保留边界)。
+`dataset model aggregate` 是 `build-resulting-process` 的正式别名，继续保留。普通维护、Study、Release、runtime/PCR、分类维护及文件包工具保留独立契约；公共库接口与当前能力共用的规则、安全设施继续保留。已退役工作流的实现、专属测试和示例不进入当前安装包。具体清单及替代方式见[迁移对照](docs/analysis/cli-interface-comparison.md#旧入口处置与保留边界)。
 
 ## 开发与文档
 
@@ -133,3 +133,5 @@ pnpm prepush:gate
 - [能力对照](docs/analysis/cli-interface-comparison.md)：旧能力与目标入口。
 
 下游迁移在 CLI 正式 Release 后由调用方分别推进，其完成状态不作为 CLI 验收条件。
+
+`lib` 按能力划分；Alias、Length×time、Flow-identity 专项修复流程不随包提供。Batch 调度保留在 `@tiangong-lca/cli/batch` 公共库，CLI 内部直接使用共享并发锁设施。

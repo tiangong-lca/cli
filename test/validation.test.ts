@@ -10,7 +10,7 @@ import {
   resolveRepoRootFrom,
   resolveSdkModuleFromCandidates,
   runValidation,
-} from '../src/lib/validation.js';
+} from '../src/lib/validation/validation.js';
 
 const currentFilePath = fileURLToPath(import.meta.url);
 

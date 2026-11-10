@@ -5,11 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { object, type DatasetPorts } from '../application/dataset-types.js';
 import { CommandInputError } from '../shared/command-result.js';
-import { runLifecyclemodelGraph } from '../lib/lifecyclemodel-graph.js';
-import { runLifecyclemodelBuildResultingProcess } from '../lib/lifecyclemodel-resulting-process.js';
+import { runLifecyclemodelGraph } from '../lib/model/graph.js';
+import { runLifecyclemodelBuildResultingProcess } from '../lib/model/resulting-process.js';
 import { uploadSourceAttachments } from './source-attachments.js';
 import { processStatistics } from './process-statistics.js';
-import type { FetchLike } from '../lib/http.js';
+import type { FetchLike } from '../lib/transport/http.js';
 
 export function datasetOperations(
   env: NodeJS.ProcessEnv,

@@ -1,5 +1,5 @@
 import type { DatasetPorts } from '../application/dataset-types.js';
-import type { FetchLike } from '../lib/http.js';
+import type { FetchLike } from '../lib/transport/http.js';
 import { datasetReader } from './dataset-read.js';
 import { datasetSearcher } from './dataset-search.js';
 import { datasetContract, datasetValidation } from './dataset-local.js';
