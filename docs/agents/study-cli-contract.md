@@ -19,9 +19,9 @@ checkPaths:
   - assets/study-renderer/**
   - test/study-*.test.ts
   - docs/agents/study-cli-contract.md
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: 121715acb68b26e5e1ac512d59a9911fe950f244
-lastReviewedNote: 'CLI #462: reviewed exact corrected V6 facade, owner-only authored Unicode rejection before I/O/intent, valid Unicode recovery and unchanged33operations. Corrected V2, older families/renderers, dependencies and publication remain unchanged; final cohort/Main holds persist.'
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 9717d8e45665f6a1b43fe8e17e2d8953b63ad56c
+lastReviewedNote: 'CLI #472: reviewed calculation help and human output, with the stable study command, machine output, owner assets, release inputs and validation gates unchanged.'
 related:
   - ../../AGENTS.md
   - repo-architecture.md
@@ -31,6 +31,8 @@ related:
 # Study commands
 
 `tiangong-lca study` adapts Edge's authenticated `lca.study-api.v2` on `app_lca_study`. It does not run a compiler, calculate source/model/input fingerprints, resolve permissions or access Database/Storage directly. The existing Process/LifecycleModel/release commands retain their separate purposes. Core lifecycle selects v2. P2 analysis/report/export selects v3; P3 review/finalization/named sharing selects v4. No silent wire upgrade or downgrade is permitted.
+
+Help and human-readable output describe LCA calculation projects and runs. The command name, owner Study terminology in protocol fields, machine output, and historical artifact identities remain stable.
 
 ## Commands and inputs
 

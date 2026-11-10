@@ -24,6 +24,8 @@ import { runStudyExportFiles } from './study-export.js';
 
 const HELP = `Usage: tiangong-lca study <action> [--input request.json] [--json]
 
+LCA calculation projects: prepare a model, run calculations, and read results.
+
 Actions:
   capabilities | create | get | list | resources | archive | select-revision
   schema request | response --api-version 6
@@ -60,15 +62,17 @@ task wait: --wait-ms (default 30000, max 60000), --poll-ms (default 1000).
 A wait budget can return waiting:true; HTTP success is not computation completion.
 --timeout-ms defaults to 30000 (max 60000). No automatic mutation retry.
 Use auth login/status/doctor-auth for the existing configured OAuth session.
-Installing this CLI grants no Study rights or runtime activation.
-P2 analysis/report actions use v3; core lifecycle stays v2.
-P3 actions/comments/reviews/current/view/finalize/share use v4; report view returns safe JSON.
+Installing this CLI grants no project access or runtime activation.
+Calculation projects, model preparation, scenarios, runs and task status use v2.
+Use capabilities to check the available operations before starting a calculation.
+Optional analysis and reporting use v3.
+Optional actions/comments/reviews/current/view/finalize/share use v4; report view returns safe JSON.
 --api-version 4 explicitly selects v4 member/export/capability operations.
 --api-version 6 explicitly selects method evidence/assessment/report/review/share and export4/renderer3.
 Method evidence is recorded_unverified; unavailable results remain null. No scientific approval is implied.
 --api-version 5 selects advanced analysis/catalog/report/review/share/export and manifest3 verification.
 Only analysis parameters defaults to v5; existing command defaults and saved journals stay unchanged.
-V5 does not manage Study members. Canonical config strings and complete settings come from explicit input;
+V5 does not manage project members. Canonical config strings and complete settings come from explicit input;
 CLI hashes with the owner codec and never computes sensitivity or uncertainty facts.
 Review decisions require the actual server-issued bound delegation in OAuth context.
 CLI never issues first-party authority or switches credentials to obtain it.
@@ -211,7 +215,7 @@ export async function runStudyCommand(
       exitCode: 0,
       stdout: values.json
         ? `${JSON.stringify(report)}\n`
-        : `Study export verification\n${JSON.stringify(report, null, 2)}\n`,
+        : `LCA calculation export verification\n${JSON.stringify(report, null, 2)}\n`,
       stderr: '',
     };
   }
@@ -375,7 +379,7 @@ export async function runStudyCommand(
     exitCode: failedTask ? 1 : 0,
     stdout: values.json
       ? `${JSON.stringify(report)}\n`
-      : `Study ${report.operation}\n${JSON.stringify(report, null, 2)}\n`,
+      : `LCA calculation: ${report.operation}\n${JSON.stringify(report, null, 2)}\n`,
     stderr: '',
   };
 }

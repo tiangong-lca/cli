@@ -189,7 +189,8 @@ test('Study help and P2 boundaries have no network or installation side effects'
     });
     assert.equal(result.exitCode, 0);
     assert.match(result.stdout, /request recover/u);
-    assert.match(result.stdout, /no Study rights/u);
+    assert.match(result.stdout, /LCA calculation projects/u);
+    assert.match(result.stdout, /no project access/u);
   }
   for (const action of ['analysis', 'report', 'export']) {
     const result = await executeCli(['study', action, '--json'], {
@@ -901,7 +902,7 @@ test('Task polling uses bounded monotonic waits and refreshes live admission for
     dotEnvStatus: { loaded: false, path: '/unused', count: 0 },
   });
   assert.equal(human.exitCode, 0);
-  assert.match(human.stdout, /Study capability.read/u);
+  assert.match(human.stdout, /^LCA calculation: capability\.read\n/u);
 });
 
 test('Transport refuses malformed sessions, destinations and conflicting recovery or artifact output before dispatch', async () => {

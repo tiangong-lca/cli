@@ -580,7 +580,7 @@ Implemented Commands:
   doctor     show environment diagnostics
   runtime    describe | ensure | status | prune | lease-release | exec
   pcr        snapshot ensure | snapshot status | exec
-  study      capabilities | create | get | list | resources | model | revision | scenario | run | task | artifact | request
+  study      LCA calculation: projects, models, runs, and results (see study --help)
   auth       login | status | whoami | doctor-auth | logout | identity-receipt
   search     flow | process | lifecyclemodel
   process    get | list | identity-preflight | build-plan | scope-statistics | dedup-review | auto-build | resume-build | publish-build | complete-required-fields | save-draft | batch-build | refresh-references | verify-rows
