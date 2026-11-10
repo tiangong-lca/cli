@@ -1,3 +1,4 @@
+import { renderCommandHelp } from './help-text.js';
 import type { ReviewMutationAction } from '../application/review-write.js';
 import { reviewMutationContinuation } from './mutation-presentation.js';
 import { commandFailure } from '../shared/command-errors.js';
@@ -39,20 +40,20 @@ export async function runReviewCommand(
     if (action && !action.startsWith('--') && !actions.includes(action))
       throw new CommandInputError('CAPABILITY_UNSUPPORTED', 'Select a supported Review action.');
     let flags: Record<string, string | boolean | undefined>;
+    const allowed = [
+      'help',
+      'json',
+      ...(!action || action.startsWith('--')
+        ? []
+        : action === 'get'
+          ? ['id', 'output', 'force']
+          : action === 'list'
+            ? ['role', 'state', 'limit', 'cursor', 'output', 'force']
+            : action === 'materials'
+              ? ['id', 'round', 'output', 'force']
+              : ['input', 'dry-run', 'output', 'force']),
+    ];
     try {
-      const allowed = [
-        'help',
-        'json',
-        ...(!action || action.startsWith('--')
-          ? []
-          : action === 'get'
-            ? ['id', 'output', 'force']
-            : action === 'list'
-              ? ['role', 'state', 'limit', 'cursor', 'output', 'force']
-              : action === 'materials'
-                ? ['id', 'round', 'output', 'force']
-                : ['input', 'dry-run', 'output', 'force']),
-      ];
       const parsed = parseArgs({
         args: action && !action.startsWith('--') ? args.slice(1) : args,
         strict: true,
@@ -81,6 +82,17 @@ export async function runReviewCommand(
       schemaVersion: 1,
       command: `review${actions.includes(action!) ? ` ${action}` : ''}`,
       actions,
+      options: allowed,
+      defaults: action === 'list' ? { limit: 20 } : {},
+      errors: {
+        0: 'completed or accepted',
+        1: 'business failure, incomplete or unknown result',
+        2: 'invalid input or unsupported capability',
+      },
+      examples: [
+        'tiangong-lca review list --role submitter --json',
+        'tiangong-lca review submit --input submission.json --dry-run --json',
+      ],
       implementedActions: actions.filter((name) => name !== 'withdraw'),
       limitations: {
         submit:
@@ -120,7 +132,7 @@ export async function runReviewCommand(
     if (!action || action.startsWith('--') || flags.help)
       return {
         exitCode: 0,
-        stdout: `${JSON.stringify(helpManifest)}\n`,
+        stdout: flags.json ? `${JSON.stringify(helpManifest)}\n` : renderCommandHelp(helpManifest),
         stderr: '',
       };
     if (flags.force && !flags.output)
@@ -266,6 +278,8 @@ export async function runReviewCommand(
     value.data = id ? { review: page.records[0] ?? null } : { items: page.records };
     const more = page.total === null ? null : offset + page.records.length < page.total;
     value.completeness = {
+      scope: id ? 'one_visible_review' : 'current_visible_query',
+      truncated: more === null,
       returned: page.records.length,
       total: page.total,
       hasMore: more,

@@ -18,6 +18,7 @@ Implemented Commands:
   auth       login | status | whoami | doctor-auth | logout | identity-receipt
   dataset    <flow|process|model|source|contact|flowproperty|unitgroup|lciamethod> <action>
   review     submit | resubmit | get | list | materials | comment | decide
+  study      versioned Study operations; inspect study --help
   release    prepare | upload | finalize | approve | publish | readback-verify | unpublish | status | current | calculation-bundle | calculation-artifact | artifact-download
 
 Dataset discovery and content:
@@ -27,6 +28,11 @@ Dataset discovery and content:
   model graph | model build-resulting-process (alias aggregate)
   process statistics | source upload-attachments
   Actions are type-specific. Use dataset <type> <action> --help --json.
+
+Retained tools:
+  dataset maintenance plan | apply | verify | clear-account
+  dataset import-lca convert | validation run | admin embedding-run
+  dataset classification audit | apply
 
 Runtime support:
   runtime    describe | ensure | status | prune | lease-release | exec

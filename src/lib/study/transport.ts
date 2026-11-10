@@ -1,3 +1,4 @@
+import { runLockCommandError } from '../locks/command-error.js';
 import { linkSync, mkdirSync, renameSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -625,7 +626,8 @@ export async function runStudyRequest(
           execute,
         )
       : await execute();
-  } catch (error) {
+  } catch (caught) {
+    const error = runLockCommandError(caught);
     if (
       !intentFile &&
       error instanceof CliError &&

@@ -19,9 +19,9 @@ checkPaths:
   - assets/study-renderer/**
   - test/study-*.test.ts
   - docs/agents/study-cli-contract.md
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
-lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
+lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
 related:
   - ../../AGENTS.md
   - repo-architecture.md
@@ -84,7 +84,7 @@ Authenticated capability read precedes an ordinary domain operation. The selecte
 
 Every mutation publishes an immutable private `tiangong.cli.study-intent.v1` file **before** its first domain dispatch. It contains the complete canonical request and key, request-byte digest and live actor/client/endpoint binding. This canonicalization identifies local transport bytes only; it is not a source/model/calculation fingerprint or a signed authorization record. File publication uses an exclusive temporary file, flush, and non-overwriting link in a private per-intent directory. The original request file is never rewritten.
 
-The default location follows the existing per-user CLI state root, under `study/v2/<binding-operation-key-hash>/intent.json` or independently scoped `study/v3/` and `study/v4/` directories; `--state-dir` selects another retained private root. Existing same-key intent requires explicit recovery; changed request bytes under that identity are rejected. Per-directory public batch locks serialize dispatch/recovery, without using the batch engine's mutation-retry policy. No transport failure automatically retries a mutation or invents another key.
+The default location follows the existing per-user CLI state root, under `study/v2/<binding-operation-key-hash>/intent.json` or independently scoped `study/v3/` and `study/v4/` directories; `--state-dir` selects another retained private root. Existing same-key intent requires explicit recovery; changed request bytes under that identity are rejected. Shared run-directory locks serialize dispatch/recovery independently of the Batch scheduler. Lock timeout and identity conflict retain their stable error codes without exposing private lock-owner metadata. No transport failure automatically retries a mutation or invents another key.
 
 After a lost response or process interruption, run `study request recover --intent-file <saved-file>`. The CLI checks private-file shape/digest/path, preserves its complete request, verifies the current destination and live actor/client binding, negotiates current availability, then submits the exact original request/key through the owner's idempotent receipt/recovery path. It does not return cached success, suppress current authorization checks, reset an unknown outcome, or reconstruct scope from provider text. Server receipt replay owns the terminal result and prevents a second logical job. A revoked grant or unavailable deployment remains an explicit failure and the original intent is retained.
 

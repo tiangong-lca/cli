@@ -1,7 +1,15 @@
 import type { ReviewMutationAction } from '../src/application/review-write.js';
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
-import { mkdtempSync, rmSync, writeFileSync, readdirSync, chmodSync, readFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+  readdirSync,
+  chmodSync,
+  readFileSync,
+  mkdirSync,
+} from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { reviewWriter } from '../src/adapters/review-write.js';
@@ -33,6 +41,7 @@ function setup(
     payload?: unknown;
     httpStatus?: number;
     transportFailure?: boolean;
+    breakJournal?: boolean;
     state?: number;
     noTarget?: boolean;
     targetType?: string;
@@ -48,6 +57,14 @@ function setup(
     if (url.includes('/functions/v1/')) {
       calls.push({ url, body: JSON.parse(String(init?.body)) });
       if (options.transportFailure) throw new Error('Bearer hidden-secret');
+      if (options.breakJournal) {
+        const journal = path.join(
+          directory,
+          readdirSync(directory).find((file) => file.endsWith('.json'))!,
+        );
+        rmSync(journal);
+        mkdirSync(journal);
+      }
       return new Response(
         JSON.stringify(
           options.payload === undefined
@@ -192,6 +209,19 @@ test('definitive rejection is retained and ambiguous outcomes never replay', asy
   for (const options of [
     { transportFailure: true },
     { payload: null },
+    {
+      payload: {
+        ok: false,
+        code: 'Bearer hidden-secret',
+        results: [
+          { reviewId, ok: false, code: 'REVIEW_DRAFT_REQUIRED', message: 'hidden-secret' },
+          { reviewId, ok: false, code: 'Bearer hidden-secret' },
+          null,
+        ],
+      },
+      httpStatus: 409,
+    },
+    { payload: { ok: false, code: 'VERSION_CONFLICT' }, httpStatus: 500 },
     { payload: { ok: true }, httpStatus: 500 },
     { payload: { ok: true, data: {} } },
     { payload: { ok: true, data: { reviewId: 'bad identity' } } },
@@ -203,15 +233,6 @@ test('definitive rejection is retained and ambiguous outcomes never replay', asy
   }
   for (const payload of [
     { ok: false, code: 'DATA_UNDER_REVIEW', message: 'Bearer hidden-secret' },
-    {
-      ok: false,
-      code: 'Bearer hidden-secret',
-      results: [
-        { reviewId, ok: false, code: 'REVIEW_DRAFT_REQUIRED', message: 'hidden-secret' },
-        { reviewId, ok: false, code: 'Bearer hidden-secret' },
-        null,
-      ],
-    },
   ]) {
     const fixture = setup(t, { payload, httpStatus: 409 });
     const response = await fixture.writer('submit', submit, false);
@@ -355,4 +376,68 @@ test('a decision receipt must acknowledge exactly the requested review and resul
     ).status,
     'failed',
   );
+});
+
+test('HTTP Review refusal codes survive every supported mutation without exposing service text', async (t) => {
+  for (const action of ['submit', 'resubmit', 'comment', 'decide'] as const) {
+    for (const [httpStatus, code, category] of [
+      [403, 'FORBIDDEN', 'authentication'],
+      [409, 'VERSION_CONFLICT', 'conflict'],
+      [400, 'INVALID_PAYLOAD', 'input'],
+    ] as const) {
+      const f = setup(t, {
+        httpStatus,
+        payload: { ok: false, code, message: 'Bearer hidden-secret' },
+        ...(action === 'resubmit' ? { state: -1 } : {}),
+      });
+      const request =
+        action === 'submit'
+          ? submit
+          : action === 'resubmit'
+            ? { ...submit, reviewId, expectedState: -1, changeSummary: 'fixed' }
+            : {
+                ...base,
+                reviewId,
+                expectedState: 1,
+                ...(action === 'comment' ? { json: {} } : { decision: 'approve' }),
+              };
+      const first = await f.writer(action, request, false);
+      assert.equal(first.status, 'failed');
+      assert.equal(first.error?.code, code);
+      assert.equal(first.error?.category, category);
+      assert.ok(!JSON.stringify(first).includes('hidden-secret'));
+      const second = await f.writer(action, request, false);
+      assert.equal(second.outcome, 'service_rejected');
+      assert.deepEqual(second.error, first.error);
+      assert.equal(f.calls.length, 1);
+    }
+  }
+});
+
+test('missing Review and target materials use the same absence category and runtime exit code', async (t) => {
+  for (const options of [{ reviewMissing: true }, { noTarget: true }]) {
+    const f = setup(t, options);
+    const reply = await runReviewCommand(
+      ['materials', '--id', reviewId, '--json'],
+      async () => ({ records: [], total: 0, environment: 'test', actor }),
+      { mutate: f.writer, materials: reviewMaterials(env, f.fetchImpl) },
+    );
+    assert.equal(reply.exitCode, 1);
+    assert.equal(JSON.parse(reply.stdout).error.category, 'not_found_or_not_visible');
+  }
+});
+
+test('Review journal update failure preserves observed refusal but not an unrecorded success', async (t) => {
+  for (const rejected of [true, false]) {
+    const f = setup(t, {
+      breakJournal: true,
+      ...(rejected ? { payload: { ok: false, code: 'FORBIDDEN' }, httpStatus: 403 } : {}),
+    });
+    const response = await f.writer('submit', submit, false);
+    assert.equal(response.outcome, rejected ? 'service_rejected' : 'write_outcome_unknown');
+    if (rejected)
+      assert.ok(response.warnings.some((warning) => warning.code === 'JOURNAL_UPDATE_UNAVAILABLE'));
+    await assert.rejects(f.writer('submit', submit, false), /private regular/u);
+    assert.equal(f.calls.length, 1);
+  }
 });

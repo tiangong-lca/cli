@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - docs/interfaces/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
-lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
+lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
+lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
 ---
 
 # CLI 目标接口设计

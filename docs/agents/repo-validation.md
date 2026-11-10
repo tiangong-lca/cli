@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
-lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
+lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
+lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -116,6 +116,12 @@ Public receipt parsing retains exact safe fields and object identity. CommandSpe
 Runtime/PCR qualification preserves exact manifests, trusted source and asset hashes, supported ABI/platform detection, private cache publication, leases/prune, one-use host IPC, shell-free execution and abort/drain semantics. Existing no-Node POSIX/PowerShell bootstrap pairs remain supported; local POSIX checks do not qualify Windows behavior.
 
 Study tests exercise the contained owner codecs/renderers and exact selected API versions, explicit capabilities, private pre-dispatch intents and immutable recovery journals. Preserve actor/client/destination binding, original-request recovery after lost or rejected-success responses, current permission refusal, task polling/cancellation, original finalization and current state distinction. Signed exports use independent trusted anchors, exact owner rendering and immutable artifact publication; retain valid older journals and offline signed formats. Source-qualified fixtures do not grant hosted activation or professional approval. Unicode/config/evidence limits come from the owner validator, not a new consumer policy. The specialized [Study contract](study-cli-contract.md) owns exact formats and qualification boundaries.
+
+## Review-result and discovery regressions
+
+Core help must distinguish text and machine output for each advertised action, reject unavailable options before IO, expose actual action defaults and preserve canonical operation names for subgroup discovery and errors. Retained tools remain discoverable under their independent protocols. Output tests compare same-condition missing/invisible categories, unknown-count pagination, verified deletion continuations and attachment-preview templates.
+
+Write qualification distinguishes contract-backed no-effect refusals from unconfirmed effects. Safe codes/categories and original rejected receipts must survive fresh-process recovery without replay; raw service messages and credentials never enter the result or journal. Network loss, unrecognized/malformed/5xx acknowledgments and mismatched or mixed decision receipts remain unknown. Exercise lock errors through their CLI conversion while retaining public class identity and locking tests. Source-free installed tests establish client behavior separately from actual service transaction proof.
 
 ## Actual service and installed qualification
 

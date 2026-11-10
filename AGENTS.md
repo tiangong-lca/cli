@@ -40,8 +40,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
-lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
+lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
+lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -85,7 +85,7 @@ The workspace AGENTS.md governs delivery, branch policy and integration. Resolve
 | `docs/interfaces/` | Final target interface design, not progress logs. |
 | `docs/plans/`, `docs/analysis/` | Implementation state, decisions, gaps and migration notes. |
 
-Dependency direction: entry/composition -> commands -> application; adapters implement application ports and may reuse `src/lib/`. Shared result types may be used by application and commands. Application must not import commands, adapters, filesystem/network APIs or CLI presentation. Library helpers must not depend on command presentation or composition. `test/cli-layer-boundaries.test.mjs` checks all source owners and emitted runtime cycles; the package-root observation used by shared template lookup is its explicit read-only primitive dependency. Type-only modules must use `import type` so they do not create runtime initialization edges. Do not create empty domain directories or a plugin framework for unimplemented capabilities.
+Dependency direction: entry/composition -> commands -> application; adapters implement application ports and may reuse `src/lib/`. Shared result types may be used by application and commands. Application must not import commands, adapters, filesystem/network APIs or CLI presentation. Library helpers must not depend on command presentation or composition. Only the pure `shared/errors.ts` and `shared/state-directory.ts` leaves may be imported from library owners; the source boundary test enforces this allowlist. `test/cli-layer-boundaries.test.mjs` checks all source owners and emitted runtime cycles; the package-root observation used by shared template lookup is its explicit read-only primitive dependency. Type-only modules must use `import type` so they do not create runtime initialization edges. Do not create empty domain directories or a plugin framework for unimplemented capabilities.
 
 ## File size and cohesion
 
@@ -112,7 +112,7 @@ A missing template never changes business facts or repeats an operation. Declare
 
 ## Runtime safeguards
 
-- `create` and `save` remain distinct intentions; conflicts and missing targets never trigger an upsert. Unknown mutations are readback-only without a proven idempotency contract.
+- `create` and `save` remain distinct intentions; conflicts and missing targets never trigger an upsert. Unknown mutations are readback-only without a proven idempotency contract. Contract-backed no-effect refusals retain a safe error code/category and original rejected result; HTTP status alone does not prove refusal, and a rejected request is not automatically replayed.
 - Never broaden current-user RLS, actor/environment binding, exact references or ordinary maintenance authorization. CLI carries no service-role credential and performs no raw database mutation fallback.
 - Preserve OAuth/PKCE, private session storage, credential redaction, identity receipts, run locks and bounded batch recovery. Credentials never enter argv, logs, templates or results.
 - Reuse scientific rules from their owners. Missing evidence and unsupported calculations remain explicit; AI-facing convenience must not invent numerical facts.

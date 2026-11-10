@@ -14,8 +14,8 @@ checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
-lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
+lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
+lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -156,6 +156,8 @@ Flow 参考属性的本地业务约束由同一纯校验器承载：内部 ID �
 
 五种可审核类型共用提交入口，`includeRelated` 默认且仅支持 `true`。服务端决定关联范围、实际审核单和提交模式；结果保留这些真实信息，不将多个单对象请求组合后宣称整包原子提交。预览只检查可读前提，明确未执行的关联展开及写入时准入。
 
+最终 Review 目标仍规定追加式意见、历史轮次材料和不可变包；本阶段的草稿保存与当前可读内容是明确的实现子集，不将目标文档缩减为现有服务语义。
+
 `resubmit` 前检已驳回审核及同一精确对象，保留调用方修改说明，不伪造服务端轮次关联。`get/list/materials` 表达当前可见记录及材料；历史不可变包和一致多对象快照不在此阶段承诺。`comment` 保存当前审核者草稿，明确可能覆盖；`decide` 单独提交实际审核者决定，保留 Process/Model 需要已有草稿等业务前提。
 
 目标设计中的关闭关联、明确多起始对象审核包、历史包重取、轮次关联、追加式独立意见及没有既有服务映射的审核撤回，后续由业务所有者实施，不纳入本次验收。CLI 不新增后端契约或用其他操作冒充这些效果。
@@ -230,3 +232,9 @@ Flow 参考属性的本地业务约束由同一纯校验器承载：内部 ID �
 - `lib` 按 auth/config/transport、dataset/validation/model/maintenance、study/pcr/release/runtime、locks 和 platform 的实际职责组织。同步导入、资产定位、验证脚本和文档治理。
 - Batch 调度器只由公共库消费。CLI 内部直接依赖共享并发原语；四个公共导出、函数/错误类身份、锁路径、哈希和恢复规则保持兼容，不迁移下游。
 - 本地验收覆盖退役入口零副作用拒绝、运行时导入边界、公共库声明与安装包、现存业务测试及原有全量覆盖率门禁。验证不能以删除普通业务断言、降低覆盖率或增加忽略项替代。
+
+## 错误结果与能力发现验收
+
+当前原子操作须区分服务契约明确拒绝与结果未知：前者保留安全错误码、类别及原拒绝结果，后者保留不重放保护。HTTP 状态或通用 `ok:false` 不能单独证明未生效；单项审核决定须核对请求身份、成员数和结果一致性。历史日志不自动升级为新的拒绝证据。
+
+人类帮助和机器帮助使用同一事实来源，按动作声明参数、默认值、请求和限制。不支持的搜索续页不进入当前帮助；translations 子组可发现，operation 不含选项。根和 Dataset 帮助列出保留工具及独立协议。完整性未知、目标不存在、锁冲突、删除完成和上传预览分别返回真实的类别、退出码、推荐动作和模板。

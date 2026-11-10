@@ -39,7 +39,7 @@ import {
   type CommandIO,
   type CommandResult,
 } from '../shared/command-result.js';
-import { common, flags, help } from './dataset/help.js';
+import { common, flags, datasetHelpOutput, translationsHelp } from './dataset/help.js';
 import { validationSummary, artifactSummary } from './dataset/presentation.js';
 export { runDatasetHelp } from './dataset/help.js';
 
@@ -70,7 +70,9 @@ export async function runDatasetCommand(
   const type = args[0] as DatasetType;
   let action = args[1] as DatasetAction | undefined;
   let start = 2;
-  if (String(action) === 'translations') {
+  const translationGroup =
+    String(action) === 'translations' && (!args[2] || args[2].startsWith('-'));
+  if (String(action) === 'translations' && !translationGroup) {
     action = `translations ${args[2]}` as DatasetAction;
     start = 3;
   }
@@ -80,6 +82,21 @@ export async function runDatasetCommand(
   try {
     if (!datasetTypes.includes(type))
       throw new CommandInputError('TYPE_UNSUPPORTED', 'Select a supported Dataset type.');
+    if (translationGroup) {
+      if (!actionsFor(type).includes('translations extract'))
+        throw new CommandInputError(
+          'CAPABILITY_UNSUPPORTED',
+          'Translations are not exposed for this Dataset type.',
+        );
+      try {
+        return translationsHelp(type, args.slice(2), json);
+      } catch {
+        throw new CommandInputError(
+          'ARGUMENTS_INVALID',
+          'Translations help accepts only --help and --json.',
+        );
+      }
+    }
     const group = !action || action.startsWith('-');
     if (!group && !actionsFor(type).includes(action!))
       throw new CommandInputError(
@@ -116,11 +133,7 @@ export async function runDatasetCommand(
       );
     }
     if (group || values.help)
-      return {
-        exitCode: 0,
-        stdout: `${JSON.stringify(help(type, group ? undefined : (action as CanonicalDatasetAction)), null, json ? undefined : 2)}\n`,
-        stderr: '',
-      };
+      return datasetHelpOutput(type, group ? undefined : (action as CanonicalDatasetAction), json);
     const string = (name: string) =>
       values[name] === undefined ? undefined : text(values[name], `--${name}`);
     if (values.force && !values.output)
@@ -205,11 +218,6 @@ export async function runDatasetCommand(
         value.context.defaultedInputs = { limit: 20 };
       artifact = action === 'get' ? (value.data.content ?? value.data) : value.data;
     } else if (action === 'search') {
-      if (values.cursor)
-        throw new CommandInputError(
-          'CURSOR_UNSUPPORTED',
-          'This search service does not expose a reliable continuation cursor. Narrow the query.',
-        );
       const query = text(values.query, '--query');
       const limit = positiveLimit(values.limit);
       const state = values.state === undefined ? undefined : Number(values.state);
@@ -507,27 +515,29 @@ export async function runDatasetCommand(
         ? 'outcome-unknown'
         : value.status === 'partial'
           ? 'partial-result'
-          : ['create', 'save', 'delete'].includes(action!) && value.status === 'completed'
-            ? values['dry-run']
-              ? 'preview-result'
-              : 'operation-completed'
-            : value.status === 'failed'
-              ? 'command-failed'
-              : action === 'validate'
-                ? 'validation-result'
-                : [
-                      'diff',
-                      'patch',
-                      'translations extract',
-                      'translations apply',
-                      'graph',
-                      'build-resulting-process',
-                      'upload-attachments',
-                    ].includes(action!)
-                  ? 'operation-completed'
-                  : action === 'search' && (value.data.candidates as unknown[]).length > 1
-                    ? 'decision-required'
-                    : 'query-result',
+          : value.outcome === 'preview_completed'
+            ? 'preview-result'
+            : ['create', 'save', 'delete'].includes(action!) && value.status === 'completed'
+              ? values['dry-run']
+                ? 'preview-result'
+                : 'operation-completed'
+              : value.status === 'failed'
+                ? 'command-failed'
+                : action === 'validate'
+                  ? 'validation-result'
+                  : [
+                        'diff',
+                        'patch',
+                        'translations extract',
+                        'translations apply',
+                        'graph',
+                        'build-resulting-process',
+                        'upload-attachments',
+                      ].includes(action!)
+                    ? 'operation-completed'
+                    : action === 'search' && (value.data.candidates as unknown[]).length > 1
+                      ? 'decision-required'
+                      : 'query-result',
     );
     return renderResult(
       value,

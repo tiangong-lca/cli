@@ -514,6 +514,58 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
     );
     assert.deepEqual(await get('source', sourceIdentity), changedUpload);
 
+    // Contract-backed refusals survive fresh native processes without a second dispatch.
+    const refusedContent = businessFixture('contact');
+    ((refusedContent.contactDataSet as Json).contactInformation as Json).dataSetInformation = {
+      ...(((refusedContent.contactDataSet as Json).contactInformation as Json)
+        .dataSetInformation as Json),
+      'common:UUID': 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    };
+    const refusedIdentity = businessIdentity('contact', refusedContent);
+    const refusedRequest = {
+      ...refusedIdentity,
+      ...binding('definitive-create'),
+      content: refusedContent,
+    };
+    backend.rejectReplies.set('app_dataset_create', { status: 409, code: 'VERSION_CONFLICT' });
+    const refused = await request('contact', 'create', refusedRequest, businessActor, 1);
+    assert.equal(refused.status, 'failed');
+    assert.equal(refused.outcome, 'service_rejected');
+    assert.equal((refused.error as Json).category, 'conflict');
+    assert.equal((refused.error as Json).code, 'VERSION_CONFLICT');
+    assert.match(String(refused.replyTemplate), /conflict-result\.md$/u);
+    const attempted = backend.calls.filter((call) =>
+      call.path.endsWith('/app_dataset_create'),
+    ).length;
+    backend.rejectReplies.delete('app_dataset_create');
+    const original = await request('contact', 'create', refusedRequest, businessActor, 1);
+    assert.equal(original.outcome, 'service_rejected');
+    assert.deepEqual(original.error, refused.error);
+    assert.equal(
+      backend.calls.filter((call) => call.path.endsWith('/app_dataset_create')).length,
+      attempted,
+    );
+    const refusedSubmit = {
+      ...binding('definitive-submit'),
+      targets: [{ type: 'source', ...sourceIdentity }],
+    };
+    backend.rejectReplies.set('app_dataset_submit_review', { status: 403, code: 'FORBIDDEN' });
+    const rejectedReview = await review('submit', refusedSubmit, businessActor, 1);
+    assert.equal(rejectedReview.outcome, 'service_rejected');
+    assert.equal((rejectedReview.error as Json).category, 'authentication');
+    const postedReview = backend.calls.filter((call) =>
+      call.path.endsWith('/app_dataset_submit_review'),
+    ).length;
+    backend.rejectReplies.delete('app_dataset_submit_review');
+    assert.equal(
+      (await review('submit', refusedSubmit, businessActor, 1)).outcome,
+      'service_rejected',
+    );
+    assert.equal(
+      backend.calls.filter((call) => call.path.endsWith('/app_dataset_submit_review')).length,
+      postedReview,
+    );
+
     // Fresh native processes share the same private durable journal, never an in-memory cache.
     const content = businessFixture('contact'),
       identity = businessIdentity('contact', content);

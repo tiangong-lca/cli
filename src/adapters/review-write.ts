@@ -51,7 +51,11 @@ export function reviewWriter(
           body: JSON.stringify(body),
           signal: AbortSignal.timeout(10_000),
         });
-        return { ok: response.ok, payload: JSON.parse(await response.text()) as unknown };
+        return {
+          status: response.status,
+          ok: response.ok,
+          payload: JSON.parse(await response.text()) as unknown,
+        };
       },
     });
   };

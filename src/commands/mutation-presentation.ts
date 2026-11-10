@@ -4,6 +4,15 @@ import { isObject, type JsonObject } from '../application/dataset-types.js';
 export function datasetMutationContinuation(value: CommandResult): void {
   if (value.status !== 'unknown' && !['dataset_written', 'dataset_deleted'].includes(value.outcome))
     return;
+  if (value.outcome === 'dataset_deleted') {
+    value.nextActions = [
+      {
+        description:
+          'Deletion is acknowledged and exact target absence has already been independently verified.',
+      },
+    ];
+    return;
+  }
   const subject = value.data.subject;
   if (!isObject(subject)) return;
   value.nextActions = [

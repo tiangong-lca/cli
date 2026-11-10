@@ -1,6 +1,7 @@
 import { buildLifecyclemodelBundlePlan } from '../lib/model/bundle-save.js';
 import type { DatasetCommandTransport } from '../lib/dataset/command.js';
 import { buildSupabaseAuthHeaders } from '../lib/transport/supabase-client.js';
+import { ServiceRejectedError, serviceRejection } from '../application/service-rejection.js';
 import { postJson } from '../lib/transport/http.js';
 import { CommandInputError } from '../shared/command-result.js';
 import { isObject, type JsonObject } from '../application/dataset-types.js';
@@ -48,6 +49,8 @@ export async function writeModelDraft(
     timeoutMs: transport.timeoutMs,
     fetchImpl: transport.fetchImpl,
   });
+  const rejection = serviceRejection(response);
+  if (rejection) throw new ServiceRejectedError(rejection);
   if (
     !isObject(response) ||
     response.ok !== true ||

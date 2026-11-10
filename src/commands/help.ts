@@ -11,8 +11,11 @@ export function rootHelp(usage: string): CommandIO {
       dataset: {
         ...Object.fromEntries(datasetTypes.map((type) => [type, actionsFor(type)])),
         classification: ['children', 'path'],
+        maintenance: ['plan', 'apply', 'verify', 'clear-account'],
+        'import-lca': ['convert'],
       },
       review: ['submit', 'resubmit', 'get', 'list', 'materials', 'comment', 'decide'],
+      study: 'Existing versioned Study protocol; inspect study --help',
       release: 'Existing release command protocol; inspect release --help',
     },
     runtimeSupport: [

@@ -19,16 +19,32 @@ function isRecord(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+export class HttpResponseError extends CliError {
+  readonly payload: unknown;
+  constructor(
+    readonly status: number,
+    rawText: string,
+    url: string,
+  ) {
+    super(`HTTP ${status} returned from ${url}`, {
+      code: 'REMOTE_REQUEST_FAILED',
+      exitCode: 1,
+      details: rawText,
+    });
+    try {
+      this.payload = JSON.parse(rawText);
+    } catch {
+      this.payload = null;
+    }
+  }
+}
+
 async function parseResponse(response: ResponseLike, url: string): Promise<unknown> {
   const rawText = await response.text();
   const contentType = response.headers.get('content-type') ?? '';
 
   if (!response.ok) {
-    throw new CliError(`HTTP ${response.status} returned from ${url}`, {
-      code: 'REMOTE_REQUEST_FAILED',
-      exitCode: 1,
-      details: rawText,
-    });
+    throw new HttpResponseError(response.status, rawText, url);
   }
 
   if (contentType.includes('application/json')) {

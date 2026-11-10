@@ -19,6 +19,11 @@ export async function runMutationIntent(
       const journal = store.path;
       const unknown = () => {
         options.value.status = 'unknown';
+        options.value.error = {
+          category: 'service',
+          code: 'WRITE_OUTCOME_UNKNOWN',
+          message: 'The original mutation outcome could not be established. Do not replay.',
+        };
         options.value.outcome = 'write_outcome_unknown';
         options.value.summary =
           'Original request outcome is unknown. No automatic replay is permitted.';
@@ -36,11 +41,12 @@ export async function runMutationIntent(
             'REQUEST_CONFLICT',
             'requestId is already bound to another intent, actor or environment.',
           );
-        if (previous.state === 'completed') {
+        if (previous.state === 'completed' || previous.state === 'rejected') {
           const original = object(previous.result, 'original result') as CommandResult;
           return {
             ...original,
-            outcome: 'original_result_returned',
+            outcome:
+              previous.state === 'rejected' ? 'service_rejected' : 'original_result_returned',
             summary: `Original result returned without dispatch: ${original.summary}`,
           };
         }
@@ -53,16 +59,25 @@ export async function runMutationIntent(
       );
       try {
         const completed = await options.dispatch();
-        store.write(
-          {
-            schemaVersion: 1,
-            binding,
-            intent: options.binding,
-            state: 'completed',
-            result: completed,
-          },
-          true,
-        );
+        try {
+          store.write(
+            {
+              schemaVersion: 1,
+              binding,
+              intent: options.binding,
+              state: completed.outcome === 'service_rejected' ? 'rejected' : 'completed',
+              result: completed,
+            },
+            true,
+          );
+        } catch (error) {
+          if (completed.outcome !== 'service_rejected') throw error;
+          completed.warnings.push({
+            code: 'JOURNAL_UPDATE_UNAVAILABLE',
+            message:
+              'The refusal was observed, but its durable result could not be saved. The original request remains non-replayable.',
+          });
+        }
         return completed;
       } catch {
         return unknown();

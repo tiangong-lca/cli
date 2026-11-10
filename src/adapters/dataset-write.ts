@@ -1,3 +1,6 @@
+import { ServiceRejectedError, serviceRejection } from '../application/service-rejection.js';
+import { HttpResponseError } from '../lib/transport/http.js';
+import { CliError } from '../shared/errors.js';
 import path from 'node:path';
 import os from 'node:os';
 import { executeDatasetWrite } from '../application/dataset-write.js';
@@ -55,42 +58,54 @@ export function datasetWriter(
         expected,
         previousGraph,
         beforeDispatch,
-      }) =>
-        intent === 'delete'
-          ? deleteDatasetRecord({
-              transport,
-              table: datasetTables[selectedType],
-              id,
-              version,
-              beforeDispatch,
-            })
-          : selectedType === 'model'
-            ? writeModelDraft(
+      }) => {
+        try {
+          return await (intent === 'delete'
+            ? deleteDatasetRecord({
                 transport,
+                table: datasetTables[selectedType],
                 id,
                 version,
-                content,
                 beforeDispatch,
-                intent,
-                previousGraph,
-              )
-            : intent === 'create'
-              ? createDatasetRecord({
+              })
+            : selectedType === 'model'
+              ? writeModelDraft(
                   transport,
-                  table: datasetTables[selectedType],
-                  id,
-                  payload: content,
-                  beforeDispatch,
-                })
-              : saveDraftDatasetRecord({
-                  transport,
-                  table: datasetTables[selectedType],
                   id,
                   version,
-                  payload: content,
-                  expectedJsonOrdered: expected!,
+                  content,
                   beforeDispatch,
-                }),
+                  intent,
+                  previousGraph,
+                )
+              : intent === 'create'
+                ? createDatasetRecord({
+                    transport,
+                    table: datasetTables[selectedType],
+                    id,
+                    payload: content,
+                    beforeDispatch,
+                  })
+                : saveDraftDatasetRecord({
+                    transport,
+                    table: datasetTables[selectedType],
+                    id,
+                    version,
+                    payload: content,
+                    expectedJsonOrdered: expected!,
+                    beforeDispatch,
+                  }));
+        } catch (error) {
+          const receipt =
+            error instanceof HttpResponseError
+              ? serviceRejection(error.payload, error.status)
+              : error instanceof CliError
+                ? serviceRejection(error.details)
+                : null;
+          if (receipt) throw new ServiceRejectedError(receipt);
+          throw error;
+        }
+      },
     });
   };
 }

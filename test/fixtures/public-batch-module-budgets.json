@@ -97,6 +97,11 @@
       "path": "src/lib/locks/state-lock.ts",
       "max_lines": 226,
       "allowed_internal_imports": []
+    },
+    {
+      "path": "src/lib/locks/command-error.ts",
+      "max_lines": 17,
+      "allowed_internal_imports": ["src/lib/locks/errors.ts"]
     }
   ],
   "forbidden_upward_imports": ["src/batch.ts", "src/cli.ts"]

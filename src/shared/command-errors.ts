@@ -18,7 +18,13 @@ export function commandFailure(error: unknown, fallbackCode: string) {
       : category === 'authentication'
         ? 'Authentication or identity verification failed. Inspect auth doctor-auth in the selected environment.'
         : 'Operation failed. Inspect the command contract, target service and authentication.',
-    exitCode: ['conflict', 'authentication', 'precondition'].includes(category)
+    exitCode: [
+      'conflict',
+      'authentication',
+      'precondition',
+      'not_found_or_not_visible',
+      'environment',
+    ].includes(category)
       ? 1
       : invalidInput
         ? 2

@@ -1,3 +1,4 @@
+import { runLockCommandError } from '../lib/locks/command-error.js';
 import { contentDigest as mutationDigest } from '../shared/json-content-digest.js';
 import { existsSync, lstatSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -19,42 +20,46 @@ export async function withMutationJournal<T>(
   mkdirSync(options.directory, { recursive: true, mode: 0o700 });
   const key = mutationDigest(options.requestId);
   const file = path.join(options.directory, `${key}.json`);
-  return withBatchRunLock(
-    {
-      runPath: path.join(options.directory, key),
-      reason: `${options.scope}-request`,
-      identity: key,
-    },
-    () =>
-      withBatchRunLock(
-        {
-          runPath: path.join(options.directory, mutationDigest(options.target)),
-          reason: `${options.scope}-target`,
-          identity: `${options.scope}-target`,
-        },
-        () =>
-          execute({
-            path: file,
-            read() {
-              if (!existsSync(file)) return null;
-              const stat = lstatSync(file);
-              if (!stat.isFile() || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0))
-                throw new CommandInputError(
-                  'JOURNAL_UNSAFE',
-                  'Recovery journal must be a private regular file.',
-                );
-              const value: unknown = JSON.parse(readFileSync(file, 'utf8'));
-              if (!value || typeof value !== 'object' || Array.isArray(value))
-                throw new CommandInputError(
-                  'OBJECT_REQUIRED',
-                  'recovery journal must be a JSON object.',
-                );
-              return value as Record<string, unknown>;
-            },
-            write(value, replace = true) {
-              writeCommandOutput(file, value, replace);
-            },
-          }),
-      ),
-  );
+  try {
+    return await withBatchRunLock(
+      {
+        runPath: path.join(options.directory, key),
+        reason: `${options.scope}-request`,
+        identity: key,
+      },
+      () =>
+        withBatchRunLock(
+          {
+            runPath: path.join(options.directory, mutationDigest(options.target)),
+            reason: `${options.scope}-target`,
+            identity: `${options.scope}-target`,
+          },
+          () =>
+            execute({
+              path: file,
+              read() {
+                if (!existsSync(file)) return null;
+                const stat = lstatSync(file);
+                if (!stat.isFile() || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0))
+                  throw new CommandInputError(
+                    'JOURNAL_UNSAFE',
+                    'Recovery journal must be a private regular file.',
+                  );
+                const value: unknown = JSON.parse(readFileSync(file, 'utf8'));
+                if (!value || typeof value !== 'object' || Array.isArray(value))
+                  throw new CommandInputError(
+                    'OBJECT_REQUIRED',
+                    'recovery journal must be a JSON object.',
+                  );
+                return value as Record<string, unknown>;
+              },
+              write(value, replace = true) {
+                writeCommandOutput(file, value, replace);
+              },
+            }),
+        ),
+    );
+  } catch (error) {
+    throw runLockCommandError(error);
+  }
 }

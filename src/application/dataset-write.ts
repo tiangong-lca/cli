@@ -1,3 +1,4 @@
+import { applyServiceRejection, ServiceRejectedError } from './service-rejection.js';
 import { isDeepStrictEqual } from 'node:util';
 import { contentDigest } from './dataset-content.js';
 import {
@@ -172,6 +173,11 @@ export async function executeDatasetWrite(
       });
     const unknown = async () => {
       value.status = 'unknown';
+      value.error = {
+        category: 'service',
+        code: 'WRITE_OUTCOME_UNKNOWN',
+        message: 'The original mutation outcome could not be established. Do not replay.',
+      };
       value.outcome = 'write_outcome_unknown';
       value.summary =
         'Original write outcome is unconfirmed. This request will not be dispatched again.';
@@ -191,6 +197,10 @@ export async function executeDatasetWrite(
           'REQUEST_CONFLICT',
           'requestId is already bound to different content, intent, actor or environment.',
         );
+      if (previous.state === 'rejected') {
+        const original = object(previous.response, 'original rejection') as CommandResult;
+        return { ...original, outcome: 'service_rejected' };
+      }
       if (previous.state === 'completed') {
         value.outcome = 'original_result_returned';
         value.summary =
@@ -207,6 +217,7 @@ export async function executeDatasetWrite(
       persist('dispatched');
       dispatched = true;
     };
+    let acknowledged = false;
     try {
       const response = await ports.dispatch({
         type,
@@ -218,6 +229,7 @@ export async function executeDatasetWrite(
         previousGraph,
         beforeDispatch,
       });
+      acknowledged = true;
       const current = await lookup();
       if (
         action === 'delete'
@@ -240,6 +252,19 @@ export async function executeDatasetWrite(
       return value;
     } catch (error) {
       if (!dispatched) throw error;
+      if (!acknowledged && error instanceof ServiceRejectedError) {
+        applyServiceRejection(value, error.receipt);
+        try {
+          persist('rejected', value);
+        } catch {
+          value.warnings.push({
+            code: 'JOURNAL_UPDATE_UNAVAILABLE',
+            message:
+              'The refusal was observed, but its durable result could not be saved. The original request remains non-replayable.',
+          });
+        }
+        return value;
+      }
       try {
         persist('unknown');
       } catch {

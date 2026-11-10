@@ -45,6 +45,7 @@ export function createBusinessBackend() {
   const decisions = new Map<string, string>();
   const calls: Array<{ path: string; method: string; body: JsonObject; actor: string }> = [];
   const loseReplies = new Set<string>();
+  const rejectReplies = new Map<string, { code: string; status: number }>();
   const files = new Map<string, string>();
   const key = (table: string, id: string, version: string) => `${table}:${id}:${version}`;
   const json = (body: unknown, status = 200, count?: number) =>
@@ -115,6 +116,12 @@ export function createBusinessBackend() {
     const body =
       init?.body && typeof init.body === 'string' ? (JSON.parse(init.body) as JsonObject) : {};
     calls.push({ path: url.pathname, method, body, actor });
+    const refusal = rejectReplies.get(url.pathname.split('/').at(-1)!);
+    if (refusal)
+      return json(
+        { ok: false, code: refusal.code, message: 'Bearer hidden-secret' },
+        refusal.status,
+      );
     if (url.pathname === '/rest/v1/rpc/qry_review_get_items') {
       assert.equal(new Headers(init?.headers).get('content-profile'), 'api');
       if (url.searchParams.has('reviewer_id'))
@@ -281,5 +288,16 @@ export function createBusinessBackend() {
     rows.get(key(String(target.table), String(target.id), String(target.version)))!.state_code =
       rejected ? 0 : 100;
   };
-  return { rows, reviews, calls, loseReplies, seed, fetchImpl, start, assign, finalize };
+  return {
+    rows,
+    reviews,
+    calls,
+    loseReplies,
+    rejectReplies,
+    seed,
+    fetchImpl,
+    start,
+    assign,
+    finalize,
+  };
 }

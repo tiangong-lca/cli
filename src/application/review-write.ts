@@ -1,3 +1,4 @@
+import { applyServiceRejection, serviceRejection } from './service-rejection.js';
 import {
   datasetTables,
   editableTypes,
@@ -29,7 +30,7 @@ export type ReviewWritePorts = {
   dispatch(
     action: ReviewMutationAction,
     body: JsonObject,
-  ): Promise<{ ok: boolean; payload: unknown }>;
+  ): Promise<{ ok: boolean; payload: unknown; status?: number }>;
   executeIntent(options: ReviewMutationIntent): Promise<CommandResult>;
 };
 
@@ -236,7 +237,7 @@ export async function executeReviewWrite(
     value,
     preflight,
     dispatch: async () => {
-      const { ok, payload } = await ports.dispatch(action, body);
+      const { ok, payload, status } = await ports.dispatch(action, body);
       if (!isObject(payload) || typeof payload.ok !== 'boolean')
         throw new Error('invalid acknowledgement');
       if (!ok && payload.ok !== false) throw new Error('contradictory acknowledgement');
@@ -251,39 +252,11 @@ export async function executeReviewWrite(
           throw new Error('decision acknowledgement does not match the single requested review');
       }
       if (payload.ok === false) {
-        const code =
-          typeof payload.code === 'string' && /^[A-Z][A-Z0-9_]{1,100}$/u.test(payload.code)
-            ? payload.code
-            : 'REVIEW_REJECTED';
-        value.data.receipt = {
-          ok: false,
-          code,
-          ...(Array.isArray(payload.results)
-            ? {
-                results: payload.results.map((item: unknown) =>
-                  isObject(item)
-                    ? {
-                        reviewId: item.reviewId,
-                        ok: item.ok,
-                        code:
-                          typeof item.code === 'string' &&
-                          /^[A-Z][A-Z0-9_]{1,100}$/u.test(item.code)
-                            ? item.code
-                            : null,
-                      }
-                    : { ok: false },
-                ),
-              }
-            : {}),
-        };
-        value.status = 'failed';
-        value.outcome = 'service_rejected';
-        value.summary = 'Review service rejected the operation; inspect the structured receipt.';
-        value.error = {
-          category: 'service',
-          code,
-          message: value.summary,
-        };
+        const selected =
+          action === 'decide' && Array.isArray(payload.results) ? payload.results[0] : payload;
+        const rejection = serviceRejection(selected, status);
+        if (!rejection) throw new Error('Unproven rejection acknowledgement');
+        applyServiceRejection(value, rejection);
       } else {
         value.data.receipt = payload;
         value.status = submitting ? 'accepted' : 'completed';

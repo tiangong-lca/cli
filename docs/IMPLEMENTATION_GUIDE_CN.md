@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
-lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
+lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
+lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -96,3 +96,5 @@ Review 适配已有业务语义：一个起始对象、服务端默认关联、�
 [验证契约](agents/repo-validation.md)规定真实规则验证、故障及权限情景、源码外原生安装包、入口 IO 和 100% 源码覆盖率。旧入口负向验证与新入口成功场景分别执行；领域算法和安全测试直接调用内部实现，不为了通过旧测试重建命令兼容层。
 
 单元、协议模拟、真实本地服务与四平台 CI 分别提供各自证据。模拟成功不证明部署权限；本机通过不证明四平台执行。具体源码、运行结果和未执行事项保存在交付记录，不写入接口规范。
+
+核心帮助分别提供可读文本和 `--help --json` 机器契约，动作参数、默认值与限制按实际解析能力声明。写入错误只在已有服务契约证明未生效时记为明确拒绝；其余不确定结果继续禁止重放。拒绝结果仅保留安全错误码与类别，不复制远端原始文本。

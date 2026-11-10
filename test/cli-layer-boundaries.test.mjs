@@ -24,6 +24,7 @@ test('all source owners enforce application, presentation and composition bounda
             'shared/command-result.js',
             'shared/errors.js',
             'shared/json-content-digest.js',
+            'shared/command-error-categories.js',
             'node:crypto',
             'node:util',
           ].includes(target)
@@ -33,6 +34,12 @@ test('all source owners enforce application, presentation and composition bounda
       if (
         from.startsWith('lib/') &&
         /^(?:commands\/|adapters\/|cli(?:-deps|-composition)?\.js$|main\.js$)/u.test(target)
+      )
+        violations.push(`${from} -> ${target}`);
+      if (
+        from.startsWith('lib/') &&
+        target.startsWith('shared/') &&
+        !['shared/errors.js', 'shared/state-directory.js'].includes(target)
       )
         violations.push(`${from} -> ${target}`);
       if (

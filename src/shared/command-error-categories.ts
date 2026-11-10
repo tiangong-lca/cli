@@ -1,9 +1,20 @@
 export type CommandErrorCategory =
-  'input' | 'conflict' | 'capability_unsupported' | 'authentication' | 'precondition' | 'service';
+  | 'input'
+  | 'conflict'
+  | 'capability_unsupported'
+  | 'authentication'
+  | 'precondition'
+  | 'service'
+  | 'not_found_or_not_visible'
+  | 'environment';
 
 /** Explicit compatibility classifications for existing codes. New errors declare their category. */
 export const commandErrorCategories: ReadonlyMap<string, CommandErrorCategory> = new Map(
   Object.entries({
+    BATCH_RUN_LOCK_TIMEOUT: 'precondition',
+    DATASET_NOT_FOUND: 'not_found_or_not_visible',
+    REVIEW_NOT_FOUND: 'not_found_or_not_visible',
+    REVIEW_MATERIALS_UNAVAILABLE: 'not_found_or_not_visible',
     ATTACHMENT_SCOPE_MISMATCH: 'conflict',
     AUTH_CHECK_FAILED: 'authentication',
     AUTH_IDENTITY_CAPTURE_TIME_INVALID: 'authentication',

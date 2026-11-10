@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
-lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
+lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
+lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
@@ -88,3 +88,5 @@ pnpm prepush:gate
 修改文档遵守 [docs/AGENTS](docs/AGENTS.md)，原位修正当前说明，保留历史证据的版本身份。实施状态见[重构计划](docs/plans/cli-0.2.0-refactor-plan.md)，当次源码、验证和授权范围记录在 Issue/PR。
 
 发布流程由[发布手册](docs/release-runbook.md)与[发布配置](docs/release-setup.md)维护。软件源码、版本发布、下游采用和 workspace 集成是独立状态；下游升级在 CLI Release 后分别进行。
+
+业务写入的明确拒绝和未知结果分别验证；相同请求身份返回已记录的原拒绝，不自动重新派发。普通帮助为可读文本，机器契约使用 `--help --json`。

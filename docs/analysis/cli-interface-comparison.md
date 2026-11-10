@@ -177,7 +177,7 @@ CLI 进一步明确了实际默认值与范围披露、有界摘要、分页继�
 
 新入口按对象选择动作，例如 `dataset flow get`、`dataset model create` 和 `review submit`，不从生产运行目录自动选择对象、版本或操作。复杂请求用 `--input`，源码目录外同样可执行；Model 主命令与 `aggregate` 别名共用请求和结果。
 
-写入请求包含 `id`、精确 `version`、`requestId`、`expectedActor` 和 `expectedEnvironment`。create 提供 `content`；save 同时提供候选 `content` 与 `expectedContent`；delete 提供 `expectedContent`。普通 save 的服务端 CAS 与 Model/delete 的前检比较分别披露。稳定请求身份关联原意图，不能通过换身份掩盖未知结果。
+写入请求包含 `id`、精确 `version`、`requestId`、`expectedActor` 和 `expectedEnvironment`。create 提供 `content`；save 同时提供候选 `content` 与 `expectedContent`；delete 提供 `expectedContent`。普通 save 的服务端 CAS 与 Model/delete 的前检比较分别披露。稳定请求身份关联原意图，不能通过换身份掩盖未知结果。可证明未生效的服务拒绝保留安全错误与原拒绝结果；相同身份返回原结果而不重放。未知错误与 5xx 不推断为拒绝。
 
 Review submit 使用仅含一个元素的 `targets`，成员为 `type/id/version`；resubmit 增加 `reviewId`、`expectedState:-1` 与 `changeSummary`。comment 使用 `reviewId/expectedState/json` 保存当前审核草稿；decide 使用 `reviewId/expectedState/decision`，驳回时必须提供 reason。所有变更同样绑定请求身份、账号和环境。
 

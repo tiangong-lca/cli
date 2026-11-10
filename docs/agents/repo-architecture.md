@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
-lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
+lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
+lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -56,13 +56,13 @@ Managed-host launch selection stays in the generic CLI manager. Dedicated protoc
 - `src/shared/`: result types, safe file IO, platform-aware continuation quoting, error projection and installed template lookup.
 - `assets/reply-templates/`: Markdown guidance selected by actual outcome.
 
-Root and classification discovery expose bounded structured help and content-bound local pagination. Authentication presentation reuses the existing OAuth, session and exact-identity implementations through an injected execution port. The common envelope stores the unchanged receipt under `data.receipt`; standalone output writes only that receipt. Public receipt parsing is unchanged. Doctor separates local runtime/configuration observations from an explicit public Auth health GET, which never refreshes sessions or verifies actor permission.
+Core commands project readable text help and machine help from the same factual manifests. Dataset action options/defaults and unavailable actions reflect the actual parser; translations has its own group discovery, and retained service/maintenance/package tools are discoverable without changing their output protocols. Root and classification discovery expose bounded structured help and content-bound local pagination. Authentication presentation reuses the existing OAuth, session and exact-identity implementations through an injected execution port. The common envelope stores the unchanged receipt under `data.receipt`; standalone output writes only that receipt. Public receipt parsing is unchanged. Doctor separates local runtime/configuration observations from an explicit public Auth health GET, which never refreshes sessions or verifies actor permission.
 
 Dataset uses one typed command router for all eight object types. Model `build-resulting-process` and its `aggregate` alias share a canonical operation and implementation. Calculation inputs are explicit snapshots; exact remote Process lookups never fall back to latest. Source uploads verify selected bytes and independent readback, preserve failed references and do not save Source content.
 
 `src/commands/dataset-discovery.ts` owns query result presentation. Model graph metadata never enters identity context; explicit Process exchange projections are labeled incomplete content. Statistics adapts bounded visible-row reads and uses `src/lib/process-statistics/summary.ts` directly, without a second legacy scan or Markdown-report workflow; count drift, repeated identities and scan bounds remain partial observations. `contract` exposes verified released public definitions rather than retired authoring/identity workflow gates. Executed checks and omitted layers belong to validation reports.
 
-Create and save are separate service intents. Ordinary saves reuse server content CAS. Model writes use the existing atomic model service with no implicit Process mutations or create-conflict fallback; existing graph metadata is preserved while composition graph changes follow the explicit Model content. Delete and Model save disclose when expected-content comparisons occur only before dispatch. Durable local intents prohibit replay after an unknown mutation outcome.
+Create and save are separate service intents. Ordinary saves reuse server content CAS. Model writes use the existing atomic model service with no implicit Process mutations or create-conflict fallback; existing graph metadata is preserved while composition graph changes follow the explicit Model content. Delete and Model save disclose when expected-content comparisons occur only before dispatch. Durable local intents prohibit replay after an unknown mutation outcome. Exact existing service rejection codes are interpreted by a pure application policy; known no-effect refusals preserve only safe code/category fields and a durable rejected result. Network failures, 5xx, unknown codes, malformed/mismatched decision receipts and post-acknowledgment readback failures remain unknown. A repeated rejected request returns its original refusal without dispatch.
 
 Review adapts the existing business contract: one submission root with server-related data, current participant queries/materials, reviewer draft save and separate reviewer decision. Historical packages and server round links are not fabricated. See the [service comparison](../analysis/cli-interface-comparison.md#现有业务服务与本次实施基线) for the boundary against deferred target semantics.
 
@@ -70,7 +70,7 @@ Imports flow from composition to commands to application; adapters implement por
 
 ## Dependency and operation boundaries
 
-The complete source boundary test covers commands, application, adapters, shared facilities and library owners. The emitted import/re-export/dynamic-import graph must be acyclic. Type-only imports use declaration-level `import type`, avoiding empty runtime imports under verbatim module syntax. Literal graph checks complement behavioral tests; computed module loading and child execution retain their own integrity checks.
+The complete source boundary test covers commands, application, adapters, shared facilities and library owners. The emitted import/re-export/dynamic-import graph must be acyclic. Type-only imports use declaration-level `import type`, avoiding empty runtime imports under verbatim module syntax. Library dependencies on shared modules are limited to pure errors and state-directory leaves; CLI lock-failure projection preserves public error-class identity and never exposes private owner metadata. Literal graph checks complement behavioral tests; computed module loading and child execution retain their own integrity checks.
 
 Dataset capability discovery and command flags share a finite action type. Model graph/result generation, Process statistics and Source uploads use discriminated operation selections; uploads and remote scans are not described as local processing. External JSON remains runtime-validated at the use-case boundary. Typed write dispatch carries exact target, content, preconditions and the pre-dispatch hook rather than an arbitrary action string.
 

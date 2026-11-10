@@ -47,6 +47,7 @@ function fixture(
   wrongReadback = false,
   candidate: JsonObject = content,
   invalidAcknowledgement = false,
+  refusal?: { status: number; payload: unknown; breakJournal?: boolean },
 ) {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'dataset-write-test-'));
   t.after(() => rmSync(directory, { force: true, recursive: true }));
@@ -61,6 +62,16 @@ function fixture(
         writes++;
         bodies.push(JSON.parse(String(init.body)));
         if (ambiguous) throw new Error('Bearer secret');
+        if (refusal?.breakJournal) {
+          const journal = path.join(directory, `${contentDigest(request.requestId)}.json`);
+          rmSync(journal);
+          mkdirSync(journal);
+        }
+        if (refusal)
+          return new Response(JSON.stringify(refusal.payload), {
+            status: refusal.status,
+            headers: { 'content-type': 'application/json' },
+          });
         stored = String(url).endsWith('/app_dataset_delete')
           ? null
           : wrongReadback
@@ -156,6 +167,21 @@ test('model create uses the existing atomic service with no generated mutations 
   );
   assert.equal(created.writes(), 1);
   await assert.rejects(created.writer('model', 'save', modelRequest, false), /expectedContent/);
+  for (const status of [200, 409]) {
+    const rejected = fixture(t, null, false, false, model, false, {
+      status,
+      payload: { ok: false, code: 'VERSION_CONFLICT' },
+    });
+    assert.equal(
+      (await rejected.writer('model', 'create', modelRequest, false)).outcome,
+      'service_rejected',
+    );
+    assert.equal(
+      (await rejected.writer('model', 'create', modelRequest, false)).error?.code,
+      'VERSION_CONFLICT',
+    );
+    assert.equal(rejected.writes(), 1);
+  }
   for (const invalid of [true, false]) {
     const failed = fixture(t, null, !invalid, false, model, invalid);
     assert.equal((await failed.writer('model', 'create', modelRequest, false)).status, 'unknown');
@@ -362,4 +388,79 @@ test('existing model save and draft delete retain distinct service semantics and
   );
   assert.equal(saved.bodies[0]!.mode, 'update');
   await assert.rejects(saved.writer('model', 'delete', request, false), /outside this interface/);
+});
+
+test('contract-backed Dataset refusals keep safe original errors and never replay', async (t) => {
+  for (const action of ['create', 'save', 'delete'] as const) {
+    for (const [status, code, category] of [
+      [409, 'VERSION_CONFLICT', 'conflict'],
+      [403, '42501', 'authentication'],
+      [400, 'INVALID_PAYLOAD', 'input'],
+      [200, 'FORBIDDEN', 'authentication'],
+    ] as const) {
+      const f = fixture(t, action === 'create' ? null : before, false, false, content, false, {
+        status,
+        payload: {
+          ok: false,
+          code,
+          message: 'Bearer hidden-secret',
+          details: { token: 'hidden-secret' },
+        },
+      });
+      const input = { ...request, ...(action === 'create' ? {} : { expectedContent: before }) };
+      const rejected = await f.writer('contact', action, input, false);
+      assert.equal(rejected.status, 'failed');
+      assert.equal(rejected.outcome, 'service_rejected');
+      assert.equal(rejected.error?.code, code);
+      assert.equal(rejected.error?.category, category);
+      assert.ok(!JSON.stringify(rejected).includes('hidden-secret'));
+      const journal = JSON.parse(
+        readFileSync(
+          path.join(
+            f.directory,
+            readdirSync(f.directory).find((name) => name.endsWith('.json'))!,
+          ),
+          'utf8',
+        ),
+      );
+      assert.equal(journal.state, 'rejected');
+      assert.ok(!JSON.stringify(journal).includes('hidden-secret'));
+      const replay = await f.writer('contact', action, input, false);
+      assert.equal(replay.outcome, 'service_rejected');
+      assert.deepEqual(replay.error, rejected.error);
+      assert.equal(f.writes(), 1);
+      await assert.rejects(f.writer('contact', action, { ...input, content: before }, false));
+    }
+  }
+});
+
+test('unproven Dataset failures retain unknown outcomes and consume no second dispatch', async (t) => {
+  for (const refusal of [
+    { status: 500, payload: { ok: false, code: 'VERSION_CONFLICT' } },
+    { status: 403, payload: { message: 'hidden-secret' } },
+    { status: 400, payload: { ok: false, code: 'RPC_ERROR', message: 'hidden-secret' } },
+    { status: 409, payload: { ok: true, code: 'VERSION_CONFLICT' } },
+  ]) {
+    const f = fixture(t, null, false, false, content, false, refusal);
+    const first = await f.writer('contact', 'create', request, false);
+    assert.equal(first.status, 'unknown');
+    assert.equal(first.error?.code, 'WRITE_OUTCOME_UNKNOWN');
+    assert.ok(!JSON.stringify(first).includes('hidden-secret'));
+    assert.equal((await f.writer('contact', 'create', request, false)).status, 'unknown');
+    assert.equal(f.writes(), 1);
+  }
+});
+
+test('observed Dataset refusal is retained even when its durable update cannot be written', async (t) => {
+  const f = fixture(t, null, false, false, content, false, {
+    status: 409,
+    payload: { ok: false, code: 'VERSION_CONFLICT' },
+    breakJournal: true,
+  });
+  const response = await f.writer('contact', 'create', request, false);
+  assert.equal(response.outcome, 'service_rejected');
+  assert.equal(response.error?.code, 'VERSION_CONFLICT');
+  assert.ok(response.warnings.some((warning) => warning.code === 'JOURNAL_UPDATE_UNAVAILABLE'));
+  await assert.rejects(f.writer('contact', 'create', request, false), /private regular/u);
+  assert.equal(f.writes(), 1);
 });
