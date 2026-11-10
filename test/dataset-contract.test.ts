@@ -80,7 +80,7 @@ test('fallback contracts hash selected assets and preserve absent components', a
   assert.equal(loaded.pack.schemaText, '{"title":"Flow"}');
   assert.equal(loaded.pack.methodologyText, 'Flow Methodology');
   assert.ok(loaded.pack.runtimeRuleset);
-  assert.match(JSON.stringify(loaded.pack.manifest), /runtime_rulesets/);
+  assert.match(JSON.stringify(loaded.pack.manifest), /public_rules/);
   const sparse = internals.loadFallbackContractPack({
     type: 'contact',
     includes: ['schema', 'methodology'],

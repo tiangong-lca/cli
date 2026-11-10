@@ -18,9 +18,9 @@ checkPaths:
   - scripts/bootstrap/**
   - test/runtime-*.test.ts
   - package.json
-lastReviewedAt: 2026-10-05
-lastReviewedCommit: 4fcbcebf2d18a08f201556db63e7faa7657ffac7
-lastReviewedNote: 'Reviewed CLI #401 separate PCR data cache and explicit installed-tool binding using existing download/CommandSpec boundaries; runtime trust anchors and managed Node authorization remain unchanged.'
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 12f1bde7e1249031772c70cc27b9cb6cdc76b28c
+lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
 related:
   - docs/agents/repo-architecture.md
   - docs/agents/repo-validation.md

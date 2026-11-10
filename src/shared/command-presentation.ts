@@ -22,6 +22,7 @@ export function attachReplyTemplate(
     new URL(`../runtime${path.extname(fileURLToPath(import.meta.url))}`, import.meta.url).href,
   ),
 ): void {
+  if (name === 'command-failed' && value.error?.category === 'conflict') name = 'conflict-result';
   const file = path.join(root, 'assets', 'reply-templates', `${name}.md`);
   if (existsSync(file)) value.replyTemplate = file;
   else

@@ -14,8 +14,8 @@ checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 3af078a975dcf72adde340cc779935344057b41e
-lastReviewedNote: 'Reviewed shared Flow content validation and write admission against current command, maintenance/recovery, packaging, documentation and release boundaries.'
+lastReviewedCommit: 12f1bde7e1249031772c70cc27b9cb6cdc76b28c
+lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -128,6 +128,8 @@ AGENTS 面向开发 AI，规定目录职责、依赖方向、新命令开发路�
 明确输入文件、输出产物、检查范围和引用证据。引用关系检查统一进入 `validate --checks references`，远程检查显式声明；引用字段允许直接编辑或使用通用 `patch`，按需独立 `save`，不新增专用检查或改写入口。补丁和翻译回填验证源内容及定位；聚合只生成候选 Process，不自动保存、提交审核或发布。Source 附件传输保持独立效果，上传成功与 Source 保存成功分别表达。
 
 Flow 参考属性的本地业务约束由同一纯校验器承载：内部 ID 有效且唯一，声明的参考指针唯一可解析，全部因子有限且为正，参考因子精确等于十进制 1。类型化校验、写入准入、维护计划/新写入前检及包校验复用规则；校验不自动归一化、换算或替换指针。保持结构与内容诊断分层，并验证历史成功恢复不重放。
+
+契约验收同时覆盖 Unit Group 的局部身份与参考解析、Source 附件和数据集引用的区分、Process 交换项投影及统计过滤/分组、所有未执行检查的披露。统计完整性和内容投影不得由命令正常完成推断。命令帮助提供实际请求字段，公共规则发现不混入退役工作流策略；续页、文件保护、上下文大小和结果模板分别通过实际入口验证。
 
 模型结果生成以 `dataset model build-resulting-process` 为主命令，`dataset model aggregate` 为长期支持的别名，两者共用参数解析、帮助契约、业务实现、结果呈现和测试用例。文档示例、推荐命令及结果中的 `operation` 统一采用主命令。验收使用两种入口运行相同成功、输入错误和业务失败用例，核对业务产物、默认值、结果语义、错误、退出码及规范化的动作名称一致，避免分别维护两套实现和测试。
 

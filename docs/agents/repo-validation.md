@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 3af078a975dcf72adde340cc779935344057b41e
-lastReviewedNote: 'Reviewed shared Flow content validation and write admission against current command, maintenance/recovery, packaging, documentation and release boundaries.'
+lastReviewedCommit: 12f1bde7e1249031772c70cc27b9cb6cdc76b28c
+lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml

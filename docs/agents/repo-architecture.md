@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 3af078a975dcf72adde340cc779935344057b41e
-lastReviewedNote: 'Reviewed shared Flow content validation and write admission against current command, maintenance/recovery, packaging, documentation and release boundaries.'
+lastReviewedCommit: 12f1bde7e1249031772c70cc27b9cb6cdc76b28c
+lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -51,14 +51,16 @@ Managed-host launch selection stays in the generic CLI manager. Dedicated protoc
 
 - `src/cli-deps.ts`: internal composition dependencies, result types and shared failure projection, without package exports.
 - `src/commands/`: strict CLI argument/help handling, bounded output and local artifact coordination. Auth service, Release, admin, package tools, classification maintenance and protected maintenance have bounded modules; their retained parsers and safety checks are unchanged.
-- `src/application/`: Dataset identity, query/cursor rules, content diff/patch, reference discovery and supplied-translation application; no filesystem or network transport.
+- `src/application/`: Dataset identity, query/cursor rules, statistics selection/grouping, content diff/patch, reference discovery and supplied-translation application; no filesystem/network transport or CLI command construction.
 - `src/adapters/`: authenticated exact reads/search, existing contract and validation helpers, Model calculations, Source attachment transfer and explicit Dataset/Review mutations.
-- `src/shared/`: result types, safe file IO, error projection and installed template lookup.
+- `src/shared/`: result types, safe file IO, platform-aware continuation quoting, error projection and installed template lookup.
 - `assets/reply-templates/`: Markdown guidance selected by actual outcome.
 
 Root and classification discovery expose bounded structured help and content-bound local pagination. Authentication presentation reuses the existing OAuth, session and exact-identity implementations through an injected execution port. The common envelope stores the unchanged receipt under `data.receipt`; standalone output writes only that receipt. Public receipt parsing is unchanged. Doctor separates local runtime/configuration observations from an explicit public Auth health GET, which never refreshes sessions or verifies actor permission.
 
 Dataset uses one typed command router for all eight object types. Model `build-resulting-process` and its `aggregate` alias share a canonical operation and implementation. Calculation inputs are explicit snapshots; exact remote Process lookups never fall back to latest. Source uploads verify selected bytes and independent readback, preserve failed references and do not save Source content.
+
+`src/commands/dataset-discovery.ts` owns query result presentation. Model graph metadata never enters identity context; explicit Process exchange projections are labeled incomplete content. Statistics adapts bounded visible-row reads and reuses the pure existing summary algorithm; count drift, repeated identities and scan bounds remain partial observations. `contract` exposes verified released public definitions rather than retired authoring/identity workflow gates. Executed checks and omitted layers belong to validation reports.
 
 Create and save are separate service intents. Ordinary saves reuse server content CAS. Model writes use the existing atomic model service with no implicit Process mutations or create-conflict fallback; existing graph metadata is preserved while composition graph changes follow the explicit Model content. Delete and Model save disclose when expected-content comparisons occur only before dispatch. Durable local intents prohibit replay after an unknown mutation outcome.
 

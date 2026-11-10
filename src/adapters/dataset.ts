@@ -27,7 +27,13 @@ export function createDatasetPorts(env: NodeJS.ProcessEnv, fetchImpl: FetchLike)
         checks,
         local,
         references,
-        notChecked: ['scientific_reference_suitability', 'cross_dataset_quantitative_consistency'],
+        notChecked: [
+          ...(local
+            ? (local.notChecked as string[]).filter((check) => check !== 'remote_references')
+            : ['schema', 'business']),
+          'scientific_reference_suitability',
+          'cross_dataset_quantitative_consistency',
+        ],
         scope: 'existing_exact_reference_admission_and_requested_local_checks',
       };
     },

@@ -28,7 +28,7 @@ export function readCommandInput(file: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-export function writeCommandOutput(file: string, value: unknown, force: boolean, input?: string) {
+export function assertSeparateCommandFiles(file: string, input?: string) {
   const output = path.resolve(file);
   if (input && input !== '-') {
     const source = realpathSync(input);
@@ -43,6 +43,11 @@ export function writeCommandOutput(file: string, value: unknown, force: boolean,
     if (same)
       throw new CommandInputError('OUTPUT_IS_INPUT', 'Output must not replace the input file.');
   }
+}
+
+export function writeCommandOutput(file: string, value: unknown, force: boolean, input?: string) {
+  const output = path.resolve(file);
+  assertSeparateCommandFiles(file, input);
   const text = `${JSON.stringify(value, null, 2)}\n`;
   mkdirSync(path.dirname(output), { recursive: true });
   const temporary = `${output}.${randomUUID()}.tmp`;

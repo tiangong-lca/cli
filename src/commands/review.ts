@@ -7,9 +7,14 @@ import {
   type CommandResult,
 } from '../shared/command-result.js';
 import { attachReplyTemplate, renderResult } from '../shared/command-presentation.js';
-import { readCommandInput, writeCommandOutput } from '../shared/command-files.js';
+import {
+  readCommandInput,
+  writeCommandOutput,
+  assertSeparateCommandFiles,
+} from '../shared/command-files.js';
 import { text, type JsonObject } from '../application/dataset-types.js';
-import { queryCursor, nextCursor, shellArgument } from '../application/dataset-discovery.js';
+import { queryCursor, nextCursor } from '../application/dataset-discovery.js';
+import { shellArgument } from '../shared/command-continuation.js';
 import type { ReviewRead } from '../application/dataset-types.js';
 
 const actions = ['submit', 'resubmit', 'get', 'list', 'materials', 'comment', 'decide', 'withdraw'];
@@ -158,13 +163,20 @@ export async function runReviewCommand(
           });
       } else {
         const request = readCommandInput(text(flags.input, '--input'));
+        if (flags.output)
+          assertSeparateCommandFiles(text(flags.output, '--output'), text(flags.input, '--input'));
         value = await operations.mutate(action, request, flags['dry-run'] === true);
         artifact = value.data;
       }
       if (flags.output) {
         try {
           value.artifacts.push(
-            writeCommandOutput(text(flags.output, '--output'), artifact, flags.force === true),
+            writeCommandOutput(
+              text(flags.output, '--output'),
+              artifact,
+              flags.force === true,
+              flags.input as string | undefined,
+            ),
           );
         } catch {
           if (value.status === 'completed' || value.status === 'accepted') value.status = 'partial';

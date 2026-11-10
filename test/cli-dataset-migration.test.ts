@@ -18,7 +18,8 @@ import {
   diffContent,
   listContentReferences,
 } from '../src/application/dataset-content.js';
-import { queryCursor, nextCursor, discoverDatasets } from '../src/application/dataset-discovery.js';
+import { queryCursor, nextCursor } from '../src/application/dataset-discovery.js';
+import { discoverDatasets } from '../src/commands/dataset-discovery.js';
 import { extractTranslations, applyTranslations } from '../src/application/dataset-translations.js';
 import { createDatasetPorts } from '../src/adapters/dataset.js';
 import { allocationFixture } from './helpers/process-allocation-fixture.js';

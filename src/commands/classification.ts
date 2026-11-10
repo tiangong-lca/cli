@@ -5,7 +5,8 @@ import type {
 } from '../lib/dataset-classification.js';
 import { text } from '../application/dataset-types.js';
 import { contentDigest } from '../application/dataset-content.js';
-import { queryCursor, nextCursor, shellArgument } from '../application/dataset-discovery.js';
+import { queryCursor, nextCursor } from '../application/dataset-discovery.js';
+import { shellArgument } from '../shared/command-continuation.js';
 import { result, CommandInputError, type CommandIO } from '../shared/command-result.js';
 import { attachReplyTemplate, renderResult } from '../shared/command-presentation.js';
 import { writeCommandOutput } from '../shared/command-files.js';

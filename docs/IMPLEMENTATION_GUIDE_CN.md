@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 3af078a975dcf72adde340cc779935344057b41e
-lastReviewedNote: 'Reviewed shared Flow content validation and write admission against current command, maintenance/recovery, packaging, documentation and release boundaries.'
+lastReviewedCommit: 12f1bde7e1249031772c70cc27b9cb6cdc76b28c
+lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -57,6 +57,10 @@ Dataset 按八种类型的能力表开放命令：Flow、Process、Model、Sourc
 查询通过同一类型入口使用精确身份、明确的 latest 选择、分页和引用位置清单。`list-references` 是本地引用发现，目标是否存在由 get 确认；关系有效性由 validate 检查。patch 和翻译应用产生候选内容，save 读取显式写入请求，二者不互相代替。
 
 Flow 参考属性规则由纯模块 `src/lib/flow-reference-properties.ts` 统一实现，供类型化业务校验、create/save 准入、维护计划与新写入前检、维护保存和整包校验复用。规则遵循随包公共规则来源，按唯一内部 ID 解析指针，以精确十进制判断参考因子等于 1，并检查全部因子为有限正数。诊断保留字段路径；模块不修正数据或编排工作流。既有成功记录的恢复仍只核对原结果，不重新派发历史写入。
+
+Unit Group 内部 ID 与参考单位关系检查由纯校验器同时接入类型入口和包校验。Source 附件字段不参与数据集引用清单。Review 在调用业务端口前验证输入/输出文件分离，文件写出时仍检查同一文件及硬链接，避免输出覆盖请求。
+
+Process 的交换项投影与统计选择通过类型命令发现。统计由适配层执行有界可见范围扫描，复用既有纯汇总算法；选择和分类分组属于 application，命令、模板和续页呈现属于 commands/shared。大模型图不进入身份上下文，所有未执行的校验层明确披露。公共规则契约保留精确来源和定义，具体执行结果不由规则发现推断。
 
 Model `build-resulting-process` 与正式别名 `aggregate` 使用同一算法及规范命令名，只生成候选 Process。模型来源携带明确类型及精确版本；保存结果过程是后续独立操作。Source 上传附件保留失败引用并独立下载验证，上传不等于对象已保存。
 

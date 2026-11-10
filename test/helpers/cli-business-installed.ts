@@ -5,6 +5,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createBusinessBackend } from './cli-business-backend.js';
 import { businessFlowReferenceFixture } from './flow-reference-fixture.js';
+import { unitGroupFixture } from './unitgroup-fixture.js';
 import {
   businessActor,
   businessReviewer,
@@ -37,6 +38,7 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
     actor = businessActor,
     expectedExit = 0,
     expectedErrorCode?: string,
+    stdin?: string,
   ) => {
     const child = spawn(process.execPath, [bin, ...args, '--json'], {
       cwd: directory,
@@ -57,13 +59,14 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
               ? 'reviewer-token'
               : 'outsider-token',
       },
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: [stdin === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
       timeout: 30_000,
     });
+    child.stdin?.end(stdin);
     let stdout = '',
       stderr = '';
-    child.stdout.on('data', (c) => (stdout += String(c)));
-    child.stderr.on('data', (c) => (stderr += String(c)));
+    child.stdout!.on('data', (c) => (stdout += String(c)));
+    child.stderr!.on('data', (c) => (stderr += String(c)));
     const code = await new Promise<number | null>((resolve, reject) => {
       child.once('error', reject);
       child.once('close', resolve);
@@ -132,6 +135,68 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
       await invoke(['dataset', command, '--help'], businessActor, 2, 'UNKNOWN_COMMAND');
     }
     assert.equal(backend.calls.length, 0, 'Retired paths must not contact the backend');
+    const stdinReferences = await invoke(
+      ['dataset', 'flow', 'list-references', '--input', '-', '--limit', '1'],
+      businessActor,
+      0,
+      undefined,
+      JSON.stringify({ flowDataSet: { a: { '@refObjectId': 'a' }, b: { '@refObjectId': 'b' } } }),
+    );
+    assert.equal((stdinReferences.nextActions as Json[])[0]!.command, undefined);
+    assert.match(
+      String((stdinReferences.nextActions as Json[])[0]!.description),
+      /unchanged stdin/u,
+    );
+    const protectedInput = jsonFile({
+      requestId: 'protected-original',
+      json: { text: 'Original draft' },
+    });
+    const protectedBytes = readFileSync(protectedInput, 'utf8');
+    const refusal = await invoke(
+      [
+        'review',
+        'comment',
+        '--input',
+        protectedInput,
+        '--output',
+        protectedInput,
+        '--force',
+        '--dry-run',
+      ],
+      businessActor,
+      2,
+    );
+    assert.equal((refusal.error as Json).code, 'OUTPUT_IS_INPUT');
+    assert.equal(readFileSync(protectedInput, 'utf8'), protectedBytes);
+    for (const valid of [true, false]) {
+      const content = unitGroupFixture();
+      if (!valid)
+        ((content.unitGroupDataSet as Json).unitGroupInformation as Json).quantitativeReference = {
+          referenceToReferenceUnit: '99999',
+        };
+      const checked = await invoke(
+        ['dataset', 'unitgroup', 'validate', '--input', jsonFile(content)],
+        businessActor,
+        valid ? 0 : 1,
+      );
+      assert.equal(((checked.data as Json).validation as Json).status, valid ? 'passed' : 'failed');
+    }
+    const sourceReferences = await invoke([
+      'dataset',
+      'source',
+      'list-references',
+      '--input',
+      jsonFile({
+        sourceDataSet: {
+          sourceInformation: {
+            dataSetInformation: {
+              referenceToDigitalFile: { '@uri': 'https://example.test/file.pdf' },
+            },
+          },
+        },
+      }),
+    ]);
+    assert.deepEqual((sourceReferences.data as Json).references, []);
     for (const factor of ['0.45', '0', '1.00000000000000000001', '1.0']) {
       const content = businessFlowReferenceFixture(factor);
       const file = jsonFile(content);
@@ -181,6 +246,35 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
         createdCount,
       );
       assert.deepEqual(await get(type, identity), content);
+      if (type === 'process') {
+        const projection = await invoke([
+          'dataset',
+          'process',
+          'get',
+          '--id',
+          identity.id,
+          '--version',
+          identity.version,
+          '--fields',
+          'exchanges',
+        ]);
+        assert.deepEqual(
+          (projection.data as Json).exchanges,
+          (content.processDataSet as Json).exchanges,
+        );
+        assert.equal((projection.data as Json).content, undefined);
+        const statistics = await invoke([
+          'dataset',
+          'process',
+          'statistics',
+          '--group-by',
+          'state,classification',
+          '--max-rows',
+          '100',
+        ]);
+        assert.equal((statistics.data as Json).total_process_rows, 1);
+        assert.equal((statistics.completeness as Json).snapshot, false);
+      }
       const patched = businessEdit(type, content);
       const output = path.join(directory, `patch-${type}.json`);
       await invoke([

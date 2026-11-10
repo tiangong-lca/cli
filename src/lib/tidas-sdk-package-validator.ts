@@ -9,6 +9,7 @@ import {
 import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 import { TIDAS_LANGUAGE_CODE_SET } from './tidas-languages.js';
 import { collectFlowReferencePropertyIssues } from './flow-reference-properties.js';
+import { collectUnitGroupContentIssues } from './unitgroup-content-validation.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -743,6 +744,17 @@ function categoryValidate(
     const itemIssues = dedupeIssues([
       ...collectSchemaIssues(schema, jsonItem, category, fullPath, createEntity),
       ...flowContentIssues,
+      ...(category === 'unitgroups' && asRecord(jsonItem)
+        ? collectUnitGroupContentIssues(asRecord(jsonItem)!).map((issue) =>
+            makeIssue(
+              category,
+              fullPath,
+              issue.path.split('.').join('/'),
+              issue.message,
+              issue.code,
+            ),
+          )
+        : []),
       ...collectFlowSchemaGapIssues(jsonItem, category, fullPath),
       ...collectLocalizedTextIssues(jsonItem, category, fullPath),
       ...collectClassificationIssues(jsonItem, category, fullPath),

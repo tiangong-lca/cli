@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 3af078a975dcf72adde340cc779935344057b41e
-lastReviewedNote: 'Reviewed shared Flow content validation and write admission against current command, maintenance/recovery, packaging, documentation and release boundaries.'
+lastReviewedCommit: 12f1bde7e1249031772c70cc27b9cb6cdc76b28c
+lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
 ---
 
 # TianGong LCA CLI
@@ -81,6 +81,10 @@ node bin/tiangong-lca.js dataset process validate --input process.json --output 
 `validate` 接收单个规范对象内容，复用现有结构、业务、多语言和适用分配检查；显式 `--checks references` 执行现有远程精确引用准入校验。报告区分实际检查与未覆盖的科学适用性和跨对象定量一致性。LCIA Method 仅支持契约和 schema 校验。
 
 Flow 业务校验按声明的内部 ID 唯一定位参考属性，要求所有属性因子为有限正数、参考因子精确等于十进制 1。`create/save` 在派发前执行相同检查；校验只报告具体字段问题，不自动归一化或修改数据。详见 [Flow 约束](docs/interfaces/datasets/flows.md#业务约束)。
+
+Unit Group 业务校验检查单位内部 ID 及参考单位的唯一定位。`contract` 返回可验证来源的公共规则定义；执行了哪些检查以 `validate` 的实际报告为准，未选择的层明确列入 `notChecked`。
+
+Process 支持 `get --fields exchanges` 读取交换项投影，投影不构成可直接保存的完整内容。`statistics --group-by state,classification [--owner <id>] [--state <code>]` 汇总明确可见范围；默认最多扫描 10000 条，通过 `--max-rows` 调整。扫描不完整返回部分结果，完整分组使用 `--output` 获取。
 
 新入口的 JSON 返回业务结果、完整性和上下文。下一步提示仅包含说明与可选命令，回复模板为安装包中的 Markdown 路径。大校验报告可通过 `--output` 保存；终端只显示有界摘要。缺少模板时仍保留真实业务结果。
 

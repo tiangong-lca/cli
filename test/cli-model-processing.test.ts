@@ -277,10 +277,10 @@ test('Model result generation and aggregate share canonical output with exact lo
     /Choose explicit local/,
   );
 });
-test('Process statistics requires declared scope and explicit state filters', async () => {
+test('Process statistics validates explicit scope/state selections and binds current-user scope', async () => {
   const operations = datasetOperations(env, async (url) =>
     isSupabaseAuthTokenUrl(url)
-      ? makeSupabaseAuthResponse()
+      ? makeSupabaseAuthResponse({ userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' })
       : new Response('[]', {
           headers: { 'content-type': 'application/json', 'content-range': '*/0' },
         }),

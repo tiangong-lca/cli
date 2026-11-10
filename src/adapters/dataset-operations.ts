@@ -3,12 +3,12 @@ import { stageModelProcesses } from './model-process-inputs.js';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { object, text, type DatasetPorts } from '../application/dataset-types.js';
+import { object, type DatasetPorts } from '../application/dataset-types.js';
 import { CommandInputError } from '../shared/command-result.js';
 import { runLifecyclemodelGraph } from '../lib/lifecyclemodel-graph.js';
 import { runLifecyclemodelBuildResultingProcess } from '../lib/lifecyclemodel-resulting-process.js';
 import { uploadSourceAttachments } from './source-attachments.js';
-import { runProcessScopeStatistics } from '../lib/process-scope-statistics.js';
+import { processStatistics } from './process-statistics.js';
 import type { FetchLike } from '../lib/http.js';
 
 export function datasetOperations(
@@ -100,27 +100,8 @@ export function datasetOperations(
       if (type === 'source' && action === 'upload-attachments') {
         return uploadSourceAttachments(request, inputPath, env, fetchImpl);
       }
-      if (type === 'process' && action === 'statistics') {
-        const scope = text(request.scope, 'scope');
-        if (
-          !['visible', 'current-user'].includes(scope) ||
-          !Array.isArray(request.stateCodes) ||
-          !request.stateCodes.length ||
-          request.stateCodes.some((code) => !Number.isSafeInteger(code))
-        )
-          throw new CommandInputError(
-            'SCOPE_INVALID',
-            'statistics requires scope visible/current-user and explicit integer stateCodes.',
-          );
-        const report = await runProcessScopeStatistics({
-          env,
-          fetchImpl,
-          outDir: directory,
-          scope: scope as 'visible',
-          stateCodes: request.stateCodes as number[],
-        });
-        return { ...report, files: undefined, out_dir: undefined };
-      }
+      if (type === 'process' && action === 'statistics')
+        return await processStatistics(request, env, fetchImpl);
       throw new CommandInputError(
         'CAPABILITY_UNSUPPORTED',
         'This operation has no supported adapter.',

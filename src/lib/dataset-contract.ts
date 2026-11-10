@@ -151,7 +151,7 @@ async function loadContractPack(options: {
     if (typeof pack.manifest === 'object' && pack.manifest !== null) {
       (pack.manifest as Record<string, unknown>).includes = [...options.includes];
       (pack.manifest as Record<string, unknown>).ruleset = runtimeRuleset
-        ? artifactManifest('runtime_rulesets.json', JSON.stringify(runtimeRuleset, null, 2))
+        ? artifactManifest('public_rules.json', JSON.stringify(runtimeRuleset, null, 2))
         : null;
     }
     return {
@@ -197,7 +197,7 @@ function loadFallbackContractPack(options: {
           ? artifactManifest(methodologyFile, methodologyText)
           : null,
       ruleset: runtimeRuleset
-        ? artifactManifest('runtime_rulesets.json', JSON.stringify(runtimeRuleset, null, 2))
+        ? artifactManifest('public_rules.json', JSON.stringify(runtimeRuleset, null, 2))
         : null,
     },
     schemaText,

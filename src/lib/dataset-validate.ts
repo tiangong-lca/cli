@@ -8,6 +8,7 @@ import * as tidasSdk from '@tiangong-lca/tidas-sdk';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
 import { CliError } from './errors.js';
 import { collectFlowReferencePropertyIssues } from './flow-reference-properties.js';
+import { collectUnitGroupContentIssues } from './unitgroup-content-validation.js';
 import {
   isRecord,
   materializeDatasetRows,
@@ -163,6 +164,7 @@ export function collectImportContentIssues(payload: unknown): DatasetValidateIss
 export function collectDatasetContentIssues(payload: Record<string, unknown>, kind: DatasetKind) {
   const issues = collectImportContentIssues(payload);
   if (kind === 'flow') issues.push(...collectFlowReferencePropertyIssues(payload));
+  if (kind === 'unitgroup') issues.push(...collectUnitGroupContentIssues(payload));
   return issues;
 }
 

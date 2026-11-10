@@ -1232,3 +1232,6 @@ export const __testInternals = {
   renderMarkdownReport,
   toPositiveInteger,
 };
+
+// Pure summaries for the typed atomic statistics adapter; no remote scan or file policy.
+export { calculateStatistics as summarizeObservedProcesses };

@@ -181,7 +181,9 @@ test('runDatasetValidate supports mixed support rows with --type auto', async ()
         unitGroupDataSet: {
           unitGroupInformation: {
             dataSetInformation: { 'common:UUID': 'unitgroup-1' },
+            quantitativeReference: { referenceToReferenceUnit: '1' },
           },
+          units: { unit: { '@dataSetInternalID': '1', name: 'reference unit', meanValue: '1' } },
           administrativeInformation: {
             publicationAndOwnership: { 'common:dataSetVersion': '00.00.001' },
           },

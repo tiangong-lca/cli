@@ -11,7 +11,14 @@ import {
   type DatasetPorts,
   type JsonObject,
 } from '../application/dataset-types.js';
-import { discoverDatasets, queryCursor, shellArgument } from '../application/dataset-discovery.js';
+import { queryCursor } from '../application/dataset-discovery.js';
+import { discoverDatasets } from './dataset-discovery.js';
+import { statisticsRequest } from './dataset-statistics.js';
+import {
+  shellArgument,
+  inputContinuation,
+  queryContinuation,
+} from '../shared/command-continuation.js';
 import {
   contentDigest,
   diffContent,
@@ -91,7 +98,15 @@ function artifactSummary(data: JsonObject): JsonObject {
       delete summary[name];
     }
   }
-  for (const name of ['changes', 'units', 'references', 'files', 'inputBindings', 'findings']) {
+  for (const name of [
+    'changes',
+    'units',
+    'references',
+    'files',
+    'inputBindings',
+    'findings',
+    'groups',
+  ]) {
     const entries = summary[name];
     if (Array.isArray(entries) && entries.length > 5) {
       summary[`${name}Count`] = entries.length;
@@ -117,7 +132,7 @@ const flags: Record<string, string[]> = {
   create: ['input', 'dry-run'],
   save: ['input', 'dry-run'],
   delete: ['input', 'dry-run'],
-  statistics: ['input'],
+  statistics: ['input', 'scope', 'owner', 'state', 'group-by', 'max-rows'],
   'upload-attachments': ['input', 'dry-run'],
 };
 const requestShapes: Record<string, unknown> = {
@@ -192,6 +207,13 @@ const requestShapes: Record<string, unknown> = {
       },
     ],
   },
+  statistics: {
+    scope: 'visible (default) or current-user',
+    owner: 'optional exact visible owner',
+    stateCodes: 'optional distinct integer states; omitted means all visible states',
+    groupBy: 'state and/or classification; default [state]',
+    maxRows: '1..100000; default 10000; incomplete scans return partial',
+  },
   graph: { content: 'canonical Model content' },
   'build-resulting-process': {
     source_model: 'explicit model content or json_ordered_path',
@@ -263,7 +285,11 @@ function csv(value: string, supported: string[], label: string) {
     );
   return list;
 }
-export async function runDatasetCommand(args: string[], ports: DatasetPorts): Promise<CommandIO> {
+export async function runDatasetCommand(
+  args: string[],
+  ports: DatasetPorts,
+  readInput: typeof readCommandInput = readCommandInput,
+): Promise<CommandIO> {
   const type = args[0] as DatasetType;
   let action = args[1];
   let start = 2;
@@ -345,7 +371,16 @@ export async function runDatasetCommand(args: string[], ports: DatasetPorts): Pr
           ? undefined
           : csv(
               String(values.fields),
-              ['type', 'id', 'version', 'modifiedAt', 'stateCode', 'owner', 'content'],
+              [
+                'type',
+                'id',
+                'version',
+                'modifiedAt',
+                'stateCode',
+                'owner',
+                'content',
+                ...(type === 'process' && action === 'get' ? ['exchanges'] : []),
+              ],
               '--fields',
             );
       const binding = {
@@ -374,10 +409,21 @@ export async function runDatasetCommand(args: string[], ports: DatasetPorts): Pr
             ),
           );
         if (action === 'get') {
+          if (fields.includes('exchanges'))
+            value.data.exchanges =
+              object(object(value.data.content, 'content').processDataSet, 'processDataSet')
+                .exchanges ?? null;
           if (!fields.includes('content')) delete value.data.content;
+          value.completeness.contentProjection = fields;
+          value.completeness.completeContent = fields.includes('content');
           value.data.subject = project(value.data.subject);
         } else value.data.items = (value.data.items as unknown[]).map(project);
       }
+      if (value.completeness.nextCursor)
+        value.nextActions.push({
+          description: 'Read the next visible page.',
+          command: queryContinuation(type, action!, binding, value.completeness.nextCursor),
+        });
       if (action !== 'get' && values.limit === undefined)
         value.context.defaultedInputs = { limit: 20 };
       artifact = action === 'get' ? (value.data.content ?? value.data) : value.data;
@@ -458,8 +504,7 @@ export async function runDatasetCommand(args: string[], ports: DatasetPorts): Pr
         );
       let content: JsonObject;
       value = local;
-      if (values.input)
-        content = requireContent(type, readCommandInput(text(values.input, '--input')));
+      if (values.input) content = requireContent(type, readInput(text(values.input, '--input')));
       else {
         const id = text(values.id, '--id');
         const version = text(values.version, '--version');
@@ -508,14 +553,26 @@ export async function runDatasetCommand(args: string[], ports: DatasetPorts): Pr
       };
       value.summary = `${references.length} outgoing reference occurrence(s); targets were not checked.`;
       value.outcome = 'references_listed';
-      if (value.completeness.nextCursor)
-        value.nextActions.push({
-          description: 'Continue reference discovery using the same input and cursor.',
-          command: `tiangong-lca dataset ${type} list-references ${values.input ? `--input ${shellArgument(String(values.input))}` : `--id ${shellArgument(String(values.id))} --version ${shellArgument(String(values.version))}`} --limit ${limit} --cursor ${shellArgument(String(value.completeness.nextCursor))} --json`,
-        });
+      if (value.completeness.nextCursor) {
+        const source = values.input
+          ? inputContinuation(String(values.input))
+          : `--id ${shellArgument(String(values.id))} --version ${shellArgument(String(values.version))}`;
+        value.nextActions.push(
+          source
+            ? {
+                description: 'Continue reference discovery using the same input and cursor.',
+                command: `tiangong-lca dataset ${type} list-references ${source} --limit ${limit} --cursor ${shellArgument(String(value.completeness.nextCursor))} --json`,
+              }
+            : {
+                description:
+                  'Save the unchanged stdin content to a file and continue reference discovery with that file and the returned cursor.',
+              },
+        );
+      }
     } else {
-      const inputPath = text(values.input, '--input');
-      const request = readCommandInput(inputPath);
+      const inputPath =
+        action === 'statistics' && values.input === undefined ? '-' : text(values.input, '--input');
+      const request = action === 'statistics' ? statisticsRequest(values) : readInput(inputPath);
       value = local;
       if (action === 'validate') {
         const checks = csv(
@@ -600,6 +657,11 @@ export async function runDatasetCommand(args: string[], ports: DatasetPorts): Pr
                 ? 'Some attachments failed; unsuccessful references retain their original values.'
                 : 'Selected attachments uploaded; Source content has not been saved.';
         }
+        if (action === 'statistics') {
+          value.context = object(value.data.context, 'statistics context');
+          value.completeness = object(value.data.completeness, 'statistics completeness');
+          delete value.data.context;
+        }
         artifact = value.data;
       }
       if (!value.summary)
@@ -642,6 +704,14 @@ export async function runDatasetCommand(args: string[], ports: DatasetPorts): Pr
         }
       }
     }
+    if (action === 'statistics') {
+      const groups = value.data.groups as unknown[];
+      if (Array.isArray(groups) && groups.length > 5) {
+        value.data = artifactSummary(value.data);
+        value.completeness.truncated = true;
+        value.nextActions.push({ description: 'Use --output to save every statistics group.' });
+      }
+    }
     if (action === 'validate') {
       const validation = value.data.validation as JsonObject;
       value.data.validation = validationSummary(validation);
@@ -676,7 +746,9 @@ export async function runDatasetCommand(args: string[], ports: DatasetPorts): Pr
                       'upload-attachments',
                     ].includes(action!)
                   ? 'operation-completed'
-                  : 'query-result',
+                  : action === 'search' && (value.data.candidates as unknown[]).length > 1
+                    ? 'decision-required'
+                    : 'query-result',
     );
     return renderResult(
       value,

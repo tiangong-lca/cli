@@ -143,7 +143,9 @@ export function listContentReferences(content: JsonObject): JsonObject[] {
         ],
       });
     }
-    for (const [key, entry] of Object.entries(value)) visit(entry, `${path}/${escaped(key)}`);
+    for (const [key, entry] of Object.entries(value))
+      if (key.split(':').at(-1) !== 'referenceToDigitalFile')
+        visit(entry, `${path}/${escaped(key)}`);
   }
   visit(content, '');
   return references;
