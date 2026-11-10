@@ -32,6 +32,8 @@ related:
 
 `tiangong-lca study` adapts Edge's authenticated `lca.study-api.v2` on `app_lca_study`. It does not run a compiler, calculate source/model/input fingerprints, resolve permissions or access Database/Storage directly. The existing Process/LifecycleModel/release commands retain their separate purposes. Core lifecycle selects v2. P2 analysis/report/export selects v3; P3 review/finalization/named sharing selects v4. No silent wire upgrade or downgrade is permitted.
 
+Help and human-readable output describe LCA calculation projects and runs. The command name, owner Study terminology in protocol fields, machine output, and historical artifact identities remain stable.
+
 ## Commands and inputs
 
 Use `study capabilities`, `create/get/list/resources/archive/select-revision`, `member set`, `model source resolve/get`, `model prepare/get`, `revision create/save/get/freeze`, `scenario create/save/get/freeze`, `run submit/get/cancel`, `task get/wait/cancel`, and `artifact download`. Except capabilities, pass operation fields in `--input <JSON-file>`. Domain fields and typed selectors come from the exact Edge codec. The CLI fills absent schema, request ID and mutation idempotency key; an explicitly supplied conflicting operation/schema is rejected. Do not reconstruct source or model hashes from response wrappers.
