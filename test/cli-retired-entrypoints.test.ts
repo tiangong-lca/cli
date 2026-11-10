@@ -1,3 +1,4 @@
+import { composeCliDeps } from '../src/cli-composition.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { executeCli } from '../src/cli.js';
@@ -142,7 +143,7 @@ test('discovery contains the current typed tree and no compatibility roots', asy
 });
 test('retained Auth service rejects an unknown internal action without transport', async () => {
   const { deps, calls } = dependencies();
-  const value = await executeAuthService('unknown', [], deps);
+  const value = await executeAuthService('unknown', [], composeCliDeps(deps));
   assert.equal(value.exitCode, 2);
   assert.equal(JSON.parse(value.stderr).error.code, 'UNKNOWN_COMMAND');
   assert.equal(calls(), 0);

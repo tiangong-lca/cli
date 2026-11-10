@@ -1,5 +1,5 @@
 // data-api-relations: contacts, flowproperties, flows, lciamethods, lifecyclemodels, processes, sources, unitgroups
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import { assertFlowReferencePropertyWriteAdmission } from './flow-reference-properties.js';
 import type { FetchLike, ResponseLike } from './http.js';
 import {
@@ -22,14 +22,14 @@ import {
   type DataApiRpc,
 } from './supabase-data-api-contract.js';
 import { resolveSupabaseUserSession } from './supabase-session.js';
+import { isJsonObject } from './maintenance/contract/values.js';
 import {
-  isJsonObject,
   MAINTENANCE_SCAN_TABLES,
   type DatasetMaintenanceMutableTable,
   type DatasetMaintenanceRemoteRow,
   type DatasetMaintenanceScanTable,
   type JsonObject,
-} from './dataset-maintenance-contract.js';
+} from './maintenance/contract/types.js';
 import { assertFlowIdentityWireJson } from './dataset-maintenance-flow-identity-wire.js';
 
 const DEFAULT_PAGE_SIZE = 1_000;

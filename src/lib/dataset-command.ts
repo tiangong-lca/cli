@@ -1,6 +1,6 @@
 import { assertProcessAllocationWriteAdmission } from './process-allocation-write-admission.js';
 import { semanticContextFromInput } from './process-semantic-validation.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import { assertFlowReferencePropertyWriteAdmission } from './flow-reference-properties.js';
 import type { FetchLike } from './http.js';
 import { postJson, requireRemoteOkPayload } from './http.js';

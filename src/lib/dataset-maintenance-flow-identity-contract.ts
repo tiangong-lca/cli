@@ -1,10 +1,10 @@
+import { isJsonObject } from './maintenance/contract/values.js';
+import { sha256Json } from './canonical-json-hash.js';
 import {
-  isJsonObject,
-  sha256Json,
   type DatasetMaintenanceRowSnapshot,
   type JsonObject,
-} from './dataset-maintenance-contract.js';
-import { CliError } from './errors.js';
+} from './maintenance/contract/types.js';
+import { CliError } from '../shared/errors.js';
 import {
   assertFlowIdentityWireJson,
   flowIdentityRestrictedSha256,

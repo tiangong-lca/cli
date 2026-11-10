@@ -1,9 +1,9 @@
 import { parseArgs } from 'node:util';
 import { readRuntimeEnv } from '../lib/env.js';
-import { CliError } from '../lib/errors.js';
+import { CliError } from '../shared/errors.js';
 import { executeRemoteCommand, getRemoteCommandHelp } from '../lib/remote.js';
 
-import type { CliDeps, CliResult } from '../cli-deps.js';
+import type { ResolvedCliDeps, CliResult } from './ports.js';
 function renderAdminHelp(): string {
   return `Usage:
   tiangong-lca admin embedding-run --input <file> [options]
@@ -95,7 +95,7 @@ function applyRemoteOverrides(
 export async function executeAdminCommand(
   subcommand: string | null,
   commandArgs: string[],
-  deps: CliDeps,
+  deps: ResolvedCliDeps,
 ): Promise<CliResult> {
   if (!subcommand && commandArgs.includes('--help')) {
     return { exitCode: 0, stdout: `${renderAdminHelp()}\n`, stderr: '' };

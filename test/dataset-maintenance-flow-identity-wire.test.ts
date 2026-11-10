@@ -8,7 +8,7 @@ import {
   flowIdentityRestrictedSha256,
   isStandardFlowIdentityShortDescription,
 } from '../src/lib/dataset-maintenance-flow-identity-wire.js';
-import { sha256Text } from '../src/lib/dataset-maintenance-contract.js';
+import { sha256Text } from '../src/lib/canonical-json-hash.js';
 
 test('flow identity wire accepts only recursively safe JSON integers and narrow indexes', () => {
   const request = {

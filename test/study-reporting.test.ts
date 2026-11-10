@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { executeCli } from '../src/cli.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import { loadStudyCodec } from '../src/lib/study-codec.js';
 import { readStudyIntent } from '../src/lib/study-intent.js';
 import { runStudyRequest } from '../src/lib/study-transport.js';

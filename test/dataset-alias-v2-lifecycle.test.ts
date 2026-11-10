@@ -39,7 +39,7 @@ import {
   ALIAS_V2_PROTOCOL,
   buildAliasV2ExecutionIdentity,
 } from '../src/lib/dataset-alias-v2-protected-contract.js';
-import { sha256Json } from '../src/lib/dataset-maintenance-contract.js';
+import { sha256Json } from '../src/lib/canonical-json-hash.js';
 import {
   ALIAS_V2_TEST_ACCOUNT,
   ALIAS_V2_TEST_APPROVED_AT,

@@ -11,7 +11,7 @@ import {
   writePrivateImmutableJson,
   writePrivateImmutableText,
 } from '../src/lib/dataset-maintenance-protected-artifacts.js';
-import { sha256Text } from '../src/lib/dataset-maintenance-contract.js';
+import { sha256Text } from '../src/lib/canonical-json-hash.js';
 
 function withTempDirectory(run: (root: string) => void): void {
   const root = mkdtempSync(path.join(os.tmpdir(), 'tiangong-protected-artifacts-'));

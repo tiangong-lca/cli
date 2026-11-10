@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 export const PCR_PIN_SCHEMA = 'tiangong-lca.pcr-snapshot-lock.v1';
 export const PCR_RELEASE_ORIGIN = 'https://github.com/tiangong-lca/pcr/releases/download/';

@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
-import { CliError } from '../lib/errors.js';
-import type { DatasetMaintenanceOperation } from '../lib/dataset-maintenance-contract.js';
+import { CliError } from '../shared/errors.js';
+import { type DatasetMaintenanceOperation } from '../lib/maintenance/contract/types.js';
 
 export function parseDatasetMaintenanceClearAccountFlags(args: string[]): {
   help: boolean;

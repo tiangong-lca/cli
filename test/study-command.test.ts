@@ -13,7 +13,7 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 import { executeCli } from '../src/cli.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import {
   admitStudyCodecCandidate,
   STUDY_CODEC_CANDIDATE_ENV,

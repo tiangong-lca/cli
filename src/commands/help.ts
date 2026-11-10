@@ -21,8 +21,40 @@ export function rootHelp(usage: string): CommandIO {
       'pcr exec',
     ],
     packageTools: ['dataset import-lca convert', 'validation run'],
+    outputProtocols: {
+      core: {
+        commands: ['doctor', 'auth', 'dataset', 'review'],
+        machineHelp: true,
+        results: 'Shared result on stdout; stable structured errors.',
+      },
+      study: {
+        machineHelp: false,
+        results:
+          'Versioned Study result on stdout; legacy structured errors on stderr. Inspect study --help and the Study contract.',
+      },
+      runtime: {
+        machineHelp: false,
+        results: 'Runtime descriptor/manager schemas; exec preserves child stdout/stderr.',
+      },
+      pcr: {
+        machineHelp: false,
+        results: 'Pinned snapshot results; exec preserves child stdout/stderr.',
+      },
+      release: { machineHelp: false, results: 'Existing Release result/error/recovery contract.' },
+      specializedTools: {
+        commands: [
+          'dataset maintenance',
+          'dataset classification audit|apply',
+          'dataset import-lca',
+          'validation',
+          'admin',
+        ],
+        machineHelp: false,
+        results: 'Existing specialized report/error contracts.',
+      },
+    },
     discovery:
-      'Use <command> --help --json for inputs, effects, limits and recovery. Help does not execute a business operation.',
+      'Use core <command> --help --json for inputs, effects, limits and recovery; retained protocols use their documented help modes. Help does not execute a business operation.',
     result:
       'Core results carry actual scope, context, nextActions and an installed Markdown replyTemplate; Release and child process protocols retain their existing contracts.',
     usage,

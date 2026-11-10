@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { StudyCodec } from './study-codec.js';
 
 export const STUDY_API_SCHEMA = 'lca.study-api.v2' as const;

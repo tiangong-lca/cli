@@ -1,13 +1,8 @@
-import { CliError } from './errors.js';
-import {
-  computePlanSha256,
-  isJsonObject,
-  sha256Json,
-  sha256Text,
-  stableJsonText,
-  type DatasetMaintenancePlan,
-  type JsonObject,
-} from './dataset-maintenance-contract.js';
+import { CliError } from '../shared/errors.js';
+import { computePlanSha256 } from './dataset-maintenance-contract.js';
+import { sha256Json, sha256Text, stableJsonText } from './canonical-json-hash.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { type DatasetMaintenancePlan, type JsonObject } from './maintenance/contract/types.js';
 import {
   PROTECTED_EXECUTION_CONTRACT,
   PROTECTED_EXECUTION_COUNTS,

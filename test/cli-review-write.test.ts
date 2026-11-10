@@ -1,3 +1,4 @@
+import type { ReviewMutationAction } from '../src/application/review-write.js';
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 import { mkdtempSync, rmSync, writeFileSync, readdirSync, chmodSync, readFileSync } from 'node:fs';
@@ -100,7 +101,23 @@ test('existing submission binds actor, defaults related data and journals one ac
   assert.equal(responses[0]!.status, 'accepted');
   assert.equal(responses[1]!.outcome, 'original_result_returned');
   assert.deepEqual(fixture.calls[0]!.body, { table: 'contacts', id, version });
-  assert.ok(responses[0]!.nextActions[0]!.command?.includes(reviewId));
+  const input = path.join(fixture.directory, 'request.json');
+  writeFileSync(input, JSON.stringify(submit));
+  const presented = await runReviewCommand(
+    ['submit', '--input', input, '--json'],
+    async () => {
+      throw new Error('unexpected read');
+    },
+    {
+      mutate: fixture.writer,
+      materials: async () => {
+        throw new Error('unexpected material read');
+      },
+    },
+  );
+  assert.ok(JSON.parse(presented.stdout).nextActions[0].command.includes(reviewId));
+  assert.equal(fixture.calls.length, 1);
+  rmSync(input);
   await assert.rejects(
     fixture.writer('submit', { ...submit, includeRelated: true }, false),
     /already bound/,
@@ -236,7 +253,9 @@ test('unsupported new semantics and stale bindings reject before any domain muta
       false,
     ),
   );
-  await assert.rejects(fixture.writer('withdraw', { ...base, reviewId }, false));
+  await assert.rejects(
+    fixture.writer('withdraw' as ReviewMutationAction, { ...base, reviewId }, false),
+  );
   await assert.rejects(fixture.writer('comment', { ...base, reviewId, expectedState: 1 }, false));
   for (const options of [{ noTarget: true }, { reviewMissing: true }]) {
     const missing = setup(t, options);

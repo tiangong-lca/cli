@@ -1,12 +1,12 @@
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import {
   DERIVATIVE_REBUILD_COMPONENTS,
-  isJsonObject,
   type DatasetMaintenanceDerivativeSnapshot,
   type DatasetMaintenancePlan,
   type DatasetMaintenancePlanAction,
   type JsonObject,
-} from './dataset-maintenance-contract.js';
+} from './maintenance/contract/types.js';
+import { isJsonObject } from './maintenance/contract/values.js';
 
 export type DatasetMaintenanceDerivativeRequestStatus =
   | 'queued'

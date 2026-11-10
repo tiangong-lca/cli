@@ -6,7 +6,7 @@ import {
 } from '../lib/supabase-client.js';
 import { resolveSupabaseUserSession } from '../lib/supabase-session.js';
 import { postJson, type FetchLike } from '../lib/http.js';
-import { CliError } from '../lib/errors.js';
+import { CliError } from '../shared/errors.js';
 
 export function datasetSearcher(
   env: NodeJS.ProcessEnv,

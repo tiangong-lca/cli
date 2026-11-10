@@ -1,13 +1,12 @@
 import { loadMaintenanceDesiredPayload } from './dataset-maintenance-alias-request.js';
 import {
   MAINTENANCE_SCAN_TABLES,
-  maintenanceRowKey,
-  sha256Json,
-  snapshotRemoteRow,
   type DatasetMaintenancePlan,
   type DatasetMaintenanceRemoteRow,
   type DatasetMaintenanceRowSnapshot,
-} from './dataset-maintenance-contract.js';
+} from './maintenance/contract/types.js';
+import { maintenanceRowKey, snapshotRemoteRow } from './maintenance/contract/values.js';
+import { sha256Json } from './canonical-json-hash.js';
 import {
   PROTECTED_EXECUTION_COUNTS,
   parseProtectedDerivativeSnapshot,
@@ -21,7 +20,7 @@ import {
   fetchMaintenanceExactRows,
   type DatasetMaintenanceRemoteContext,
 } from './dataset-maintenance-remote.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 const DERIVATIVE_READ_CONCURRENCY = 5;
 

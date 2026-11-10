@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 function normalizeCredentialValue(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';

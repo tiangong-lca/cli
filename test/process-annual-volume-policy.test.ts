@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { ProcessSchema } from '@tiangong-lca/tidas-sdk';
 import { runDatasetValidate } from '../src/lib/dataset-validate.js';
-import { sha256Json } from '../src/lib/dataset-maintenance-contract.js';
+import { sha256Json } from '../src/lib/canonical-json-hash.js';
 import { collectProcessRequiredFieldIssues } from '../src/lib/process-required-fields.js';
 import {
   validateProcessPayload,

@@ -3,7 +3,7 @@ import { createSupabaseDataRuntime } from '../lib/supabase-session.js';
 import { fetchCurrentUser } from '../lib/auth-identity-receipt.js';
 import type { FetchLike } from '../lib/http.js';
 import { isObject } from '../application/dataset-types.js';
-import { CliError } from '../lib/errors.js';
+import { CliError } from '../shared/errors.js';
 
 export function reviewReader(env: NodeJS.ProcessEnv, fetchImpl: FetchLike) {
   return async (input: {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import type { FetchLike, ResponseLike } from '../src/lib/http.js';
 import {
   __testInternals,

@@ -9,16 +9,16 @@ import {
 import {
   computeFlowIdentityApprovalIdentitySha256,
   parseFlowIdentityFreeze,
-  type FlowIdentityApproval,
-} from './dataset-maintenance-flow-identity-execution-contract.js';
+} from './maintenance/flow-identity/requests.js';
+import { type FlowIdentityApproval } from './maintenance/flow-identity/base.js';
 import { parseFlowIdentityPlan } from './dataset-maintenance-flow-identity-contract.js';
-import { sha256Text, stableJsonText } from './dataset-maintenance-contract.js';
+import { sha256Text, stableJsonText } from './canonical-json-hash.js';
 import {
   parseFlowIdentityApprovalRequest,
   renderFlowIdentityExecutionApprovalText,
   type FlowIdentityExecutionApprovalRequestCore,
 } from './dataset-maintenance-flow-identity-freeze.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 export type SealFlowIdentityApprovalOptions = {
   planPath: string;

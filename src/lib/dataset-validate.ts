@@ -6,7 +6,7 @@ import {
 import path from 'node:path';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import { collectFlowReferencePropertyIssues } from './flow-reference-properties.js';
 import { collectUnitGroupContentIssues } from './unitgroup-content-validation.js';
 import {

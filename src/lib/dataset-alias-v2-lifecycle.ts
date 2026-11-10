@@ -19,7 +19,7 @@
 //     accepts afterwards is the read stage, and a read that finds no durable evidence ends in an
 //     explicit refusal for review rather than an automatic resubmission.
 
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import {
   ALIAS_V2_PREFLIGHT_INVALID_REQUEST,
   ALIAS_V2_PREFLIGHT_REQUEST_TOO_LARGE,

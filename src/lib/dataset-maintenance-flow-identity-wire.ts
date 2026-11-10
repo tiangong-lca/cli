@@ -1,5 +1,7 @@
-import { isJsonObject, sha256Text, type JsonObject } from './dataset-maintenance-contract.js';
-import { CliError } from './errors.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { sha256Text } from './canonical-json-hash.js';
+import { type JsonObject } from './maintenance/contract/types.js';
+import { CliError } from '../shared/errors.js';
 
 const MAX_ORDINAL = 100_000;
 const MAX_COUNT = 1_000_000;

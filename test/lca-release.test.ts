@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import type { FetchLike, ResponseLike } from '../src/lib/http.js';
 import {
   __testInternals,

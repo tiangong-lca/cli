@@ -1,12 +1,8 @@
 import { parseArgs } from 'node:util';
-import { CliError } from '../lib/errors.js';
+import { CliError } from '../shared/errors.js';
 import { stringifyJson } from '../lib/io.js';
-import {
-  runDatasetClassificationApply,
-  runDatasetClassificationAudit,
-} from '../lib/dataset-classification.js';
 
-import type { CliDeps, CliResult } from '../cli-deps.js';
+import type { ResolvedCliDeps, CliResult } from './ports.js';
 function renderDatasetClassificationHelp(): string {
   return `Usage:
   tiangong-lca dataset classification children --type <type> [options]
@@ -152,12 +148,10 @@ function parseDatasetClassificationApplyFlags(args: string[]): {
 
 export async function executeClassificationMaintenance(
   commandArgs: string[],
-  deps: CliDeps,
+  deps: ResolvedCliDeps,
 ): Promise<CliResult> {
-  const datasetClassificationAuditImpl =
-    deps.runDatasetClassificationAuditImpl ?? runDatasetClassificationAudit;
-  const datasetClassificationApplyImpl =
-    deps.runDatasetClassificationApplyImpl ?? runDatasetClassificationApply;
+  const datasetClassificationAuditImpl = deps.runDatasetClassificationAuditImpl;
+  const datasetClassificationApplyImpl = deps.runDatasetClassificationApplyImpl;
 
   const action = commandArgs[0];
   if (action === 'audit') {

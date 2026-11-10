@@ -16,8 +16,10 @@
 // evidence, and every derived value (the selected occurrence set, the after literals, the counts,
 // the evidence tuple table) is recomputed here rather than trusted from the input.
 
-import { CliError } from './errors.js';
-import { isJsonObject, sha256Json, type JsonObject } from './dataset-maintenance-contract.js';
+import { CliError } from '../shared/errors.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { sha256Json } from './canonical-json-hash.js';
+import { type JsonObject } from './maintenance/contract/types.js';
 import {
   canonicalDecimalText,
   multiplyBoundedCanonicalDecimal,

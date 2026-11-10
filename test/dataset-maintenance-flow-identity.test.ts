@@ -75,19 +75,27 @@ import {
   computeFlowIdentityApprovalIdentitySha256,
   computeFlowIdentityFreezeSha256,
   computeFlowIdentityProcessRequestSha256,
-  flowIdentityScopeIsReadyToFinalize,
   parseFlowIdentityApproval,
-  parseFlowIdentityFinalizeProof,
   parseFlowIdentityFreeze,
+} from '../src/lib/maintenance/flow-identity/requests.js';
+import {
+  flowIdentityScopeIsReadyToFinalize,
+  parseFlowIdentityFinalizeProof,
+  parseFlowIdentityScopeStatus,
+} from '../src/lib/maintenance/flow-identity/status.js';
+import {
   parseFlowIdentityProcessProof,
   parseFlowIdentityScopePreflightProof,
-  parseFlowIdentityScopeStatus,
+} from '../src/lib/maintenance/flow-identity/proofs.js';
+import {
   prepareFlowIdentityExecution,
   __testInternals as executionInternals,
+} from '../src/lib/dataset-maintenance-flow-identity-execution-contract.js';
+import {
   type FlowIdentityApproval,
   type FlowIdentityFreeze,
   type FlowIdentityScopeStatus,
-} from '../src/lib/dataset-maintenance-flow-identity-execution-contract.js';
+} from '../src/lib/maintenance/flow-identity/base.js';
 import { flowIdentityRestrictedSha256 } from '../src/lib/dataset-maintenance-flow-identity-wire.js';
 import { claimFlowIdentityApproval } from '../src/lib/dataset-maintenance-flow-identity-approval-claim.js';
 import {
@@ -96,14 +104,13 @@ import {
 } from '../src/lib/dataset-maintenance-flow-identity-command.js';
 import { __testInternals as captureInternals } from '../src/lib/dataset-maintenance-flow-identity-capture.js';
 import { __testInternals as sealInternals } from '../src/lib/dataset-maintenance-flow-identity-seal.js';
+import { sha256Json, sha256Text } from '../src/lib/canonical-json-hash.js';
+import { snapshotRemoteRow } from '../src/lib/maintenance/contract/values.js';
 import {
-  sha256Json,
-  sha256Text,
-  snapshotRemoteRow,
   type DatasetMaintenanceRemoteRow,
   type DatasetMaintenanceRowSnapshot,
   type JsonObject,
-} from '../src/lib/dataset-maintenance-contract.js';
+} from '../src/lib/maintenance/contract/types.js';
 import type { FlowPayloadValidationResult } from '../src/lib/flow-payload-validation.js';
 import type { ProcessPayloadValidationResult } from '../src/lib/process-payload-validation.js';
 import type { FetchLike } from '../src/lib/http.js';

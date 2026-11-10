@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { executeCli } from '../src/cli.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import type { FetchLike } from '../src/lib/http.js';
 import { loadStudyCodec } from '../src/lib/study-codec.js';
 import { readStudyIntent } from '../src/lib/study-intent.js';

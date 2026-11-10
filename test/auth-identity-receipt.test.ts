@@ -681,7 +681,7 @@ test('identity receipt sanitizes transport and session-resolution failures', asy
   await assert.rejects(
     successfulReceipt({
       resolveSessionImpl: async () => {
-        throw new (await import('../src/lib/errors.js')).CliError('safe', {
+        throw new (await import('../src/shared/errors.js')).CliError('safe', {
           code: 'KNOWN_SESSION_FAILURE',
         });
       },

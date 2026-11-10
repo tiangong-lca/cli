@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:net';
 import test from 'node:test';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import {
   __testInternals,
   OAUTH_LOGIN_TIMEOUT_MAX_MS,

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import { getJson, postJson, requireRemoteOkPayload } from '../src/lib/http.js';
 
 test('postJson returns parsed JSON payloads', async () => {

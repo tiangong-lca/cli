@@ -32,7 +32,7 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import type { JsonObject } from '../src/lib/dataset-maintenance-contract.js';
+import { type JsonObject } from '../src/lib/maintenance/contract/types.js';
 import {
   ALIAS_V2_PROTECTED_ARTIFACTS,
   runAliasV2Protected,

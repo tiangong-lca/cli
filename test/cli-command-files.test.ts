@@ -47,7 +47,7 @@ function ports(): DatasetPorts {
     contract: async () => ({}),
     validate: async () => ({ status: 'passed', issues: [] }),
     search: async () => ({}),
-    local: async () => ({}),
+    operations: async () => ({}),
     mutate: async () => result('dataset process save'),
   };
 }

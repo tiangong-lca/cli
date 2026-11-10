@@ -8,7 +8,7 @@ import {
   resolveDatasetCommandTransport,
   saveDraftDatasetRecord,
 } from '../src/lib/dataset-command.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import type { FetchLike } from '../src/lib/http.js';
 import {
   buildSupabaseTestEnv,

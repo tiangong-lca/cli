@@ -10,13 +10,9 @@ import {
   validateProtectedBeforeState,
   type ProtectedBeforeValidationResult,
 } from './dataset-maintenance-protected-before.js';
-import {
-  parseMaintenancePlan,
-  sha256Json,
-  sha256Text,
-  stableJsonText,
-  type DatasetMaintenancePlan,
-} from './dataset-maintenance-contract.js';
+import { parseMaintenancePlan } from './dataset-maintenance-contract.js';
+import { sha256Json, sha256Text, stableJsonText } from './canonical-json-hash.js';
+import { type DatasetMaintenancePlan } from './maintenance/contract/types.js';
 import {
   PROTECTED_EXECUTION_COUNTS,
   type ProtectedDerivativeSnapshot,
@@ -37,7 +33,7 @@ import {
   parseProtectedToolchainEvidence,
   type DatasetMaintenanceProtectedToolchainEvidence,
 } from './dataset-maintenance-protected-toolchain.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
 
 export const PROTECTED_FREEZE_ARTIFACTS = {

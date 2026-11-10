@@ -7,11 +7,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import test from 'node:test';
-import {
-  sha256Json,
-  stableJsonText,
-  type JsonObject,
-} from '../src/lib/dataset-maintenance-contract.js';
+import { sha256Json, stableJsonText } from '../src/lib/canonical-json-hash.js';
+import { type JsonObject } from '../src/lib/maintenance/contract/types.js';
 import {
   assertAliasV2CanonicalArtifact,
   assertAliasV2PlanDocument,

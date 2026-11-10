@@ -1,11 +1,7 @@
-import { CliError } from '../lib/errors.js';
+import { CliError } from '../shared/errors.js';
 import { stringifyJson } from '../lib/io.js';
 import { loadCliPackageVersion } from '../lib/package-version.js';
-import { runDatasetMaintenanceClearAccount } from '../lib/dataset-maintenance-clear-account.js';
-import { runDatasetMaintenancePlan } from '../lib/dataset-maintenance-plan.js';
-import { runDatasetMaintenanceApply } from '../lib/dataset-maintenance-apply.js';
-import { freezeDatasetMaintenanceProtected } from '../lib/dataset-maintenance-protected-freeze.js';
-import { runDatasetMaintenanceProtectedDispatch } from '../lib/dataset-maintenance-protected-dispatch.js';
+
 import {
   freezeAliasV2Protected,
   isAliasV2FreezeFile,
@@ -14,20 +10,8 @@ import {
   sealAliasV2ProtectedApproval,
 } from '../lib/dataset-alias-v2-public.js';
 import { planLengthTime } from '../lib/dataset-length-time-public.js';
-import { sealDatasetMaintenanceProtectedApproval } from '../lib/dataset-maintenance-protected-seal.js';
-import { runDatasetMaintenanceVerify } from '../lib/dataset-maintenance-verify.js';
-import { runFlowIdentityPlanFromFiles } from '../lib/dataset-maintenance-flow-identity-command.js';
-import { captureFlowIdentity } from '../lib/dataset-maintenance-flow-identity-capture.js';
-import { freezeFlowIdentity } from '../lib/dataset-maintenance-flow-identity-freeze.js';
-import { sealFlowIdentityApproval } from '../lib/dataset-maintenance-flow-identity-seal.js';
-import {
-  freezeFlowIdentityRecovery,
-  sealFlowIdentityRecoveryApproval,
-} from '../lib/dataset-maintenance-flow-identity-recovery.js';
-import { runFlowIdentity } from '../lib/dataset-maintenance-flow-identity-run.js';
-import { verifyFlowIdentity } from '../lib/dataset-maintenance-flow-identity-verify.js';
 
-import type { CliDeps, CliResult } from '../cli-deps.js';
+import type { ResolvedCliDeps, CliResult } from './ports.js';
 import {
   renderDatasetMaintenanceHelp,
   renderDatasetMaintenanceFlowIdentityHelp,
@@ -52,34 +36,24 @@ import {
 
 export async function executeMaintenanceCommand(
   commandArgs: string[],
-  deps: CliDeps,
+  deps: ResolvedCliDeps,
 ): Promise<CliResult> {
-  const datasetMaintenanceClearAccountImpl =
-    deps.runDatasetMaintenanceClearAccountImpl ?? runDatasetMaintenanceClearAccount;
-  const datasetMaintenancePlanImpl =
-    deps.runDatasetMaintenancePlanImpl ?? runDatasetMaintenancePlan;
-  const datasetMaintenanceApplyImpl =
-    deps.runDatasetMaintenanceApplyImpl ?? runDatasetMaintenanceApply;
-  const datasetMaintenanceProtectedFreezeImpl =
-    deps.freezeDatasetMaintenanceProtectedImpl ?? freezeDatasetMaintenanceProtected;
-  const datasetMaintenanceProtectedImpl =
-    deps.runDatasetMaintenanceProtectedImpl ?? runDatasetMaintenanceProtectedDispatch;
+  const datasetMaintenanceClearAccountImpl = deps.runDatasetMaintenanceClearAccountImpl;
+  const datasetMaintenancePlanImpl = deps.runDatasetMaintenancePlanImpl;
+  const datasetMaintenanceApplyImpl = deps.runDatasetMaintenanceApplyImpl;
+  const datasetMaintenanceProtectedFreezeImpl = deps.freezeDatasetMaintenanceProtectedImpl;
+  const datasetMaintenanceProtectedImpl = deps.runDatasetMaintenanceProtectedImpl;
   const datasetMaintenanceProtectedApprovalSealImpl =
-    deps.sealDatasetMaintenanceProtectedApprovalImpl ?? sealDatasetMaintenanceProtectedApproval;
-  const datasetMaintenanceVerifyImpl =
-    deps.runDatasetMaintenanceVerifyImpl ?? runDatasetMaintenanceVerify;
-  const flowIdentityPlanImpl =
-    deps.runFlowIdentityPlanFromFilesImpl ?? runFlowIdentityPlanFromFiles;
-  const flowIdentityCaptureImpl = deps.captureFlowIdentityImpl ?? captureFlowIdentity;
-  const flowIdentityFreezeImpl = deps.freezeFlowIdentityImpl ?? freezeFlowIdentity;
-  const flowIdentityApprovalSealImpl =
-    deps.sealFlowIdentityApprovalImpl ?? sealFlowIdentityApproval;
-  const flowIdentityRecoveryFreezeImpl =
-    deps.freezeFlowIdentityRecoveryImpl ?? freezeFlowIdentityRecovery;
-  const flowIdentityRecoveryApprovalSealImpl =
-    deps.sealFlowIdentityRecoveryApprovalImpl ?? sealFlowIdentityRecoveryApproval;
-  const flowIdentityRunImpl = deps.runFlowIdentityImpl ?? runFlowIdentity;
-  const flowIdentityVerifyImpl = deps.verifyFlowIdentityImpl ?? verifyFlowIdentity;
+    deps.sealDatasetMaintenanceProtectedApprovalImpl;
+  const datasetMaintenanceVerifyImpl = deps.runDatasetMaintenanceVerifyImpl;
+  const flowIdentityPlanImpl = deps.runFlowIdentityPlanFromFilesImpl;
+  const flowIdentityCaptureImpl = deps.captureFlowIdentityImpl;
+  const flowIdentityFreezeImpl = deps.freezeFlowIdentityImpl;
+  const flowIdentityApprovalSealImpl = deps.sealFlowIdentityApprovalImpl;
+  const flowIdentityRecoveryFreezeImpl = deps.freezeFlowIdentityRecoveryImpl;
+  const flowIdentityRecoveryApprovalSealImpl = deps.sealFlowIdentityRecoveryApprovalImpl;
+  const flowIdentityRunImpl = deps.runFlowIdentityImpl;
+  const flowIdentityVerifyImpl = deps.verifyFlowIdentityImpl;
 
   const action = commandArgs[0] ?? '';
   if (!action || action === '--help' || action === '-h') {

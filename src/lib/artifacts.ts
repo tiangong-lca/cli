@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 type WriteJsonLinesOptions = {
   append?: boolean;

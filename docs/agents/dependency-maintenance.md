@@ -14,8 +14,8 @@ checkPaths:
   - .github/dependabot.yml
   - docs/agents/dependency-maintenance.md
 lastReviewedAt: 2026-10-16
-lastReviewedCommit: 87374a90ebbcdb486204358c0bdf99218fd5f1c0
-lastReviewedNote: 'CLI #427: reviewed the dependency monitoring and exact-head four-platform validation change against its task base.'
+lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
+lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
 related:
   - repo-validation.md
 ---

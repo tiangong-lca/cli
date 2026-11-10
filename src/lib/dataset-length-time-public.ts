@@ -12,8 +12,10 @@ import {
   ensurePrivateArtifactDirectory,
   readProtectedJsonArtifact,
 } from './dataset-maintenance-protected-artifacts.js';
-import { isJsonObject, stableJsonText, type JsonObject } from './dataset-maintenance-contract.js';
-import { CliError } from './errors.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { stableJsonText } from './canonical-json-hash.js';
+import { type JsonObject } from './maintenance/contract/types.js';
+import { CliError } from '../shared/errors.js';
 import { buildLengthTimePlan, type LengthTimePlanInput } from './dataset-length-time-plan.js';
 
 /** The private artefact names of the Length*time plan stage. */

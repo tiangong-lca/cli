@@ -12,17 +12,17 @@ import {
   parseProtectedApprovalRequest,
   sealProtectedApproval,
 } from '../src/lib/dataset-maintenance-protected-preparation.js';
+import { computePlanSha256 } from '../src/lib/dataset-maintenance-contract.js';
+import { sha256Text } from '../src/lib/canonical-json-hash.js';
 import {
-  computePlanSha256,
-  sha256Text,
   type DatasetMaintenancePlan,
   type JsonObject,
-} from '../src/lib/dataset-maintenance-contract.js';
+} from '../src/lib/maintenance/contract/types.js';
 import {
   parseProtectedApproval,
   type ProtectedDerivativeSnapshot,
 } from '../src/lib/dataset-maintenance-protected-contract.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 
 const USER_ID = '22222222-2222-4222-8222-222222222222';
 const OTHER_USER_ID = '33333333-3333-4333-8333-333333333333';

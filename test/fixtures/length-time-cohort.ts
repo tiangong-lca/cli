@@ -11,7 +11,7 @@
 // produced plan's digest is pinned by the CLI tests, so an accidental change to either half fails
 // loudly instead of producing a second, hand-written "green".
 
-import { sha256Json } from '../../src/lib/dataset-maintenance-contract.js';
+import { sha256Json } from '../../src/lib/canonical-json-hash.js';
 
 type JsonObject = Record<string, unknown>;
 

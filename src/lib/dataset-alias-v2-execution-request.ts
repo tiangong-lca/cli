@@ -12,7 +12,7 @@
 // deliberately refuses anything outside the reviewed v2 shape (strict key sets, explicit upper
 // bounds, no server-generated request identity).
 
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 export const ALIAS_V2_PREFLIGHT_SCHEMA = 'dataset-alias-execution-preflight.v2';
 export const ALIAS_V2_PLAN_SCHEMA = 'dataset-alias-plan.v2';

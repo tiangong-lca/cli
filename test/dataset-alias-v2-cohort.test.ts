@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { sha256Json } from '../src/lib/dataset-maintenance-contract.js';
+import { sha256Json } from '../src/lib/canonical-json-hash.js';
 import {
   ALIAS_V2_FACTOR,
   ALIAS_V2_PLAN_INVALID,
@@ -9,7 +9,7 @@ import {
   buildAliasV2Plan,
   type AliasV2PlanInput,
 } from '../src/lib/dataset-alias-v2-plan.js';
-import { isJsonObject } from '../src/lib/dataset-maintenance-contract.js';
+import { isJsonObject } from '../src/lib/maintenance/contract/values.js';
 import {
   ALIAS_V2_GATE_NAMES,
   ALIAS_V2_LIFECYCLE_REFUSED,

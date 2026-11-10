@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { cwd } from 'node:process';
 import test from 'node:test';
-import { isJsonObject, sha256Json } from '../src/lib/dataset-maintenance-contract.js';
+import { isJsonObject } from '../src/lib/maintenance/contract/values.js';
+import { sha256Json } from '../src/lib/canonical-json-hash.js';
 import {
   ALIAS_V2_BATCH_SCHEMA,
   assertAliasV2TargetUnitGroup,

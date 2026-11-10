@@ -10,7 +10,7 @@ import {
   flowPropertyFactor,
   inspectFlowReferenceProperties,
 } from '../src/lib/flow-reference-properties.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import { createDatasetRecord, saveDraftDatasetRecord } from '../src/lib/dataset-command.js';
 import { createTidasSdkPackageValidator } from '../src/lib/tidas-sdk-package-validator.js';
 import { datasetValidation } from '../src/adapters/dataset-local.js';

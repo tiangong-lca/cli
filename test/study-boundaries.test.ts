@@ -13,7 +13,7 @@ import {
 import { createRequire, syncBuiltinESMExports } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import {
   assertStudySafe,
   parseStudyResponse,

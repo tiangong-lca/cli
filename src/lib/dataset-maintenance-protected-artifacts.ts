@@ -11,8 +11,8 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
-import { stableJsonText } from './dataset-maintenance-contract.js';
-import { CliError } from './errors.js';
+import { stableJsonText } from './canonical-json-hash.js';
+import { CliError } from '../shared/errors.js';
 
 const STRICT_UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 

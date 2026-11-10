@@ -29,19 +29,17 @@ import {
   resolveMaintenanceRemoteContext,
   type DatasetMaintenanceRemoteContext,
 } from './dataset-maintenance-remote.js';
+import { isJsonObject, snapshotRemoteRow } from './maintenance/contract/values.js';
+import { sha256Json, stableJsonText } from './canonical-json-hash.js';
 import {
-  isJsonObject,
-  sha256Json,
-  snapshotRemoteRow,
-  stableJsonText,
   type DatasetMaintenanceRemoteRow,
   type DatasetMaintenanceRowSnapshot,
   type JsonObject,
-} from './dataset-maintenance-contract.js';
+} from './maintenance/contract/types.js';
 import { flowIdentityRestrictedSha256 } from './dataset-maintenance-flow-identity-wire.js';
 import { validateFlowPayload } from './flow-payload-validation.js';
 import { validateProcessPayload } from './process-payload-validation.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
 
 const HASH = /^[a-f0-9]{64}$/u;

@@ -89,12 +89,15 @@ test('attachments snapshot exact bytes, refuse upsert, independently verify cont
   assert.equal(uploaded.summary.files_uploaded, 1);
   assert.equal(uploaded.files[1]?.status, 'failed');
   assert.ok(!JSON.stringify(uploaded).includes('source-attachments-'));
-  const routed = await datasetOperations(env, fetchImpl)(
-    'source',
-    'upload-attachments',
-    { ...fixture.request, dryRun: true },
-    path.join(fixture.directory, 'request.json'),
-  );
+  const routed = await datasetOperations(
+    env,
+    fetchImpl,
+  )({
+    type: 'source',
+    action: 'upload-attachments',
+    request: { ...fixture.request, dryRun: true },
+    inputPath: path.join(fixture.directory, 'request.json'),
+  });
   assert.equal(routed.status, 'preview_completed');
 });
 

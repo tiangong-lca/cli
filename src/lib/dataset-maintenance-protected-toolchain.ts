@@ -1,5 +1,5 @@
-import { isJsonObject } from './dataset-maintenance-contract.js';
-import { CliError } from './errors.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { CliError } from '../shared/errors.js';
 import { cliRepositoryIdentity, type CliRepositoryIdentity } from './cli-repository-identity.js';
 
 export const PROTECTED_TOOLCHAIN_EVIDENCE_SCHEMA =

@@ -1,3 +1,9 @@
+import {
+  type DatasetAction,
+  type CanonicalDatasetAction,
+  type DatasetOperation,
+} from '../application/dataset-types.js';
+import { datasetMutationContinuation } from './mutation-presentation.js';
 import { commandFailure } from '../shared/command-errors.js';
 import { parseArgs } from 'node:util';
 import {
@@ -6,7 +12,6 @@ import {
   requireContent,
   text,
   object,
-  isObject,
   type DatasetType,
   type DatasetPorts,
   type JsonObject,
@@ -34,245 +39,17 @@ import {
   type CommandIO,
   type CommandResult,
 } from '../shared/command-result.js';
+import { common, flags, help } from './dataset/help.js';
+import { validationSummary, artifactSummary } from './dataset/presentation.js';
+export { runDatasetHelp } from './dataset/help.js';
 
-const common = ['help', 'json', 'output', 'force'];
-export function runDatasetHelp(args: string[]): CommandIO {
-  try {
-    const { values } = parseArgs({
-      args,
-      strict: true,
-      allowPositionals: false,
-      options: { help: { type: 'boolean', short: 'h' }, json: { type: 'boolean' } },
-    });
-    const manifest = {
-      schemaVersion: 1,
-      command: 'dataset',
-      types: Object.fromEntries(datasetTypes.map((type) => [type, actionsFor(type)])),
-      sharedDiscovery: ['classification children', 'classification path'],
-      packageTools: ['import-lca convert'],
-      effects:
-        'Help is read-only. Inspect an action help for exact inputs, service semantics and recovery.',
-    };
-    return {
-      exitCode: 0,
-      stdout: values.json
-        ? `${JSON.stringify(manifest)}\n`
-        : `Usage: tiangong-lca dataset <type> <action> [options]\n\n${Object.entries(manifest.types)
-            .map(([type, actions]) => `${type}: ${actions.join(' | ')}`)
-            .join(
-              '\n',
-            )}\n\nShared discovery: dataset classification children | path\nPackage tools: dataset import-lca convert\n\nUse dataset <type> <action> --help --json for inputs, effects, outputs and limits.\n`,
-      stderr: '',
-    };
-  } catch {
-    const value = result('dataset');
-    value.status = 'failed';
-    value.outcome = 'invalid_input';
-    value.summary =
-      'Dataset group help accepts --help and --json. Select an object type to execute an action.';
-    value.error = { category: 'input', code: 'ARGUMENTS_INVALID', message: value.summary };
-    attachReplyTemplate(value, 'command-failed');
-    return renderResult(value, args.includes('--json'), 2);
-  }
-}
-function validationSummary(report: JsonObject): JsonObject {
-  const summary = { ...report };
-  for (const name of ['issues', 'checks', 'blockers'])
-    if (Array.isArray(summary[name])) summary[name] = summary[name].slice(0, 5);
-  if (isObject(report.validation_layers))
-    summary.validation_layers = Object.fromEntries(
-      Object.entries(report.validation_layers).map(([name, layer]) => [
-        name,
-        isObject(layer) ? { status: layer.status, issue_count: layer.issue_count } : layer,
-      ]),
-    );
-  if (isObject(report.references)) summary.references = validationSummary(report.references);
-  if (isObject(report.local)) summary.local = validationSummary(report.local);
-  return summary;
-}
-function artifactSummary(data: JsonObject): JsonObject {
-  const summary = { ...data };
-  for (const name of ['content', 'bundle', 'projection', 'graphs']) {
-    if (Object.hasOwn(summary, name)) {
-      summary[`${name}Digest`] = contentDigest(summary[name]);
-      delete summary[name];
-    }
-  }
-  for (const name of [
-    'changes',
-    'units',
-    'references',
-    'files',
-    'inputBindings',
-    'findings',
-    'groups',
-  ]) {
-    const entries = summary[name];
-    if (Array.isArray(entries) && entries.length > 5) {
-      summary[`${name}Count`] = entries.length;
-      summary[name] = entries.slice(0, 5);
-    }
-  }
-  return summary;
-}
-const flags: Record<string, string[]> = {
-  get: ['id', 'version', 'fields'],
-  list: ['owner', 'state', 'limit', 'cursor', 'fields'],
-  versions: ['id', 'limit', 'cursor', 'fields'],
-  search: ['query', 'state', 'limit', 'cursor'],
-  contract: ['include'],
-  'list-references': ['id', 'version', 'input', 'limit', 'cursor'],
-  validate: ['input', 'checks'],
-  diff: ['input'],
-  patch: ['input'],
-  'translations extract': ['input'],
-  'translations apply': ['input'],
-  graph: ['input'],
-  'build-resulting-process': ['input'],
-  create: ['input', 'dry-run'],
-  save: ['input', 'dry-run'],
-  delete: ['input', 'dry-run'],
-  statistics: ['input', 'scope', 'owner', 'state', 'group-by', 'max-rows'],
-  'upload-attachments': ['input', 'dry-run'],
-};
-const requestShapes: Record<string, unknown> = {
-  'upload-attachments': {
-    content: 'canonical Source with referenceToDigitalFile entries',
-    bucket: 'explicit storage bucket',
-    attachments: [
-      {
-        name: 'filename used by the Source reference',
-        path: 'path relative to request file (absolute for stdin)',
-        size: 'exact byte length',
-        sha256: 'exact SHA-256',
-      },
-    ],
-  },
-  create: {
-    id: 'UUID',
-    version: '00.00.000',
-    content: 'canonical content with same identity',
-    requestId: 'stable caller request identity',
-    expectedActor: 'online user UUID',
-    expectedEnvironment: 'exact project origin',
-  },
-  save: {
-    id: 'UUID',
-    version: '00.00.000',
-    content: 'complete candidate content',
-    expectedContent:
-      'complete previously read content; ordinary save uses server CAS, Model save uses a preflight check with transactional service update',
-    requestId: 'stable caller request identity',
-    expectedActor: 'online user UUID',
-    expectedEnvironment: 'exact project origin',
-  },
-  delete: {
-    id: 'UUID',
-    version: '00.00.000',
-    expectedContent: 'complete previously read draft content',
-    requestId: 'stable caller request identity',
-    expectedActor: 'online user UUID',
-    expectedEnvironment: 'exact project origin',
-  },
-  validate: { content: 'canonical TIDAS JSON supplied directly as input' },
-  diff: { before: 'canonical content', after: 'canonical content' },
-  patch: {
-    content: 'canonical content',
-    expectedDigest: 'SHA-256 of JSON.stringify(content)',
-    operations: [
-      {
-        op: 'test|add|replace|remove',
-        path: '/JSON/pointer',
-        value: 'JSON value',
-        basis: 'reason/evidence (required for changes)',
-      },
-    ],
-  },
-  'translations extract': {
-    content: 'canonical content',
-    sourceLanguage: 'en',
-    targetLanguage: 'zh',
-  },
-  'translations apply': {
-    content: 'canonical content',
-    sourceDigest: 'digest returned by extract',
-    sourceLanguage: 'en',
-    targetLanguage: 'zh',
-    translations: [
-      {
-        path: '/field',
-        sourceText: 'unchanged source text',
-        text: 'given translation',
-        basis: 'evidence',
-      },
-    ],
-  },
-  statistics: {
-    scope: 'visible (default) or current-user',
-    owner: 'optional exact visible owner',
-    stateCodes: 'optional distinct integer states; omitted means all visible states',
-    groupBy: 'state and/or classification; default [state]',
-    maxRows: '1..100000; default 10000; incomplete scans return partial',
-  },
-  graph: { content: 'canonical Model content' },
-  'build-resulting-process': {
-    source_model: 'explicit model content or json_ordered_path',
-    projection: 'explicit reference output/projection/allocation',
-    process_sources: 'exact Process JSON files/catalog; run_dirs forbidden',
-  },
-};
-function help(type: DatasetType, action?: string) {
-  return {
-    schemaVersion: 1,
-    command: `dataset ${type}${action ? ` ${action}` : ''}`,
-    implementedActions: actionsFor(type),
-    unavailableActions: {},
-    aliases: type === 'model' ? { aggregate: 'build-resulting-process' } : {},
-    options: [...common, ...(action ? flags[action] : [])],
-    request: action ? (requestShapes[action] ?? null) : null,
-    result: {
-      schemaVersion: 1,
-      fields: [
-        'operation',
-        'status',
-        'outcome',
-        'summary',
-        'data',
-        'context',
-        'completeness',
-        'artifacts',
-        'warnings',
-        'error',
-        'nextActions',
-        'replyTemplate',
-      ],
-    },
-    effects:
-      'Reads and local processing do not save, review or publish datasets. Mutations are explicit.',
-    defaults: { limit: 20, checks: type === 'lciamethod' ? ['schema'] : ['schema', 'business'] },
-    limitations: [
-      'Search uses the current actor latest-version candidate scope and cannot promise reliable continuation.',
-      'Remote reference relationship checks require independently selected evidence.',
-      'Unavailable server protections fail explicitly before mutation.',
-    ],
-    errors: {
-      0: 'completed or accepted',
-      1: 'business failure, partial/incomplete or unknown result',
-      2: 'invalid input or unsupported capability',
-    },
-    examples: [
-      `tiangong-lca dataset ${type} contract --json`,
-      `tiangong-lca dataset ${type} validate --input content.json --json`,
-    ],
-  };
-}
-const positiveLimit = (value: unknown) => {
+export const positiveLimit = (value: unknown) => {
   const limit = value === undefined ? 20 : Number(value);
   if (!Number.isInteger(limit) || limit < 1 || limit > 100)
     throw new CommandInputError('LIMIT_INVALID', '--limit must be an integer from 1 to 100.');
   return limit;
 };
-function csv(value: string, supported: string[], label: string) {
+export function csv(value: string, supported: string[], label: string) {
   const list = value.split(',');
   if (
     !list.length ||
@@ -291,10 +68,10 @@ export async function runDatasetCommand(
   readInput: typeof readCommandInput = readCommandInput,
 ): Promise<CommandIO> {
   const type = args[0] as DatasetType;
-  let action = args[1];
+  let action = args[1] as DatasetAction | undefined;
   let start = 2;
-  if (action === 'translations') {
-    action = `translations ${args[2]}`;
+  if (String(action) === 'translations') {
+    action = `translations ${args[2]}` as DatasetAction;
     start = 3;
   }
   if (action === 'aggregate') action = 'build-resulting-process';
@@ -304,14 +81,14 @@ export async function runDatasetCommand(
     if (!datasetTypes.includes(type))
       throw new CommandInputError('TYPE_UNSUPPORTED', 'Select a supported Dataset type.');
     const group = !action || action.startsWith('-');
-    if (!group && !actionsFor(type).includes(action))
+    if (!group && !actionsFor(type).includes(action!))
       throw new CommandInputError(
         'CAPABILITY_UNSUPPORTED',
         `This type does not support ${action}.`,
       );
     let values: Record<string, string | boolean | undefined>;
     try {
-      const allowed = [...common, ...(group ? [] : flags[action!])];
+      const allowed = [...common, ...(group ? [] : flags[action as CanonicalDatasetAction])];
       const parsed = parseArgs({
         args: args.slice(group ? 1 : start),
         strict: true,
@@ -341,7 +118,7 @@ export async function runDatasetCommand(
     if (group || values.help)
       return {
         exitCode: 0,
-        stdout: `${JSON.stringify(help(type, group ? undefined : action), null, json ? undefined : 2)}\n`,
+        stdout: `${JSON.stringify(help(type, group ? undefined : (action as CanonicalDatasetAction)), null, json ? undefined : 2)}\n`,
         stderr: '',
       };
     const string = (name: string) =>
@@ -626,16 +403,18 @@ export async function runDatasetCommand(
           request,
           values['dry-run'] === true,
         );
+        datasetMutationContinuation(value);
         artifact = value;
       } else {
-        value.data = await ports.local(
+        value.data = await ports.operations({
           type,
-          action!,
-          action === 'upload-attachments'
-            ? { ...request, dryRun: values['dry-run'] === true }
-            : request,
+          action: action!,
+          request:
+            action === 'upload-attachments'
+              ? { ...request, dryRun: values['dry-run'] === true }
+              : request,
           inputPath,
-        );
+        } as DatasetOperation);
         if (value.data.status === 'partial' || value.data.status === 'completed_with_findings')
           value.status = 'partial';
         if (

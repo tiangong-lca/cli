@@ -10,13 +10,14 @@ import {
 import {
   computePlanSha256,
   parseMaintenancePlan,
-  parseMaintenanceScope,
-  readJsonLinesIfPresent,
-  sha256Json,
-  sha256Text,
+} from '../src/lib/dataset-maintenance-contract.js';
+import { sha256Json, sha256Text } from '../src/lib/canonical-json-hash.js';
+import { parseMaintenanceScope } from '../src/lib/maintenance/contract/scope.js';
+import { readJsonLinesIfPresent } from '../src/lib/maintenance/contract/files.js';
+import {
   type DatasetMaintenancePlan,
   type JsonObject,
-} from '../src/lib/dataset-maintenance-contract.js';
+} from '../src/lib/maintenance/contract/types.js';
 import {
   buildDerivativePlanRequest,
   derivativePlanAction,

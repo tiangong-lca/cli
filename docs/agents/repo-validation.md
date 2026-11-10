@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 12f1bde7e1249031772c70cc27b9cb6cdc76b28c
-lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
+lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
+lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -62,6 +62,14 @@ pnpm prepush:gate
 The complete gate verifies bundled public rules, lint/typecheck and Data API consumers, peers, the independent package lane, independent launcher/entrypoint tests, full-source coverage and its exact 100% assertion. Never add coverage exclusions, ignore pragmas or weaker assertions to pass a refactor. Only the existing Windows-native and explicitly enabled service lanes may use their documented environment gates.
 
 `pnpm test:entrypoints` runs outside coverage instrumentation so native launcher and process IO remain independently exercised. `pnpm test:package` likewise runs independently; its source-free installed CLI uses native Node and production dependencies. The repository-only tsx loader orchestrates tests and is not a consumer runtime requirement.
+
+## Architecture and behavior regressions
+
+`test/cli-layer-boundaries.test.mjs` checks all source-layer directions, presentation/composition ownership and the entire emitted literal runtime import graph. `test/cli-runtime-dependencies.test.mjs` rejects unreachable executable implementations; declaration-only emitted modules are not runtime workflows. New module splits must preserve both checks.
+
+Test operation decisions through application ports and public command behavior. Keep precise parser, hash, scientific and recovery unit tests where they establish invariants. The private-journal regression binds legacy request/target key algorithms and exact receipt shapes; canonical-object and newline-bound artifact hashes are verified separately. Removing an unreachable workflow also removes only its exclusive IO tests, retaining its current algorithm assertions.
+
+Root option tests verify leading `--json`, malformed/repeated separators and unchanged child argv. Core help/results and retained specialized protocols are tested according to the root discovery matrix, without wrapping child stdout. Existing giant protocol fixture suites are decomposed by responsibility as their assertions change; file moves do not justify weaker assertions or lower coverage.
 
 ## Validation matrix
 

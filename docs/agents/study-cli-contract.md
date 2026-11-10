@@ -20,8 +20,8 @@ checkPaths:
   - test/study-*.test.ts
   - docs/agents/study-cli-contract.md
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 3e419258e5b3de5f895b1d71d8beaeb594068377
-lastReviewedNote: 'CLI #468: reviewed loopback diagnostic receipt extraction from the common envelope; Study wire, renderer, permissions and recovery are unchanged.'
+lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
+lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
 related:
   - ../../AGENTS.md
   - repo-architecture.md

@@ -10,7 +10,7 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 import { createClient, type Session } from '@supabase/supabase-js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
 import {
   openSystemBrowser,

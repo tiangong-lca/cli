@@ -69,7 +69,7 @@ function ports(overrides: Partial<DatasetPorts> = {}): DatasetPorts {
       environment: 'https://example.test',
       hasMore: null,
     }),
-    local: async () => ({ status: 'completed', qualification: { status: 'qualified' } }),
+    operations: async () => ({ status: 'completed', qualification: { status: 'qualified' } }),
     mutate: async () => {
       throw new Error('unexpected mutation');
     },
@@ -795,7 +795,7 @@ test('public Dataset mutation routes preserve outcomes, artifacts, projection an
           ...(status === 'preview_completed' ? ['--dry-run'] : []),
         ],
         {
-          local: async (_type, _action, request) => {
+          operations: async ({ request }) => {
             assert.equal(request.dryRun, status === 'preview_completed');
             return { status };
           },

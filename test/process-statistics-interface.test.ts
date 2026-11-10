@@ -262,7 +262,7 @@ test('Statistics command exposes requests, accepts declared flags, rejects ambig
   );
   assert.ok(help.request.scope);
   assert.ok(help.options.includes('group-by'));
-  ports.local = async (_type, _action, request) => {
+  ports.operations = async ({ request }) => {
     assert.deepEqual(request, {
       scope: 'visible',
       owner: 'owner',
@@ -310,7 +310,7 @@ test('Statistics command exposes requests, accepts declared flags, rejects ambig
     const invalid = await runDatasetCommand(['process', 'statistics', ...extra, '--json'], ports);
     assert.equal(invalid.exitCode, 2);
   }
-  ports.local = async () => ({
+  ports.operations = async () => ({
     status: 'partial',
     groups: [],
     context: {},

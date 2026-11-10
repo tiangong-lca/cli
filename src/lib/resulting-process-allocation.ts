@@ -1,5 +1,5 @@
 import { ALLOCATION_SUM_TOLERANCE } from '@tiangong-lca/tidas-sdk';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 type JsonObject = Record<string, unknown>;
 export type AllocationContribution = {

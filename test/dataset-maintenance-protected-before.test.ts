@@ -5,13 +5,12 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   MAINTENANCE_SCAN_TABLES,
-  maintenanceRowKey,
-  sha256Json,
-  snapshotRemoteRow,
   type DatasetMaintenancePlan,
   type DatasetMaintenanceRemoteRow,
   type JsonObject,
-} from '../src/lib/dataset-maintenance-contract.js';
+} from '../src/lib/maintenance/contract/types.js';
+import { maintenanceRowKey, snapshotRemoteRow } from '../src/lib/maintenance/contract/values.js';
+import { sha256Json } from '../src/lib/canonical-json-hash.js';
 import {
   assertDerivativeBaselines,
   assertDerivativeCensusBindings,
@@ -29,7 +28,7 @@ import type {
 } from '../src/lib/dataset-maintenance-protected-contract.js';
 import { maintenanceProjectedReferenceFingerprint } from '../src/lib/dataset-maintenance-plan.js';
 import type { DatasetMaintenanceRemoteContext } from '../src/lib/dataset-maintenance-remote.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import type { FetchLike, ResponseLike } from '../src/lib/http.js';
 
 const USER_ID = 'dab05739-1a42-421b-8170-3b77146d1d64';

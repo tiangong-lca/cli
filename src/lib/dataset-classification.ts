@@ -11,7 +11,7 @@ import {
   unwrapDatasetPayload,
   type JsonObject,
 } from './dataset-local.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import { readJsonInput } from './io.js';
 
 export type DatasetClassificationType =

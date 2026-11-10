@@ -13,7 +13,7 @@ import {
 } from './helpers/supabase-auth.js';
 import { commandFailure } from '../src/shared/command-errors.js';
 import { CommandInputError } from '../src/shared/command-result.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 
 const actor = '00000000-0000-4000-8000-000000000001';
 const id = '00000000-0000-4000-8000-000000000002';

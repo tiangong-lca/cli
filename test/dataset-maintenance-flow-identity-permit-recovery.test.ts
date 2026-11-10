@@ -22,10 +22,10 @@ import {
 import {
   buildFlowIdentityScopeLookupRequest,
   buildFlowIdentityScopePreflightRequest,
-  parseFlowIdentityScopeLookupProof,
   splitFlowIdentityPermitResponse,
-  type FlowIdentityExecutionIdentity,
-} from '../src/lib/dataset-maintenance-flow-identity-execution-contract.js';
+} from '../src/lib/maintenance/flow-identity/requests.js';
+import { parseFlowIdentityScopeLookupProof } from '../src/lib/maintenance/flow-identity/proofs.js';
+import { type FlowIdentityExecutionIdentity } from '../src/lib/maintenance/flow-identity/base.js';
 import {
   buildFlowIdentityRecoveryRequest,
   parseFlowIdentityRecoveryProof,

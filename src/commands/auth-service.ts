@@ -1,22 +1,18 @@
 import { parseArgs } from 'node:util';
 import { selectLoopbackAuthDiagnostic, runLoopbackAuthDiagnostic } from '../lib/study-transport.js';
-import { CliError } from '../lib/errors.js';
+import { CliError } from '../shared/errors.js';
 import { stringifyJson } from '../lib/io.js';
 import { loadCliPackageVersion } from '../lib/package-version.js';
 import { requireSupabaseRestRuntime } from '../lib/supabase-client.js';
-import {
-  inspectSupabaseAuthStatus,
-  loginWithSupabaseOAuth,
-  logoutSupabaseUserSession,
-} from '../lib/supabase-session.js';
+
 import { OAUTH_LOGIN_TIMEOUT_MAX_MS } from '../lib/oauth-loopback.js';
 import {
   AUTH_IDENTITY_MAX_TIMEOUT_MS,
   AUTH_IDENTITY_RECEIPT_SCHEMA,
-  runAuthIdentityReceipt,
 } from '../lib/auth-identity-receipt.js';
 
-import { cliFailure, type CliDeps, type CliResult } from '../cli-deps.js';
+import { cliFailure } from '../shared/legacy-command-result.js';
+import type { ResolvedCliDeps, CliResult } from './ports.js';
 function renderAuthHelp(): string {
   return `Usage:
   tiangong-lca auth <login|status|whoami|doctor-auth|logout|identity-receipt> [options]
@@ -271,13 +267,13 @@ function parseAuthLiveFlags(args: string[]): { help: boolean; json: boolean; tim
 export async function executeAuthService(
   subcommand: string | null,
   commandArgs: string[],
-  deps: CliDeps,
+  deps: ResolvedCliDeps,
 ): Promise<CliResult> {
   try {
-    const authIdentityReceiptImpl = deps.runAuthIdentityReceiptImpl ?? runAuthIdentityReceipt;
-    const oauthLoginImpl = deps.loginWithSupabaseOAuthImpl ?? loginWithSupabaseOAuth;
-    const oauthLogoutImpl = deps.logoutSupabaseUserSessionImpl ?? logoutSupabaseUserSession;
-    const authStatusImpl = deps.inspectSupabaseAuthStatusImpl ?? inspectSupabaseAuthStatus;
+    const authIdentityReceiptImpl = deps.runAuthIdentityReceiptImpl;
+    const oauthLoginImpl = deps.loginWithSupabaseOAuthImpl;
+    const oauthLogoutImpl = deps.logoutSupabaseUserSessionImpl;
+    const authStatusImpl = deps.inspectSupabaseAuthStatusImpl;
     if (!subcommand) return { exitCode: 0, stdout: `${renderAuthHelp()}\n`, stderr: '' };
 
     if (subcommand === 'identity-receipt') {

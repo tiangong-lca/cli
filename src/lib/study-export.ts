@@ -14,7 +14,7 @@ import {
 import path from 'node:path';
 import os from 'node:os';
 import { loadStudyCodec } from './study-codec.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import { readStudyBytes, readStudyJson } from './study-intent.js';
 import {
   assertStudySafe,

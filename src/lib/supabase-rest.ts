@@ -1,5 +1,5 @@
 // data-api-relations: processes
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
 import {
   createSupabaseDataClient,

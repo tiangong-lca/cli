@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 const OPERATION_REPORT_SCHEMA = 'tidas.operation-report.v1';
 const INVOCATION_CONTEXT_SCHEMA = 'tidas.invocation-context.v1';

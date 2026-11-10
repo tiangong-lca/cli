@@ -1,8 +1,7 @@
 import { FlowPropertySchema, FlowSchema, ProcessSchema } from '@tiangong-lca/tidas-sdk';
+import { isJsonObject, maintenanceRowKey } from './maintenance/contract/values.js';
+import { sha256Json } from './canonical-json-hash.js';
 import {
-  isJsonObject,
-  maintenanceRowKey,
-  sha256Json,
   type DatasetMaintenanceAliasBatch,
   type DatasetMaintenanceAliasBatchPlan,
   type DatasetMaintenanceAliasExchangeRewrite,
@@ -12,7 +11,7 @@ import {
   type DatasetMaintenanceRowSnapshot,
   type DatasetMaintenanceScope,
   type JsonObject,
-} from './dataset-maintenance-contract.js';
+} from './maintenance/contract/types.js';
 import type { SafeParseSchema } from './tidas-sdk-validation.js';
 import { withOptionalReviewReportReference } from './tidas-review-report-optionality.js';
 

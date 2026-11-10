@@ -9,24 +9,24 @@ import {
 import {
   buildFlowIdentityExecutionIdentity,
   buildFlowIdentityScopeLookupRequest,
+} from './maintenance/flow-identity/requests.js';
+import {
   parseFlowIdentityScopeLookupProof,
   parseFlowIdentityScopePreflightProof,
-  parseFlowIdentityScopeStatus,
-  prepareFlowIdentityExecution,
+} from './maintenance/flow-identity/proofs.js';
+import { parseFlowIdentityScopeStatus } from './maintenance/flow-identity/status.js';
+import { prepareFlowIdentityExecution } from './dataset-maintenance-flow-identity-execution-contract.js';
+import {
   type FlowIdentityApproval,
   type FlowIdentityExecutionIdentity,
   type FlowIdentityFreeze,
   type FlowIdentityScopeProof,
   type FlowIdentityScopeStatus,
-} from './dataset-maintenance-flow-identity-execution-contract.js';
+} from './maintenance/flow-identity/base.js';
 import type { FlowIdentityPlan } from './dataset-maintenance-flow-identity-contract.js';
-import {
-  isJsonObject,
-  sha256Json,
-  sha256Text,
-  stableJsonText,
-  type JsonObject,
-} from './dataset-maintenance-contract.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { sha256Json, sha256Text, stableJsonText } from './canonical-json-hash.js';
+import { type JsonObject } from './maintenance/contract/types.js';
 import { flowIdentityRestrictedSha256 } from './dataset-maintenance-flow-identity-wire.js';
 import {
   isMaintenanceRpcDomainFailure,
@@ -36,7 +36,7 @@ import {
   type DatasetMaintenanceRemoteContext,
 } from './dataset-maintenance-remote.js';
 import { parseProtectedToolchainEvidence } from './dataset-maintenance-protected-toolchain.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
 
 const HASH = /^[a-f0-9]{64}$/u;

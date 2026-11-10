@@ -87,6 +87,33 @@ export type DatasetQuery = {
   offset: number;
 };
 export type DatasetPage = { records: DatasetRecord[]; total: number | null; environment: string };
+export type DatasetAction =
+  | 'get'
+  | 'list'
+  | 'versions'
+  | 'search'
+  | 'contract'
+  | 'list-references'
+  | 'validate'
+  | 'diff'
+  | 'patch'
+  | 'translations extract'
+  | 'translations apply'
+  | 'graph'
+  | 'build-resulting-process'
+  | 'aggregate'
+  | 'create'
+  | 'save'
+  | 'delete'
+  | 'statistics'
+  | 'upload-attachments';
+export type CanonicalDatasetAction = Exclude<DatasetAction, 'aggregate'>;
+export type DatasetOperation = (
+  | { type: 'model'; action: 'graph' | 'build-resulting-process' }
+  | { type: 'source'; action: 'upload-attachments' }
+  | { type: 'process'; action: 'statistics' }
+) & { request: JsonObject; inputPath: string };
+
 export type DatasetPorts = {
   read(type: DatasetType, query: DatasetQuery): Promise<DatasetPage>;
   contract(type: DatasetType, include: string[]): Promise<JsonObject>;
@@ -98,12 +125,7 @@ export type DatasetPorts = {
     offset: number,
     state?: number,
   ): Promise<JsonObject>;
-  local(
-    type: DatasetType,
-    action: string,
-    request: JsonObject,
-    inputPath: string,
-  ): Promise<JsonObject>;
+  operations(operation: DatasetOperation): Promise<JsonObject>;
   mutate(
     type: DatasetType,
     action: 'create' | 'save' | 'delete',
@@ -112,9 +134,16 @@ export type DatasetPorts = {
   ): Promise<CommandResult>;
   now(): string;
 };
-export function actionsFor(type: DatasetType): string[] {
+export function actionsFor(type: DatasetType): DatasetAction[] {
   if (type === 'lciamethod') return ['contract', 'validate'];
-  const actions = ['get', 'list', 'versions', 'contract', 'list-references', 'validate'];
+  const actions: DatasetAction[] = [
+    'get',
+    'list',
+    'versions',
+    'contract',
+    'list-references',
+    'validate',
+  ];
   if (editableTypes.includes(type))
     actions.push(
       'search',

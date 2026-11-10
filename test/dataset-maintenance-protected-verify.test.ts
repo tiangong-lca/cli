@@ -3,14 +3,13 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { maintenanceRowKey, snapshotRemoteRow } from '../src/lib/maintenance/contract/values.js';
+import { sha256Json } from '../src/lib/canonical-json-hash.js';
 import {
-  maintenanceRowKey,
-  sha256Json,
-  snapshotRemoteRow,
   type DatasetMaintenancePlan,
   type DatasetMaintenanceRemoteRow,
   type JsonObject,
-} from '../src/lib/dataset-maintenance-contract.js';
+} from '../src/lib/maintenance/contract/types.js';
 import { maintenanceProjectedReferenceFingerprint } from '../src/lib/dataset-maintenance-plan.js';
 import {
   PROTECTED_EXECUTION_CONTRACT,

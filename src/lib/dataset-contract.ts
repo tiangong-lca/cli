@@ -4,7 +4,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { getCliContractRuleset } from './dataset-contract-ruleset.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 export type DatasetContractInclude = 'schema' | 'methodology' | 'ruleset';
 type ContractPack = {

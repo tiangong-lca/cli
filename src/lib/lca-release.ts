@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike, ResponseLike } from './http.js';
 import { readJsonInput } from './io.js';
 import {

@@ -1,6 +1,9 @@
 import { FlowPropertySchema, UnitGroupSchema } from '@tiangong-lca/tidas-sdk';
 import { collectRemoteReferences } from './dataset-remote-verify.js';
-import type { DatasetMaintenanceSupportTable, JsonObject } from './dataset-maintenance-contract.js';
+import {
+  type DatasetMaintenanceSupportTable,
+  type JsonObject,
+} from './maintenance/contract/types.js';
 import type { SafeParseResult, SafeParseSchema } from './tidas-sdk-validation.js';
 
 export type DatasetMaintenanceSupportSchemas = Partial<

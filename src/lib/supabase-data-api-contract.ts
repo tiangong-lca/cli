@@ -1,4 +1,4 @@
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import { DATA_API_RPC_REPLAY_CLASSIFICATION } from './supabase-data-api-replay.js';
 export {
   DATA_API_RPC_REPLAY_CLASSIFICATION,
@@ -55,7 +55,6 @@ export const DATA_API_RELATION_CONSUMERS = {
   ],
   processes: [
     'src/adapters/dataset-read.ts',
-    'src/lib/process-scope-statistics.ts',
     'src/lib/dataset-remote-verify.ts',
     'src/lib/dataset-maintenance-remote.ts',
     'src/lib/supabase-rest.ts',

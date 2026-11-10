@@ -14,8 +14,8 @@ checkPaths:
   - AGENTS.md
   - src/lib/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 12f1bde7e1249031772c70cc27b9cb6cdc76b28c
-lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
+lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
+lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
 ---
 
 # Existing runtime safeguards
@@ -52,7 +52,6 @@ Read-side exact-reference verification follows `docs/agents/exact-reference-inte
 - `dataset maintenance flow-identity` owns Step 3 in `src/lib/dataset-maintenance-flow-identity-*.ts`. Capture/plan/freeze/seal-approval are immutable file-first boundaries; capture makes one attestation POST after one complete census and stores only the affected/reference-closure process subset. Run uses thin authenticated guarded scope/per-process/finalize RPCs, serializes on the database-ledger next ordinal, and never computes derivative baselines client-side; verify performs a fresh exact-count owner-draft process census plus exact source/public/support/process readback. This path changes only the five TIDAS flow-reference fields in affected process exchanges. It never mutates the 305 source flows, public targets, support data, state codes, or publication state, and it never uses generic maintenance apply or the Step 2 protected runner as a fallback.
 - `rebuild-derivatives` is a separate derivative-only profile: exactly one current-owner state-0 `processes` action, `action=rebuild_derivatives`, `target_mode=owner_draft`, and the exact components `extracted_md` plus `embedding_ft`. Its plan binds an action-scoped database snapshot, apply only records guarded-RPC admission as `accepted`/`queued`, and verify alone resolves `pending`/`passed`/`failed` without changing the process primary payload or `modified_at`. The direct alias-dimension and derivative worker/queue surfaces are not authenticated CLI paths. Public/shared, foreign-owner, mixed-visibility, non-draft, lifecyclemodel, and every other support-table mutation remain protected.
 - `src/lib/dataset-maintenance-pagination.ts` owns fail-closed account-scan pagination for row-level maintenance and `clear-account`. It requests `Prefer: count=exact`, treats the configured page size as a requested maximum rather than a guaranteed response size, advances offsets by the number of rows actually returned, and accepts a scan only when exact totals, ranges, ordering, identities, and aggregate entity counts prove pagination completeness under stable filtered membership/order. Incomplete scans stop before maintenance artifacts or mutation gates; the resulting proof does not claim transaction-level snapshot isolation across requests.
-- `process publish-build` validates canonical process payloads with `ProcessSchema` before publish handoff artifacts are written, and emits `reports/process-publish-schema-gate.json`.
 - `publish run` emits `verification-report.json` next to `publish-report.json`; this is the deterministic publish ruleset summary for failed/deferred/executed outcomes.
 - `src/lib/runtime-rulesets.ts` composes released, exact source-bound public definitions with CLI-local activation policy for stable ruleset ids, methodology rule ids, severity, phases, and blocker semantics used by review, dedup, and publish gate artifacts. SDK 0.2.2's public API is accepted only after equivalence checks; the bundled copy is a hash-bound no-API fallback. `src/lib/dataset-contract-ruleset.ts` projects the separate CLI-owned context profile and preserves requested artifact paths without reading SDK mixed ruleset assets.
 - The canonical minimum validation command is `pnpm lint`. Type-aware Oxlint is the only linter; the retired ESLint and TypeScript Compiler API lint paths must not return.
@@ -103,3 +102,18 @@ The `pre-push` hook runs `scripts/docpact-gate.sh`, which delegates CLI lookup t
 PCR content discovery, task pins and forced local reader execution belong to `src/lib/pcr-snapshot-*.ts`; see `docs/agents/pcr-snapshot-contract.md`. PCR owns offline reader and scientific semantics. Task snapshots and selected installed tool bytes are immutable; release and snapshot source fingerprints use different hash domains. No runtime dependency or executable installation is added.
 
 Study P4 consumption uses separately negotiated V5, immutable owner assets and versioned renderer2/view2/export3. Existing journals, defaults and historical renderer1 artifacts remain separate. The Study CLI contract owns exact pins, rollback-safe historical reads and the distinction between package proof and actual installed runtime qualification.
+
+## Maintenance profiles and evidence
+
+Maintenance profiles are separate admission contracts, not interchangeable generations. Installation or a readable artifact does not prove that a deployment currently admits a mutation.
+
+| Profile | CLI admission boundary | Retained evidence and recovery |
+| --- | --- | --- |
+| Ordinary owner-draft plan/apply/verify | Exact supported table/version, current owner/state and complete preflight. | Original plan/progress and independent readback. |
+| Derivative-only rebuild | One guarded Process action; admission is accepted/queued. | Same durable request; only verification establishes terminal freshness. |
+| Sealed alias protected execution | Exact reviewed closure, freeze, approval and one-shot admission. | Original attempt is consumed after ambiguity; bounded status/readback only. |
+| Alias-v2 and Length*time profiles | Their own exact dimensions, factors, scope and protected bindings. | Preserve each version's canonical file bytes and proof rules. |
+| Flow-identity execution | Reviewed reference-only scope and ordered server ledger. | Original request/proofs, explicit recovery binding and current verification. |
+| Historical whole-plan alias artifacts | Read/validate compatibility only where explicitly supported; no generic bypass of protected admission. | Keep original hashes and evidence identity; never reinterpret as a newer authorization. |
+
+File reorganization does not change these formats, widen authority or retire a profile. Retirement requires separate evidence of its consumers, supported recovery and historical verification needs.

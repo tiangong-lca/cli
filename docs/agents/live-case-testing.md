@@ -16,8 +16,8 @@ checkPaths:
   - package.json
   - test/toolchain-contract.test.mjs
 lastReviewedAt: 2026-11-09
-lastReviewedCommit: cafb56cfdae7d5c7b03605f4fc706390cb609be0
-lastReviewedNote: 'CLI #468: reviewed removal of unreferenced workflows, obsolete wrappers/config/examples and stale documentation; current algorithms, security, specialized protocols, public exports and publication identity remain governed.'
+lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
+lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
 related:
   - repo-validation.md
   - repo-architecture.md

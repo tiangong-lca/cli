@@ -6,14 +6,14 @@ import {
   writePrivateImmutableJson,
   writePrivateImmutableText,
 } from './dataset-maintenance-protected-artifacts.js';
-import { sha256Text, stableJsonText } from './dataset-maintenance-contract.js';
+import { sha256Text, stableJsonText } from './canonical-json-hash.js';
 import { parseProtectedFreeze } from './dataset-maintenance-protected-contract.js';
 import {
   assertProtectedProductionProjectRef,
   parseProtectedApprovalRequest,
   sealProtectedApproval,
 } from './dataset-maintenance-protected-preparation.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 export const PROTECTED_APPROVAL_SEAL_ARTIFACTS = {
   human_approval_text: 'protected-human-approval.txt',

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
-import { sha256Json } from '../src/lib/dataset-maintenance-contract.js';
+import { sha256Json } from '../src/lib/canonical-json-hash.js';
 import {
   __testInternals,
   summarizeProcessPayloadValidation,

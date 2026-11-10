@@ -1,5 +1,5 @@
 import { createClient, type PostgrestError } from '@supabase/supabase-js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import { hasProductionProfileMismatch, resolveProductionRuntimeEnv } from './env.js';
 import type { FetchLike, ResponseLike } from './http.js';
 import { DEFAULT_OAUTH_REDIRECT_URI, requireOAuthLoopbackRedirectUri } from './oauth-loopback.js';

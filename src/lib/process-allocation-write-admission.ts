@@ -1,5 +1,5 @@
 // data-api-relations: flows
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
 import { createSupabaseDataClient, runSupabaseArrayQuery } from './supabase-client.js';
 import { sha256Json } from './canonical-json-hash.js';

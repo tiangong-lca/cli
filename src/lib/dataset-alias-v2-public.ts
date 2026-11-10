@@ -15,13 +15,9 @@ import {
   readProtectedTextArtifact,
   writePrivateImmutableJson,
 } from './dataset-maintenance-protected-artifacts.js';
-import {
-  isJsonObject,
-  sha256Json,
-  sha256Text,
-  stableJsonText,
-  type JsonObject,
-} from './dataset-maintenance-contract.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { sha256Json, sha256Text, stableJsonText } from './canonical-json-hash.js';
+import { type JsonObject } from './maintenance/contract/types.js';
 import { assertProtectedProductionProjectRef } from './dataset-maintenance-protected-preparation.js';
 import { parseProtectedToolchainEvidence } from './dataset-maintenance-protected-toolchain.js';
 import { resolveMaintenanceRemoteContext } from './dataset-maintenance-remote.js';
@@ -39,7 +35,7 @@ import {
   type ProtectedPlanProfile,
 } from './dataset-alias-v2-protected.js';
 import { lengthTimeTargetSnapshots, protectedPlanProfile } from './dataset-length-time-plan.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 type JsonValue = JsonObject;
 

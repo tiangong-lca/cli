@@ -9,11 +9,11 @@ import {
   saveDraftMaintenanceRow,
   type DatasetMaintenanceRemoteContext,
 } from '../src/lib/dataset-maintenance-remote.js';
+import { sha256Json } from '../src/lib/canonical-json-hash.js';
 import {
-  sha256Json,
   type DatasetMaintenanceRemoteRow,
   type DatasetMaintenanceProgressEntry,
-} from '../src/lib/dataset-maintenance-contract.js';
+} from '../src/lib/maintenance/contract/types.js';
 import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 import {
   buildSupabaseTestEnv,

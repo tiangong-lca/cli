@@ -6,11 +6,8 @@ import { createHash } from 'node:crypto';
 import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {
-  sha256Json,
-  stableJsonText,
-  type JsonObject,
-} from '../../src/lib/dataset-maintenance-contract.js';
+import { sha256Json, stableJsonText } from '../../src/lib/canonical-json-hash.js';
+import { type JsonObject } from '../../src/lib/maintenance/contract/types.js';
 import { buildAliasV2Plan } from '../../src/lib/dataset-alias-v2-plan.js';
 import {
   ALIAS_V2_FREEZE_SETS,

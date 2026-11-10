@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { executeCli } from '../src/cli.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import type { FetchLike } from '../src/lib/http.js';
 import {
   selectLoopbackAuthDiagnostic,

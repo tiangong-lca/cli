@@ -19,13 +19,9 @@ import {
   readProtectedJsonArtifact,
   writePrivateImmutableJson,
 } from './dataset-maintenance-protected-artifacts.js';
-import {
-  isJsonObject,
-  sha256Json,
-  sha256Text,
-  stableJsonText,
-  type JsonObject,
-} from './dataset-maintenance-contract.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { sha256Json, sha256Text, stableJsonText } from './canonical-json-hash.js';
+import { type JsonObject } from './maintenance/contract/types.js';
 import {
   admitMaintenanceAliasExecutionV2,
   captureMaintenanceAliasExecutionGateV2,
@@ -68,7 +64,7 @@ import {
   type AliasV2Gate,
   type AliasV2GateResult,
 } from './dataset-alias-v2-protected-contract.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
 
 type JsonValue = JsonObject;

@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { executeCli, type CliDeps } from '../src/cli.js';
 import { buildDoctorReport, readRuntimeEnv } from '../src/lib/env.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import { requireSupabaseRestRuntime } from '../src/lib/supabase-client.js';
 import { loginWithSupabaseOAuth } from '../src/lib/supabase-session.js';
 

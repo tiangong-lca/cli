@@ -5,14 +5,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadDistModule } from './helpers/load-dist-module.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import type { FetchLike } from '../src/lib/http.js';
 import {
   __testInternals,
-  normalizeLifecyclemodelResultingProcessRequest,
   runLifecyclemodelBuildResultingProcess,
-  type LifecyclemodelResultingProcessRequest,
 } from '../src/lib/lifecyclemodel-resulting-process.js';
+import { normalizeLifecyclemodelResultingProcessRequest } from '../src/lib/model-result/request.js';
+import { type LifecyclemodelResultingProcessRequest } from '../src/lib/model-result/base.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,

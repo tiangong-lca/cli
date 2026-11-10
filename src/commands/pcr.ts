@@ -1,18 +1,18 @@
 import { parseArgs } from 'node:util';
-import type { FetchLike } from './http.js';
+import type { FetchLike } from '../lib/http.js';
 import {
   ensurePcrSnapshot,
   inspectPcrSnapshot,
   type SnapshotOptions,
-} from './pcr-snapshot-cache.js';
+} from '../lib/pcr-snapshot-cache.js';
 import {
   selectedPcrTool,
   bindPcrTool,
   executePinnedPcr,
   verifyPinnedPcrIntegrity,
   pcrIntegrityVerified,
-} from './pcr-snapshot-tool.js';
-import { pcrError } from './pcr-snapshot-contract.js';
+} from '../lib/pcr-snapshot-tool.js';
+import { pcrError } from '../lib/pcr-snapshot-contract.js';
 
 const HELP = `Usage: tiangong-lca pcr snapshot ensure|status --task-dir <absolute-dir> [--cache-dir <absolute-dir>] [--version <stable-version>] [--library <absolute-library.sqlite> --library-sha256 sha256:<hex>] [--tool-root <installed-PCR-package>] [--offline] [--json]
        tiangong-lca pcr exec --task-dir <absolute-dir> [--cache-dir <absolute-dir>] -- <PCR arguments>

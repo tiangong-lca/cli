@@ -19,7 +19,8 @@ test('runtime describe is a local machine command with package and executable co
 });
 
 test('runtime parsing stays local, strict and independent of user dotenv configuration', async (t) => {
-  const { isRuntimeCommand, runRuntimeCommand } = await import('../src/lib/runtime/command.js');
+  const { isRuntimeCommand, runRuntimeCommand } =
+    await import('../src/commands/runtime/command.js');
   const { describeCliRuntime, RUNTIME_PLATFORMS } = await import('../src/runtime.js');
   const descriptor = describeCliRuntime();
   assert.equal(Reflect.set(RUNTIME_PLATFORMS, 0, 'darwin-x64'), false);

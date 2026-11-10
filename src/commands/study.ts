@@ -1,8 +1,8 @@
 import { parseArgs } from 'node:util';
 import path from 'node:path';
-import type { CliResult } from '../cli.js';
-import type { FetchLike } from './http.js';
-import { readStudyIntent, readStudyJson } from './study-intent.js';
+import type { CommandIO as CliResult } from '../shared/command-result.js';
+import type { FetchLike } from '../lib/http.js';
+import { readStudyIntent, readStudyJson } from '../lib/study-intent.js';
 import {
   STUDY_COMMANDS,
   STUDY_REPORT_COMMANDS,
@@ -12,15 +12,15 @@ import {
   studyFailure,
   studyObject,
   type StudyApiVersion,
-} from './study-protocol.js';
-import { runStudyRequest, type StudyCommandReport } from './study-transport.js';
+} from '../lib/study-protocol.js';
+import { runStudyRequest, type StudyCommandReport } from '../lib/study-transport.js';
 import { readFileSync } from 'node:fs';
 import {
   verifyStudyCodecArtifact,
   STUDY_V6_CODEC_MANIFEST_SHA256,
   studyCodecRoot,
-} from './study-codec.js';
-import { runStudyExportFiles } from './study-export.js';
+} from '../lib/study-codec.js';
+import { runStudyExportFiles } from '../lib/study-export.js';
 
 const HELP = `Usage: tiangong-lca study <action> [--input request.json] [--json]
 

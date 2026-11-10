@@ -12,7 +12,7 @@ import { createSupabaseDataClient, requireSupabaseRestRuntime } from '../lib/sup
 import { createSupabaseDataRuntime } from '../lib/supabase-session.js';
 import type { FetchLike } from '../lib/http.js';
 import { normalizeSupabaseProcessPayload } from '../lib/supabase-rest.js';
-import { CliError } from '../lib/errors.js';
+import { CliError } from '../shared/errors.js';
 
 export function datasetReader(env: NodeJS.ProcessEnv, fetchImpl: FetchLike) {
   return async (type: DatasetType, input: DatasetQuery): Promise<DatasetPage> => {

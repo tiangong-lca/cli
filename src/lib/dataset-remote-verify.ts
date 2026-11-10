@@ -1,9 +1,9 @@
+import { sha256Json } from './canonical-json-hash.js';
 // data-api-relations: contacts, flowproperties, flows, lciamethods, lifecyclemodels, processes, sources, unitgroups
 // data-api-dynamic-relation-expression: options.request.table
-import crypto from 'node:crypto';
 import path from 'node:path';
 import { writeJsonArtifact, writeJsonLinesArtifact } from './artifacts.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import { runAuthIdentityReceipt } from './auth-identity-receipt.js';
 import { loadCliPackageVersion } from './package-version.js';
 import {
@@ -586,27 +586,6 @@ function normalizeRows(value: unknown): RemoteDatasetLookupRow[] {
         }))
         .filter((row) => Boolean(row.id))
     : [];
-}
-
-function stableJson(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(stableJson);
-  }
-  if (isRecord(value)) {
-    return Object.fromEntries(
-      Object.keys(value)
-        .sort()
-        .map((key) => [key, stableJson(value[key])]),
-    );
-  }
-  return value;
-}
-
-function sha256Json(value: unknown): string {
-  return crypto
-    .createHash('sha256')
-    .update(JSON.stringify(stableJson(value)))
-    .digest('hex');
 }
 
 function buildRemotePayloadUrl(

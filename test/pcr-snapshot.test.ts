@@ -13,7 +13,7 @@ import {
   publishedVersions,
   metadataBytes,
 } from '../src/lib/pcr-snapshot-release.js';
-import { runPcrCommand } from '../src/lib/pcr-snapshot-command.js';
+import { runPcrCommand } from '../src/commands/pcr.js';
 import {
   inspectPcrTool,
   selectedPcrTool,

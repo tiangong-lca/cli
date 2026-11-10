@@ -13,15 +13,12 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   MAINTENANCE_SCAN_TABLES,
-  maintenanceRowKey,
-  sha256Json,
-  sha256Text,
-  stableJsonText,
-  snapshotRemoteRow,
   type DatasetMaintenancePlan,
   type DatasetMaintenanceRemoteRow,
   type JsonObject,
-} from '../src/lib/dataset-maintenance-contract.js';
+} from '../src/lib/maintenance/contract/types.js';
+import { maintenanceRowKey, snapshotRemoteRow } from '../src/lib/maintenance/contract/values.js';
+import { sha256Json, sha256Text, stableJsonText } from '../src/lib/canonical-json-hash.js';
 import {
   PROTECTED_EXECUTION_CONTRACT,
   type DatasetMaintenanceProtectedApproval,

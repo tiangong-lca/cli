@@ -4,7 +4,7 @@ import { createServer } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { CliError, toErrorPayload } from '../src/lib/errors.js';
+import { CliError, toErrorPayload } from '../src/shared/errors.js';
 import type { FetchLike, ResponseLike } from '../src/lib/http.js';
 import { createSupabaseFetch, type SupabaseRestRuntime } from '../src/lib/supabase-client.js';
 import {

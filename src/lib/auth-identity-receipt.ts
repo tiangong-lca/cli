@@ -1,6 +1,6 @@
-import { createHash } from 'node:crypto';
+import { sha256Json, stableJsonValue } from './canonical-json-hash.js';
 import path from 'node:path';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
 import {
   buildSupabaseAuthHeaders,
@@ -103,26 +103,6 @@ export type RunAuthIdentityReceiptOptions = {
 
 function isRecord(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function stableJsonValue(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(stableJsonValue);
-  }
-  if (isRecord(value)) {
-    return Object.fromEntries(
-      Object.keys(value)
-        .sort()
-        .map((key) => [key, stableJsonValue(value[key])]),
-    );
-  }
-  return value;
-}
-
-function sha256Json(value: unknown): string {
-  return createHash('sha256')
-    .update(JSON.stringify(stableJsonValue(value)))
-    .digest('hex');
 }
 
 function token(value: unknown): string | null {

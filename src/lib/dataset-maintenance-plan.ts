@@ -4,19 +4,23 @@ import {
   buildAliasRewritePlan,
   type DatasetMaintenanceAliasSchemas,
 } from './dataset-maintenance-alias-rewrite.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
+import { computePlanSha256 } from './dataset-maintenance-contract.js';
+import { sha256Json } from './canonical-json-hash.js';
 import {
-  computePlanSha256,
   isJsonObject,
   maintenanceRowKey,
-  parseMaintenanceScope,
+  snapshotRemoteRow,
+} from './maintenance/contract/values.js';
+import { parseMaintenanceScope } from './maintenance/contract/scope.js';
+import {
   readJsonFile,
   safeActionFileName,
-  sha256Json,
-  snapshotRemoteRow,
   writeImmutableJson,
   writeImmutableJsonLines,
+} from './maintenance/contract/files.js';
+import {
   type DatasetMaintenanceBlocker,
   type DatasetMaintenanceAliasBatchPlan,
   type DatasetMaintenanceOperation,
@@ -28,7 +32,7 @@ import {
   type DatasetMaintenanceRowSnapshot,
   type DatasetMaintenanceScopeAction,
   type JsonObject,
-} from './dataset-maintenance-contract.js';
+} from './maintenance/contract/types.js';
 import { parseDerivativeSnapshotResponse } from './dataset-maintenance-derivatives.js';
 import { collectFlowReferencePropertyIssues } from './flow-reference-properties.js';
 import {

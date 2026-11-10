@@ -135,7 +135,12 @@ test('Model inputs select exactly one explicit source and preserve exact remote 
 test('Model graph runs the existing graph implementation, returns data and detects dangling edges', async (t) => {
   const dir = directory(t);
   const operations = datasetOperations(env, noNetwork);
-  const graph = await operations('model', 'graph', { content: model }, '-');
+  const graph = await operations({
+    type: 'model',
+    action: 'graph',
+    request: { content: model },
+    inputPath: '-',
+  });
   assert.equal((graph.counts as JsonObject).nodes, 1);
   assert.equal((graph.graphs as unknown[]).length, 1);
   const graphInput = path.join(dir, 'graph-request.json');
@@ -156,7 +161,12 @@ test('Model graph runs the existing graph implementation, returns data and detec
   changed.lifeCycleModelDataSet.lifeCycleModelInformation.technology.processes.processInstance[0]!.connections.outputExchange.push(
     { '@flowUUID': flowId, downstreamProcess: { '@id': 'missing' } } as never,
   );
-  const broken = await operations('model', 'graph', { content: changed }, '-');
+  const broken = await operations({
+    type: 'model',
+    action: 'graph',
+    request: { content: changed },
+    inputPath: '-',
+  });
   assert.equal(broken.status, 'completed_with_findings');
   const input = path.join(dir, 'graph.json');
   writeFileSync(input, JSON.stringify({ content: changed }));
@@ -166,7 +176,10 @@ test('Model graph runs the existing graph implementation, returns data and detec
   );
   assert.equal(reply.exitCode, 1);
   assert.equal(JSON.parse(reply.stdout).status, 'partial');
-  await assert.rejects(operations('source', 'unknown', {}, '-'), /no supported adapter/);
+  await assert.rejects(
+    operations({ type: 'source', action: 'unknown', request: {}, inputPath: '-' } as never),
+    /no supported adapter/,
+  );
 });
 test('Model result generation and aggregate share canonical output with exact local or remote Process inputs', async (t) => {
   const dir = directory(t);
@@ -220,7 +233,14 @@ test('Model result generation and aggregate share canonical output with exact lo
     { process_sources: { run_dirs: ['production'] } },
     { process_sources: { process_json_files: ['relative.json'] } },
   ]) {
-    await assert.rejects(local('model', 'build-resulting-process', { ...request, ...change }, '-'));
+    await assert.rejects(
+      local({
+        type: 'model',
+        action: 'build-resulting-process',
+        request: { ...request, ...change },
+        inputPath: '-',
+      }),
+    );
   }
   const bad = structuredClone(model);
   delete (
@@ -228,52 +248,52 @@ test('Model result generation and aggregate share canonical output with exact lo
       .referenceToProcess as JsonObject
   )['@version'];
   await assert.rejects(
-    local(
-      'model',
-      'build-resulting-process',
-      { ...request, source_model: { json_ordered: bad } },
-      input,
-    ),
+    local({
+      type: 'model',
+      action: 'build-resulting-process',
+      request: { ...request, source_model: { json_ordered: bad } },
+      inputPath: input,
+    }),
     /exact/,
   );
   const remotely = datasetOperations(env, remote());
-  const result = await remotely(
-    'model',
-    'build-resulting-process',
-    {
+  const result = await remotely({
+    type: 'model',
+    action: 'build-resulting-process',
+    request: {
       ...request,
       source_model: { json_ordered: model },
       process_sources: { allow_remote_lookup: true, process_json_files: [] },
     },
-    input,
-  );
+    inputPath: input,
+  });
   assert.equal(result.projectedProcessCount, 1);
   assert.equal(
     (
-      await remotely(
-        'model',
-        'build-resulting-process',
-        {
+      await remotely({
+        type: 'model',
+        action: 'build-resulting-process',
+        request: {
           ...request,
           source_model: { remote: { id: modelId, version } },
           process_sources: { allow_remote_lookup: true },
         },
-        input,
-      )
+        inputPath: input,
+      })
     ).projectedProcessCount,
     1,
   );
   await assert.rejects(
-    remotely(
-      'model',
-      'build-resulting-process',
-      {
+    remotely({
+      type: 'model',
+      action: 'build-resulting-process',
+      request: {
         ...request,
         source_model: { json_ordered: model },
         process_sources: { allow_remote_lookup: true, process_catalog_path: 'catalog.json' },
       },
-      input,
-    ),
+      inputPath: input,
+    }),
     /Choose explicit local/,
   );
 });
@@ -290,20 +310,32 @@ test('Process statistics validates explicit scope/state selections and binds cur
     { scope: 'visible', stateCodes: [] },
     { scope: 'visible', stateCodes: ['0'] },
   ])
-    await assert.rejects(operations('process', 'statistics', request, '-'), /scope|stateCodes/);
-  const result = await operations(
-    'process',
-    'statistics',
-    { scope: 'visible', stateCodes: [0] },
-    '-',
-  );
+    await assert.rejects(
+      operations({ type: 'process', action: 'statistics', request: request, inputPath: '-' }),
+      /scope|stateCodes/,
+    );
+  const result = await operations({
+    type: 'process',
+    action: 'statistics',
+    request: { scope: 'visible', stateCodes: [0] },
+    inputPath: '-',
+  });
   assert.equal(result.files, undefined);
   assert.ok(result.status);
   assert.ok(
-    (await operations('process', 'statistics', { scope: 'current-user', stateCodes: [0] }, '-'))
-      .status,
+    (
+      await operations({
+        type: 'process',
+        action: 'statistics',
+        request: { scope: 'current-user', stateCodes: [0] },
+        inputPath: '-',
+      })
+    ).status,
   );
-  await assert.rejects(operations('contact', 'graph', {}, '-'), /no supported adapter/);
+  await assert.rejects(
+    operations({ type: 'contact', action: 'graph', request: {}, inputPath: '-' } as never),
+    /no supported adapter/,
+  );
 });
 
 test('Model input snapshots bind declared files, directories and catalogs, deduplicate identical versions and reject conflicts', async (t) => {

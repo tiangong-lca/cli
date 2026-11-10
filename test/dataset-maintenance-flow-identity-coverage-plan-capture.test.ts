@@ -43,14 +43,13 @@ import {
   materializePrivateArtifactDirectoryAtomically,
   writePrivateImmutableJson,
 } from '../src/lib/dataset-maintenance-protected-artifacts.js';
+import { sha256Json, sha256Text } from '../src/lib/canonical-json-hash.js';
+import { snapshotRemoteRow } from '../src/lib/maintenance/contract/values.js';
 import {
-  sha256Json,
-  sha256Text,
-  snapshotRemoteRow,
   type DatasetMaintenanceRemoteRow,
   type DatasetMaintenanceRowSnapshot,
   type JsonObject,
-} from '../src/lib/dataset-maintenance-contract.js';
+} from '../src/lib/maintenance/contract/types.js';
 import type { FlowPayloadValidationResult } from '../src/lib/flow-payload-validation.js';
 import type { ProcessPayloadValidationResult } from '../src/lib/process-payload-validation.js';
 

@@ -1,10 +1,8 @@
 import { parseArgs } from 'node:util';
-import { CliError } from '../lib/errors.js';
+import { CliError } from '../shared/errors.js';
 import { stringifyJson } from '../lib/io.js';
-import { runValidation } from '../lib/validation.js';
-import { runDatasetImportLcaConvert } from '../lib/dataset-import-lca.js';
 
-import type { CliDeps, CliResult } from '../cli-deps.js';
+import type { ResolvedCliDeps, CliResult } from './ports.js';
 function renderValidationHelp(): string {
   return `Usage:
   tiangong-lca validation run --input-dir <dir> [options]
@@ -183,11 +181,10 @@ export async function executePackageTool(
   command: string,
   subcommand: string | null,
   commandArgs: string[],
-  deps: CliDeps,
+  deps: ResolvedCliDeps,
 ): Promise<CliResult> {
-  const validationImpl = deps.runValidationImpl ?? runValidation;
-  const datasetImportLcaConvertImpl =
-    deps.runDatasetImportLcaConvertImpl ?? runDatasetImportLcaConvert;
+  const validationImpl = deps.runValidationImpl;
+  const datasetImportLcaConvertImpl = deps.runDatasetImportLcaConvertImpl;
   if (command === 'dataset' && subcommand === 'import-lca') {
     const action = commandArgs[0] ?? '';
     if (!action || action === '--help' || action === '-h') {

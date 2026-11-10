@@ -2,23 +2,27 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { writeJsonArtifact } from './artifacts.js';
 import { collectRemoteReferences } from './dataset-remote-verify.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
 import {
   MAINTENANCE_SCAN_TABLES,
-  isJsonObject,
-  maintenanceRowKey,
-  parseMaintenancePlan,
-  readJsonFile,
-  readJsonLinesIfPresent,
-  resolveMaintenancePlanArtifactPath,
-  sha256Json,
-  snapshotRemoteRow,
   type DatasetMaintenancePlan,
   type DatasetMaintenancePlanAction,
   type DatasetMaintenanceRemoteRow,
   type JsonObject,
-} from './dataset-maintenance-contract.js';
+} from './maintenance/contract/types.js';
+import {
+  isJsonObject,
+  maintenanceRowKey,
+  snapshotRemoteRow,
+} from './maintenance/contract/values.js';
+import { parseMaintenancePlan } from './dataset-maintenance-contract.js';
+import { sha256Json } from './canonical-json-hash.js';
+import {
+  readJsonFile,
+  readJsonLinesIfPresent,
+  resolveMaintenancePlanArtifactPath,
+} from './maintenance/contract/files.js';
 import {
   derivativePlanAction,
   derivativeStatusCategory,

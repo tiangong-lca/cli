@@ -297,7 +297,7 @@ test('runtime command management validates intent and never creates a cache for 
 });
 
 test('exec command forwards exact context, reports failures and preserves interrupted exit semantics', async () => {
-  const { runRuntimeExecCommand } = await import('../src/lib/runtime/exec-command.js');
+  const { runRuntimeExecCommand } = await import('../src/commands/runtime/exec-command.js');
   const f = runtimeComponentFixture();
   const common = [
     '--manifest',

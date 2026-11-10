@@ -16,8 +16,8 @@ import {
   type DatasetMaintenanceProtectedReport,
   type RunDatasetMaintenanceProtectedOptions,
 } from './dataset-maintenance-protected-run.js';
-import { isJsonObject } from './dataset-maintenance-contract.js';
-import { CliError } from './errors.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { CliError } from '../shared/errors.js';
 
 export type ProtectedRunVersion = 'v1' | 'v2';
 

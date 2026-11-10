@@ -5,19 +5,13 @@ import {
   writePrivateImmutableJson,
   writePrivateImmutableText,
 } from './dataset-maintenance-protected-artifacts.js';
-import {
-  computeFlowIdentityFreezeSha256,
-  type FlowIdentityFreeze,
-} from './dataset-maintenance-flow-identity-execution-contract.js';
+import { computeFlowIdentityFreezeSha256 } from './maintenance/flow-identity/requests.js';
+import { type FlowIdentityFreeze } from './maintenance/flow-identity/base.js';
 import { parseFlowIdentityPlan } from './dataset-maintenance-flow-identity-contract.js';
 import { parseProtectedToolchainEvidence } from './dataset-maintenance-protected-toolchain.js';
-import {
-  isJsonObject,
-  sha256Json,
-  sha256Text,
-  stableJsonText,
-} from './dataset-maintenance-contract.js';
-import { CliError } from './errors.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { sha256Json, sha256Text, stableJsonText } from './canonical-json-hash.js';
+import { CliError } from '../shared/errors.js';
 
 export type FlowIdentityExecutionApprovalRequestCore = {
   schema_version: 'dataset-flow-identity-execution-approval-request.v3';

@@ -1,10 +1,10 @@
 import { readProtectedJsonArtifact } from './dataset-maintenance-protected-artifacts.js';
-import { stableJsonText } from './dataset-maintenance-contract.js';
+import { stableJsonText } from './canonical-json-hash.js';
 import {
   runFlowIdentityPlan,
   type RunFlowIdentityPlanOptions,
 } from './dataset-maintenance-flow-identity-plan.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 export type RunFlowIdentityPlanFromFilesOptions = {
   policyPath: string;

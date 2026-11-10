@@ -4,7 +4,8 @@
 // derivative orchestration aggregate and — only for a genuinely passed read — the terminal proof whose
 // per-row audit identities and fresh observations come from the ledger and the live rows.
 
-import { sha256Json, type JsonObject } from '../../src/lib/dataset-maintenance-contract.js';
+import { sha256Json } from '../../src/lib/canonical-json-hash.js';
+import { type JsonObject } from '../../src/lib/maintenance/contract/types.js';
 import {
   ALIAS_V2_CHUNK_TARGET_BOUND,
   ALIAS_V2_DERIVATIVE_ORCHESTRATION_SCHEMA,

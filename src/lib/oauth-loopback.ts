@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { timingSafeEqual } from 'node:crypto';
 import { createServer, type ServerResponse } from 'node:http';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 export const DEFAULT_OAUTH_REDIRECT_URI = 'http://127.0.0.1:49191/oauth/callback';
 export const OAUTH_LOGIN_TIMEOUT_MAX_MS = 5 * 60 * 1000;

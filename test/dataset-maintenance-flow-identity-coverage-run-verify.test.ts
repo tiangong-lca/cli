@@ -34,25 +34,29 @@ import {
   buildFlowIdentityProcessRequest,
   computeFlowIdentityApprovalIdentitySha256,
   computeFlowIdentityFreezeSha256,
+} from '../src/lib/maintenance/flow-identity/requests.js';
+import {
   parseFlowIdentityFinalizeProof,
+  parseFlowIdentityScopeStatus,
+} from '../src/lib/maintenance/flow-identity/status.js';
+import {
   parseFlowIdentityProcessProof,
   parseFlowIdentityScopePreflightProof,
-  parseFlowIdentityScopeStatus,
-  parseFlowIdentityWholeScopeProof,
-  __testInternals as executionInternals,
+} from '../src/lib/maintenance/flow-identity/proofs.js';
+import { parseFlowIdentityWholeScopeProof } from '../src/lib/maintenance/flow-identity/derivative-proofs.js';
+import { __testInternals as executionInternals } from '../src/lib/dataset-maintenance-flow-identity-execution-contract.js';
+import {
   type FlowIdentityApproval,
   type FlowIdentityFreeze,
-} from '../src/lib/dataset-maintenance-flow-identity-execution-contract.js';
+} from '../src/lib/maintenance/flow-identity/base.js';
 import { flowIdentityRestrictedSha256 } from '../src/lib/dataset-maintenance-flow-identity-wire.js';
+import { sha256Json, sha256Text, stableJsonText } from '../src/lib/canonical-json-hash.js';
+import { snapshotRemoteRow } from '../src/lib/maintenance/contract/values.js';
 import {
-  sha256Json,
-  sha256Text,
-  snapshotRemoteRow,
-  stableJsonText,
   type DatasetMaintenanceRemoteRow,
   type DatasetMaintenanceRowSnapshot,
   type JsonObject,
-} from '../src/lib/dataset-maintenance-contract.js';
+} from '../src/lib/maintenance/contract/types.js';
 import type { DatasetMaintenanceRemoteContext } from '../src/lib/dataset-maintenance-remote.js';
 import type { FlowPayloadValidationResult } from '../src/lib/flow-payload-validation.js';
 import type { FetchLike } from '../src/lib/http.js';

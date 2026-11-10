@@ -14,8 +14,12 @@ import type { FetchLike } from '../lib/http.js';
 export function datasetOperations(
   env: NodeJS.ProcessEnv,
   fetchImpl: FetchLike,
-): DatasetPorts['local'] {
-  return async (type, action, request, inputPath) => {
+): DatasetPorts['operations'] {
+  return async ({ type, action, request, inputPath }) => {
+    if (type === 'source' && action === 'upload-attachments')
+      return uploadSourceAttachments(request, inputPath, env, fetchImpl);
+    if (type === 'process' && action === 'statistics')
+      return processStatistics(request, env, fetchImpl);
     const directory = mkdtempSync(path.join(os.tmpdir(), 'tiangong-dataset-'));
     const input = path.join(directory, 'input.json');
     const read = (file: string) => JSON.parse(readFileSync(file, 'utf8'));
@@ -97,11 +101,6 @@ export function datasetOperations(
           bundle: processes.sanitize(read(report.files.process_projection_bundle)),
         };
       }
-      if (type === 'source' && action === 'upload-attachments') {
-        return uploadSourceAttachments(request, inputPath, env, fetchImpl);
-      }
-      if (type === 'process' && action === 'statistics')
-        return await processStatistics(request, env, fetchImpl);
       throw new CommandInputError(
         'CAPABILITY_UNSUPPORTED',
         'This operation has no supported adapter.',

@@ -1,10 +1,10 @@
 import { parseArgs } from 'node:util';
-import type { FetchLike } from '../http.js';
+import type { FetchLike } from '../../lib/http.js';
 import { runRuntimeExecCommand } from './exec-command.js';
 import { runManagedRuntimeCommand } from './managed-command.js';
-import { CliError } from '../errors.js';
+import { CliError } from '../../shared/errors.js';
 import { describeCliRuntime } from '../../runtime.js';
-import type { CliRuntimeDescriptor } from './types.js';
+import type { CliRuntimeDescriptor } from '../../lib/runtime/types.js';
 
 export function isRuntimeCommand(argv: readonly string[]): boolean {
   let index = 0;

@@ -1,4 +1,4 @@
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 export type DatasetMaintenanceTableCompleteness = {
   status: 'complete';

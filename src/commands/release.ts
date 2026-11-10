@@ -1,14 +1,13 @@
 import { parseArgs } from 'node:util';
-import { CliError } from '../lib/errors.js';
+import { CliError } from '../shared/errors.js';
 import { stringifyJson } from '../lib/io.js';
 import {
   LCA_RELEASE_ACTIONS,
   renderLcaReleaseReport,
-  runLcaRelease,
   type LcaReleaseAction,
 } from '../lib/lca-release.js';
 
-import type { CliDeps, CliResult } from '../cli-deps.js';
+import type { ResolvedCliDeps, CliResult } from './ports.js';
 function renderLcaReleaseHelp(): string {
   return `Usage:
   tiangong-lca release <action> [options]
@@ -145,9 +144,9 @@ function requireLcaReleaseAction(value: string): LcaReleaseAction {
 export async function executeReleaseCommand(
   subcommand: string | null,
   commandArgs: string[],
-  deps: CliDeps,
+  deps: ResolvedCliDeps,
 ): Promise<CliResult> {
-  const lcaReleaseImpl = deps.runLcaReleaseImpl ?? runLcaRelease;
+  const lcaReleaseImpl = deps.runLcaReleaseImpl;
   if (!subcommand) {
     return { exitCode: 0, stdout: `${renderLcaReleaseHelp()}\n`, stderr: '' };
   }

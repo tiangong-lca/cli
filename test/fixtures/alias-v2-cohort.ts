@@ -8,7 +8,7 @@
 // Its purpose is to make the frozen cohort counts and the per-action invariants testable at
 // full scale, and to give the storage-side owner the same generated fixture to check against.
 
-import { sha256Json } from '../../src/lib/dataset-maintenance-contract.js';
+import { sha256Json } from '../../src/lib/canonical-json-hash.js';
 import { aliasV2CohortSha256, type AliasV2PlanInput } from '../../src/lib/dataset-alias-v2-plan.js';
 
 type JsonObject = Record<string, unknown>;

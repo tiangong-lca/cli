@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { executeCli, type CliDeps } from '../src/cli.js';
 import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import type { FetchLike } from '../src/lib/http.js';
 import {
   applyMaintenanceAliasPlan,

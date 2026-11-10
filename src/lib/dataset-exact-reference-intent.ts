@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { CliError } from './errors.js';
-import { sha256Json } from './dataset-maintenance-contract.js';
+import { CliError } from '../shared/errors.js';
+import { sha256Json } from './canonical-json-hash.js';
 import type {
   RemoteDatasetReference,
   RemoteDatasetTable,

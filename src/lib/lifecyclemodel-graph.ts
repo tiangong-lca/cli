@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { writeJsonArtifact, writeJsonLinesArtifact, writeTextArtifact } from './artifacts.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import {
   firstNonEmpty,
   isRecord,

@@ -1,4 +1,4 @@
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
 import { postJson } from './http.js';
 import { readJsonInput, stringifyJson } from './io.js';

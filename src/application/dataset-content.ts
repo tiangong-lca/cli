@@ -1,10 +1,9 @@
-import { createHash } from 'node:crypto';
+import { contentDigest } from '../shared/json-content-digest.js';
+export { contentDigest } from '../shared/json-content-digest.js';
 import { isDeepStrictEqual } from 'node:util';
 import { CommandInputError } from '../shared/command-result.js';
 import { object, text, isObject, type JsonObject } from './dataset-types.js';
 
-export const contentDigest = (value: unknown): string =>
-  createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const escaped = (key: string) => key.replaceAll('~', '~0').replaceAll('/', '~1');
 export function diffContent(before: unknown, after: unknown, path = ''): JsonObject[] {
   if (isDeepStrictEqual(before, after)) return [];

@@ -4,12 +4,10 @@ import {
   readProtectedJsonArtifact,
   writePrivateImmutableJson,
 } from './dataset-maintenance-protected-artifacts.js';
-import {
-  parseFlowIdentityScopePreflightProof,
-  parseFlowIdentityScopeStatus,
-  prepareFlowIdentityExecution,
-  type FlowIdentityScopeStatus,
-} from './dataset-maintenance-flow-identity-execution-contract.js';
+import { parseFlowIdentityScopePreflightProof } from './maintenance/flow-identity/proofs.js';
+import { parseFlowIdentityScopeStatus } from './maintenance/flow-identity/status.js';
+import { prepareFlowIdentityExecution } from './dataset-maintenance-flow-identity-execution-contract.js';
+import { type FlowIdentityScopeStatus } from './maintenance/flow-identity/base.js';
 import {
   extractFlowIdentityReference,
   parseFlowIdentityCapture,
@@ -20,13 +18,14 @@ import {
 import {
   isJsonObject,
   maintenanceRowKey,
-  sha256Json,
   snapshotRemoteRow,
-  stableJsonText,
+} from './maintenance/contract/values.js';
+import { sha256Json, stableJsonText } from './canonical-json-hash.js';
+import {
   type DatasetMaintenanceRemoteRow,
   type DatasetMaintenanceRowSnapshot,
   type JsonObject,
-} from './dataset-maintenance-contract.js';
+} from './maintenance/contract/types.js';
 import {
   fetchMaintenanceAccountTableRows,
   fetchMaintenanceExactRows,
@@ -35,7 +34,7 @@ import {
   resolveMaintenanceRemoteContext,
   type DatasetMaintenanceRemoteContext,
 } from './dataset-maintenance-remote.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
 
 export type VerifyFlowIdentityOptions = {

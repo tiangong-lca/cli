@@ -13,7 +13,7 @@ import { createRequire, syncBuiltinESMExports } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import { studyDigest } from '../src/lib/study-protocol.js';
 import {
   assertStudyRenderer,

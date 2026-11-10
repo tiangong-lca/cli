@@ -1,3 +1,4 @@
+import { commandErrorCategories, type CommandErrorCategory } from './command-error-categories.js';
 export type CommandResult = {
   schemaVersion: 1;
   operation: string;
@@ -20,6 +21,7 @@ export class CommandInputError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    readonly category: CommandErrorCategory = commandErrorCategories.get(code) ?? 'input',
   ) {
     super(message);
   }

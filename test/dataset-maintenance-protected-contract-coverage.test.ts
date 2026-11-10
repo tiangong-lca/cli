@@ -27,8 +27,8 @@ import {
   type ProtectedGateProof,
   type ProtectedPreflightProof,
 } from '../src/lib/dataset-maintenance-protected-contract.js';
-import type { DatasetMaintenancePlan } from '../src/lib/dataset-maintenance-contract.js';
-import { CliError } from '../src/lib/errors.js';
+import { type DatasetMaintenancePlan } from '../src/lib/maintenance/contract/types.js';
+import { CliError } from '../src/shared/errors.js';
 
 const HASH_A = 'a'.repeat(64);
 const HASH_B = 'b'.repeat(64);

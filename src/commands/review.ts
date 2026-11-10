@@ -1,3 +1,5 @@
+import type { ReviewMutationAction } from '../application/review-write.js';
+import { reviewMutationContinuation } from './mutation-presentation.js';
 import { commandFailure } from '../shared/command-errors.js';
 import { parseArgs } from 'node:util';
 import {
@@ -22,7 +24,11 @@ export async function runReviewCommand(
   args: string[],
   read: ReviewRead,
   operations?: {
-    mutate(action: string, request: JsonObject, dryRun: boolean): Promise<CommandResult>;
+    mutate(
+      action: ReviewMutationAction,
+      request: JsonObject,
+      dryRun: boolean,
+    ): Promise<CommandResult>;
     materials(id: string): Promise<JsonObject>;
   },
 ): Promise<CommandIO> {
@@ -165,7 +171,12 @@ export async function runReviewCommand(
         const request = readCommandInput(text(flags.input, '--input'));
         if (flags.output)
           assertSeparateCommandFiles(text(flags.output, '--output'), text(flags.input, '--input'));
-        value = await operations.mutate(action, request, flags['dry-run'] === true);
+        value = await operations.mutate(
+          action as ReviewMutationAction,
+          request,
+          flags['dry-run'] === true,
+        );
+        reviewMutationContinuation(value, request);
         artifact = value.data;
       }
       if (flags.output) {

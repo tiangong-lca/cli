@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike, ResponseLike } from './http.js';
 
 export const OAUTH_TOKEN_RESPONSE_MAX_BYTES = 64 * 1024;

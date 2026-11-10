@@ -1,7 +1,7 @@
 import { existsSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import { writeJsonArtifact } from './artifacts.js';
 import { createTidasSdkPackageValidator } from './tidas-sdk-package-validator.js';
 

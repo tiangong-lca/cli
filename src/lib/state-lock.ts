@@ -1,7 +1,7 @@
 import { closeSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 export type StateLockMetadata = {
   ownerPid: number;

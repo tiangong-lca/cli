@@ -6,7 +6,7 @@ import {
   type FreezeDatasetMaintenanceProtectedOptions,
 } from '../src/lib/dataset-maintenance-protected-freeze.js';
 import path from 'node:path';
-import { stableJsonText } from '../src/lib/dataset-maintenance-contract.js';
+import { stableJsonText } from '../src/lib/canonical-json-hash.js';
 import type { DatasetMaintenanceRemoteContext } from '../src/lib/dataset-maintenance-remote.js';
 import type { DatasetMaintenanceProtectedToolchainEvidence } from '../src/lib/dataset-maintenance-protected-toolchain.js';
 import { PROTECTED_PRODUCTION_PROJECT_REF } from '../src/lib/dataset-maintenance-protected-preparation.js';

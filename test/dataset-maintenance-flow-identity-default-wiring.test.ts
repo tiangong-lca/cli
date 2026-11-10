@@ -116,7 +116,12 @@ export const splitFlowIdentityPermitResponse = () => ({ proof: {}, executionPerm
   ).toString('base64')}`;
   const executionContractMock = registerHooks({
     resolve(specifier, context, nextResolve) {
-      if (specifier.endsWith('/dataset-maintenance-flow-identity-execution-contract.js')) {
+      if (
+        specifier.endsWith('/dataset-maintenance-flow-identity-execution-contract.js') ||
+        (/\/(?:requests|proofs|status)\.js$/u.test(specifier) &&
+          (specifier.includes('maintenance/flow-identity/') ||
+            context.parentURL?.includes('/maintenance/flow-identity/')))
+      ) {
         return { url: executionContractMockUrl, shortCircuit: true };
       }
       return nextResolve(specifier, context);

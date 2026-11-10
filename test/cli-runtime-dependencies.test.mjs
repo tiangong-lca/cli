@@ -1,3 +1,4 @@
+import { isTypeOnlyModule } from './helpers/module-graph.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
@@ -38,7 +39,7 @@ test('compiled runtime contains no orphan workflow modules outside the current e
   }
   assert.deepEqual(
     [...modules.keys()]
-      .filter((file) => !visited.has(file))
+      .filter((file) => !visited.has(file) && !isTypeOnlyModule(modules.get(file)))
       .map((file) => path.relative(root, file))
       .sort((a, b) => a.localeCompare(b)),
     [],

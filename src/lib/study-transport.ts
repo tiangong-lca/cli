@@ -1,10 +1,10 @@
 import { linkSync, mkdirSync, renameSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { withBatchRunLock } from '../batch.js';
+import { withBatchRunLock } from './batch/run-lock.js';
 import { AUTH_IDENTITY_MAX_TIMEOUT_MS, fetchCurrentUser } from './auth-identity-receipt.js';
 import { loadStudyCodec } from './study-codec.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike, ResponseLike } from './http.js';
 import {
   buildSupabaseAuthHeaders,

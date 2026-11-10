@@ -39,14 +39,15 @@ import {
 import {
   isJsonObject,
   maintenanceRowKey,
-  sha256Json,
   snapshotRemoteRow,
-  stableJsonText,
+} from './maintenance/contract/values.js';
+import { sha256Json, stableJsonText } from './canonical-json-hash.js';
+import {
   type DatasetMaintenanceRemoteRow,
   type DatasetMaintenanceRowSnapshot,
   type JsonObject,
-} from './dataset-maintenance-contract.js';
-import { CliError } from './errors.js';
+} from './maintenance/contract/types.js';
+import { CliError } from '../shared/errors.js';
 import {
   validateFlowPayload,
   type FlowPayloadValidationResult,

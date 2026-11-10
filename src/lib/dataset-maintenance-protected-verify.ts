@@ -2,11 +2,13 @@ import { loadMaintenanceDesiredPayload } from './dataset-maintenance-alias-reque
 import {
   isJsonObject,
   maintenanceRowKey,
-  sha256Json,
   snapshotRemoteRow,
+} from './maintenance/contract/values.js';
+import { sha256Json } from './canonical-json-hash.js';
+import {
   type DatasetMaintenancePlan,
   type DatasetMaintenanceRemoteRow,
-} from './dataset-maintenance-contract.js';
+} from './maintenance/contract/types.js';
 import {
   PROTECTED_EXECUTION_COUNTS,
   parseProtectedDerivativeSnapshot,

@@ -26,8 +26,8 @@
 // Local, deterministic and network-free: the caller supplies the frozen evidence and the
 // reviewed target snapshots.
 
-import { CliError } from './errors.js';
-import { sha256Json } from './dataset-maintenance-contract.js';
+import { CliError } from '../shared/errors.js';
+import { sha256Json } from './canonical-json-hash.js';
 import { multiplyBoundedCanonicalDecimal } from './dataset-alias-exponent-decimal.js';
 
 type JsonObject = Record<string, unknown>;

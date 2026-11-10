@@ -3,11 +3,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { cwd } from 'node:process';
 import test from 'node:test';
-import {
-  isJsonObject,
-  sha256Json,
-  stableJsonText,
-} from '../src/lib/dataset-maintenance-contract.js';
+import { isJsonObject } from '../src/lib/maintenance/contract/values.js';
+import { sha256Json, stableJsonText } from '../src/lib/canonical-json-hash.js';
 import {
   LENGTH_TIME_EXCHANGE_KEYS,
   LENGTH_TIME_FACTOR,

@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - docs/interfaces/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 12f1bde7e1249031772c70cc27b9cb6cdc76b28c
-lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
+lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
+lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
 ---
 
 # CLI 目标接口设计

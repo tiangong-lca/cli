@@ -1,11 +1,7 @@
-import { CliError } from './errors.js';
-import {
-  isJsonObject,
-  sha256Json,
-  sha256Text,
-  type DatasetMaintenancePlan,
-  type JsonObject,
-} from './dataset-maintenance-contract.js';
+import { CliError } from '../shared/errors.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { sha256Json, sha256Text } from './canonical-json-hash.js';
+import { type DatasetMaintenancePlan, type JsonObject } from './maintenance/contract/types.js';
 
 export const PROTECTED_EXECUTION_CONTRACT = {
   freeze_schema: 'dataset-alias-execution-freeze.v1',

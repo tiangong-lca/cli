@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 12f1bde7e1249031772c70cc27b9cb6cdc76b28c
-lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
+lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
+lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -47,12 +47,12 @@ Managed-host launch selection stays in the generic CLI manager. Dedicated protoc
 
 ## 0.2.0 command layers
 
-`src/cli.ts` composes the typed Dataset, Review, environment and authentication adapters and delegates their public parsing and presentation to `src/commands/`. Retained specialized protocols keep their authorization and execution contracts. Old business roots and generic Dataset compatibility routes are removed; there is no alias or fallback dispatcher. The migration comparison records the exact removed surface.
+`src/cli-composition.ts` resolves production defaults once, and `src/cli.ts` routes the typed Dataset, Review, environment and authentication adapters and delegates their public parsing and presentation to `src/commands/`. Retained specialized protocols keep their authorization and execution contracts. Old business roots and generic Dataset compatibility routes are removed; there is no alias or fallback dispatcher. The migration comparison records the exact removed surface.
 
 - `src/cli-deps.ts`: internal composition dependencies, result types and shared failure projection, without package exports.
-- `src/commands/`: strict CLI argument/help handling, bounded output and local artifact coordination. Auth service, Release, admin, package tools, classification maintenance and protected maintenance have bounded modules; their retained parsers and safety checks are unchanged.
-- `src/application/`: Dataset identity, query/cursor rules, statistics selection/grouping, content diff/patch, reference discovery and supplied-translation application; no filesystem/network transport or CLI command construction.
-- `src/adapters/`: authenticated exact reads/search, existing contract and validation helpers, Model calculations, Source attachment transfer and explicit Dataset/Review mutations.
+- `src/commands/`: strict CLI argument/help handling, bounded output and local artifact coordination. Auth service, Release, admin, package tools, classification maintenance and protected maintenance have bounded modules; Study, PCR and runtime parsing also lives here; specialized result schemas and safety checks retain their own contracts.
+- `src/application/`: Dataset identity, query/cursor rules, statistics selection/grouping, content diff/patch, reference discovery, supplied-translation application, and Dataset/Review write use cases with typed IO ports; no filesystem/network transport or CLI command construction.
+- `src/adapters/`: authenticated exact reads/search, existing contract and validation helpers, Model calculations, Source attachment transfer and authenticated write dispatch. `private-mutation-journal.ts` shares private-file/locking primitives while each operation retains its own receipt, unknown-outcome and readback policy.
 - `src/shared/`: result types, safe file IO, platform-aware continuation quoting, error projection and installed template lookup.
 - `assets/reply-templates/`: Markdown guidance selected by actual outcome.
 
@@ -60,13 +60,23 @@ Root and classification discovery expose bounded structured help and content-bou
 
 Dataset uses one typed command router for all eight object types. Model `build-resulting-process` and its `aggregate` alias share a canonical operation and implementation. Calculation inputs are explicit snapshots; exact remote Process lookups never fall back to latest. Source uploads verify selected bytes and independent readback, preserve failed references and do not save Source content.
 
-`src/commands/dataset-discovery.ts` owns query result presentation. Model graph metadata never enters identity context; explicit Process exchange projections are labeled incomplete content. Statistics adapts bounded visible-row reads and reuses the pure existing summary algorithm; count drift, repeated identities and scan bounds remain partial observations. `contract` exposes verified released public definitions rather than retired authoring/identity workflow gates. Executed checks and omitted layers belong to validation reports.
+`src/commands/dataset-discovery.ts` owns query result presentation. Model graph metadata never enters identity context; explicit Process exchange projections are labeled incomplete content. Statistics adapts bounded visible-row reads and uses `src/lib/process-statistics/summary.ts` directly, without a second legacy scan or Markdown-report workflow; count drift, repeated identities and scan bounds remain partial observations. `contract` exposes verified released public definitions rather than retired authoring/identity workflow gates. Executed checks and omitted layers belong to validation reports.
 
 Create and save are separate service intents. Ordinary saves reuse server content CAS. Model writes use the existing atomic model service with no implicit Process mutations or create-conflict fallback; existing graph metadata is preserved while composition graph changes follow the explicit Model content. Delete and Model save disclose when expected-content comparisons occur only before dispatch. Durable local intents prohibit replay after an unknown mutation outcome.
 
 Review adapts the existing business contract: one submission root with server-related data, current participant queries/materials, reviewer draft save and separate reviewer decision. Historical packages and server round links are not fabricated. See the [service comparison](../analysis/cli-interface-comparison.md#现有业务服务与本次实施基线) for the boundary against deferred target semantics.
 
 Imports flow from composition to commands to application; adapters implement ports and reuse shared runtime helpers. Application may use pure shared result types and type-only domain report shapes. Presentation and filesystem modules stay out of application. Existing public library subpaths and Release/runtime/PCR protocols keep their own contracts.
+
+## Dependency and operation boundaries
+
+The complete source boundary test covers commands, application, adapters, shared facilities and library owners. The emitted import/re-export/dynamic-import graph must be acyclic. Type-only imports use declaration-level `import type`, avoiding empty runtime imports under verbatim module syntax. Literal graph checks complement behavioral tests; computed module loading and child execution retain their own integrity checks.
+
+Dataset capability discovery and command flags share a finite action type. Model graph/result generation, Process statistics and Source uploads use discriminated operation selections; uploads and remote scans are not described as local processing. External JSON remains runtime-validated at the use-case boundary. Typed write dispatch carries exact target, content, preconditions and the pre-dispatch hook rather than an arbitrary action string.
+
+Dataset and Review application use cases own readable preconditions, dry-run meaning, service acknowledgment interpretation and operation-specific unknown outcomes. Adapters supply actor/environment observation, exact reads, transport and durable private storage. Commands own executable continuations and reply guidance. Shared storage retains existing request/target hash keys and journal shapes; it provides no automatic retry or universal mutation state machine.
+
+`maintenance/contract/` separates types, pure values, scope parsing and artifact IO; the bounded entry owns plan parsing. `maintenance/apply/` separates preconditions, progress, alias receipts and execution. `maintenance/flow-identity/` separates request/proof/status contracts, run preparation, scope recovery, results and execution. `model-result/` separates request normalization, exact source selection, payload calculation and projection. Canonical sorted-object hashes, insertion-order content hashes and newline-bound artifact bytes remain distinct domains.
 
 ## Repo Shape
 
@@ -82,12 +92,12 @@ The stable launcher composes current command/application/adapter layers and the 
 | `src/auth-identity-receipt.ts` | supported offline parser/constants/types package subpath for safe identity receipts |
 | `src/command-spec.ts` | supported content-bound CommandSpec package subpath |
 | `src/runtime.ts` | supported installed CLI/Node/asset inspection and exact expectation API |
-| `src/lib/runtime/**` | bounded runtime descriptor, file integrity and distribution command owners |
+| `src/lib/runtime/**`, `src/commands/runtime/**` | runtime integrity/execution owners and separate command parsing/presentation |
 | `src/batch.ts` | stable re-export facade for the supported batch package subpath |
 | `src/lib/batch/**` | bounded acyclic owners for batch types, contracts/errors, run locks, projection, scheduler runtime, attempts/recovery, and engine coordination |
 | `src/lib/oauth-pkce.ts` | strict Supabase public-client authorize/token/refresh/UserInfo protocol with S256 PKCE and bounded responses |
 | `src/lib/oauth-loopback.ts` | exact literal-loopback callback, state/code validation, and shell-free platform browser launch |
-| `src/lib/**` | command-family implementations plus shared auth, IO, artifact, and remote helpers |
+| `src/lib/**` | protocol, scientific, auth, IO, artifact and remote helpers; no argv parsing |
 | `test/**` | unit and launcher tests that back the coverage gate |
 | `scripts/assert-full-coverage.ts` | strict coverage enforcement |
 | `scripts/ci/**` | release-tag and package publication checks |
@@ -96,7 +106,7 @@ The stable launcher composes current command/application/adapter layers and the 
 
 ### Study lifecycle consumer
 
-`src/lib/study-{command,transport,intent,protocol,codec,export,renderer}.ts` owns the `study` namespace, bounded authenticated transport, immutable pre-dispatch request recovery and exact Edge-owned codec consumption. `assets/study-contract/v2/`, `v3/` and `v4/` are contained owner artifacts, with clean committed Edge source provenance and separate explicit gating for any future worktree candidate. It has no sibling/runtime install fallback. See [the Study contract](study-cli-contract.md); numerical rules, permissions and producer facts remain remote-owned, v3 analysis/report and v4 review/finalization/sharing keep independent negotiation. CLI transports exact current action projections and immutable-outcome/current-state pairs without deriving review or permission policy. V4 downloads bind the authorized export/share descriptor to the independently verified signed snapshot. Detached exports additionally consume the fixed `assets/study-renderer/v1/` package, independently pinned archive and issuer anchors; authenticity includes owner view bindings and exact HTML re-rendering from the captured verified complete module graph. Export files are completed in private staging before one final rename, with failed staging retained rather than path-based rollback; the Study contract states portable rename limits.
+`src/commands/study.ts` and `src/lib/study-{transport,intent,protocol,codec,export,renderer}.ts` own the `study` namespace, bounded authenticated transport, immutable pre-dispatch request recovery and exact Edge-owned codec consumption. `assets/study-contract/v2/`, `v3/` and `v4/` are contained owner artifacts, with clean committed Edge source provenance and separate explicit gating for any future worktree candidate. It has no sibling/runtime install fallback. See [the Study contract](study-cli-contract.md); numerical rules, permissions and producer facts remain remote-owned, v3 analysis/report and v4 review/finalization/sharing keep independent negotiation. CLI transports exact current action projections and immutable-outcome/current-state pairs without deriving review or permission policy. V4 downloads bind the authorized export/share descriptor to the independently verified signed snapshot. Detached exports additionally consume the fixed `assets/study-renderer/v1/` package, independently pinned archive and issuer anchors; authenticity includes owner view bindings and exact HTML re-rendering from the captured verified complete module graph. Export files are completed in private staging before one final rename, with failed staging retained rather than path-based rollback; the Study contract states portable rename limits.
 
 V6 method assessment adds an explicit family in the same owners and `assets/study-contract/v6/`; its schema discovery uses captured verified bytes. Owner config/evidence helpers preserve domain authority. Method report export4/view3 selects the independently pinned `assets/study-renderer/v3/` with its complete JS/MJS graph. Historical verifiers retain their original family and renderer; online downloads bind the exact selected descriptor. CLI never evaluates method rules or creates Worker contexts. See the Study contract for immutable provenance, unavailable values and actual runtime qualification debt.
 
@@ -243,7 +253,7 @@ Important constraints:
 
 This repository has a versioned local `pre-push` hook under `.githooks/pre-push` that delegates to `scripts/docpact-gate.sh` and then runs `pnpm prepush:gate`. The gate resolves the CLI through `scripts/docpact`, so local agent shells do not need bare `docpact` on `PATH`. The hook is the local guard for docpact config validation, enforced doc-governance linting, and the CLI test gate; ordinary GitHub push tests are replaced by this local gate plus release-time gates.
 
-Task PCR content uses `src/lib/pcr-snapshot-{contract,release,cache,tool,command}.ts` and the dedicated [task snapshot contract](pcr-snapshot-contract.md). The CLI prepares exact published compatible content into a separate data cache, retains task and installed reader pins, and forces those selectors during shell-free PCR consumption. PCR core remains the offline semantic owner.
+Task PCR content uses `src/commands/pcr.ts` and `src/lib/pcr-snapshot-{contract,release,cache,tool}.ts` and the dedicated [task snapshot contract](pcr-snapshot-contract.md). The CLI prepares exact published compatible content into a separate data cache, retains task and installed reader pins, and forces those selectors during shell-free PCR consumption. PCR core remains the offline semantic owner.
 
 ## Process allocation admission and resulting-process lineage
 

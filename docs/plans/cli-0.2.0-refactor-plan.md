@@ -14,8 +14,8 @@ checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 12f1bde7e1249031772c70cc27b9cb6cdc76b28c
-lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
+lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
+lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -79,7 +79,7 @@ AGENTS 面向开发 AI，规定目录职责、依赖方向、新命令开发路�
 
 划分 `src/commands`（入口与参数）、`src/application`（业务操作与端口）、`src/adapters`（服务适配）和 `src/shared`（公共结果、文件及呈现）。入口组合依赖，业务层不处理 argv 或 IO，适配层复用已验证的现有能力。`src/lib` 逐步迁移，不进行大规模机械搬迁，不创建空领域目录或插件框架。
 
-完成条件：目录包含真实职责，依赖方向可检查，既有命令和公共导出保持可用；新增目录和模板资产纳入 Docpact 路由。
+完成条件：目录包含真实职责，完整源码边界和运行时循环由测试检查，生产默认依赖在组合入口选择；业务判断、IO 与命令呈现分别归属。既有专项协议和公共导出保持可用；新增目录和模板资产纳入 Docpact 路由。
 
 ## 前置核查：命令迁移清单与服务依赖表
 
@@ -214,3 +214,11 @@ Flow 参考属性的本地业务约束由同一纯校验器承载：内部 ID �
 实施状态：基础分层和核心能力迁移已完成，环境、认证和目录发现接入统一结果；合法内容的默认校验路径、安装包连续业务场景和跨进程恢复纳入验收。核心帮助、重复实现清理、旧兼容入口及失效实现清理、拒绝与安装包排除证明、调用方迁移说明已按能力对照整理。真实本地服务、安装包协议验证和四平台 CI 分别记录，不依据本地覆盖率认定候选版本的所有环境验收完成。目标设计与本次业务服务基线的差异按第 8 步处理，未实施的扩展不计为已有能力。
 
 当前交付事实、源码身份、验证证据和剩余事项保存在对应 Issue/PR。计划不替代交付记录，也不以阶段描述代替代码、服务集成或发布证据。正式发布后的下游升级独立进行。
+
+## 架构验收
+
+- Dataset/Review 写入由 application 组织前置检查、效果和回执判断，适配器实现明确 IO 端口；推荐命令由命令层构造。
+- 原始 JSON 在业务入口校验，内部动作及派发使用有限类型；Model、统计和附件操作明确区分，不归入笼统的 local 操作。
+- 生产依赖只在组合入口选择，专项命令的参数解析归 commands；外层选项不改变子进程参数和独立协议。
+- 维护契约、执行、Model 计算和纯统计按职责拆分；新模块遵循文件大小原则，历史产物哈希和恢复语义保持精确。
+- 边界测试覆盖全部源码及运行时导入图，行为与安装包测试继续在原有 100% 门禁下验证。维护 profile 的当前准入和历史证据用途分别记录，不按名称推断退役关系。

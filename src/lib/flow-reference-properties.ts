@@ -1,5 +1,5 @@
 import { datasetRoot, isRecord } from './dataset-json.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 
 type JsonRecord = Record<string, unknown>;
 

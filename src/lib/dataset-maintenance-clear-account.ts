@@ -6,7 +6,7 @@ import {
   deriveSupabaseFunctionsBaseUrl,
   type DatasetCommandTransport,
 } from './dataset-command.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike, ResponseLike } from './http.js';
 import {
   buildSnapshotCompleteness,

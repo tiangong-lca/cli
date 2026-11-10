@@ -14,7 +14,7 @@ import {
   STUDY_V4_CODEC_CANDIDATE_ENV,
 } from '../src/lib/study-codec.js';
 import { studyDigest } from '../src/lib/study-protocol.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 
 const code = Buffer.from('export const fixture = true;');
 function manifest() {

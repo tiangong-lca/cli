@@ -40,8 +40,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 12f1bde7e1249031772c70cc27b9cb6cdc76b28c
-lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
+lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
+lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
@@ -73,19 +73,19 @@ The workspace AGENTS.md governs delivery, branch policy and integration. Resolve
 | Location | Owns |
 | --- | --- |
 | `bin/`, `src/main.ts` | Installed executable, platform admission, environment and process IO. |
-| `src/cli.ts` | Composition and current routing; parsing and execution delegate to `src/commands/`. |
-| `src/cli-deps.ts` | Internal composition dependencies, IO result types and shared failure projection; not a public package export. |
+| `src/cli.ts`, `src/cli-composition.ts` | Root routing and the single selection of production dependencies; parsing and execution delegate to `src/commands/`. |
+| `src/commands/ports.ts`, `src/cli-deps.ts` | Typed command dependencies and internal facade; optional overrides are resolved only by composition. |
 | `src/commands/` | Command paths, argument validation, help and translation between CLI IO and operations. |
 | `src/application/` | Atomic business operations and typed ports; no argv, filesystem or network transport. |
 | `src/adapters/` | Implement ports using existing auth, data access and validation helpers. |
 | `src/shared/` | Small reusable result, file and reply-template facilities; no domain workflow. |
-| `src/lib/` | Runtime and domain helpers used by current adapters and specialized protocols. |
+| `src/lib/` | Protocol, scientific and data helpers; command argument/help handling belongs to `src/commands/`, including retained specialized commands. |
 | `assets/reply-templates/` | Markdown guidance included in installed packages. |
 | `test/` | Behavioral, adapter, architecture and installation tests. |
 | `docs/interfaces/` | Final target interface design, not progress logs. |
 | `docs/plans/`, `docs/analysis/` | Implementation state, decisions, gaps and migration notes. |
 
-Dependency direction: entry/composition -> commands -> application; adapters implement application ports and may reuse `src/lib/`. Shared result types may be used by application and commands. Application must not import commands, adapters, filesystem/network APIs or CLI presentation. Library helpers must not depend on command presentation. Do not create empty domain directories or a plugin framework for unimplemented capabilities.
+Dependency direction: entry/composition -> commands -> application; adapters implement application ports and may reuse `src/lib/`. Shared result types may be used by application and commands. Application must not import commands, adapters, filesystem/network APIs or CLI presentation. Library helpers must not depend on command presentation or composition. `test/cli-layer-boundaries.test.mjs` checks all source owners and emitted runtime cycles; the package-root observation used by shared template lookup is its explicit read-only primitive dependency. Type-only modules must use `import type` so they do not create runtime initialization edges. Do not create empty domain directories or a plugin framework for unimplemented capabilities.
 
 ## File size and cohesion
 
@@ -108,7 +108,7 @@ Use `list-references` for reference discovery, precise `get` for target existenc
 
 Follow [conventions](docs/interfaces/conventions.md) and [AI context](docs/interfaces/ai-context.md). Business facts remain structured. `nextActions` contains descriptions and optional complete commands; `replyTemplate` is a Markdown path. Do not add a template registry protocol, workflow scheduler or automatic approval stage.
 
-A missing template never changes business facts or repeats an operation. Missing evidence is not success. A successful validation invocation can still report invalid content. A partial implementation must state unsupported checks in help and documentation, and refuse them at runtime.
+A missing template never changes business facts or repeats an operation. Declare semantic error categories explicitly; new error codes must not derive their category from name substrings. Missing evidence is not success. A successful validation invocation can still report invalid content. A partial implementation must state unsupported checks in help and documentation, and refuse them at runtime.
 
 ## Runtime safeguards
 
@@ -116,7 +116,7 @@ A missing template never changes business facts or repeats an operation. Missing
 - Never broaden current-user RLS, actor/environment binding, exact references or protected maintenance authorization. CLI carries no service-role credential and performs no raw database mutation fallback.
 - Preserve OAuth/PKCE, private session storage, credential redaction, identity receipts, run locks and bounded batch recovery. Credentials never enter argv, logs, templates or results.
 - Reuse scientific rules from their owners. Missing evidence and unsupported calculations remain explicit; AI-facing convenience must not invent numerical facts.
-- Keep the four public library subpaths and their consumers intact. New internal directories are not package exports.
+- Keep the four public library subpaths and their consumers intact. New internal directories are not package exports. Application use cases own Dataset/Review preconditions and acknowledgment interpretation; adapters own authentication, transport and private journal IO. Commands derive continuations from returned facts. Common journal storage never decides replay or readback policy.
 - Release commands and runtime/PCR child-process protocols retain their current contracts. Downstream adoption belongs to later, independent work after CLI release.
 
 Detailed existing command and runtime invariants are in [existing runtime safeguards](docs/agents/existing-runtime-contract.md). Specialized [Study](docs/agents/study-cli-contract.md), [exact-reference](docs/agents/exact-reference-intent-contract.md), [runtime](docs/agents/runtime-distribution-contract.md) and [PCR](docs/agents/pcr-snapshot-contract.md) contracts continue to govern their retained paths.

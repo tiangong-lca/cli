@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-11-10"
-lastReviewedCommit: "12f1bde7e1249031772c70cc27b9cb6cdc76b28c"
-lastReviewedNote: 'Reviewed typed validation, file separation, projections/statistics, public-rule provenance and bounded platform-aware AI context; specialized security, recovery, exports and release boundaries remain intact.'
+lastReviewedAt: '2026-11-10'
+lastReviewedCommit: '09166a54977b87d4b2657dbfc4f1f3b92400d3ff'
+lastReviewedNote: 'Reviewed command composition, enforced dependency boundaries, application writes, private journal invariants and specialized protocol preservation.'
 
 catalog:
   repos:
@@ -46,6 +46,7 @@ ownership:
           - src/main.ts
           - src/cli.ts
           - src/cli-deps.ts
+          - src/cli-composition.ts
           - src/commands/**
       ownerRepo: cli
     - id: command-families-and-runtime
@@ -64,10 +65,13 @@ ownership:
           - src/lib/batch/**
           - src/lib/artifacts.ts
           - src/lib/canonical-json-hash.ts
+          - src/lib/maintenance/**
+          - src/lib/model-result/**
+          - src/lib/process-statistics/**
           - src/lib/resulting-process-allocation.ts
           - src/lib/dataset-command.ts
           - src/lib/dataset-*.ts
-          - src/lib/errors.ts
+          - src/shared/errors.ts
           - src/lib/flow-*.ts
           - src/lib/unitgroup-*.ts
           - src/lib/io.ts
@@ -194,6 +198,7 @@ routing:
   intents:
     study-commands:
       paths:
+        - src/commands/study.ts
         - src/lib/study-*.ts
         - assets/study-contract/**
         - assets/study-renderer/**
@@ -216,6 +221,7 @@ routing:
         - src/main.ts
         - src/cli.ts
         - src/cli-deps.ts
+        - src/cli-composition.ts
         - README.md
     remote-session:
       paths:
@@ -239,10 +245,13 @@ routing:
       paths:
         - src/lib/artifacts.ts
         - src/lib/canonical-json-hash.ts
+        - src/lib/maintenance/**
+        - src/lib/model-result/**
+        - src/lib/process-statistics/**
         - src/lib/resulting-process-allocation.ts
         - src/lib/dataset-command.ts
         - src/lib/dataset-*.ts
-        - src/lib/errors.ts
+        - src/shared/errors.ts
         - src/lib/flow-*.ts
         - src/lib/unitgroup-*.ts
         - src/lib/io.ts
@@ -281,6 +290,7 @@ routing:
       paths:
         - src/cli.ts
         - src/cli-deps.ts
+        - src/cli-composition.ts
         - src/lib/lca-release.ts
         - src/lib/http.ts
         - test/lca-release*.test.ts
@@ -372,6 +382,8 @@ rules:
     triggers:
       - path: src/lib/study-*.ts
         kind: study-consumer
+      - path: src/commands/study.ts
+        kind: study-command
       - path: assets/study-contract/**
         kind: owner-contract-artifact
       - path: assets/study-renderer/**
@@ -490,6 +502,8 @@ rules:
         kind: command-router
       - path: src/cli-deps.ts
         kind: command-router
+      - path: src/cli-composition.ts
+        kind: command-router
       - path: src/commands/**
         kind: command-router
     requiredDocs:
@@ -530,7 +544,7 @@ rules:
         kind: command-logic
       - path: src/lib/dataset-*.ts
         kind: command-logic
-      - path: src/lib/errors.ts
+      - path: src/shared/errors.ts
         kind: shared-runtime
       - path: src/lib/flow-*.ts
         kind: command-logic
@@ -628,6 +642,8 @@ rules:
         kind: public-runtime-descriptor
       - path: src/lib/runtime/**
         kind: runtime-distribution-owner
+      - path: src/commands/runtime/**
+        kind: runtime-command
       - path: src/main.ts
         kind: runtime-host-admission
       - path: assets/runtime/**
@@ -816,6 +832,8 @@ rules:
     scope: repo
     repo: cli
     triggers:
+      - path: src/commands/pcr.ts
+        kind: pcr-command
       - path: docs/agents/pcr-snapshot-contract.md
         kind: governed-doc
       - path: src/lib/pcr-snapshot-*.ts

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { JsonObject } from '../src/lib/dataset-maintenance-contract.js';
+import { type JsonObject } from '../src/lib/maintenance/contract/types.js';
 import {
   ALIAS_V2_BINDING_KEYS,
   ALIAS_V2_ENVIRONMENTS,

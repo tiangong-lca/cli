@@ -5,7 +5,7 @@ import {
   __testInternals,
   type SealDatasetMaintenanceProtectedApprovalOptions,
 } from '../src/lib/dataset-maintenance-protected-seal.js';
-import { stableJsonText } from '../src/lib/dataset-maintenance-contract.js';
+import { stableJsonText } from '../src/lib/canonical-json-hash.js';
 import { PROTECTED_PRODUCTION_PROJECT_REF } from '../src/lib/dataset-maintenance-protected-preparation.js';
 import path from 'node:path';
 

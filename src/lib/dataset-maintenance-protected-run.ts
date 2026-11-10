@@ -12,17 +12,15 @@ import {
   assertSupportSnapshots as assertSharedSupportSnapshots,
   projectedRows as sharedProjectedRows,
 } from './dataset-maintenance-protected-before.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { parseMaintenancePlan } from './dataset-maintenance-contract.js';
+import { sha256Json, sha256Text, stableJsonText } from './canonical-json-hash.js';
+import { readJsonFile } from './maintenance/contract/files.js';
 import {
-  isJsonObject,
-  parseMaintenancePlan,
-  readJsonFile,
-  sha256Json,
-  sha256Text,
-  stableJsonText,
   type DatasetMaintenancePlan,
   type DatasetMaintenanceRemoteRow,
   type JsonObject,
-} from './dataset-maintenance-contract.js';
+} from './maintenance/contract/types.js';
 import {
   PROTECTED_EXECUTION_CONTRACT,
   assertProtectedApprovalBindings,
@@ -64,7 +62,7 @@ import {
   resolveMaintenanceRemoteContext,
   type DatasetMaintenanceRemoteContext,
 } from './dataset-maintenance-remote.js';
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
 import type { FetchLike } from './http.js';
 import { withStateFileLock } from './state-lock.js';
 

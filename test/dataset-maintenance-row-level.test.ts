@@ -14,22 +14,30 @@ import {
 } from '../src/lib/dataset-maintenance-alias-rewrite.js';
 import {
   appendStableJsonLine,
-  computePlanSha256,
-  isJsonObject,
-  maintenanceRowKey,
-  parseMaintenancePlan,
-  parseMaintenanceScope,
   readJsonFile,
   readJsonLinesIfPresent,
   resolveMaintenancePlanArtifactPath,
   safeActionFileName,
-  sha256Json,
-  sha256Text,
-  snapshotRemoteRow,
-  stableJsonText,
-  stableJsonValue,
   writeImmutableJson,
   writeImmutableJsonLines,
+} from '../src/lib/maintenance/contract/files.js';
+import {
+  computePlanSha256,
+  parseMaintenancePlan,
+} from '../src/lib/dataset-maintenance-contract.js';
+import {
+  sha256Json,
+  sha256Text,
+  stableJsonText,
+  stableJsonValue,
+} from '../src/lib/canonical-json-hash.js';
+import {
+  isJsonObject,
+  maintenanceRowKey,
+  snapshotRemoteRow,
+} from '../src/lib/maintenance/contract/values.js';
+import { parseMaintenanceScope } from '../src/lib/maintenance/contract/scope.js';
+import {
   type DatasetMaintenancePlan,
   type DatasetMaintenanceAliasBatch,
   type DatasetMaintenancePlanAction,
@@ -37,7 +45,7 @@ import {
   type DatasetMaintenanceRemoteRow,
   type DatasetMaintenanceScopeAction,
   type JsonObject,
-} from '../src/lib/dataset-maintenance-contract.js';
+} from '../src/lib/maintenance/contract/types.js';
 import {
   __testInternals as planInternals,
   runDatasetMaintenancePlan,
@@ -57,7 +65,7 @@ import {
   __testInternals as verifyInternals,
   runDatasetMaintenanceVerify,
 } from '../src/lib/dataset-maintenance-verify.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import type { FetchLike, ResponseLike } from '../src/lib/http.js';
 import {
   buildSupabaseTestEnv,

@@ -1,14 +1,13 @@
-import { CliError } from './errors.js';
+import { CliError } from '../shared/errors.js';
+import { isJsonObject } from './maintenance/contract/values.js';
+import { readJsonFile, resolveMaintenancePlanArtifactPath } from './maintenance/contract/files.js';
+import { sha256Json } from './canonical-json-hash.js';
 import {
-  isJsonObject,
-  readJsonFile,
-  resolveMaintenancePlanArtifactPath,
-  sha256Json,
   type DatasetMaintenanceAliasBatchPlan,
   type DatasetMaintenancePlan,
   type DatasetMaintenancePlanAction,
   type JsonObject,
-} from './dataset-maintenance-contract.js';
+} from './maintenance/contract/types.js';
 
 export function loadMaintenanceDesiredPayload(
   planDir: string,

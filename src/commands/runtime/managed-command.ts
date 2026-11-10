@@ -1,16 +1,16 @@
 import { parseArgs } from 'node:util';
 import fs from 'node:fs';
 import path from 'node:path';
-import { CliError } from '../errors.js';
-import type { FetchLike } from '../http.js';
-import { loadTrustedRuntimeManifest } from './manifest.js';
+import { CliError } from '../../shared/errors.js';
+import type { FetchLike } from '../../lib/http.js';
+import { loadTrustedRuntimeManifest } from '../../lib/runtime/manifest.js';
 import {
   ensureRuntimeComponents,
   inspectRuntimeComponents,
   pruneRuntimeComponents,
-} from './manager.js';
-import { releaseRuntimeLease } from './leases.js';
-import { defaultRuntimeCache, openRuntimeCache } from './storage.js';
+} from '../../lib/runtime/manager.js';
+import { releaseRuntimeLease } from '../../lib/runtime/leases.js';
+import { defaultRuntimeCache, openRuntimeCache } from '../../lib/runtime/storage.js';
 
 export async function runManagedRuntimeCommand(
   operation: string,

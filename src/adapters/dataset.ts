@@ -37,7 +37,7 @@ export function createDatasetPorts(env: NodeJS.ProcessEnv, fetchImpl: FetchLike)
         scope: 'existing_exact_reference_admission_and_requested_local_checks',
       };
     },
-    local: datasetOperations(env, fetchImpl),
+    operations: datasetOperations(env, fetchImpl),
     mutate: datasetWriter(env, fetchImpl),
     now: () => new Date().toISOString(),
   };

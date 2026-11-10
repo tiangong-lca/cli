@@ -10,7 +10,7 @@ import {
   type DatasetClassificationChildrenReport,
 } from '../src/lib/dataset-classification.js';
 import { executeCli } from '../src/cli.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 const parsed = (value: { stdout: string }) => JSON.parse(value.stdout);
 const rows = Array.from({ length: 25 }, (_, i) => ({
   level: 0,
