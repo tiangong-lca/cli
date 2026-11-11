@@ -25,7 +25,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-11
-lastReviewedCommit: 188b901c08aea4787090e8f3ad5e6df757920b61
+lastReviewedCommit: 899fe12a507c2cc3a454011c0918a57d65588968
 lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
 related:
   - ../AGENTS.md
