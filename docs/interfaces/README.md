@@ -12,16 +12,16 @@ whenToUpdate:
   - when the documented scope or behavior changes
 checkPaths:
   - docs/interfaces/**
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
-lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
+lastReviewedAt: 2026-11-11
+lastReviewedCommit: 955642482771a270fd49a199d1d7c86fcccc9ce2
+lastReviewedNote: 'Reviewed source-based model calculation, optional Study, execution and recovery boundaries; future implementation remains separate from released 0.2.0 capabilities.'
 ---
 
 # CLI 目标接口设计
 
 本目录定义 CLI 的目标接口设计基线：能力范围、命令归属、输入输出责任和操作边界。正文使用规范性表述，作为实现与验收的依据；它不表示全部目标命令已上线。已发布版本的可执行行为以该版本帮助及现行执行契约为准。现状盘点、实现差距与迁移计划在本目录之外维护。
 
-本轮完善 Dataset 对象类型及相关核心接口。Release 沿用现有接口，不纳入本轮优化；跨类型数据包操作不在本轮确定新的命令组织方式。
+本目录覆盖 Dataset 对象、审核及 Model 计算的目标接口。Model 计算按来源选择线上任务或本地执行；其后续实施与已发布的 0.2.0 重构范围分别记录。Release 沿用现有接口，不纳入本轮优化；跨类型数据包操作不在本轮确定新的命令组织方式。
 
 ## 核心目标
 
@@ -36,7 +36,7 @@ AI 决定任务目标、选择证据与操作顺序。CLI 执行明确动作，�
 | 环境验证与运行诊断 | 安装身份、组件兼容性、配置和连接检查。 | `doctor`、`runtime`；运行支撑与业务操作分别发现。 |
 | 身份认证与账号管理 | 登录、会话检查、在线身份确认、当前账号切换和本地退出。 | `auth`；不承担组织用户管理或数据授权。 |
 | 数据查询与发现 | 检索、列表、读取、版本、引用、分类和输入契约发现。 | 挂在相应业务对象下，遵守共同查询契约。 |
-| 数据业务操作 | 数据集创建和修改、确定性处理、校验、审核申请、审核单处理、数据产品发布。 | `dataset`、`review`、`release`。 |
+| 数据业务操作 | 数据集创建和修改、确定性处理、校验、模型计算、审核申请、审核单处理、数据产品发布。 | `dataset`、`calculation`、`review`、`release`；Study 保留计算项目及报告接口。 |
 
 四类职责是能力分类，不是四个顶层命令。查询与修改可以属于同一业务对象；例如 `dataset process get` 和 `dataset process save` 分别承担查询与修改。
 
@@ -44,7 +44,9 @@ AI 决定任务目标、选择证据与操作顺序。CLI 执行明确动作，�
 
 | 入口 | 对象 | 责任 |
 | --- | --- | --- |
-| `dataset <type> <action>` | 某一类型的数据集。 | 查询、校验、创建、保存和类型特有操作。 |
+| `dataset <type> <action>` | 某一类型的数据集。 | 查询、校验、创建、保存和类型特有操作；Model 包含计算入口。 |
+| `calculation <action>` | 一次模型计算及其结果。 | 查询状态、获取绑定输入和引擎身份的结果；执行位置由模型来源决定。 |
+| `study <action>` | 计算项目、情景及报告。 | 按需组织计算记录、分析、报告审核和分享；沿用现行协议。 |
 | `dataset classification <action>` | 分类或地理位置目录。 | 按明确目录和版本导航。 |
 | `review <action>` | 审核申请、审核包与审核单。 | 提交、重新提交、查询进度、获取材料、记录意见和决定、撤回申请。 |
 | `release <action>` | 数据产品 Release 及交付产物。 | 沿用现有接口，本轮不调整命令和行为。 |
@@ -69,6 +71,7 @@ tiangong-lca release publish
 - `validate` 执行规则检查；`review` 记录授权主体对明确内容的审核。自动检查通过不等于审核通过。
 - `review submit` 和 `review resubmit` 统一提交及重新提交审核，支持 Flow、Process、Model、Source、Contact 的单对象或审核包。默认包含关联数据，`includeRelated: false` 限定所选内容；提交者与审核者共享同一命令树。
 - Release 面向产品版本、内容清单和交付产物。数据入库、草稿保存、数据审核、发布批准和公开发布具有不同的成功条件。
+- Model 是计算对象，Run 是独立计算记录，Study 是可选组织容器。线上模型默认提交线上任务，本地模型默认本地执行；输入不完整时显式准备，不自动跨位置执行。详见[Model 计算](calculations.md)。
 - 本地处理生成候选内容，远程写入显式使用 `create` 或 `save`。转换、聚合、补丁和附件上传不隐式保存数据集。
 - 环境与账号管理不承担业务修复。业务状态查询归属相应对象；安装缓存和会话状态不能替代业务结果。
 - 专项数据修复流程的范围选择、审批批次与任务编排由调用方工作流承担。CLI 保留通用维护原语及其安全约束；Batch 调度是公共库能力，不建立业务命令入口。
@@ -93,7 +96,8 @@ tiangong-lca release publish
 | --- | --- |
 | 数据生产计划、AI 生成、证据取舍、修复队列、任务交接与完成判断 | Foundry 或调用方工作流；可复用 Agent 流程由 Skills 提供。 |
 | 专项生产修复的范围、审批、轮次和执行编排 | Utilities 等受治理的运维流程；调用 CLI 的受约束读写原语。 |
-| Study 的研究、分析、报告、分享及研究任务状态 | 独立产品接口；不纳入本目录的核心业务命令。 |
+| Study 的计算项目组织、分析、报告、报告审核及分享 | 独立产品接口；Model 计算通过明确身份与其关联，不强制先创建项目。现行协议不因新目标入口自动迁移。 |
+| 计算内核、线上队列调度与 Worker 重试 | 所属计算及任务服务；CLI 适配明确操作，本地执行无需复制线上数据库和队列。 |
 | 组件安装、缓存租约、固定 PCR 工具执行 | 运行支撑层，单独发现，不成为数据生产阶段。 |
 | 数据库权限、审核状态转换、发布资格、科学规则 | 所属领域服务或规则包；CLI 消费并准确表达，不另建权威规则。 |
 
@@ -113,23 +117,24 @@ tiangong-lca release publish
 
 ## 文档导航
 
-| 文档                                        | 规定内容                                  |
-| ------------------------------------------- | ----------------------------------------- |
-| [通用约定](conventions.md)                  | 参数、能力发现、结果、错误、批量与恢复。  |
-| [AI Friendly 上下文](ai-context.md)         | 下一步提示、回复指导、上下文预算与交接。  |
-| [回复模板](reply-templates/README.md)       | 按结果选择的轻量 Markdown 回复指导。      |
-| [环境诊断](environment.md)                  | 环境观察及运行支撑边界。                  |
-| [身份与账号](identity.md)                   | 会话、账号选择与身份核验。                |
-| [查询与发现](discovery.md)                  | 读取、检索、版本、分类与契约发现。        |
-| [Dataset](datasets/README.md)               | 类型能力矩阵、创建与保存、与审核的边界。  |
-| [Flow](datasets/flows.md)                   | 流、属性和单位引用。                      |
-| [Process](datasets/processes.md)            | 交换项、引用及业务校验。                  |
-| [Model](datasets/models.md)                 | 模型图、生成模型结果过程与关联数据。      |
-| [Source](datasets/sources.md)               | 来源记录、附件传输与引用。                |
-| [Contact](datasets/contacts.md)             | 联系人和机构记录，与登录账号的边界。      |
-| [Flow Property](datasets/flowproperties.md) | 流属性及参考单位组关系。                  |
-| [Unit Group](datasets/unitgroups.md)        | 单位、参考单位及组内转换关系。            |
-| [LCIA Method](datasets/lciamethods.md)      | 方法内容契约与结构校验。                  |
-| [数据处理](datasets/processing.md)          | 单类型内容的差异、补丁、引用和翻译处理。  |
-| [审核](reviews.md)                          | 单对象与审核包的提交、查询及处理。        |
-| [发布](releases.md)                         | 现有 Release 接口的保留范围，本轮不优化。 |
+| 文档 | 规定内容 |
+| --- | --- |
+| [通用约定](conventions.md) | 参数、能力发现、结果、错误、批量与恢复。 |
+| [AI Friendly 上下文](ai-context.md) | 下一步提示、回复指导、上下文预算与交接。 |
+| [回复模板](reply-templates/README.md) | 按结果选择的轻量 Markdown 回复指导。 |
+| [环境诊断](environment.md) | 环境观察及运行支撑边界。 |
+| [身份与账号](identity.md) | 会话、账号选择与身份核验。 |
+| [查询与发现](discovery.md) | 读取、检索、版本、分类与契约发现。 |
+| [Dataset](datasets/README.md) | 类型能力矩阵、创建与保存、与审核的边界。 |
+| [Flow](datasets/flows.md) | 流、属性和单位引用。 |
+| [Process](datasets/processes.md) | 交换项、引用及业务校验。 |
+| [Model 计算](calculations.md) | 模型来源、完整输入、引擎与执行器、运行结果及恢复边界。 |
+| [Model](datasets/models.md) | 模型图、生成模型结果过程与关联数据。 |
+| [Source](datasets/sources.md) | 来源记录、附件传输与引用。 |
+| [Contact](datasets/contacts.md) | 联系人和机构记录，与登录账号的边界。 |
+| [Flow Property](datasets/flowproperties.md) | 流属性及参考单位组关系。 |
+| [Unit Group](datasets/unitgroups.md) | 单位、参考单位及组内转换关系。 |
+| [LCIA Method](datasets/lciamethods.md) | 方法内容契约与结构校验。 |
+| [数据处理](datasets/processing.md) | 单类型内容的差异、补丁、引用和翻译处理。 |
+| [审核](reviews.md) | 单对象与审核包的提交、查询及处理。 |
+| [发布](releases.md) | 现有 Release 接口的保留范围，本轮不优化。 |

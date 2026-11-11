@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
-lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
+lastReviewedAt: 2026-11-11
+lastReviewedCommit: 955642482771a270fd49a199d1d7c86fcccc9ce2
+lastReviewedNote: 'Reviewed source-based model calculation, optional Study, execution and recovery boundaries; future implementation remains separate from released 0.2.0 capabilities.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -45,6 +45,19 @@ lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and 
 服务端缺口与下游迁移分别处理。CLI 目标能力所必需的服务契约需要提前核实；缺失的后端能力由所属仓库另行交付，作为对应 CLI 能力的外部依赖，不在 CLI 内模拟权限、事务或审核状态。尚未满足的依赖必须保留为阻断项，不能通过 mock 测试宣称真实能力已完成。
 
 本计划的终点是可供评审的 CLI 0.2.0 候选版本。代码集成、正式发布和 workspace 集成遵循对应的交付流程，具体执行状态记录在 Issue/PR 中。
+
+## Model 计算后续实施
+
+[Model 计算设计](../interfaces/calculations.md)定义独立于 0.2.0 已有业务迁移的后续范围，不追加到本次迁移完成条件。0.2.0 已有 `study` 支持线上计算项目与运行协议；`dataset model calculate`、独立 `calculation` 入口、无需调用方预建 Study 的计算及本地执行尚未按该设计实现。本文不证明现有 Worker 已具有无数据库、无队列依赖的独立内核。
+
+| 顺序 | 工作及所有者 | 验收边界 |
+| --- | --- | --- |
+| 1 | CLI 对照现有 Study 契约；Worker 所有者核实并划分计算内核、输入准备和任务包装。 | 明确可复用代码、完整输入契约、引擎能力和跨仓依赖；不得在 CLI 复制科学规则。 |
+| 2 | 计算内核及输入准备所有者交付固定输入包和最小本地运行方式；CLI 设计执行配置与运行支撑适配。 | 不启动业务数据库和消息队列即可处理完整本地输入；缺失依赖明确拒绝，安装准备与计算执行分开。 |
+| 3 | Edge/Database/Worker 所有者核实独立线上计算所需服务契约，CLI 接入按来源选择的 Model 入口和结果查询。 | 不要求调用方预建 Study，不隐式创建未披露项目；线上受理与完成区分，本地不上传，失败不跨位置降级。 |
+| 4 | CLI 与引擎所有者完成实际两条路径验收。 | 相同固定输入和引擎版本按声明容差比较数值；验证请求丢失恢复、Worker 重试不重复创建计算、本地失败、产物重取、资源清理及无网络本地执行。 |
+
+命令帮助、简单下一步提示和回复模板必须随实际能力交付。已有 Study 协议、历史结果和恢复文件保留原含义；本地结果接收、跨位置计算与下游 Skill 迁移另行确定范围。后端和 Worker 变更在其所有者仓库交付，CLI 文档不预先承诺服务已支持。
 
 ## 实施顺序
 
