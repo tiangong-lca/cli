@@ -22,7 +22,7 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-11-11
-lastReviewedCommit: a1f41e60c64954fe0caf9320785e7a79615417ac
+lastReviewedCommit: 831ecbac04bcab9b198c58c55ffb007de8b50e85
 lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
 related:
   - ../AGENTS.md

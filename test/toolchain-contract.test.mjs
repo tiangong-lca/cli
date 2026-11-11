@@ -659,7 +659,8 @@ const maybePackTest = process.env.TIANGONG_LCA_COVERAGE === '1' ? test.skip : te
 
 maybePackTest(
   'a clean pnpm tarball preserves bin plus typed ESM public subpaths without runtime build tools',
-  { timeout: 180_000 },
+  // The installed business scenarios launch many native processes on Windows runners.
+  { timeout: process.platform === 'win32' ? 300_000 : 180_000 },
   async () => {
     const fixtureRoot = mkdtempSync(join(tmpdir(), 'tiangong-cli-pack-contract-'));
 
