@@ -14,7 +14,7 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-11
-lastReviewedCommit: 188b901c08aea4787090e8f3ad5e6df757920b61
+lastReviewedCommit: 899fe12a507c2cc3a454011c0918a57d65588968
 lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
 ---
 
@@ -26,7 +26,7 @@ lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable r
 
 ## 当前状态
 
-当前源码正在实施 0.2.0 重构，包版本仍为 0.1.29；源码能力不代表 npm 已发布版本。查看已安装版本和实际帮助：
+当前源码对应 CLI 0.2.0。查看已安装版本和实际帮助：
 
 ```bash
 tiangong-lca --version
@@ -53,7 +53,7 @@ tiangong-lca auth login
 tiangong-lca auth whoami --json
 ```
 
-公共安装使用已发布包；下列新 Dataset 示例需要从当前源码构建。官方环境登录使用浏览器 OAuth。短期令牌只能通过受支持的秘密环境边界注入，不写入命令参数。身份、权限和配置说明见[认证设计](docs/interfaces/identity.md)及安装版本的 `auth --help`。
+下列 Dataset 示例适用于 CLI 0.2.0。官方环境登录使用浏览器 OAuth。短期令牌只能通过受支持的秘密环境边界注入，不写入命令参数。身份、权限和配置说明见[认证设计](docs/interfaces/identity.md)及安装版本的 `auth --help`。
 
 ## 能力组织
 
