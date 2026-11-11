@@ -18,7 +18,7 @@ Implemented Commands:
   auth       login | status | whoami | doctor-auth | logout | identity-receipt
   dataset    <flow|process|model|source|contact|flowproperty|unitgroup|lciamethod> <action>
   review     submit | resubmit | get | list | materials | comment | decide
-  study      versioned Study operations; inspect study --help
+  study      LCA calculation: projects, models, runs, and results (see study --help)
   release    prepare | upload | finalize | approve | publish | readback-verify | unpublish | status | current | calculation-bundle | calculation-artifact | artifact-download
 
 Dataset discovery and content:

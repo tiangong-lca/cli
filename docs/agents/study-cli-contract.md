@@ -14,14 +14,15 @@ whenToUpdate:
   - analysis/report/export verification or renderer provenance changes
 checkPaths:
   - src/lib/study/**
-  - src/cli.ts
+  - src/commands/study.ts
+  - src/commands/root.ts
   - assets/study-contract/**
   - assets/study-renderer/**
   - test/study-*.test.ts
   - docs/agents/study-cli-contract.md
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
-lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
+lastReviewedAt: 2026-11-11
+lastReviewedCommit: 9717d8e45665f6a1b43fe8e17e2d8953b63ad56c
+lastReviewedNote: 'Reviewed calculation help and human output in the typed CLI command layout.'
 related:
   - ../../AGENTS.md
   - repo-architecture.md
@@ -30,7 +31,9 @@ related:
 
 # Study commands
 
-`tiangong-lca study` adapts Edge's authenticated `lca.study-api.v2` on `app_lca_study`. It does not run a compiler, calculate source/model/input fingerprints, resolve permissions or access Database/Storage directly. The existing Process/LifecycleModel/release commands retain their separate purposes. Core lifecycle selects v2. P2 analysis/report/export selects v3; P3 review/finalization/named sharing selects v4. No silent wire upgrade or downgrade is permitted.
+`tiangong-lca study` adapts Edge's authenticated `lca.study-api.v2` on `app_lca_study`. It does not run a compiler, calculate source/model/input fingerprints, resolve permissions or access Database/Storage directly. Dataset content operations use `dataset process` and `dataset model`, and data publication uses `release`. Core lifecycle selects v2. P2 analysis/report/export selects v3; P3 review/finalization/named sharing selects v4. No silent wire upgrade or downgrade is permitted.
+
+Help and human-readable output describe LCA calculation projects and runs. The command name, owner Study terminology in protocol fields, machine output, and historical artifact identities remain stable.
 
 ## Commands and inputs
 

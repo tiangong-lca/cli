@@ -14,7 +14,7 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-11
-lastReviewedCommit: 3f86761eff9745d39a38ed4e3778398170048eb4
+lastReviewedCommit: a1d0248209fdae9704b316796b79291cb322b1ef
 lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
 ---
 
@@ -116,6 +116,8 @@ Review 本次适配已有业务语义：`submit` 只接受一个起始对象，`
 数据业务仅通过 `dataset <type> <action>` 和 `review <action>` 访问。原 `search/flow/process/lifecyclemodel/qa/publish` 及通用 Dataset 旧入口已移除，调用会返回 `UNKNOWN_COMMAND`，不会转接或执行。旧生产编排由调用方组合原子操作；下游升级在 Release 后独立进行，不作为移除入口的前置条件。
 
 `dataset model aggregate` 是 `build-resulting-process` 的正式别名，继续保留。普通维护、Study、Release、runtime/PCR、分类维护及文件包工具保留独立契约；公共库接口与当前能力共用的规则、安全设施继续保留。已退役工作流的实现、专属测试和示例不进入当前安装包。具体清单及替代方式见[迁移对照](docs/analysis/cli-interface-comparison.md#旧入口处置与保留边界)。
+
+LCA 计算使用 `tiangong-lca study --help`。登录后用 `study capabilities` 查询可用操作。核心流程使用 v2 创建计算项目、准备模型、冻结情景、提交运行并读取结果。写入响应丢失时，使用 `study request recover --intent-file <saved-file>` 恢复原请求。分析、报告、审核和导出使用对应的协议版本，详见 [Study 契约](docs/agents/study-cli-contract.md)。
 
 ## 开发与文档
 

@@ -584,7 +584,7 @@ test('Public export commands validate file selectors and support offline directo
     deps,
   );
   assert.equal(success.exitCode, 0, success.stderr);
-  assert.match(success.stdout, /Study export verification/u);
+  assert.match(success.stdout, /LCA calculation export verification/u);
   for (const args of [
     ['export', 'verify', '--api-version', '2'],
     ['export', 'verify'],

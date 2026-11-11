@@ -15,7 +15,7 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-11
-lastReviewedCommit: 8a145ea331328dd139b1078cd526eb9ec37f9853
+lastReviewedCommit: a1d0248209fdae9704b316796b79291cb322b1ef
 lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
 related:
   - ../AGENTS.md
