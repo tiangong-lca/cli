@@ -6,8 +6,8 @@ import {
   LEGACY_SOURCE,
   LEGACY_FINGERPRINT,
   LEGACY_COMPATIBILITY,
-} from '../../src/lib/pcr-snapshot-contract.js';
-import type { FetchLike } from '../../src/lib/http.js';
+} from '../../src/lib/pcr/contract.js';
+import type { FetchLike } from '../../src/lib/transport/http.js';
 export function snapshotFixture() {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'pcr-snapshot-test-'));
   const task = path.join(base, 'task'),

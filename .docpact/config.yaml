@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-11-10"
-lastReviewedCommit: "9717d8e45665f6a1b43fe8e17e2d8953b63ad56c"
-lastReviewedNote: 'CLI #472: reviewed calculation help and human output, with the stable study command, machine output, owner assets, release inputs and validation gates unchanged.'
+lastReviewedAt: "2026-11-11"
+lastReviewedCommit: "188b901c08aea4787090e8f3ad5e6df757920b61"
+lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
 
 catalog:
   repos:
@@ -11,9 +11,11 @@ catalog:
       canonicalRepo: tiangong-lca/cli
       entryDoc: AGENTS.md
       workflowDocs:
+        - docs/AGENTS.md
         - docs/agents/live-case-testing.md
         - docs/agents/repo-validation.md
         - docs/agents/repo-architecture.md
+        - docs/agents/existing-runtime-contract.md
         - docs/agents/study-cli-contract.md
         - DEV_CN.md
         - docs/IMPLEMENTATION_GUIDE_CN.md
@@ -27,13 +29,12 @@ ownership:
       paths:
         include:
           - AGENTS.md
+          - docs/AGENTS.md
           - README.md
           - DEV_CN.md
           - .docpact/config.yaml
           - docs/agents/**
           - docs/IMPLEMENTATION_GUIDE_CN.md
-          - docs/SKILLS_TO_CLI_MIGRATION_CHECKLIST_CN.md
-          - docs/TEMP_ISSUE_55_DIRECT_DEPS_TODO_CN.md
           - docs/release-runbook.md
           - docs/release-setup.md
           - .github/workflows/ai-doc-lint.yml
@@ -44,66 +45,55 @@ ownership:
           - bin/**
           - src/main.ts
           - src/cli.ts
+          - src/cli-deps.ts
+          - src/cli-composition.ts
+          - src/commands/**
       ownerRepo: cli
     - id: command-families-and-runtime
       paths:
         include:
+          - src/application/**
+          - src/adapters/**
+          - src/shared/**
+          - assets/reply-templates/**
           - src/batch.ts
           - src/auth-identity-receipt.ts
           - src/command-spec.ts
           - src/runtime.ts
           - src/lib/runtime/**
-          - assets/runtime/**
+          - src/lib/release/**
+          - src/lib/locks/**
+          - src/lib/platform/**
+          - src/lib/validation/**
+          - src/lib/maintenance/**
+          - src/lib/model/**
+          - src/lib/dataset/**
+          - src/lib/study/**
+          - src/lib/pcr/**
           - src/lib/batch/**
-          - src/lib/artifacts.ts
-          - src/lib/canonical-json-hash.ts
-          - src/lib/resulting-process-allocation.ts
-          - src/lib/dataset-command.ts
-          - src/lib/dataset-*.ts
-          - src/lib/errors.ts
-          - src/lib/flow-*.ts
-          - src/lib/identity-preflight.ts
-          - src/lib/io.ts
-          - src/lib/lifecyclemodel-*.ts
-          - src/lib/lca-release.ts
-          - src/lib/study-*.ts
+          - src/lib/process-statistics/**
+          - assets/runtime/**
           - assets/study-contract/**
           - assets/study-renderer/**
-          - src/lib/package-version.ts
-          - src/lib/process-*.ts
-          - src/lib/publish.ts
-          - src/lib/review-*.ts
-          - src/lib/run.ts
-          - src/lib/runtime-rulesets.ts
-          - src/lib/pcr-snapshot-*.ts
-          - src/lib/state-lock.ts
-          - src/lib/tidas-languages.ts
-          - src/lib/tidas-sdk-validation.ts
-          - src/lib/tidas-sdk-package-validator.ts
-          - src/lib/validation.ts
       ownerRepo: cli
     - id: remote-session-and-adapters
       paths:
         include:
           - .env.example
-          - src/lib/auth-identity-receipt.ts
-          - src/lib/dotenv.ts
-          - src/lib/env.ts
-          - src/lib/http.ts
-          - src/lib/kb-search.ts
-          - src/lib/llm.ts
-          - src/lib/oauth-loopback.ts
-          - src/lib/oauth-pkce.ts
-          - src/lib/remote.ts
-          - src/lib/supabase-client.ts
-          - src/lib/supabase-data-api-contract.ts
-          - src/lib/supabase-data-api-replay.ts
-          - src/lib/supabase-json-ordered-write.ts
-          - src/lib/supabase-rest.ts
-          - src/lib/supabase-session.ts
-          - src/lib/unstructured.ts
-          - src/lib/*-api-*.ts
-          - src/lib/credential-safety.ts
+          - src/lib/auth/auth-identity-receipt.ts
+          - src/lib/config/dotenv.ts
+          - src/lib/config/env.ts
+          - src/lib/transport/http.ts
+          - src/lib/auth/oauth-loopback.ts
+          - src/lib/auth/oauth-pkce.ts
+          - src/lib/transport/remote.ts
+          - src/lib/transport/supabase-client.ts
+          - src/lib/transport/supabase-data-api-contract.ts
+          - src/lib/transport/supabase-data-api-replay.ts
+          - src/lib/transport/supabase-rest.ts
+          - src/lib/auth/supabase-session.ts
+          - src/lib/transport/*-api-*.ts
+          - src/lib/auth/credential-safety.ts
       ownerRepo: cli
     - id: tests-release-and-automation
       paths:
@@ -117,8 +107,9 @@ ownership:
           - tsconfig.build.json
           - .oxlintrc.json
           - test/**
+          - examples/**
           - scripts/**
-          - src/lib/cli-repository-identity.ts
+          - scripts/ci/repository-identity.ts
           - .github/dependabot.yml
           - .github/workflows/quality-gate.yml
           - .github/workflows/publish.yml
@@ -141,13 +132,12 @@ coverage:
     - scripts/docpact-gate.sh
     - scripts/install-git-hooks.sh
     - AGENTS.md
+    - docs/AGENTS.md
     - README.md
     - DEV_CN.md
     - .docpact/config.yaml
     - docs/agents/**
     - docs/IMPLEMENTATION_GUIDE_CN.md
-    - docs/SKILLS_TO_CLI_MIGRATION_CHECKLIST_CN.md
-    - docs/TEMP_ISSUE_55_DIRECT_DEPS_TODO_CN.md
     - docs/release-runbook.md
     - docs/release-setup.md
     - .gitignore
@@ -161,10 +151,12 @@ coverage:
     - .oxlintrc.json
     - bin/**
     - src/**
+    - assets/reply-templates/**
     - assets/runtime/**
     - assets/study-contract/**
     - assets/study-renderer/**
     - test/**
+    - examples/**
     - scripts/**
     - .github/workflows/ai-doc-lint.yml
     - .github/dependabot.yml
@@ -190,7 +182,8 @@ routing:
   intents:
     study-commands:
       paths:
-        - src/lib/study-*.ts
+        - src/commands/study.ts
+        - src/lib/study/**
         - assets/study-contract/**
         - assets/study-renderer/**
         - test/study-*.test.ts
@@ -211,51 +204,38 @@ routing:
         - bin/**
         - src/main.ts
         - src/cli.ts
+        - src/cli-deps.ts
+        - src/cli-composition.ts
         - README.md
     remote-session:
       paths:
         - .env.example
         - src/auth-identity-receipt.ts
-        - src/lib/auth-identity-receipt.ts
-        - src/lib/dotenv.ts
-        - src/lib/env.ts
-        - src/lib/http.ts
-        - src/lib/kb-search.ts
-        - src/lib/llm.ts
-        - src/lib/oauth-loopback.ts
-        - src/lib/oauth-pkce.ts
-        - src/lib/remote.ts
-        - src/lib/supabase-client.ts
-        - src/lib/supabase-data-api-contract.ts
-        - src/lib/supabase-data-api-replay.ts
-        - src/lib/supabase-json-ordered-write.ts
-        - src/lib/supabase-rest.ts
-        - src/lib/supabase-session.ts
-        - src/lib/unstructured.ts
-        - src/lib/*-api-*.ts
-        - src/lib/credential-safety.ts
+        - src/lib/auth/auth-identity-receipt.ts
+        - src/lib/config/dotenv.ts
+        - src/lib/config/env.ts
+        - src/lib/transport/http.ts
+        - src/lib/auth/oauth-loopback.ts
+        - src/lib/auth/oauth-pkce.ts
+        - src/lib/transport/remote.ts
+        - src/lib/transport/supabase-client.ts
+        - src/lib/transport/supabase-data-api-contract.ts
+        - src/lib/transport/supabase-data-api-replay.ts
+        - src/lib/transport/supabase-rest.ts
+        - src/lib/auth/supabase-session.ts
+        - src/lib/transport/*-api-*.ts
+        - src/lib/auth/credential-safety.ts
     workflow-commands:
       paths:
-        - src/lib/artifacts.ts
-        - src/lib/canonical-json-hash.ts
-        - src/lib/resulting-process-allocation.ts
-        - src/lib/dataset-command.ts
-        - src/lib/dataset-*.ts
-        - src/lib/errors.ts
-        - src/lib/flow-*.ts
-        - src/lib/identity-preflight.ts
-        - src/lib/io.ts
-        - src/lib/lifecyclemodel-*.ts
-        - src/lib/lca-release.ts
-        - src/lib/package-version.ts
-        - src/lib/process-*.ts
-        - src/lib/publish.ts
-        - src/lib/review-*.ts
-        - src/lib/run.ts
-        - src/lib/runtime-rulesets.ts
-        - src/lib/pcr-snapshot-*.ts
-        - src/lib/state-lock.ts
-        - src/lib/tidas-languages.ts
+        - src/lib/dataset/**
+        - src/lib/validation/**
+        - src/lib/model/**
+        - src/lib/maintenance/**
+        - src/lib/pcr/**
+        - src/lib/release/**
+        - src/lib/platform/**
+        - src/lib/locks/**
+        - src/shared/errors.ts
         - docs/IMPLEMENTATION_GUIDE_CN.md
     public-library:
       paths:
@@ -268,10 +248,9 @@ routing:
         - src/lib/runtime/**
         - assets/runtime/**
         - docs/agents/runtime-distribution-contract.md
+        - src/lib/locks/**
         - src/lib/batch/**
-        - src/lib/state-lock.ts
-        - src/lib/dataset-save-draft-run.ts
-        - test/dataset-save-draft-execution-contract.test.ts
+        - src/lib/locks/state-lock.ts
         - test/public-auth-identity-receipt.test.ts
         - test/public-batch*.test.ts
         - test/public-command-spec.test.ts
@@ -282,8 +261,10 @@ routing:
     lca-data-release:
       paths:
         - src/cli.ts
-        - src/lib/lca-release.ts
-        - src/lib/http.ts
+        - src/cli-deps.ts
+        - src/cli-composition.ts
+        - src/lib/release/lca-release.ts
+        - src/lib/transport/http.ts
         - test/lca-release*.test.ts
         - README.md
         - DEV_CN.md
@@ -292,11 +273,10 @@ routing:
         - docs/agents/repo-validation.md
     tidas-sdk-validation:
       paths:
-        - src/lib/tidas-sdk-validation.ts
-        - src/lib/tidas-sdk-package-validator.ts
-        - src/lib/validation.ts
+        - src/lib/validation/tidas-sdk-validation.ts
+        - src/lib/validation/tidas-sdk-package-validator.ts
+        - src/lib/validation/validation.ts
         - test/fixtures/tidas-sdk/**
-        - docs/TEMP_ISSUE_55_DIRECT_DEPS_TODO_CN.md
     validation-release:
       paths:
         - .gitignore
@@ -316,7 +296,6 @@ routing:
         - docs/release-setup.md
     skills-handoff:
       paths:
-        - docs/SKILLS_TO_CLI_MIGRATION_CHECKLIST_CN.md
         - README.md
     proof:
       paths:
@@ -348,6 +327,7 @@ routing:
 
 docInventory:
   include:
+    - docs/AGENTS.md
     - docs/agents/study-cli-contract.md
     - docs/agents/dependency-maintenance.md
     - docs/agents/exact-reference-intent-contract.md
@@ -360,8 +340,6 @@ docInventory:
     - docs/agents/repo-validation.md
     - docs/agents/repo-architecture.md
     - docs/IMPLEMENTATION_GUIDE_CN.md
-    - docs/SKILLS_TO_CLI_MIGRATION_CHECKLIST_CN.md
-    - docs/TEMP_ISSUE_55_DIRECT_DEPS_TODO_CN.md
     - docs/release-runbook.md
     - docs/release-setup.md
 
@@ -374,8 +352,10 @@ rules:
     scope: repo
     repo: cli
     triggers:
-      - path: src/lib/study-*.ts
+      - path: src/lib/study/**
         kind: study-consumer
+      - path: src/commands/study.ts
+        kind: study-command
       - path: assets/study-contract/**
         kind: owner-contract-artifact
       - path: assets/study-renderer/**
@@ -402,6 +382,10 @@ rules:
     scope: repo
     repo: cli
     triggers:
+      - path: docs/AGENTS.md
+        kind: documentation-contract
+      - path: docs/agents/existing-runtime-contract.md
+        kind: retained-runtime-contract
       - path: AGENTS.md
         kind: doc-contract
       - path: .docpact/config.yaml
@@ -411,6 +395,8 @@ rules:
       - path: docs/agents/repo-architecture.md
         kind: deep-doc
     requiredDocs:
+      - path: docs/AGENTS.md
+        mode: review_or_update
       - path: AGENTS.md
         mode: review_or_update
       - path: .docpact/config.yaml
@@ -458,14 +444,14 @@ rules:
     scope: repo
     repo: cli
     triggers:
+      - path: docs/*.md
+        kind: maintainer-doc
+      - path: docs/reference/**
+        kind: reference-doc
       - path: DEV_CN.md
         kind: maintainer-doc
       - path: docs/IMPLEMENTATION_GUIDE_CN.md
         kind: implementation-guide
-      - path: docs/SKILLS_TO_CLI_MIGRATION_CHECKLIST_CN.md
-        kind: historical-audit
-      - path: docs/TEMP_ISSUE_55_DIRECT_DEPS_TODO_CN.md
-        kind: historical-todo
     requiredDocs:
       - path: AGENTS.md
         mode: review_or_update
@@ -475,11 +461,7 @@ rules:
         mode: review_or_update
       - path: docs/IMPLEMENTATION_GUIDE_CN.md
         mode: review_or_update
-      - path: docs/SKILLS_TO_CLI_MIGRATION_CHECKLIST_CN.md
-        mode: must_exist
-      - path: docs/TEMP_ISSUE_55_DIRECT_DEPS_TODO_CN.md
-        mode: must_exist
-    reason: Active maintainer guides must stay aligned, while retained non-auth historical docs remain discoverable without being rewritten for unrelated current-toolchain changes.
+    reason: Active maintainer guides describe current command, runtime and development contracts.
   - id: cli-command-surface-contract
     scope: repo
     repo: cli
@@ -489,6 +471,12 @@ rules:
       - path: src/main.ts
         kind: process-entry
       - path: src/cli.ts
+        kind: command-router
+      - path: src/cli-deps.ts
+        kind: command-router
+      - path: src/cli-composition.ts
+        kind: command-router
+      - path: src/commands/**
         kind: command-router
     requiredDocs:
       - path: AGENTS.md
@@ -506,55 +494,21 @@ rules:
     scope: repo
     repo: cli
     triggers:
-      - path: src/lib/artifacts.ts
+      - path: src/lib/**
+        kind: capability-runtime
+      - path: examples/**
+        kind: command-example
+      - path: src/application/**
+        kind: command-logic
+      - path: src/adapters/**
+        kind: command-logic
+      - path: src/shared/**
+        kind: shared-runtime
+      - path: assets/reply-templates/**
         kind: artifact-runtime
-      - path: src/lib/canonical-json-hash.ts
-        kind: shared-runtime
-      - path: src/lib/resulting-process-allocation.ts
-        kind: command-logic
-      - path: src/lib/dataset-command.ts
-        kind: command-logic
-      - path: src/lib/dataset-*.ts
-        kind: command-logic
-      - path: src/lib/errors.ts
-        kind: shared-runtime
-      - path: src/lib/flow-*.ts
-        kind: command-logic
-      - path: src/lib/identity-preflight.ts
-        kind: command-logic
-      - path: src/lib/io.ts
-        kind: shared-runtime
-      - path: src/lib/lifecyclemodel-*.ts
-        kind: command-logic
-      - path: src/lib/lca-release.ts
-        kind: command-logic
-      - path: src/lib/package-version.ts
-        kind: package-runtime
-      - path: src/lib/process-*.ts
-        kind: command-logic
-      - path: src/lib/publish.ts
-        kind: command-logic
-      - path: src/lib/review-*.ts
-        kind: command-logic
-      - path: src/lib/run.ts
-        kind: command-logic
-      - path: src/lib/pcr-snapshot-*.ts
-        kind: command-logic
-      - path: src/lib/runtime-rulesets.ts
-        kind: command-logic
-      - path: src/lib/state-lock.ts
-        kind: artifact-runtime
-      - path: src/lib/tidas-languages.ts
-        kind: validation-runtime
-      - path: src/lib/tidas-sdk-validation.ts
-        kind: validation-runtime
-      - path: src/lib/tidas-review-report-optionality.ts
-        kind: validation-runtime
-      - path: src/lib/tidas-sdk-package-validator.ts
-        kind: validation-runtime
-      - path: src/lib/validation.ts
-        kind: validation-runtime
     requiredDocs:
+      - path: docs/agents/existing-runtime-contract.md
+        mode: review_or_update
       - path: AGENTS.md
         mode: review_or_update
       - path: .docpact/config.yaml
@@ -578,18 +532,16 @@ rules:
         kind: public-library-runtime
       - path: src/batch.ts
         kind: public-library-runtime
+      - path: src/lib/locks/**
+        kind: shared-lock-runtime
       - path: src/lib/batch/**
         kind: public-library-internal-runtime
       - path: src/command-spec.ts
         kind: public-library-runtime
       - path: src/runtime.ts
         kind: public-library-runtime
-      - path: src/lib/state-lock.ts
+      - path: src/lib/locks/state-lock.ts
         kind: public-library-lock-runtime
-      - path: src/lib/dataset-save-draft-run.ts
-        kind: public-library-dogfood
-      - path: test/dataset-save-draft-execution-contract.test.ts
-        kind: public-library-dogfood-proof
       - path: test/public-auth-identity-receipt.test.ts
         kind: public-library-proof
       - path: test/public-batch*.test.ts
@@ -618,6 +570,8 @@ rules:
         kind: public-runtime-descriptor
       - path: src/lib/runtime/**
         kind: runtime-distribution-owner
+      - path: src/commands/runtime/**
+        kind: runtime-command
       - path: src/main.ts
         kind: runtime-host-admission
       - path: assets/runtime/**
@@ -644,41 +598,33 @@ rules:
         kind: env-template
       - path: src/auth-identity-receipt.ts
         kind: auth-public-parser
-      - path: src/lib/auth-identity-receipt.ts
+      - path: src/lib/auth/auth-identity-receipt.ts
         kind: auth-runtime
-      - path: src/lib/dotenv.ts
+      - path: src/lib/config/dotenv.ts
         kind: env-loading
-      - path: src/lib/env.ts
+      - path: src/lib/config/env.ts
         kind: env-contract
-      - path: src/lib/http.ts
+      - path: src/lib/transport/http.ts
         kind: transport
-      - path: src/lib/kb-search.ts
-        kind: remote-adapter
-      - path: src/lib/llm.ts
-        kind: remote-adapter
-      - path: src/lib/oauth-loopback.ts
+      - path: src/lib/auth/oauth-loopback.ts
         kind: oauth-loopback-runtime
-      - path: src/lib/oauth-pkce.ts
+      - path: src/lib/auth/oauth-pkce.ts
         kind: oauth-protocol-runtime
-      - path: src/lib/remote.ts
+      - path: src/lib/transport/remote.ts
         kind: remote-adapter
-      - path: src/lib/supabase-client.ts
+      - path: src/lib/transport/supabase-client.ts
         kind: remote-adapter
-      - path: src/lib/supabase-data-api-contract.ts
+      - path: src/lib/transport/supabase-data-api-contract.ts
         kind: remote-adapter
-      - path: src/lib/supabase-data-api-replay.ts
+      - path: src/lib/transport/supabase-data-api-replay.ts
         kind: remote-adapter
-      - path: src/lib/supabase-json-ordered-write.ts
+      - path: src/lib/transport/supabase-rest.ts
         kind: remote-adapter
-      - path: src/lib/supabase-rest.ts
-        kind: remote-adapter
-      - path: src/lib/supabase-session.ts
+      - path: src/lib/auth/supabase-session.ts
         kind: session-runtime
-      - path: src/lib/unstructured.ts
+      - path: src/lib/transport/*-api-*.ts
         kind: remote-adapter
-      - path: src/lib/*-api-*.ts
-        kind: remote-adapter
-      - path: src/lib/credential-safety.ts
+      - path: src/lib/auth/credential-safety.ts
         kind: auth-runtime
     requiredDocs:
       - path: AGENTS.md
@@ -716,7 +662,7 @@ rules:
     scope: repo
     repo: cli
     triggers:
-      - path: src/lib/cli-repository-identity.ts
+      - path: scripts/ci/repository-identity.ts
         kind: versioned-release-identity
       - path: .gitignore
         kind: package-manager-guard
@@ -799,17 +745,11 @@ rules:
     triggers:
       - path: docs/agents/exact-reference-intent-contract.md
         kind: doc-contract
-      - path: src/lib/dataset-exact-reference-*.ts
+      - path: src/lib/dataset/exact-reference-*.ts
         kind: command-logic
-      - path: src/lib/dataset-remote-verify.ts
-        kind: command-logic
-      - path: src/lib/dataset-save-draft-reference-intent.ts
-        kind: command-logic
-      - path: src/lib/dataset-save-draft-run.ts
+      - path: src/lib/dataset/remote-verify.ts
         kind: command-logic
       - path: test/dataset-exact-reference-intent.test.ts
-        kind: validation
-      - path: test/dataset-save-draft-exact-reference.test.ts
         kind: validation
     requiredDocs:
       - path: docs/agents/exact-reference-intent-contract.md
@@ -820,9 +760,11 @@ rules:
     scope: repo
     repo: cli
     triggers:
+      - path: src/commands/pcr.ts
+        kind: pcr-command
       - path: docs/agents/pcr-snapshot-contract.md
         kind: governed-doc
-      - path: src/lib/pcr-snapshot-*.ts
+      - path: src/lib/pcr/**
         kind: command-logic
       - path: test/pcr-snapshot.test.ts
         kind: validation
@@ -843,3 +785,18 @@ rules:
       - path: docs/agents/dependency-maintenance.md
         mode: review_or_update
     reason: Dependency monitoring cadence, budgets and manual intake belong in the focused maintenance guide.
+
+  - id: cli-refactor-design-contract
+    scope: repo
+    repo: cli
+    triggers:
+      - path: docs/interfaces/**
+        kind: interface-design
+      - path: docs/plans/cli-0.2.0-refactor-plan.md
+        kind: implementation-plan
+    requiredDocs:
+      - path: docs/interfaces/README.md
+        mode: review_or_update
+      - path: docs/plans/cli-0.2.0-refactor-plan.md
+        mode: review_or_update
+    reason: Target contracts and implementation status remain separate and traceable during the refactor.

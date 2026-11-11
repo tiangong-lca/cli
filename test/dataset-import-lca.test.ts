@@ -5,7 +5,7 @@ import path from 'node:path';
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { test } from 'node:test';
 import { executeCli } from '../src/cli.js';
-import { __testInternals, runDatasetImportLcaConvert } from '../src/lib/dataset-import-lca.js';
+import { __testInternals, runDatasetImportLcaConvert } from '../src/lib/dataset/import-lca.js';
 
 const deps = {
   env: {},

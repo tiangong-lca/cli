@@ -14,16 +14,16 @@ import { createRequire, syncBuiltinESMExports } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { executeCli } from '../src/cli.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import {
   publishStudyExport,
   readStudyExportTrust,
   runStudyExportFiles,
   verifyStudyExportBundle,
   verifyStudyExportDirectory,
-} from '../src/lib/study-export.js';
-import type { FetchLike } from '../src/lib/http.js';
-import { studyDigest, studyJson } from '../src/lib/study-protocol.js';
+} from '../src/lib/study/export.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
+import { studyDigest, studyJson } from '../src/lib/study/protocol.js';
 import { exportEnvironment, signedExportFixture } from './helpers/study-export-fixture.js';
 
 const roots: string[] = [];

@@ -13,7 +13,7 @@ import {
   resolveDataApiCapability,
   resolveDataApiCapabilityFromUrl,
   resolveDataApiProfile,
-} from '../src/lib/supabase-data-api-contract.js';
+} from '../src/lib/transport/supabase-data-api-contract.js';
 
 test('data api manifest freezes the exact database contract and complete CLI inventory', () => {
   assert.equal(DATA_API_CONTRACT.schemaVersion, 'tiangong-lca-cli.data-api-contract.v1');
@@ -70,9 +70,9 @@ test('data api manifest freezes the exact database contract and complete CLI inv
     'sources',
     'unitgroups',
   ]);
-  // Sixteen v1 entries plus the four approved versioned (v2) protected lifecycle endpoints.
-  assert.equal(Object.keys(DATA_API_RPC_TARGETS).length, 20);
-  assert.equal(Object.keys(DATA_API_RPC_REPLAY_CLASSIFICATION).length, 20);
+  // Ordinary maintenance RPCs and the participant Review read RPC.
+  assert.equal(Object.keys(DATA_API_RPC_TARGETS).length, 6);
+  assert.equal(Object.keys(DATA_API_RPC_REPLAY_CLASSIFICATION).length, 6);
   assert.deepEqual(
     Object.keys(DATA_API_RPC_REPLAY_CLASSIFICATION).sort(),
     Object.keys(DATA_API_RPC_TARGETS).sort(),
@@ -80,10 +80,7 @@ test('data api manifest freezes the exact database contract and complete CLI inv
   assert.deepEqual(DATA_API_CONTRACT.views, []);
   assert.equal(DATA_API_CONTRACT.retryPolicy.mutations.startsWith('no automatic'), true);
   assert.deepEqual(DATA_API_CONTRACT.blockers, []);
-  assert.equal(
-    DATA_API_CONTRACT.retiredCapabilities[0].capability,
-    'rpc:cmd_dataset_alias_plan_guarded',
-  );
+  assert.deepEqual(DATA_API_CONTRACT.retiredCapabilities, []);
   assert.equal(
     Object.values(DATA_API_RPC_TARGETS).every(
       (target) => target.targetSchema === 'api' && target.signature.startsWith('api.'),

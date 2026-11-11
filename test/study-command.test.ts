@@ -13,22 +13,22 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 import { executeCli } from '../src/cli.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import {
   admitStudyCodecCandidate,
   STUDY_CODEC_CANDIDATE_ENV,
   STUDY_CODEC_MANIFEST_SHA256,
-} from '../src/lib/study-codec.js';
-import { readStudyIntent } from '../src/lib/study-intent.js';
+} from '../src/lib/study/codec.js';
+import { readStudyIntent } from '../src/lib/study/intent.js';
 import {
   STUDY_COMMANDS,
   STUDY_API_SCHEMA,
   studyDigest,
   studyObject,
   studyJson,
-} from '../src/lib/study-protocol.js';
-import { runStudyRequest, type StudyCommandReport } from '../src/lib/study-transport.js';
-import type { FetchLike } from '../src/lib/http.js';
+} from '../src/lib/study/protocol.js';
+import { runStudyRequest, type StudyCommandReport } from '../src/lib/study/transport.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import { buildSupabaseTestEnv } from './helpers/supabase-auth.js';
 
 const ACTOR = '11111111-1111-4111-8111-111111111111';

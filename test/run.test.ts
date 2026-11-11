@@ -14,10 +14,10 @@ import {
   resolveRunLayout,
   sanitizeRunToken,
   writeLatestRunId,
-} from '../src/lib/run.js';
+} from '../src/lib/platform/run.js';
 
-async function loadDistRunModule(): Promise<typeof import('../src/lib/run.js')> {
-  return loadDistModule('src/lib/run.js');
+async function loadDistRunModule(): Promise<typeof import('../src/lib/platform/run.js')> {
+  return loadDistModule('src/lib/platform/run.js');
 }
 
 test('sanitizeRunToken normalizes user input and preserves fallback behavior', () => {

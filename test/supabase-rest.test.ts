@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CliError } from '../src/lib/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
+import { CliError } from '../src/shared/errors.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import {
   deriveSupabaseRestBaseUrl,
   fetchExactOrLatestProcessRow,
   normalizeSupabaseProcessPayload,
   requireSupabaseRestRuntime,
   type SupabaseDataRuntime,
-} from '../src/lib/supabase-rest.js';
+} from '../src/lib/transport/supabase-rest.js';
 
 function jsonFetch(
   responses: unknown[],
@@ -316,4 +316,17 @@ test('fetchExactOrLatestProcessRow rejects malformed Supabase REST payloads', as
       }),
     (error) => error instanceof CliError && error.code === 'SUPABASE_REST_RESPONSE_INVALID',
   );
+});
+
+test('a missing explicitly requested latest Process is reported as absent', async () => {
+  const observed: Parameters<typeof jsonFetch>[1] = [];
+  const result = await fetchExactOrLatestProcessRow({
+    runtime: makeRuntime('https://example.supabase.co/functions/v1'),
+    id: 'missing',
+    timeoutMs: 1000,
+    fetchImpl: jsonFetch([[]], observed),
+  });
+  assert.equal(result, null);
+  assert.equal(observed.length, 1);
+  assert.match(observed[0]!.url, /limit=1/);
 });

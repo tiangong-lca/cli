@@ -4,13 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import {
   resolveLocalSdkModule,
   resolveRepoRootFrom,
   resolveSdkModuleFromCandidates,
   runValidation,
-} from '../src/lib/validation.js';
+} from '../src/lib/validation/validation.js';
 
 const currentFilePath = fileURLToPath(import.meta.url);
 
@@ -388,4 +388,9 @@ test('runValidation validates the input directory and engine value', async () =>
   } finally {
     rmSync(fileDir, { recursive: true, force: true });
   }
+});
+
+test('package validation locates the repository from nested module directories', () => {
+  const root = resolveRepoRootFrom(path.dirname(currentFilePath));
+  assert.equal(root, process.cwd());
 });

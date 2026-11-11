@@ -1,11 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CliError } from '../src/lib/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
-import {
-  __testInternals,
-  syncLifecyclemodelBundleRecord,
-} from '../src/lib/lifecyclemodel-bundle-save.js';
+import { CliError } from '../src/shared/errors.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
+import { __testInternals, syncLifecyclemodelBundleRecord } from '../src/lib/model/bundle-save.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,

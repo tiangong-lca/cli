@@ -4,19 +4,19 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync, existsSync } from 'no
 import path from 'node:path';
 import os from 'node:os';
 import { executeCli } from '../src/cli.js';
-import { CliError } from '../src/lib/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
-import { studyDigest, studyJson } from '../src/lib/study-protocol.js';
+import { CliError } from '../src/shared/errors.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
+import { studyDigest, studyJson } from '../src/lib/study/protocol.js';
 import {
   publishStudyExport,
   runStudyExportFiles,
   verifyStudyExportBundle,
   verifyStudyExportDirectory,
-} from '../src/lib/study-export.js';
+} from '../src/lib/study/export.js';
 import {
   STUDY_RENDERER_ARCHIVE_SHA256,
   STUDY_V2_RENDERER_ARCHIVE_SHA256,
-} from '../src/lib/study-renderer.js';
+} from '../src/lib/study/renderer.js';
 import {
   exportEnvironment,
   signedAdvancedExportFixture,

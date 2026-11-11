@@ -4,18 +4,18 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { executeCli } from '../src/cli.js';
-import { CliError } from '../src/lib/errors.js';
+import { CliError } from '../src/shared/errors.js';
 import {
   loadStudyCodec,
   assertStudyCodecModule,
   admitStudyCodecCandidate,
   STUDY_V5_CODEC_CANDIDATE_ENV,
   STUDY_V5_CODEC_MANIFEST_SHA256,
-} from '../src/lib/study-codec.js';
-import { runStudyRequest, verifyStudyArtifact } from '../src/lib/study-transport.js';
-import { readStudyIntent } from '../src/lib/study-intent.js';
-import { STUDY_ADVANCED_SCHEMA, studyObject, studyDigest } from '../src/lib/study-protocol.js';
-import type { FetchLike } from '../src/lib/http.js';
+} from '../src/lib/study/codec.js';
+import { runStudyRequest, verifyStudyArtifact } from '../src/lib/study/transport.js';
+import { readStudyIntent } from '../src/lib/study/intent.js';
+import { STUDY_ADVANCED_SCHEMA, studyObject, studyDigest } from '../src/lib/study/protocol.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 const id = (n: number) => `50000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const ACTOR = id(1),
   STUDY = id(2),

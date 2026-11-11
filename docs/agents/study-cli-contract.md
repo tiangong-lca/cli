@@ -13,15 +13,16 @@ whenToUpdate:
   - Study wire versions, codec provenance, commands or request retention change
   - analysis/report/export verification or renderer provenance changes
 checkPaths:
-  - src/lib/study-*.ts
-  - src/cli.ts
+  - src/lib/study/**
+  - src/commands/study.ts
+  - src/commands/root.ts
   - assets/study-contract/**
   - assets/study-renderer/**
   - test/study-*.test.ts
   - docs/agents/study-cli-contract.md
-lastReviewedAt: 2026-11-10
+lastReviewedAt: 2026-11-11
 lastReviewedCommit: 9717d8e45665f6a1b43fe8e17e2d8953b63ad56c
-lastReviewedNote: 'CLI #472: reviewed calculation help and human output, with the stable study command, machine output, owner assets, release inputs and validation gates unchanged.'
+lastReviewedNote: 'Reviewed calculation help and human output in the typed CLI command layout.'
 related:
   - ../../AGENTS.md
   - repo-architecture.md
@@ -30,7 +31,7 @@ related:
 
 # Study commands
 
-`tiangong-lca study` adapts Edge's authenticated `lca.study-api.v2` on `app_lca_study`. It does not run a compiler, calculate source/model/input fingerprints, resolve permissions or access Database/Storage directly. The existing Process/LifecycleModel/release commands retain their separate purposes. Core lifecycle selects v2. P2 analysis/report/export selects v3; P3 review/finalization/named sharing selects v4. No silent wire upgrade or downgrade is permitted.
+`tiangong-lca study` adapts Edge's authenticated `lca.study-api.v2` on `app_lca_study`. It does not run a compiler, calculate source/model/input fingerprints, resolve permissions or access Database/Storage directly. Dataset content operations use `dataset process` and `dataset model`, and data publication uses `release`. Core lifecycle selects v2. P2 analysis/report/export selects v3; P3 review/finalization/named sharing selects v4. No silent wire upgrade or downgrade is permitted.
 
 Help and human-readable output describe LCA calculation projects and runs. The command name, owner Study terminology in protocol fields, machine output, and historical artifact identities remain stable.
 
@@ -76,7 +77,7 @@ Use the existing CLI OAuth session and official/custom profile selection. Explic
 
 Domain POSTs send `x-study-schema` equal to the request schema so pre-body auth/transport errors retain the selected version. All Study authentication/domain traffic rejects redirects and shares a bounded operation deadline; Auth response bytes are bounded separately from Study responses. A non-TLS destination is permitted only for an explicitly selected literal loopback host. The high-level auth identity receipt's canonical Production/project restrictions remain unchanged; this module only reuses its internal bounded current-user reader for an explicit task fixture.
 
-For an explicit complete loopback configuration, `auth doctor-auth --json` uses the distinct `tiangong.cli-loopback-auth-doctor.v1` with `scope: explicit-loopback`. Its `live` value is `tiangong.cli-loopback-identity.v1` containing exact `origin`, server-observed `actorId`, actual token `clientId` (or null), current configured `callbackUri` (or null for headless), `authMethod` and `onlineVerified: true`. OAuth needs an explicit callback accepted by the existing loopback validator; local session selection still binds origin/key/client. The same bounded live-user and actual token/client check used by Study runs before success. Failures provide no identity result; remote diagnostic failure uses stable `AUTH_LOOPBACK_DIAGNOSTIC_FAILED`.
+For an explicit complete loopback configuration, `auth doctor-auth --json` carries the distinct `tiangong.cli-loopback-auth-doctor.v1` receipt under `data.receipt` with `scope: explicit-loopback`. Its `live` value is `tiangong.cli-loopback-identity.v1` containing exact `origin`, server-observed `actorId`, actual token `clientId` (or null), current configured `callbackUri` (or null for headless), `authMethod` and `onlineVerified: true`. OAuth needs an explicit callback accepted by the existing loopback validator; local session selection still binds origin/key/client. The same bounded live-user and actual token/client check used by Study runs before success. Failures provide no identity result; remote diagnostic failure uses stable `AUTH_LOOPBACK_DIAGNOSTIC_FAILED`.
 
 A local Skill must compare origin/client/current callback with its independently selected owned tuple. This diagnostic has no canonical project reference, signature, credential-derived fingerprint or Production receipt authority. The existing session schema does not record the historical login callback: the field reports current validated configuration, while actual callback execution belongs to the independent OAuth driver evidence. Production/default doctor keeps its original canonical receipt path; `whoami` and `identity-receipt` keep rejecting noncanonical loopback project identities. Selection happens before I/O, without fallback from a failed canonical receipt.
 
@@ -86,7 +87,7 @@ Authenticated capability read precedes an ordinary domain operation. The selecte
 
 Every mutation publishes an immutable private `tiangong.cli.study-intent.v1` file **before** its first domain dispatch. It contains the complete canonical request and key, request-byte digest and live actor/client/endpoint binding. This canonicalization identifies local transport bytes only; it is not a source/model/calculation fingerprint or a signed authorization record. File publication uses an exclusive temporary file, flush, and non-overwriting link in a private per-intent directory. The original request file is never rewritten.
 
-The default location follows the existing per-user CLI state root, under `study/v2/<binding-operation-key-hash>/intent.json` or independently scoped `study/v3/` and `study/v4/` directories; `--state-dir` selects another retained private root. Existing same-key intent requires explicit recovery; changed request bytes under that identity are rejected. Per-directory public batch locks serialize dispatch/recovery, without using the batch engine's mutation-retry policy. No transport failure automatically retries a mutation or invents another key.
+The default location follows the existing per-user CLI state root, under `study/v2/<binding-operation-key-hash>/intent.json` or independently scoped `study/v3/` and `study/v4/` directories; `--state-dir` selects another retained private root. Existing same-key intent requires explicit recovery; changed request bytes under that identity are rejected. Shared run-directory locks serialize dispatch/recovery independently of the Batch scheduler. Lock timeout and identity conflict retain their stable error codes without exposing private lock-owner metadata. No transport failure automatically retries a mutation or invents another key.
 
 After a lost response or process interruption, run `study request recover --intent-file <saved-file>`. The CLI checks private-file shape/digest/path, preserves its complete request, verifies the current destination and live actor/client binding, negotiates current availability, then submits the exact original request/key through the owner's idempotent receipt/recovery path. It does not return cached success, suppress current authorization checks, reset an unknown outcome, or reconstruct scope from provider text. Server receipt replay owns the terminal result and prevents a second logical job. A revoked grant or unavailable deployment remains an explicit failure and the original intent is retained.
 

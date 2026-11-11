@@ -19,7 +19,7 @@ import {
   lockPathForState,
   readStateLockMetadata,
   withStateFileLock,
-} from '../src/lib/state-lock.js';
+} from '../src/lib/locks/state-lock.js';
 
 const require = createRequire(import.meta.url);
 const mutableFs = require('node:fs') as typeof import('node:fs');

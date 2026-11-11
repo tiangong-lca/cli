@@ -1,3 +1,4 @@
+import { assertInstalledBusiness } from './helpers/cli-business-installed.ts';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -357,7 +358,7 @@ test('active maintainer documentation exposes only pnpm package-management comma
     join(REPOSITORY_ROOT, 'docs', 'IMPLEMENTATION_GUIDE_CN.md'),
     'utf8',
   );
-  assert.match(implementationGuide, /^\| 命令组 \| 必需 env \|\n\| --- \| --- \|$/mu);
+  assert.match(implementationGuide, /^\| 命令组\s+\| 必需 env\s+\|\n\| -+ \| -+ \|$/mu);
   assert.doesNotMatch(implementationGuide, /\| 命令组 \| 必需 env \| \|/u);
 });
 
@@ -624,6 +625,7 @@ test('the exact 100% source-coverage gate remains in the pnpm pre-push path', ()
   const coverageCommand = PACKAGE_JSON.scripts?.['test:coverage'] ?? '';
   const coverageAssertCommand = PACKAGE_JSON.scripts?.['test:coverage:assert-full'] ?? '';
   const packageContractCommand = PACKAGE_JSON.scripts?.['test:package'] ?? '';
+  const entrypointsCommand = PACKAGE_JSON.scripts?.['test:entrypoints'] ?? '';
   const prepushCommand = PACKAGE_JSON.scripts?.['prepush:gate'] ?? '';
   const coverageAssertionSource = readFileSync(
     join(REPOSITORY_ROOT, 'scripts', 'assert-full-coverage.ts'),
@@ -633,9 +635,14 @@ test('the exact 100% source-coverage gate remains in the pnpm pre-push path', ()
   assert.match(coverageCommand, /scripts\/run-test-coverage\.cjs/u);
   assert.match(coverageAssertCommand, /assert-full-coverage\.js/u);
   assert.match(packageContractCommand, /test\/toolchain-contract\.test\.mjs/u);
+  assert.equal(
+    entrypointsCommand,
+    'pnpm build && node --import tsx --test test/bin.test.ts test/main.test.ts',
+  );
   assert.equal(PACKAGE_JSON.scripts?.['peers:check'], 'pnpm peers check');
   assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+peers:check(?:\s|&&|$)/u);
   assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+test:package(?:\s|&&|$)/u);
+  assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+test:entrypoints(?:\s|&&|$)/u);
   assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+test:coverage(?:\s|&&|$)/u);
   assert.match(
     prepushCommand,
@@ -652,7 +659,8 @@ const maybePackTest = process.env.TIANGONG_LCA_COVERAGE === '1' ? test.skip : te
 
 maybePackTest(
   'a clean pnpm tarball preserves bin plus typed ESM public subpaths without runtime build tools',
-  { timeout: 180_000 },
+  // The installed business scenarios launch many native processes on Windows runners.
+  { timeout: process.platform === 'win32' ? 300_000 : 180_000 },
   async () => {
     const fixtureRoot = mkdtempSync(join(tmpdir(), 'tiangong-cli-pack-contract-'));
 
@@ -730,6 +738,7 @@ maybePackTest(
       assertModuleHostBehavior(consumerRoot, cleanRepository, installedManifest.version);
       rmSync(cleanRepository, { recursive: true, force: true });
       await assertInstalledStudyRecovery(installedPackageRoot, consumerRoot);
+      await assertInstalledBusiness(installedPackageRoot, consumerRoot);
 
       const consumerTree = pnpmList(consumerRoot, 'typescript');
       assert.deepEqual(
@@ -759,6 +768,9 @@ function assertRootBinBehavior(binPath, cwd, expectedVersion) {
   assert.match(authHelp.stdout, /read-only/u);
   assert.equal(authHelp.stderr, '');
   assert.equal(explicitHelp.stderr, '');
+  const manifest = runBin(binPath, ['--help', '--json'], cwd);
+  assertSuccessfulExit(manifest);
+  assert.ok(JSON.parse(manifest.stdout).commands.dataset.model.includes('build-resulting-process'));
 
   const version = runBin(binPath, ['--version'], cwd);
   assertSuccessfulExit(version);
@@ -1031,7 +1043,7 @@ async function assertInstalledStudyRecovery(packageRoot, cwd) {
       });
     const diagnosed = await invoke(['doctor-auth', '--json'], 'auth');
     assert.equal(diagnosed.code, 0, diagnosed.stderr);
-    const localIdentity = JSON.parse(diagnosed.stdout);
+    const localIdentity = JSON.parse(diagnosed.stdout).data.receipt;
     assert.equal(localIdentity.schemaVersion, 'tiangong.cli-loopback-auth-doctor.v1');
     assert.equal(localIdentity.live.origin, environment.TIANGONG_LCA_API_BASE_URL);
     assert.equal(localIdentity.live.actorId, actor);
@@ -1413,7 +1425,9 @@ function assertModuleHostBehavior(consumerRoot, compilerRoot, expectedVersion) {
   });
   writeFileSync(
     deepAuthHostPath,
-    [`await import('${PACKAGE_JSON.name}/dist/src/lib/auth-identity-receipt.js');`, ''].join('\n'),
+    [`await import('${PACKAGE_JSON.name}/dist/src/lib/auth/auth-identity-receipt.js');`, ''].join(
+      '\n',
+    ),
     { encoding: 'utf8', flag: 'wx' },
   );
   writeFileSync(
@@ -1554,6 +1568,21 @@ function assertPackedFiles(fileMetadata) {
       /(?:^|\/)(?:package-lock\.json|pnpm-lock\.ya?ml)$/u.test(path),
   );
 
+  assert.deepEqual(
+    packedFiles.filter((file) => /^dist\/src\/lib\/[^/]+\.(?:js|d\.ts)(?:\.map)?$/u.test(file)),
+    [],
+    'Internal helpers must ship under their capability owner, without flat compatibility copies',
+  );
+  const retired = readJson(join(REPOSITORY_ROOT, 'test/fixtures/retired-cli-modules.json'));
+  const retiredFiles = packedFiles.filter((file) =>
+    retired.some((stem) => file.startsWith(`${stem}.`)),
+  );
+  assert.deepEqual(
+    retiredFiles,
+    [],
+    'Retired workflow implementations must not ship in the package',
+  );
+
   assert.ok(packedFiles.includes('bin/tiangong-lca.js'), 'the packed CLI bin is missing');
   assert.ok(packedFiles.includes('dist/src/main.js'), 'the packed runtime entry is missing');
   assert.ok(
@@ -1638,11 +1667,35 @@ function copyCleanPackageSource(destination) {
 }
 
 function assertProductionBootstrap(binPath, cwd) {
+  const sampleHelp = runBin(binPath, ['dataset', 'process', 'get', '--help', '--json'], cwd);
+  assertSuccessfulExit(sampleHelp);
+  assert.ok(JSON.parse(sampleHelp.stdout).implementedActions.includes('get'));
+  assert.ok(JSON.parse(sampleHelp.stdout).implementedActions.includes('validate'));
+  const sampleInput = join(cwd, 'foundation-invalid-process.json');
+  writeFileSync(sampleInput, JSON.stringify({ processDataSet: {} }));
+  const sample = runBin(
+    binPath,
+    ['dataset', 'process', 'validate', '--input', sampleInput, '--json'],
+    cwd,
+  );
+  assert.equal(sample.status, 1, sample.stderr || sample.stdout);
+  const sampleResult = JSON.parse(sample.stdout);
+  assert.equal(sampleResult.operation, 'dataset process validate');
+  assert.equal(sampleResult.status, 'completed');
+  assert.ok(existsSync(sampleResult.replyTemplate));
+  assert.match(readFileSync(sampleResult.replyTemplate, 'utf8'), /校验/);
+
   const sessionFile = join(cwd, 'private-session', 'session.json');
   const env = { TIANGONG_LCA_SESSION_FILE: sessionFile };
   const doctor = runBin(binPath, ['doctor', '--json'], cwd, env);
   assertSuccessfulExit(doctor);
-  const checks = JSON.parse(doctor.stdout).checks;
+  assert.ok(existsSync(JSON.parse(doctor.stdout).replyTemplate));
+  for (const command of ['doctor', 'auth']) {
+    const help = runBin(binPath, [command, '--help', '--json'], cwd, env);
+    assertSuccessfulExit(help);
+    assert.equal(JSON.parse(help.stdout).command, command);
+  }
+  const checks = JSON.parse(doctor.stdout).data.configuration.checks;
   for (const key of [
     'TIANGONG_LCA_API_BASE_URL',
     'TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY',
@@ -1654,7 +1707,7 @@ function assertProductionBootstrap(binPath, cwd) {
     const result = runBin(binPath, ['auth', command, '--json'], cwd, env);
     assert.ifError(result.error);
     assert.equal(result.status, 1, result.stderr || result.stdout);
-    assert.equal(JSON.parse(result.stdout).status, 'login-required');
+    assert.equal(JSON.parse(result.stdout).data.receipt.status, 'login-required');
     assert.equal(result.stderr, '');
   }
   assert.equal(existsSync(sessionFile), false, 'readiness checks must not create a session');

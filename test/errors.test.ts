@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadDistModule } from './helpers/load-dist-module.js';
-import { CliError, toErrorPayload } from '../src/lib/errors.js';
+import { CliError, toErrorPayload } from '../src/shared/errors.js';
 
-async function loadDistErrorsModule(): Promise<typeof import('../src/lib/errors.js')> {
-  return loadDistModule('src/lib/errors.js');
+async function loadDistErrorsModule(): Promise<typeof import('../src/shared/errors.js')> {
+  return loadDistModule('src/shared/errors.js');
 }
 
 test('CliError stores code, exitCode, and details', () => {

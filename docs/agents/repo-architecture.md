@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: 9717d8e45665f6a1b43fe8e17e2d8953b63ad56c
-lastReviewedNote: 'CLI #472: reviewed calculation help and human output, with the stable study command, machine output, owner assets, release inputs and validation gates unchanged.'
+lastReviewedAt: 2026-11-11
+lastReviewedCommit: 188b901c08aea4787090e8f3ad5e6df757920b61
+lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -41,21 +41,46 @@ related:
   - ../../DEV_CN.md
 ---
 
-Review note, 2026-10-05: CLI #403 prepares 0.1.25 from merged task-pinned PCR source #401 / PR #402 at main `ab4d851a92767b57378c08f3f4ab24ce0d78a8c5`. The package version and eight directly bound fixture values advance. npm latest remains 0.1.24 and cli-v0.1.25 is absent at preparation; publication still requires the existing four-platform merge-tag and native pnpm OIDC/provenance route. Runtime source, dependencies, lockfile, exports, authorization and release workflows remain unchanged.
-
-Review note, 2026-10-02: CLI #398 prepares the separate version-only 0.1.24 release from native OAuth error repair PR #397 at main `0240ec8c2e3c2c20589c55713dd16b6a38899141`. Only package identity and eight directly bound fixtures advance. Runtime, dependencies, lock, exports, authorization and workflows remain unchanged. At preparation npm latest is 0.1.23 and cli-v0.1.24 is absent; publication and provenance verification still require the canonical release workflow.
-
-Review note, 2026-09-24: CLI #370 changes only the package version and directly bound fixture constants; module ownership, SDK 0.4.1/spec 0.2.3 data flow, runtime rules and public exports remain as reviewed for #368.
-
 The `src/runtime.ts` public facade and bounded `src/lib/runtime/**` owners expose package/Node/asset identity through one read-only API and `runtime describe`. [The runtime distribution contract](runtime-distribution-contract.md) separates this package observation from complete component/dependency provenance, host ABI readiness and task authorization. `src/main.ts` admits supported architecture tuples before loading user configuration and bypasses dotenv for runtime commands. The manifest/manager/cache/lease/exec owners are under `src/lib/runtime/**`, and the no-Node POSIX/PowerShell bootstrap is under `scripts/bootstrap/`. Product component assembly remains downstream.
 
 Managed-host launch selection stays in the generic CLI manager. Dedicated protocol/server/receiver modules hand the exact verified manifest to a declared Node host through a one-use IPC handshake. Original manifest bytes, selected host fields and application argv are owned snapshots; the receiver uses the existing cache/compatibility owners and shared work-directory guards. Product hosts retain their own task, account and business authorization. Cancellation ends handshake admission before child termination, and execution leases remain until output/process closure.
 
-`dataset-save-draft-reference-intent.ts` composes the shared #289 strict selection/evaluator and complete-body observation with the owner execution contract. `dataset-save-draft-run.ts` owns fresh preflight/predispatch, action ledger and recovery; `dataset-command.ts` awaits admission before POST. Default gates and the original ledger domain remain unchanged. [The exact-reference contract](exact-reference-intent-contract.md#guarded-flow-owner-drafts) defines caller snapshots and admission fields.
+## 0.2.0 command layers
+
+`src/cli-composition.ts` resolves production defaults once, and `src/cli.ts` routes the typed Dataset, Review, environment and authentication adapters and delegates their public parsing and presentation to `src/commands/`. Retained runtime protocols keep their authorization and execution contracts. Old business roots and generic Dataset compatibility routes are removed; there is no alias or fallback dispatcher. The migration comparison records the exact removed surface.
+
+- `src/cli-deps.ts`: internal composition dependencies, result types and shared failure projection, without package exports.
+- `src/commands/`: strict CLI argument/help handling, bounded output and local artifact coordination. Auth service, Release, admin, package tools, classification maintenance and ordinary maintenance have bounded modules; Study, PCR and runtime parsing also lives here; specialized result schemas and safety checks retain their own contracts.
+- `src/application/`: Dataset identity, query/cursor rules, statistics selection/grouping, content diff/patch, reference discovery, supplied-translation application, and Dataset/Review write use cases with typed IO ports; no filesystem/network transport or CLI command construction.
+- `src/adapters/`: authenticated exact reads/search, existing contract and validation helpers, Model calculations, Source attachment transfer and authenticated write dispatch. `private-mutation-journal.ts` shares private-file/locking primitives while each operation retains its own receipt, unknown-outcome and readback policy.
+- `src/shared/`: result types, safe file IO, platform-aware continuation quoting, error projection and installed template lookup.
+- `assets/reply-templates/`: Markdown guidance selected by actual outcome.
+
+Core commands project readable text help and machine help from the same factual manifests. Dataset action options/defaults and unavailable actions reflect the actual parser; translations has its own group discovery, and retained service/maintenance/package tools are discoverable without changing their output protocols. Root and classification discovery expose bounded structured help and content-bound local pagination. Authentication presentation reuses the existing OAuth, session and exact-identity implementations through an injected execution port. The common envelope stores the unchanged receipt under `data.receipt`; standalone output writes only that receipt. Public receipt parsing is unchanged. Doctor separates local runtime/configuration observations from an explicit public Auth health GET, which never refreshes sessions or verifies actor permission.
+
+Dataset uses one typed command router for all eight object types. Model `build-resulting-process` and its `aggregate` alias share a canonical operation and implementation. Calculation inputs are explicit snapshots; exact remote Process lookups never fall back to latest. Source uploads verify selected bytes and independent readback, preserve failed references and do not save Source content.
+
+`src/commands/dataset-discovery.ts` owns query result presentation. Model graph metadata never enters identity context; explicit Process exchange projections are labeled incomplete content. Statistics adapts bounded visible-row reads and uses `src/lib/process-statistics/summary.ts` directly, without a second legacy scan or Markdown-report workflow; count drift, repeated identities and scan bounds remain partial observations. `contract` exposes verified released public definitions rather than retired authoring/identity workflow gates. Executed checks and omitted layers belong to validation reports.
+
+Create and save are separate service intents. Ordinary saves reuse server content CAS. Model writes use the existing atomic model service with no implicit Process mutations or create-conflict fallback; existing graph metadata is preserved while composition graph changes follow the explicit Model content. Delete and Model save disclose when expected-content comparisons occur only before dispatch. Durable local intents prohibit replay after an unknown mutation outcome. Exact existing service rejection codes are interpreted by a pure application policy; known no-effect refusals preserve only safe code/category fields and a durable rejected result. Network failures, 5xx, unknown codes, malformed/mismatched decision receipts and post-acknowledgment readback failures remain unknown. A repeated rejected request returns its original refusal without dispatch.
+
+Review adapts the existing business contract: one submission root with server-related data, current participant queries/materials, reviewer draft save and separate reviewer decision. Historical packages and server round links are not fabricated. See the [service comparison](../analysis/cli-interface-comparison.md#现有业务服务与本次实施基线) for the boundary against deferred target semantics.
+
+Imports flow from composition to commands to application; adapters implement ports and reuse shared runtime helpers. Application may use pure shared result types and type-only domain report shapes. Presentation and filesystem modules stay out of application. Existing public library subpaths and Release/runtime/PCR protocols keep their own contracts.
+
+## Dependency and operation boundaries
+
+The complete source boundary test covers commands, application, adapters, shared facilities and library owners. The emitted import/re-export/dynamic-import graph must be acyclic. Type-only imports use declaration-level `import type`, avoiding empty runtime imports under verbatim module syntax. Library dependencies on shared modules are limited to pure errors and state-directory leaves; CLI lock-failure projection preserves public error-class identity and never exposes private owner metadata. Literal graph checks complement behavioral tests; computed module loading and child execution retain their own integrity checks.
+
+Dataset capability discovery and command flags share a finite action type. Model graph/result generation, Process statistics and Source uploads use discriminated operation selections; uploads and remote scans are not described as local processing. External JSON remains runtime-validated at the use-case boundary. Typed write dispatch carries exact target, content, preconditions and the pre-dispatch hook rather than an arbitrary action string.
+
+Dataset and Review application use cases own readable preconditions, dry-run meaning, service acknowledgment interpretation and operation-specific unknown outcomes. Adapters supply actor/environment observation, exact reads, transport and durable private storage. Commands own executable continuations and reply guidance. Shared storage retains existing request/target hash keys and journal shapes; it provides no automatic retry or universal mutation state machine.
+
+`maintenance/contract/` separates types, pure values, scope parsing and artifact IO; the bounded entry owns plan parsing. `maintenance/apply/` separates preconditions, progress and execution. `model/result/` separates request normalization, exact source selection, payload calculation and projection. Canonical sorted-object hashes, insertion-order content hashes and newline-bound artifact bytes remain distinct domains.
 
 ## Repo Shape
 
-This repo is organized around one stable launcher plus a library-style `src/lib/**` tree that implements command families and shared helpers.
+The stable launcher composes current command/application/adapter layers and the shared `src/lib/**` protocol and algorithm owners. Unreferenced retired workflows are removed from source and package output.
 
 ## Stable Path Map
 
@@ -67,12 +92,16 @@ This repo is organized around one stable launcher plus a library-style `src/lib/
 | `src/auth-identity-receipt.ts` | supported offline parser/constants/types package subpath for safe identity receipts |
 | `src/command-spec.ts` | supported content-bound CommandSpec package subpath |
 | `src/runtime.ts` | supported installed CLI/Node/asset inspection and exact expectation API |
-| `src/lib/runtime/**` | bounded runtime descriptor, file integrity and distribution command owners |
+| `src/lib/runtime/**`, `src/commands/runtime/**` | runtime integrity/execution owners and separate command parsing/presentation |
 | `src/batch.ts` | stable re-export facade for the supported batch package subpath |
-| `src/lib/batch/**` | bounded acyclic owners for batch types, contracts/errors, run locks, projection, scheduler runtime, attempts/recovery, and engine coordination |
-| `src/lib/oauth-pkce.ts` | strict Supabase public-client authorize/token/refresh/UserInfo protocol with S256 PKCE and bounded responses |
-| `src/lib/oauth-loopback.ts` | exact literal-loopback callback, state/code validation, and shell-free platform browser launch |
-| `src/lib/**` | command-family implementations plus shared auth, IO, artifact, and remote helpers |
+| `src/lib/batch/**` | bounded acyclic owners for batch types, contracts/errors, projection, scheduler runtime, attempts/recovery, and engine coordination |
+| `src/lib/auth/oauth-pkce.ts` | strict Supabase public-client authorize/token/refresh/UserInfo protocol with S256 PKCE and bounded responses |
+| `src/lib/auth/oauth-loopback.ts` | exact literal-loopback callback, state/code validation, and shell-free platform browser launch |
+| `src/lib/locks/**` | shared lock, lock identity/types/errors and state-file locking, independent of Batch scheduling |
+| `src/lib/{auth,config,transport}/` | identity/session, public configuration and remote protocol owners |
+| `src/lib/{dataset,validation,model,maintenance}/` | object content, scientific checks, model calculation and ordinary maintenance |
+| `src/lib/{study,pcr,release,runtime}/` | separate service/runtime protocols |
+| `src/lib/platform/` | artifacts, filesystem, run identity, package version and hash facilities |
 | `test/**` | unit and launcher tests that back the coverage gate |
 | `scripts/assert-full-coverage.ts` | strict coverage enforcement |
 | `scripts/ci/**` | release-tag and package publication checks |
@@ -81,7 +110,7 @@ This repo is organized around one stable launcher plus a library-style `src/lib/
 
 ### Study lifecycle consumer
 
-`src/lib/study-{command,transport,intent,protocol,codec,export,renderer}.ts` owns the `study` namespace, bounded authenticated transport, immutable pre-dispatch request recovery and exact Edge-owned codec consumption. `assets/study-contract/v2/`, `v3/` and `v4/` are contained owner artifacts, with clean committed Edge source provenance and separate explicit gating for any future worktree candidate. It has no sibling/runtime install fallback. See [the Study contract](study-cli-contract.md); numerical rules, permissions and producer facts remain remote-owned, v3 analysis/report and v4 review/finalization/sharing keep independent negotiation. CLI transports exact current action projections and immutable-outcome/current-state pairs without deriving review or permission policy. V4 downloads bind the authorized export/share descriptor to the independently verified signed snapshot. Detached exports additionally consume the fixed `assets/study-renderer/v1/` package, independently pinned archive and issuer anchors; authenticity includes owner view bindings and exact HTML re-rendering from the captured verified complete module graph. Export files are completed in private staging before one final rename, with failed staging retained rather than path-based rollback; the Study contract states portable rename limits.
+`src/commands/study.ts` and `src/lib/study/{transport,intent,protocol,codec,export,renderer}.ts` own the `study` namespace, bounded authenticated transport, immutable pre-dispatch request recovery and exact Edge-owned codec consumption. `assets/study-contract/v2/`, `v3/` and `v4/` are contained owner artifacts, with clean committed Edge source provenance and separate explicit gating for any future worktree candidate. It has no sibling/runtime install fallback. See [the Study contract](study-cli-contract.md); numerical rules, permissions and producer facts remain remote-owned, v3 analysis/report and v4 review/finalization/sharing keep independent negotiation. CLI transports exact current action projections and immutable-outcome/current-state pairs without deriving review or permission policy. V4 downloads bind the authorized export/share descriptor to the independently verified signed snapshot. Detached exports additionally consume the fixed `assets/study-renderer/v1/` package, independently pinned archive and issuer anchors; authenticity includes owner view bindings and exact HTML re-rendering from the captured verified complete module graph. Export files are completed in private staging before one final rename, with failed staging retained rather than path-based rollback; the Study contract states portable rename limits.
 
 V6 method assessment adds an explicit family in the same owners and `assets/study-contract/v6/`; its schema discovery uses captured verified bytes. Owner config/evidence helpers preserve domain authority. Method report export4/view3 selects the independently pinned `assets/study-renderer/v3/` with its complete JS/MJS graph. Historical verifiers retain their original family and renderer; online downloads bind the exact selected descriptor. CLI never evaluates method rules or creates Worker contexts. See the Study contract for immutable provenance, unavailable values and actual runtime qualification debt.
 
@@ -103,7 +132,7 @@ The package root remains intentionally unsupported. Four explicit module subpath
 - `@tiangong-lca/cli/auth-identity-receipt` directly re-exports the exact safe-projection parser, schema/timeout constants, and receipt types from the existing auth owner. It exposes no fresh-session/network runner or test internals; internal `dist/src/lib/**` remains unreachable through package exports.
 - `@tiangong-lca/cli/command-spec` preserves `tiangong-foundry.command-spec.v1` exact keys and canonical authority over executable, argv, and artifact bindings. `display` never executes. Artifact bytes and SHA-256 are revalidated before sync or async `shell:false` spawn; timeout, abort, clock, sleep, resolver, and spawn are injectable, but timeout values must fit Node's timer maximum.
 - `@tiangong-lca/cli/batch` separates overall run identity from exact per-item identity/content/policy contracts. It preflights every projection before unsafe work and rechecks identity/content/policy/resource before resumed acceptance or claim. Identity drift or getter failure yields `BatchItemIdentityDriftError` plus `item_identity_drift` without execution, while every already-started worker drains before return. Escaping infrastructure errors atomically mark the scheduler fatal where serialized, close new claims, drain all claimed workers with `allSettled`, and reject with the first recorded cause. It caps concurrency at 64 and serializes matching exclusive keys through per-resource FIFO cursors whose heads enter a private binary min-heap. Blocked items remain unclaimed, later free keys can run, stop/rejection gates same-key successor exposure, and normal ready scheduling is near `O(n log k)`. It exposes input, resource-aware claim, and completion order and awaits a monotonic event sink. Read retry is explicitly classified and timer-capped; mutation retry is configuration-invalid, and consumed attempts can proceed only through explicit readback recovery.
-- The same batch subpath exposes one run-directory lock domain independent of identity. It uses a physical create-only state lock across processes and an owner/scope token in async context: only a still-live scope owned by the current holder may reenter, while siblings and callbacks inherited from a completed scope contend. The physical owner and top-level promise stay active until detached nested scopes drain; local waiters wake only after physical cleanup, and live or foreign-host locks are never stale-deleted. Public callers supply no PID, host, or ownership clock; timeout/poll inputs must be non-negative safe integers within Node's timer maximum.
+- The batch subpath re-exports the shared `locks/` run-lock primitives, using the same function and error-class objects as internal commands. Core CLI dependencies do not load the Batch facade or scheduler. One run-directory lock domain is independent of identity. It uses a physical create-only state lock across processes and an owner/scope token in async context: only a still-live scope owned by the current holder may reenter, while siblings and callbacks inherited from a completed scope contend. The physical owner and top-level promise stay active until detached nested scopes drain; local waiters wake only after physical cleanup, and live or foreign-host locks are never stale-deleted. Public callers supply no PID, host, or ownership clock; timeout/poll inputs must be non-negative safe integers within Node's timer maximum.
 
 The auth, CommandSpec and batch primitives contain no Foundry profile, LCA stage, endpoint, artifact filename, credential, or blocker taxonomy. Runtime inspection additionally owns the CLI package layout and file inventory only. Callers project those domain facts at their own boundary.
 
@@ -111,160 +140,57 @@ The auth, CommandSpec and batch primitives contain no Foundry profile, LCA stage
 
 The CLI talks to remote services directly through helper modules such as:
 
-- `src/lib/env.ts`
-- `src/lib/dotenv.ts`
-- `src/lib/credential-safety.ts`
-- `src/lib/oauth-pkce.ts`
-- `src/lib/oauth-loopback.ts`
-- `src/lib/supabase-session.ts`
-- `src/lib/auth-identity-receipt.ts`
-- `src/lib/supabase-client.ts`
-- `src/lib/supabase-rest.ts`
-- `src/lib/supabase-data-api-contract.ts`
-- `src/lib/remote.ts`
-- `src/lib/http.ts`
+- `src/lib/config/env.ts`
+- `src/lib/config/dotenv.ts`
+- `src/lib/auth/credential-safety.ts`
+- `src/lib/auth/oauth-pkce.ts`
+- `src/lib/auth/oauth-loopback.ts`
+- `src/lib/auth/supabase-session.ts`
+- `src/lib/auth/auth-identity-receipt.ts`
+- `src/lib/transport/supabase-client.ts`
+- `src/lib/transport/supabase-rest.ts`
+- `src/lib/transport/supabase-data-api-contract.ts`
+- `src/lib/transport/remote.ts`
+- `src/lib/transport/http.ts`
 
 This is where the CLI-owned remote access contract lives.
 
-`src/lib/env.ts` owns one bundled official Production public profile. `readRuntimeEnv`, `requireSupabaseRestRuntime`, the explicit resulting-process remote lookup, and doctor all resolve the same public URL/key/client/callback/region. Empty/blank configuration and exact Production aliases can complete that profile; any custom public field requires a complete matching environment instead. Known Production key/client values cannot be sent to a foreign URL. Headless bearer injection always requires an explicit destination/key. The configured-only `hasSupabaseRestRuntime` probe opts out of defaults so local publish executor selection never becomes remote merely because the package ships a profile. Session project/client binding and explicit remote/commit/approval gates remain unchanged; neither Skills nor a server-side token broker owns a second copy.
+`src/lib/config/env.ts` owns one bundled official Production public profile. `readRuntimeEnv`, `requireSupabaseRestRuntime`, the explicit resulting-process remote lookup, and doctor all resolve the same public URL/key/client/callback/region. Empty/blank configuration and exact Production aliases can complete that profile; any custom public field requires a complete matching environment instead. Known Production key/client values cannot be sent to a foreign URL. Headless bearer injection always requires an explicit destination/key. The configured-only `hasSupabaseRestRuntime` probe opts out of defaults so remote executor selection never becomes remote merely because the package ships a profile. Session project/client binding and explicit remote/commit/approval gates remain unchanged; neither Skills nor a server-side token broker owns a second copy.
 
 The preferred interactive path is `auth login`: a registered public OAuth client opens the browser, keeps state/verifier/code only in memory, receives one exact fixed-port `127.0.0.1` callback, exchanges the code with S256 PKCE, verifies UserInfo, and writes a schema-v2 access/refresh session atomically under the existing state lock. Refreshes use the OAuth token endpoint and never fall back to password sign-in. A validated token rotation first checkpoints the new refresh token in the bound private record with an expired access-token state; only successful UserInfo verification publishes a usable session. This preserves recovery after a profile outage without treating cached identity as verification. A token-endpoint HTTP 400 RFC `invalid_grant` or unambiguous Supabase `refresh_token_not_found` retires only the exact rejected record under the existing session/state locks, so later commands require login without resubmitting it. The native code is accepted only from the legacy matching numeric `code` plus `error_code`, or the versioned string `code` envelope. Mixed RFC/native fields, unknown native codes and provider messages supply no terminal authority. UserInfo errors never retire a rotation checkpoint. Network, rate-limit, upstream and protocol failures retain recovery state and return a sanitized `SUPABASE_OAUTH_REFRESH_UNAVAILABLE` result; re-read comparisons prevent late responses from replacing or deleting a newer login or a different project/client session. When disk caching is enabled, every session reuse and refresh candidate is bound to the current private file; deletion or a different project/client record suppresses stale process memory. Memory-only mode retains its own authoritative record, and late responses require that exact record to still exist. `auth status` examines only the bound local record and marks itself not online-verified; `auth whoami` reuses the live redacted identity receipt; `auth doctor-auth` combines local readiness and live identity, returning a human login handoff before network access when the local OAuth session is missing. An explicitly configured loopback tuple selects a distinct local-only diagnostic up front, reusing bounded current-user and actual token/client checks; its current callback is configuration, not historical callback proof. Production/default doctor, whoami and the canonical identity-receipt contract retain their existing paths. `auth logout` removes only a matching local project/client session; the Next Connected applications surface owns grant revocation.
 
 `TIANGONG_LCA_ACCESS_TOKEN` is the explicit headless path. It is verified against Auth, cached only in process memory, never written to the session file, and has no automatic refresh/replay path. All remote command families consume the same resolved access-token interface, so OAuth does not fork database/Edge request code. There is no password/API-key bootstrap or alternate user bearer.
 
-### Canonical support reads
-
-`dataset-support-cache.ts` owns the OAuth-only `dataset support-cache export` adapter. It reuses current-user identity and Data API/exact-count pagination owners, performs two bounded observations, and publishes private raw row artifacts with an atomic completion marker. Foundry owns cache summarization and mappings; this adapter makes no transaction-snapshot or write-authority claim.
-
-### Workflow command families
-
-The widest feature families currently live in:
-
-- `src/lib/flow-*.ts`
-- `src/lib/dataset-*.ts`
-- `src/lib/*-qa.ts`
-- `src/lib/process-*.ts`
-- `src/lib/lifecyclemodel-*.ts`
-- `src/lib/lca-release.ts`
-- `src/lib/publish.ts`
-- `src/lib/run.ts`
-
-These files own the public CLI semantics for those workflows.
-
 ### LCI/LCIA data-release transport
 
-`src/lib/lca-release.ts` is deliberately a narrow authenticated adapter, not a second release control plane:
+`src/lib/release/lca-release.ts` is deliberately a narrow authenticated adapter, not a second release control plane:
 
-- `src/cli.ts` owns `release prepare|upload|finalize|approve|publish|readback-verify|unpublish|status|current|calculation-bundle|calculation-artifact|artifact-download` parsing, help, and human/JSON rendering.
+- `src/commands/release.ts` owns `release prepare|upload|finalize|approve|publish|readback-verify|unpublish|status|current|calculation-bundle|calculation-artifact|artifact-download` parsing, help, and human/JSON rendering.
 - The normal OAuth session supplies the user access token; the explicit headless actor token uses the same request adapter. No legacy bootstrap, service-role credential, or release-specific API key is accepted, and release payloads contain no credential-derived fingerprint.
 - Edge/Database assert the live `data_product_manager` role for private and mutating actions. CLI-side checks are input and integrity checks, never an authorization substitute.
 - Upload requires exactly the Unit Process and standalone LifecycleModel+Result profiles in both TIDAS and ILCD. Local size, SHA-256, media type, and profile/format cardinality are validated before requesting signed upload URLs.
 - Calculation Bundle projections, chunks, and ZIPs are file-first. The CLI writes atomically with private permissions, refuses overwrite without `--force`, and exposes downloaded bytes only after exact size and SHA-256 verification.
 - The result profile reuses existing TIDAS Process exchange and LCIA result structures. Schema identity/version policy and self-contained package closure are produced upstream by the release control plane and TIDAS tools, not reimplemented here.
 
-### Process maintenance and QA commands
+### Validation, references and ordinary maintenance
 
-Recent process maintenance commands extend the same native CLI layer instead of introducing a secondary orchestration surface:
+`dataset/contract.ts` reads the selected SDK and public rules. `validation/` owns schema/business, evidence, placeholder, multilingual and scientific checks without generating missing evidence. `dataset/remote-verify.ts` supplies exact reference observations to typed validation and maintenance. The [exact-reference contract](exact-reference-intent-contract.md) grants no write authority. Dataset writes use typed application ports, adapters and private mutation intents.
 
-- `src/lib/process-save-draft-run.ts`
-- `src/lib/process-payload-validation.ts`
-- `src/lib/process-scope-statistics.ts`
-- `src/lib/process-dedup-review.ts`
-- `src/lib/process-refresh-references.ts`
-- `src/lib/process-verify-rows.ts`
-- `src/lib/identity-preflight.ts`
-- `src/lib/process-flow-build-plan.ts`
-- `src/lib/process-qa.ts`
-- `src/lib/runtime-rulesets.ts`
+`maintenance/contract/` owns scope types, pure values and artifact IO; `maintenance/contract.ts` validates immutable plans. `pagination.ts` requires complete exact-count traversal with exact `id`/`version` identities. `plan.ts` freezes current-owner draft actions, before hashes, untouched-row and reference-impact proofs. `desired-payload.ts` loads only frozen hash-matching content.
 
-These modules share one contract:
+`remote.ts` owns current-session reads and platform save/delete or guarded derivative RPCs. `apply/` separates preconditions, durable progress and execution. Apply repeats completeness, ownership, state, drift and reference closure checks, requires exact plan/account confirmation and persists action proofs. Ordinary actions execute sequentially; flow delete-only parallel admission remains explicitly bounded and fenced by fresh global inbound evidence. Unknown outcomes require readback, never blind mutation replay.
 
-- `src/cli.ts` owns subcommand registration, help, and exit semantics
-- `process/flow identity-preflight` owns embedded/local candidate scan inputs, explicit hybrid-search remote candidate inputs, identity/fingerprint comparison, duplicate/manual-review decisions, and `identity-candidate-sources.json` provenance artifacts before any build-plan or generation step
-- `process/flow build-plan` validates minimum authoring contracts and writes standard gate artifacts before downstream materialization or publish handoff; materialize now creates canonical `processDataSet` / `flowDataSet` wrappers from plan fields when no canonical payload is supplied. Plan-only Process generation requires an explicit, non-empty intended application and its evidence binding instead of synthesizing workflow prose. Embedded canonical payloads keep their own documentation under the existing schema check. Semantic assessment of field meaning stays with the author/reviewer workflow; the CLI does not infer research goals or blacklist scientific identifiers.
-- `process save-draft` validates canonical payloads with `ProcessSchema` before remote writes and accepts `--target-user-id` as an account/write guard that must match the current CLI auth user and any visible draft owner
-- `flow publish-version` and `process publish-build` validate canonical payloads with `FlowSchema` / `ProcessSchema` before publish planning or handoff artifacts proceed
-- Process dataset writers forward nullable `modelVersion` with `modelId`. `publish run` derives an exact source LifecycleModel identity from canonical Process metadata when present, rejects a version without an id, and persists that pair for resulting Processes; it does not discover or substitute the latest Model revision. Missing `modelVersion` deliberately preserves the database's legacy same-version fallback
-- `publish run` writes a deterministic `verification-report.json` next to the final publish report so downstream automation can read blockers without parsing execution details
-- `runtime-rulesets` verifies the released spec 0.2.3 public-rule identity/content, prefers the equivalent SDK 0.4.1 public API, falls back only when that API is unavailable, and composes CLI-owned severity/phase/blocker/profile/local-mapping policy. `dataset-contract-ruleset` separately derives the CLI context-pack projection; neither reads the retired SDK mixed ruleset asset.
-- maintenance and QA commands still emit artifact-first local outputs and remain covered by the strict `src/**/*.ts` coverage gate
+`derivatives.ts` admits one exact current-owner draft Process through the guarded database contract. Accepted/queued is distinct from completion; independent verify compares the same request and a fresh database snapshot without changing primary payload or `modified_at`. `clear-account.ts` retains its current-account RLS filters, reference-safe order, dry-run/confirmation and complete readback.
 
-Process dimensional QA is split between `process-mass-balance.ts` (explicit exact reference evidence, unit-chain resolution, applicability and kg arithmetic) and `process-qa.ts` (existing classification, findings and artifact reports). `cli.ts` owns repeatable reference-file parsing and help. No remote lookup, dependency, credential path or Foundry-owned physical-unit implementation is added. Selected file and payload digests bind observations; canonical area-time and exact `kg*km`/`t*km` transport work are recognized nonmass units, while arbitrary composites remain unresolved. Transport work retains its quantities and references, stays outside material mass sums, and rejects unit tags that conflict with the selected reference-unit scale.
-
-Annual supply/production volume remains a separate evidence field. `process-required-fields.ts` preserves real single-object and multilingual values, recognizes only explicit historical missing markers, and retains unknown volume as `[]` with an authoring blocker. A quantitative reference or default/reference unit cannot supply annual production. `process-flow-build-plan.ts` preserves explicit annual input and emits an unknown array when evidence is absent. Legacy unresolved-trace metadata cannot waive the evidence requirement.
-
-`dataset-validation-layers.ts` binds recognized-row findings to the complete original payload using the existing canonical `sha256Json` contract. It projects separate `schema`, `authoring_evidence`, `content`, and `multilingual` results; SDK union language findings retain their complete field path, and the supplemental duplicate-language rule is confined to the annual-volume field rather than arbitrary classification arrays. Both Process draft command families consume `process-payload-validation.ts`; SDK parsing uses a deep clone and cannot alter execution-contract content. The aggregate invalid result is retained when authoring evidence is missing even if the SDK accepts the unknown representation. Layer results grant no write, publication, or provider-weight eligibility.
-
-`dataset-exact-reference-intent.ts` owns the [exact-reference input and evidence contract](exact-reference-intent-contract.md). `dataset-remote-verify.ts` retains row/reference collection, fresh actor identity, current-user RLS payload reads, observation caching and report output. Reference matching includes role so no path collision can change root policy. Current consumer and control-file facts are checked again before report publication; no mutation, retry or credential owner is added.
-
-### Dataset and lifecyclemodel governance commands
-
-Dataset-local governance now uses the same CLI-native command layer:
-
-- `src/lib/dataset-validate.ts`
-- `src/lib/dataset-save-draft-run.ts`
-- `src/lib/dataset-curation-queue.ts`
-- `src/lib/dataset-references-rewrite.ts`
-- `src/lib/dataset-maintenance-clear-account.ts`
-- `src/lib/dataset-maintenance-{contract,remote,plan,apply,verify}.ts`
-- `src/lib/dataset-maintenance-pagination.ts`
-- `src/lib/dataset-maintenance-alias-rewrite.ts`
-- `src/lib/dataset-maintenance-alias-request.ts`
-- `src/lib/dataset-maintenance-protected-artifacts.ts`
-- `src/lib/dataset-maintenance-protected-before.ts`
-- `src/lib/dataset-maintenance-protected-contract.ts`
-- `src/lib/dataset-maintenance-protected-preparation.ts`
-- `src/lib/dataset-maintenance-protected-toolchain.ts`
-- `src/lib/dataset-maintenance-protected-freeze.ts`
-- `src/lib/dataset-maintenance-protected-seal.ts`
-- `src/lib/dataset-maintenance-protected-run.ts`
-- `src/lib/dataset-maintenance-protected-verify.ts`
-- `src/lib/dataset-maintenance-support-validation.ts`
-- `src/lib/dataset-local.ts`
-- `src/lib/lifecyclemodel-save-draft-run.ts`
-- `src/lib/lifecyclemodel-graph.ts`
-
-These modules keep validation, entity-level curation queue build/next/verify state, reference rewrites, RLS-scoped account and exact-row maintenance, save-draft preparation, graph extraction, and local artifact reports inside the CLI instead of routing through skills or MCP transports.
-
-`lifecyclemodel-save-draft-run` selects create or update only after an exact visible-row lookup, then delegates to the existing actor-bound `save_lifecycle_model_bundle` Edge transport. The official Production OAuth client must be configured with the dedicated `EDGE-BUNDLE-01` database capability in addition to its retained general CLI, core read/write, and Next read/search grants; OAuth scopes do not grant database capabilities. The command report preserves the Edge application's sanitized `code` and `details` for actionable failures, but excludes the raw text held by the generic `REMOTE_REQUEST_FAILED` fallback.
-
-Execution-contract mode in `dataset-save-draft-run` is deliberately action-scoped rather than report-directory-scoped. The immutable input binds each ordered row to an `action_id@desired_sha256`, expected insert/update operation, before hash, and earlier-only dependencies. The append-only ledger is rooted in stable platform user state and names one file per owner/project/action identity, so copying a contract or output directory cannot create a replay path. A durable attempt without an outcome is recovered by exact current-owner state-0 payload readback only; terminal and unknown actions are never dispatched again, while unrelated actions may continue. Issue #232 keeps the dependency prefix on its existing serial loop and delegates only unique-target suffix claims, exclusive keys, and fatal stop to `runBoundedBatch`; `executeAction` continues to own PREPARED/readback/no-replay and report ordering.
-
-For each eligible action in commit or dry-run mode, the executor obtains the current token through `getAccessToken`, checks its user id and email against the contract owner, and updates the command transport with that token. The existing session layer reuses a fresh bound session and refreshes within its expiry window under its session locks; the action boundary does not force a token rotation. An owner mismatch fails before the durable attempt and dispatch.
-
-The row-level maintenance family is deliberately split by responsibility:
-
-- `contract` owns the versioned scope, immutable plan, action, approval, and report shapes.
-- `pagination` owns fail-closed PostgREST exact-count traversal for maintenance account scans and clear-account readbacks. It treats page size as a requested maximum, advances by actual returned length, verifies exact totals/ranges plus strict `id`/`version` identities, and builds per-table and aggregate completeness proofs.
-- `remote` owns current-session authentication, current-user RLS reads, exact `id` + `version` row lookup, reference-impact reads, action-scoped derivative snapshots, platform `save_draft` / `delete` / guarded owner-draft RPC execution, and audit correlation. It exposes no direct alias-dimension, derivative worker, or raw queue fallback.
-- `alias-request` and `protected-contract` own canonical protected execution request/approval/status parsing, exact count/hash bindings, server-window checks, and fail-closed response shapes.
-- `protected-artifacts` owns raw-byte SHA-256 reads with fatal UTF-8 decoding, private immutable `0700` directories and `0600` files, and atomic whole-directory publication for completed freeze/seal evidence sets. `protected-before` owns the shared complete-account, support, projected-reference, and stable 23-flow + 27-process derivative validation used by both capture and execution, including census-to-derivative `modified_at` cross-binding.
-- `protected-preparation` owns the pure canonical freeze/request/approval builders, exact human approval text contract, stable target derivation, and explicit rejection of superseded historical Step-2 plan identities. `protected-toolchain` validates released database, published CLI, and merged root-workspace evidence against the running CLI version and explicitly confirmed production project.
-- `protected-freeze` owns production-authenticated read-only preparation. It performs no server preflight, gate, admission, execution, or mutation call and writes only an unapproved alias request, complete 50-row baseline, freeze, approval request text/JSON, and zero-write report.
-- `protected-seal` owns completely offline approval recording. It receives no environment or remote client, preserves the human-returned UTF-8 bytes exactly, verifies explicit freeze/request/text/account/timestamp bindings, and writes approval artifacts without submitting execution.
-- `protected-run` owns the production-only full scan, server preflight, three ordered gate receipts, immutable attempt allocation, single admission transport, and status-only recovery state machine. Commit mode shares the preparation denylist so superseded historical approvals cannot bypass a fresh freeze; it never retries admission or falls back to Dev or the legacy whole-plan alias RPC.
-- `protected-verify` owns the terminal server proof plus independent current-user RLS cross-read of primary rows, audits, and all 23 flow + 27 process derivative snapshots. It compares only like-for-like hash domains: RLS canonical JSON to the approved plan, closure-hash-validated database action evidence to database snapshots, and snapshot SHA to terminal completion. Local artifacts or a server status alone cannot produce `passed`.
-- `alias-rewrite` owns the fixed two-dimension BAFU profile, reviewed target-reference derivation, closure counting, and arbitrary-precision decimal scaling. It never uses JavaScript binary floating point for exchange amounts.
-- `support-validation` validates frozen owner-draft FP/UG payload schemas plus embedded root UUID/version without importing publication behavior.
-- `plan` requires a complete exact-count account scan before writing `maintenance-scope.json`, `rls-visible-snapshot.json`, `protected-rows.jsonl`, `reference-impact-report.json`, `maintenance-plan.json`, and `dry-run-report.json`; newly generated plans bind the aggregate completeness proof into the plan hash. Alias plans additionally freeze `exchange-rewrite-plan.jsonl`, three support snapshots per batch, per-process exchange locators/hashes, desired payloads, and exact postconditions. Derivative rebuild plans additionally bind a database-produced snapshot for only the one target action; markdown/vector fields do not expand the account-wide scan.
-- `apply` requires another complete exact-count scan before approval or mutation, then re-runs a full-plan drift preflight, verifies `--approve-plan <sha256>` and `--confirm <email>`, and persists approval with the current proof. Ordinary actions remain sequential; the complete ordered alias plan is submitted once to `cmd_dataset_alias_plan_guarded` and is never decomposed into dimension or per-row writes. A derivative rebuild submits its frozen single action only to the guarded RPC and records `accepted`/`queued`, never `completed`; replay must recover the same durable request rather than enqueueing a duplicate. Approval alone never authorizes a derivative replay: `derivative-admission-attempt.json` is written only after the exact just-in-time preflight and immediately before the RPC call, then binds plan, action, snapshot, and actor for lost-response recovery. The ordinary sequential executor rejects derivative actions before any mutation transport. Apply records the operation-specific durable proof.
-- `verify` performs fresh remote readback independently of apply and writes `readback-verify-report.json`. Ordinary and alias paths retain their complete-account proofs. Derivative rebuild reads its durable request plus a fresh action-scoped database snapshot and returns only `pending`, `passed`, or `failed`; only terminal derivative freshness with unchanged primary preconditions may pass.
-
-`clear-account` applies the same paginator to its initial five-table snapshot, per-table commit checks, and one final fresh scan of all five tables. It reports success only when the final aggregate proof exists with zero rows; a failed final proof is preserved as `completed_with_failures` because earlier deletes may already have committed. An incomplete initial scan produces no snapshot/approval and cannot reach deletion. These proofs establish pagination completeness only while filtered membership/order is stable; they do not provide transaction-level or MVCC snapshot isolation, so hash/timestamp drift guards and quiescent-account operation remain part of the safety model.
-
-Ordinary V1 maintenance only permits current-user, `state_code=0`, exact-version `contacts`, `sources`, `flows`, and `processes` to become `save_draft` or `delete` actions. `merge-support-aliases` is narrower still: exactly two owner-draft batches (`time`, `length_time`), 52 draft rows, 59 selected exchanges, and 309 unrelated exchanges preserved, with reviewed factors and postcondition counts encoded as contract invariants. Source and target FP/UG plus all changed parents must be the current actor's `state_code=0`; public, foreign, or mixed visibility is rejected. It rewrites references and exchange amounts but does not delete support rows or change visibility.
-
-`rebuild-derivatives` is a third, non-primary-write profile and is bidirectionally bound to `action=rebuild_derivatives`. V1 requires exactly one exact-version `processes` row, `target_mode=owner_draft`, current actor ownership, `state_code=0`, and exactly the `extracted_md` plus `embedding_ft` components. Multiple actions, another table or component set, public/foreign/non-draft state, and primary-payload drift all fail closed. The process primary payload, owner/state, and `modified_at` are invariants rather than mutation targets.
-
-All mutation or asynchronous work admission continues through the public platform dataset command path. Direct SQL, service-role access, raw REST mutation, direct Edge calls, `admin embedding-run`, raw queue access, and Foundry-local delete/update/rebuild implementations are outside this architecture; Foundry may only prepare scope, invoke the CLI, and retain its artifacts.
+Alias, Length×time and Flow-identity repairs have no implementation or RPC consumer here. Their artifacts are not ordinary maintenance input. Historical evidence remains bound to the matching client; removal creates no write fallback or downstream workflow.
 
 ### Artifact and filesystem behavior
 
 Artifact materialization and local state handling cluster around:
 
-- `src/lib/artifacts.ts`
-- `src/lib/io.ts`
-- `src/lib/state-lock.ts`
+- `src/lib/platform/artifacts.ts`
+- `src/lib/platform/io.ts`
+- `src/lib/locks/state-lock.ts`
 
 If a task changes output layout, locking, or local run roots, inspect these first.
 
@@ -283,7 +209,7 @@ Repo-level maintenance gates are now split across:
 
 Important constraints:
 
-- `pnpm prepush:gate` remains the authoritative local proof for code changes and runs from the local pre-push hook; it includes the `test:package` toolchain/tarball consumer contract and exact 100% coverage
+- `pnpm prepush:gate` remains the authoritative local proof for code changes and runs from the local pre-push hook; it includes the `test:package` toolchain/tarball consumer contract, separate uninstrumented `test:entrypoints` launcher tests and exact 100% coverage
 - `ai-doc-lint` keeps the historical check identity, but its implementation should run `docpact`
 - `docpact` enforces that command-surface and release-gate changes also refresh or review the governed source docs
 - the merge-tag workflow is guarded so only the upstream repository can execute release tagging
@@ -309,7 +235,7 @@ Important constraints:
 
 This repository has a versioned local `pre-push` hook under `.githooks/pre-push` that delegates to `scripts/docpact-gate.sh` and then runs `pnpm prepush:gate`. The gate resolves the CLI through `scripts/docpact`, so local agent shells do not need bare `docpact` on `PATH`. The hook is the local guard for docpact config validation, enforced doc-governance linting, and the CLI test gate; ordinary GitHub push tests are replaced by this local gate plus release-time gates.
 
-Task PCR content uses `src/lib/pcr-snapshot-{contract,release,cache,tool,command}.ts` and the dedicated [task snapshot contract](pcr-snapshot-contract.md). The CLI prepares exact published compatible content into a separate data cache, retains task and installed reader pins, and forces those selectors during shell-free PCR consumption. PCR core remains the offline semantic owner.
+Task PCR content uses `src/commands/pcr.ts` and `src/lib/pcr/{contract,release,cache,tool}.ts` and the dedicated [task snapshot contract](pcr-snapshot-contract.md). The CLI prepares exact published compatible content into a separate data cache, retains task and installed reader pins, and forces those selectors during shell-free PCR consumption. PCR core remains the offline semantic owner.
 
 ## Process allocation admission and resulting-process lineage
 

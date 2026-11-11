@@ -4,8 +4,8 @@ import {
   __testInternals,
   withOptionalReviewReportReference,
   type ReviewReportOptionalityKind,
-} from '../src/lib/tidas-review-report-optionality.js';
-import type { SafeParseSchema } from '../src/lib/tidas-sdk-validation.js';
+} from '../src/lib/validation/tidas-review-report-optionality.js';
+import type { SafeParseSchema } from '../src/lib/validation/tidas-sdk-validation.js';
 
 const REPORT_KEY = 'common:referenceToCompleteReviewReport';
 

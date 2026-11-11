@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { __testInternals, fingerprintSecret, redactEmail } from '../src/lib/credential-safety.js';
+import {
+  __testInternals,
+  fingerprintSecret,
+  redactEmail,
+} from '../src/lib/auth/credential-safety.js';
 import { loadDistModule } from './helpers/load-dist-module.js';
 
 test('fingerprintSecret is stable and rejects empty values', () => {
@@ -18,8 +22,8 @@ test('redactEmail and normalization cover edge cases', () => {
 });
 
 test('credential-safety helpers behave the same from the built dist module', async () => {
-  const module = await loadDistModule<typeof import('../src/lib/credential-safety.js')>(
-    'src/lib/credential-safety.js',
+  const module = await loadDistModule<typeof import('../src/lib/auth/credential-safety.js')>(
+    'src/lib/auth/credential-safety.js',
   );
   assert.equal(module.redactEmail('abcdef@example.com'), 'ab****@example.com');
   assert.equal(module.fingerprintSecret('secret-value'), fingerprintSecret('secret-value'));

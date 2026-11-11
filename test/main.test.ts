@@ -37,8 +37,8 @@ test('main writes stdout and stderr from CLI results', async () => {
 
     assert.equal(exitCode, 2);
     assert.equal(stdout, '');
-    assert.match(stderr, /"code":"INPUT_REQUIRED"/u);
-    assert.match(stderr, /Missing required --input value\./u);
+    assert.match(stderr, /"code":"UNKNOWN_COMMAND"/u);
+    assert.match(stderr, /Unknown command 'process auto-build'/u);
   } finally {
     process.stdout.write = originalStdoutWrite;
     process.stderr.write = originalStderrWrite;
@@ -157,7 +157,10 @@ integrationTest('bin entrypoint executes successfully in a child process', () =>
     });
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /"ok":true/u);
+    const value = JSON.parse(result.stdout);
+    assert.equal(value.operation, 'doctor');
+    assert.equal(value.status, 'completed');
+    assert.equal(value.data.configuration.ok, true);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -177,5 +180,8 @@ integrationTest('dist/main.js executes successfully when run directly in a child
   });
 
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /"ok":true/u);
+  const value = JSON.parse(result.stdout);
+  assert.equal(value.operation, 'doctor');
+  assert.equal(value.status, 'completed');
+  assert.equal(value.data.configuration.ok, true);
 });

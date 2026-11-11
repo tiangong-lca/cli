@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { studyRendererRoot } from '../../src/lib/study-renderer.js';
+import { studyRendererRoot } from '../../src/lib/study/renderer.js';
 import path from 'node:path';
 import { generateKeyPairSync, sign } from 'node:crypto';
-import { loadStudyRenderer } from '../../src/lib/study-renderer.js';
-import { studyDigest, studyJson } from '../../src/lib/study-protocol.js';
+import { loadStudyRenderer } from '../../src/lib/study/renderer.js';
+import { studyDigest, studyJson } from '../../src/lib/study/protocol.js';
 
 export const EXPORT_TIME = '2026-11-03T00:00:00Z';
 export function exportEnvironment(): NodeJS.ProcessEnv {

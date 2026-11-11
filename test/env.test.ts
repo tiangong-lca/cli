@@ -7,7 +7,7 @@ import {
   maskSecret,
   readRuntimeEnv,
   resolveEnv,
-} from '../src/lib/env.js';
+} from '../src/lib/config/env.js';
 
 test('resolveEnv prefers a present env key', () => {
   const resolved = resolveEnv(
@@ -127,6 +127,15 @@ test('buildDoctorReport records canonical TianGong LCA env keys', () => {
   assert.equal(report.ok, true);
   const accessTokenCheck = report.checks.find((check) => check.key === 'TIANGONG_LCA_ACCESS_TOKEN');
   assert.equal(accessTokenCheck?.source, 'env');
+  assert.equal(accessTokenCheck?.valuePreview, '[redacted]');
+  assert.ok(
+    !JSON.stringify(
+      buildDoctorReport(
+        { TIANGONG_LCA_ACCESS_TOKEN: 'tiny' },
+        { loaded: false, path: '', count: 0 },
+      ),
+    ).includes('tiny'),
+  );
   const publishableCheck = report.checks.find(
     (check) => check.key === 'TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY',
   );
@@ -147,7 +156,8 @@ test('buildDoctorReport records canonical TianGong LCA env keys', () => {
 });
 
 test('built runtime and source expose the same official bootstrap and doctor behavior', async () => {
-  const built = await loadDistModule<typeof import('../src/lib/env.js')>('src/lib/env.js');
+  const built =
+    await loadDistModule<typeof import('../src/lib/config/env.js')>('src/lib/config/env.js');
   assert.deepEqual(built.readRuntimeEnv({}), readRuntimeEnv({}));
   assert.equal(
     built.resolveEnv({ key: 'A', required: false, description: 'demo' }, {}).present,

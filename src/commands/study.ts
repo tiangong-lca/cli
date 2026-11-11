@@ -1,0 +1,385 @@
+import { parseArgs } from 'node:util';
+import path from 'node:path';
+import type { CommandIO as CliResult } from '../shared/command-result.js';
+import type { FetchLike } from '../lib/transport/http.js';
+import { readStudyIntent, readStudyJson } from '../lib/study/intent.js';
+import {
+  STUDY_COMMANDS,
+  STUDY_REPORT_COMMANDS,
+  STUDY_REVIEW_COMMANDS,
+  STUDY_ADVANCED_COMMANDS,
+  STUDY_METHOD_COMMANDS,
+  studyFailure,
+  studyObject,
+  type StudyApiVersion,
+} from '../lib/study/protocol.js';
+import { runStudyRequest, type StudyCommandReport } from '../lib/study/transport.js';
+import { readFileSync } from 'node:fs';
+import {
+  verifyStudyCodecArtifact,
+  STUDY_V6_CODEC_MANIFEST_SHA256,
+  studyCodecRoot,
+} from '../lib/study/codec.js';
+import { runStudyExportFiles } from '../lib/study/export.js';
+
+const HELP = `Usage: tiangong-lca study <action> [--input request.json] [--json]
+
+LCA calculation projects: prepare a model, run calculations, and read results.
+
+Actions:
+  capabilities | create | get | list | resources | archive | select-revision
+  schema request | response --api-version 6
+  method evidence register | get --api-version 6
+  method assessment request | get | task get | task wait | task cancel --api-version 6
+  member set
+  model source resolve | model source get | model prepare | model get
+  revision create | save | get | freeze
+  scenario create | save | get | freeze
+  run submit | get | cancel
+  task get | wait | cancel
+  artifact download --input descriptor-request.json --output result.json [--force]
+  request recover --intent-file /absolute/path/to/intent.json
+  analysis request | get | task get | task wait | task cancel
+  analysis parameters --input baseline-selector.json [--api-version 5]
+  report create | save | get | freeze | resources
+  export request | get [--api-version 4 for finalized v4 exports]
+  actions --input resource-selector.json
+  member set --api-version 4 --input reviewer-grant.json
+  comment append | list
+  review record | list | delegation issue | delegation revoke | delegation list
+  report current | view | finalize
+  share create | get | view | list | revoke
+  share download --input share-request.json --output-dir report --anchors trusted-keys.json --expected selected-export.json
+  export download --input artifact-request.json --output-dir report --anchors trusted-keys.json --expected selected-export.json
+  export verify (--directory report | --bundle bundle.json) --anchors trusted-keys.json --expected selected-export.json
+
+Inputs are operation fields as JSON; request/schema/key identities may be supplied.
+Mutations retain the exact request in private local state before dispatch.
+Recover a lost reply with its original intent; recovery never creates a new key.
+--state-dir chooses retained request state; no cache cleanup deletes it or outputs.
+Task selectors require studyId and typed resource; raw job IDs are not accepted.
+task wait: --wait-ms (default 30000, max 60000), --poll-ms (default 1000).
+A wait budget can return waiting:true; HTTP success is not computation completion.
+--timeout-ms defaults to 30000 (max 60000). No automatic mutation retry.
+Use auth login/status/doctor-auth for the existing configured OAuth session.
+Installing this CLI grants no project access or runtime activation.
+Calculation projects, model preparation, scenarios, runs and task status use v2.
+Use capabilities to check the available operations before starting a calculation.
+Optional analysis and reporting use v3.
+Optional actions/comments/reviews/current/view/finalize/share use v4; report view returns safe JSON.
+--api-version 4 explicitly selects v4 member/export/capability operations.
+--api-version 6 explicitly selects method evidence/assessment/report/review/share and export4/renderer3.
+Method evidence is recorded_unverified; unavailable results remain null. No scientific approval is implied.
+--api-version 5 selects advanced analysis/catalog/report/review/share/export and manifest3 verification.
+Only analysis parameters defaults to v5; existing command defaults and saved journals stay unchanged.
+V5 does not manage project members. Canonical config strings and complete settings come from explicit input;
+CLI hashes with the owner codec and never computes sensitivity or uncertainty facts.
+Review decisions require the actual server-issued bound delegation in OAuth context.
+CLI never issues first-party authority or switches credentials to obtain it.
+--api-version 3 selects v3 for capabilities/resources/task/artifact commands.
+No automatic downgrade; current rights/capabilities still govern every operation.
+Official HTML export additionally requires qualified receipt/renderer verification.
+`;
+
+function integer(value: string | boolean | undefined, fallback: number, minimum: number): number {
+  const result =
+    value === undefined
+      ? fallback
+      : typeof value === 'string' && /^\d+$/u.test(value)
+        ? Number(value)
+        : NaN;
+  if (!Number.isSafeInteger(result) || result < minimum || result > 60_000)
+    studyFailure('INVALID_ARGS');
+  return result;
+}
+
+export async function runStudyCommand(
+  subcommand: string | null | undefined,
+  args: string[],
+  fetchImpl: FetchLike,
+  env: NodeJS.ProcessEnv,
+): Promise<CliResult> {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args: [...(subcommand ? [subcommand] : []), ...args],
+      allowPositionals: true,
+      strict: true,
+      options: {
+        help: { type: 'boolean', short: 'h' },
+        json: { type: 'boolean' },
+        input: { type: 'string' },
+        'intent-file': { type: 'string' },
+        'state-dir': { type: 'string' },
+        output: { type: 'string' },
+        force: { type: 'boolean' },
+        'timeout-ms': { type: 'string' },
+        'wait-ms': { type: 'string' },
+        'poll-ms': { type: 'string' },
+        'api-version': { type: 'string' },
+        anchors: { type: 'string' },
+        expected: { type: 'string' },
+        directory: { type: 'string' },
+        bundle: { type: 'string' },
+        'output-dir': { type: 'string' },
+      },
+    });
+  } catch {
+    return studyFailure('INVALID_ARGS');
+  }
+  const { values, positionals } = parsed;
+  const action = positionals.join(' ');
+  if (values.help || !action) return { exitCode: 0, stdout: HELP, stderr: '' };
+  const versionFlag = values['api-version'];
+  if (
+    versionFlag !== undefined &&
+    versionFlag !== '2' &&
+    versionFlag !== '3' &&
+    versionFlag !== '4' &&
+    versionFlag !== '5' &&
+    versionFlag !== '6'
+  )
+    studyFailure('INVALID_ARGS');
+  if (action === 'schema request' || action === 'schema response') {
+    if (
+      versionFlag !== '6' ||
+      Object.keys(values).some((key) => !['json', 'api-version'].includes(key))
+    )
+      studyFailure('INVALID_ARGS');
+    const root = studyCodecRoot(undefined, 'v6');
+    const sources = new Map<string, Buffer>();
+    verifyStudyCodecArtifact(
+      readFileSync(new URL('manifest.json', root)),
+      STUDY_V6_CODEC_MANIFEST_SHA256,
+      (name) => {
+        const bytes = readFileSync(new URL(name, root));
+        sources.set(name, bytes);
+        return bytes;
+      },
+      'v6',
+    );
+    return {
+      exitCode: 0,
+      stdout: sources.get(`${positionals[1]}.schema.json`)!.toString('utf8'),
+      stderr: '',
+    };
+  }
+  if (action === 'export verify' || action === 'export download' || action === 'share download') {
+    if (versionFlag === '2' || (action === 'share download' && versionFlag === '3'))
+      studyFailure('UNSUPPORTED_SCHEMA');
+    if (
+      !values.anchors ||
+      !values.expected ||
+      values.output ||
+      values.force ||
+      values['intent-file'] ||
+      values['wait-ms'] !== undefined ||
+      values['poll-ms'] !== undefined
+    )
+      studyFailure('INVALID_ARGS');
+    if (
+      action === 'export verify'
+        ? Boolean(values.directory) === Boolean(values.bundle) ||
+          Boolean(values.input) ||
+          Boolean(values['output-dir'])
+        : !values.input ||
+          !values['output-dir'] ||
+          Boolean(values.bundle) ||
+          Boolean(values.directory)
+    )
+      studyFailure('INVALID_ARGS');
+    const report = await runStudyExportFiles(
+      action === 'export verify' ? 'verify' : 'download',
+      {
+        anchorsFile: values.anchors,
+        expectedFile: values.expected,
+        directory: values.directory,
+        bundleFile: values.bundle,
+        inputFile: values.input,
+        outputDirectory: values['output-dir'],
+        timeoutMs: integer(values['timeout-ms'], 30_000, 1),
+        apiVersion:
+          versionFlag === '6'
+            ? 'v6'
+            : versionFlag === '5'
+              ? 'v5'
+              : action === 'share download' || versionFlag === '4'
+                ? 'v4'
+                : 'v3',
+        downloadKind: action === 'share download' ? 'share' : 'export',
+      },
+      fetchImpl,
+      env,
+    );
+    return {
+      exitCode: 0,
+      stdout: values.json
+        ? `${JSON.stringify(report)}\n`
+        : `LCA calculation export verification\n${JSON.stringify(report, null, 2)}\n`,
+      stderr: '',
+    };
+  }
+  if (
+    values.anchors ||
+    values.expected ||
+    values.directory ||
+    values.bundle ||
+    values['output-dir']
+  )
+    studyFailure('INVALID_ARGS');
+  if (
+    ['analysis', 'report', 'export', 'review', 'comment', 'share', 'method'].includes(
+      positionals[0],
+    ) &&
+    !Object.hasOwn(STUDY_REPORT_COMMANDS, action) &&
+    !Object.hasOwn(STUDY_REVIEW_COMMANDS, action) &&
+    !Object.hasOwn(STUDY_ADVANCED_COMMANDS, action) &&
+    !Object.hasOwn(STUDY_METHOD_COMMANDS, action)
+  )
+    studyFailure('CAPABILITY_UNAVAILABLE');
+  if (positionals[0] === 'method' && versionFlag !== '6') studyFailure('UNSUPPORTED_SCHEMA');
+  if (versionFlag === '6' && !Object.hasOwn(STUDY_METHOD_COMMANDS, action))
+    studyFailure('UNSUPPORTED_SCHEMA');
+  const advancedOnly = action === 'analysis parameters';
+  if (advancedOnly && versionFlag !== undefined && versionFlag !== '5')
+    studyFailure('UNSUPPORTED_SCHEMA');
+  if (versionFlag === '5' && !Object.hasOwn(STUDY_ADVANCED_COMMANDS, action))
+    studyFailure('UNSUPPORTED_SCHEMA');
+  const recovering = action === 'request recover';
+  const waiting =
+    action === 'task wait' ||
+    action === 'analysis task wait' ||
+    action === 'method assessment task wait';
+  const reporting = Object.hasOwn(STUDY_REPORT_COMMANDS, action);
+  const reviewing =
+    Object.hasOwn(STUDY_REVIEW_COMMANDS, action) && !Object.hasOwn(STUDY_COMMANDS, action);
+  if (recovering && versionFlag !== undefined) studyFailure('INVALID_ARGS');
+  if (
+    reviewing &&
+    versionFlag !== undefined &&
+    versionFlag !== '4' &&
+    versionFlag !== '5' &&
+    versionFlag !== '6'
+  )
+    studyFailure('UNSUPPORTED_SCHEMA');
+  if (reporting && versionFlag === '2') studyFailure('UNSUPPORTED_SCHEMA');
+  if (
+    versionFlag === '4' &&
+    action !== 'capabilities' &&
+    !Object.hasOwn(STUDY_REVIEW_COMMANDS, action)
+  )
+    studyFailure('UNSUPPORTED_SCHEMA');
+  if (
+    versionFlag !== undefined &&
+    versionFlag !== '4' &&
+    versionFlag !== '5' &&
+    versionFlag !== '6' &&
+    !reporting &&
+    !reviewing &&
+    ![
+      'capabilities',
+      'resources',
+      'task get',
+      'task wait',
+      'task cancel',
+      'artifact download',
+    ].includes(action)
+  )
+    studyFailure('INVALID_ARGS');
+  const apiVersion: StudyApiVersion | undefined = recovering
+    ? undefined
+    : versionFlag === '6'
+      ? 'v6'
+      : advancedOnly || versionFlag === '5'
+        ? 'v5'
+        : reviewing || versionFlag === '4'
+          ? 'v4'
+          : reporting || versionFlag === '3'
+            ? 'v3'
+            : 'v2';
+  const operation =
+    apiVersion === 'v6'
+      ? STUDY_METHOD_COMMANDS[action]
+      : apiVersion === 'v5'
+        ? STUDY_ADVANCED_COMMANDS[action]
+        : apiVersion === 'v4'
+          ? action === 'capabilities'
+            ? 'capability.read'
+            : STUDY_REVIEW_COMMANDS[action]
+          : STUDY_COMMANDS[action];
+  if (!operation && !recovering) studyFailure('INVALID_ARGS');
+  if (
+    (recovering && (!values['intent-file'] || values.input || values.output || values.force)) ||
+    (!recovering && values['intent-file']) ||
+    (values.force && action !== 'artifact download') ||
+    (!waiting && (values['wait-ms'] !== undefined || values['poll-ms'] !== undefined))
+  )
+    studyFailure('INVALID_ARGS');
+  if (!recovering && operation !== 'capability.read' && !values.input)
+    studyFailure('STUDY_INPUT_REQUIRED');
+  const timeoutMs = integer(values['timeout-ms'], 30_000, 1);
+  const input = recovering
+    ? readStudyIntent(path.resolve(values['intent-file'] as string)).request
+    : values.input
+      ? readStudyJson(path.resolve(values.input))
+      : {};
+  const selectedOperation = recovering
+    ? String((input as Record<string, unknown>).operation)
+    : operation;
+  const options = {
+    env,
+    fetchImpl,
+    timeoutMs,
+    stateDir: values['state-dir'],
+    outputPath: values.output,
+    force: values.force,
+    recoverFile: values['intent-file'],
+    apiVersion,
+  };
+  const deadline = performance.now() + (waiting ? integer(values['wait-ms'], 30_000, 0) : 0);
+  let report: StudyCommandReport & { waiting?: boolean } = await runStudyRequest(
+    selectedOperation,
+    input,
+    options,
+  );
+  if (waiting) {
+    const pollMs = integer(values['poll-ms'], 1000, 1);
+    while (true) {
+      // The contained codec has validated the task resource/selection already.
+      const execution = (report.data.value as { execution: Record<string, unknown> }).execution;
+      if (
+        ['completed', 'failed', 'cancelled', 'blocked', 'stale'].includes(String(execution.status))
+      ) {
+        report = { ...report, waiting: false };
+        break;
+      }
+      const remaining = deadline - performance.now();
+      if (remaining <= 0) {
+        report = { ...report, waiting: true };
+        break;
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, Math.min(pollMs, remaining)));
+      if (performance.now() >= deadline) {
+        report = { ...report, waiting: true };
+        break;
+      }
+      report = await runStudyRequest(operation, input, {
+        ...options,
+        timeoutMs: Math.max(1, Math.floor(Math.min(timeoutMs, deadline - performance.now()))),
+      });
+    }
+  }
+  const task =
+    studyObject(report.data.value) && studyObject(report.data.value.execution)
+      ? report.data.value.execution
+      : undefined;
+  const failedTask =
+    waiting && task && ['failed', 'cancelled', 'blocked', 'stale'].includes(String(task.status));
+  return {
+    exitCode: failedTask ? 1 : 0,
+    stdout: values.json
+      ? `${JSON.stringify(report)}\n`
+      : `LCA calculation: ${report.operation}\n${JSON.stringify(report, null, 2)}\n`,
+    stderr: '',
+  };
+}

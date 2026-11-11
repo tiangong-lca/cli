@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CliError } from '../src/lib/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
+import { CliError } from '../src/shared/errors.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import {
   buildSupabaseAuthHeaders,
   createSupabaseDataClient,
@@ -13,7 +13,7 @@ import {
   runSupabaseArrayQuery,
   runSupabaseMutation,
   runSupabaseQuery,
-} from '../src/lib/supabase-client.js';
+} from '../src/lib/transport/supabase-client.js';
 
 type PostgrestErrorLike = {
   code: string;
@@ -72,7 +72,7 @@ test('requireSupabaseRestRuntime, URL derivation, and auth headers follow the sh
     'https://example.supabase.co',
   );
   assert.equal(
-    deriveSupabaseProjectBaseUrl('https://example.supabase.co/rest/v1'),
+    deriveSupabaseProjectBaseUrl('https://example.supabase.co/rest/v1///'),
     'https://example.supabase.co',
   );
   assert.equal(
@@ -89,6 +89,10 @@ test('requireSupabaseRestRuntime, URL derivation, and auth headers follow the sh
   );
   assert.throws(
     () => deriveSupabaseProjectBaseUrl('https://example.supabase.co/unsupported/path'),
+    (error) => error instanceof CliError && error.code === 'SUPABASE_REST_BASE_URL_INVALID',
+  );
+  assert.throws(
+    () => deriveSupabaseProjectBaseUrl('///'),
     (error) => error instanceof CliError && error.code === 'SUPABASE_REST_BASE_URL_INVALID',
   );
 
@@ -799,4 +803,62 @@ test('createSupabaseDataClient returns configured rest and functions base URLs',
   assert.ok(client);
   assert.equal(restBaseUrl, 'https://example.supabase.co/rest/v1');
   assert.equal(functionsBaseUrl, 'https://example.supabase.co/functions/v1');
+});
+
+test('mutation failures preserve structured PostgREST errors without assuming optional fields', async () => {
+  await assert.rejects(
+    runSupabaseMutation(
+      Promise.resolve({
+        status: 403,
+        error: { message: 'permission denied', code: 42, details: 42, hint: 42 },
+      } as never),
+      'https://example.supabase.co/rest/v1/flows',
+    ),
+    (error) => {
+      assert.ok(error instanceof CliError);
+      assert.equal(error.code, 'REMOTE_REQUEST_FAILED');
+      assert.deepEqual(error.details, {
+        code: null,
+        message: 'permission denied',
+        details: null,
+        hint: null,
+      });
+      return true;
+    },
+  );
+  const fetch = createSupabaseFetch(
+    async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      text: async () => '{"ok":true}',
+    }),
+    1000,
+  );
+  const response = await fetch('https://example.supabase.co/rest/v1/flows');
+  assert.equal(await response.text(), '{"ok":true}');
+});
+
+test('permission-denied reads retain structured errors and never return content', async () => {
+  await assert.rejects(
+    runSupabaseQuery(
+      Promise.resolve({
+        data: null,
+        status: 403,
+        error: { code: '42501', message: 'permission denied', details: null, hint: null },
+      } as never),
+      'https://example.supabase.co/rest/v1/flows',
+    ),
+    (error) => {
+      assert.ok(error instanceof CliError);
+      assert.equal(error.code, 'REMOTE_REQUEST_FAILED');
+      assert.deepEqual(error.details, {
+        code: '42501',
+        message: 'permission denied',
+        details: null,
+        hint: null,
+      });
+      return true;
+    },
+  );
 });

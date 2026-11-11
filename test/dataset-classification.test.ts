@@ -10,8 +10,8 @@ import {
   runDatasetClassificationAudit,
   runDatasetClassificationChildren,
   runDatasetClassificationPath,
-} from '../src/lib/dataset-classification.js';
-import type { DotEnvLoadResult } from '../src/lib/dotenv.js';
+} from '../src/lib/dataset/classification.js';
+import type { DotEnvLoadResult } from '../src/lib/config/dotenv.js';
 
 const dotEnvStatus: DotEnvLoadResult = {
   loaded: false,
@@ -811,7 +811,7 @@ test('executeCli exposes dataset classification children, path, and apply action
     }),
   );
   assert.equal(pathResult.exitCode, 0);
-  assert.equal(JSON.parse(pathResult.stdout).code, '1080');
+  assert.equal(JSON.parse(pathResult.stdout).data.code, '1080');
 
   const blocked = await executeCli(
     ['dataset', 'classification', 'children', '--type', 'process', '--parent', 'missing'],

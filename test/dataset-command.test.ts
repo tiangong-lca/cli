@@ -1,3 +1,4 @@
+import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 import { processTransportFixture } from './helpers/process-allocation-fixture.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -6,9 +7,9 @@ import {
   createDatasetRecord,
   resolveDatasetCommandTransport,
   saveDraftDatasetRecord,
-} from '../src/lib/dataset-command.js';
-import { CliError } from '../src/lib/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
+} from '../src/lib/dataset/command.js';
+import { CliError } from '../src/shared/errors.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,
@@ -89,7 +90,7 @@ test('dataset command helper posts create and save-draft payloads with normalize
     transport,
     table: 'flows',
     id: '11111111-1111-1111-1111-111111111111',
-    payload: { flowDataSet: {} },
+    payload: flowReferenceFixture(),
     extraData: {
       model_id: null,
       rule_verification: false,
@@ -117,9 +118,7 @@ test('dataset command helper posts create and save-draft payloads with normalize
   assert.deepEqual(JSON.parse(observed[0]?.body ?? '{}'), {
     table: 'flows',
     id: '11111111-1111-1111-1111-111111111111',
-    jsonOrdered: {
-      flowDataSet: {},
-    },
+    jsonOrdered: flowReferenceFixture(),
     modelId: null,
     ruleVerification: false,
   });
@@ -156,7 +155,7 @@ test('dataset command helper rejects ok:false application payloads', async () =>
         transport,
         table: 'flows',
         id: '44444444-4444-4444-4444-444444444444',
-        payload: { flowDataSet: {} },
+        payload: flowReferenceFixture(),
       }),
     (error) => {
       assert.ok(error instanceof CliError);
@@ -209,7 +208,7 @@ test('dataset command helper normalizes optional metadata helpers and rejects ma
         transport,
         table: 'flows',
         id: '55555555-5555-5555-5555-555555555555',
-        payload: { flowDataSet: {} },
+        payload: flowReferenceFixture(),
       }),
     (error) => {
       assert.ok(error instanceof CliError);
@@ -261,4 +260,27 @@ test('dataset command helper carries an optional complete before image and omits
   assert.deepEqual(legacy.jsonOrdered, payload);
   assert.deepEqual(guarded.expectedJsonOrdered, before);
   assert.deepEqual(guarded.jsonOrdered, payload);
+});
+
+test('Process creation forwards its exact source Model version without extra lookups', async () => {
+  const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
+  await createDatasetRecord({
+    transport: {
+      functionsBaseUrl: 'https://example.supabase.co/functions/v1',
+      publishableKey: 'fixture',
+      accessToken: 'token',
+      timeoutMs: 1000,
+      fetchImpl: async (url, init) => {
+        requests.push({ url: String(url), body: JSON.parse(String(init?.body)) });
+        return makeResponse({ ok: true, status: 200, body: '{"ok":true,"data":{}}' });
+      },
+    },
+    table: 'processes',
+    id: '22222222-2222-2222-2222-222222222222',
+    payload: processTransportFixture(),
+    extraData: { modelId: '33333333-3333-3333-3333-333333333333', modelVersion: '01.01.021' },
+  });
+  assert.equal(requests.length, 1);
+  assert.match(requests[0]!.url, /app_dataset_create$/);
+  assert.equal(requests[0]!.body.modelVersion, '01.01.021');
 });

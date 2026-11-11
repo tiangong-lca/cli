@@ -18,9 +18,9 @@ checkPaths:
   - scripts/bootstrap/**
   - test/runtime-*.test.ts
   - package.json
-lastReviewedAt: 2026-10-05
-lastReviewedCommit: 4fcbcebf2d18a08f201556db63e7faa7657ffac7
-lastReviewedNote: 'Reviewed CLI #401 separate PCR data cache and explicit installed-tool binding using existing download/CommandSpec boundaries; runtime trust anchors and managed Node authorization remain unchanged.'
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 related:
   - docs/agents/repo-architecture.md
   - docs/agents/repo-validation.md
@@ -59,7 +59,7 @@ The compatibility manifest must bind exact component versions, archive/content d
 
 POSIX/PowerShell bootstrap scripts are generic C1 release assets and require no Node/pnpm. Their adjacent skill-delivered `bootstrap-lock.json` separately binds script bytes, bootstrap protocol and the already published product manifest URL/digest. C1 scripts must not embed an unpublished F1 digest. Neither task input nor an environment variable can replace the trust anchor. Rosetta selection requires actual Apple Silicon hardware proof and must select native arm64; Intel Mac, Windows arm64 and Linux musl do not receive a fallback.
 
-Full release qualification requires all four supported CI hosts, no-global-Node/pnpm copied bootstrap cases, interruption/concurrency/corruption tests, exact 100% source coverage and an independently verified public C1 package. Foundry F1/component/cold-start qualification follows in its owning repository and the workspace integration task. No local routine registry publish or new credential fallback is introduced.
+Full release qualification requires all four supported CI hosts, no-global-Node/pnpm copied bootstrap cases, interruption/locks/corruption tests, exact 100% source coverage and an independently verified public C1 package. Foundry F1/component/cold-start qualification follows in its owning repository and the workspace integration task. No local routine registry publish or new credential fallback is introduced.
 
 ## Managed components and execution
 

@@ -6,7 +6,7 @@ import {
   DATA_API_CONTRACT,
   DATA_API_RELATION_CONSUMERS,
   DATA_API_RPC_TARGETS,
-} from '../src/lib/supabase-data-api-contract.js';
+} from '../src/lib/transport/supabase-data-api-contract.js';
 
 type Finding = {
   file: string;
@@ -20,7 +20,7 @@ type ScanOptions = {
   rpcTargets?: Record<string, unknown>;
 };
 
-const ALLOWED_ROUTE_BUILDER = 'src/lib/supabase-data-api-contract.ts';
+const ALLOWED_ROUTE_BUILDER = 'src/lib/transport/supabase-data-api-contract.ts';
 const STANDARD_FROM_RECEIVERS = /(?:Array|Buffer|Object|Uint8Array)$/u;
 
 function sourceFiles(root: string): string[] {

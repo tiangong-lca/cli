@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { CliError } from '../errors.js';
+import { CliError } from '../../shared/errors.js';
 import type { RuntimeFileFact } from './types.js';
 
 export function runtimeError(code: string, message: string): never {

@@ -5,15 +5,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadDistModule } from './helpers/load-dist-module.js';
-import { executeCli } from '../src/cli.js';
-import { CliError } from '../src/lib/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
+import { CliError } from '../src/shared/errors.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import {
   __testInternals,
-  normalizeLifecyclemodelResultingProcessRequest,
   runLifecyclemodelBuildResultingProcess,
-  type LifecyclemodelResultingProcessRequest,
-} from '../src/lib/lifecyclemodel-resulting-process.js';
+} from '../src/lib/model/resulting-process.js';
+import { normalizeLifecyclemodelResultingProcessRequest } from '../src/lib/model/result/request.js';
+import { type LifecyclemodelResultingProcessRequest } from '../src/lib/model/result/base.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,
@@ -26,9 +25,9 @@ type PublicationKey = 'publicationAndOwnership' | 'common:publicationAndOwnershi
 const VERSION = '00.00.001';
 
 async function loadDistLifecyclemodelModule(): Promise<
-  typeof import('../src/lib/lifecyclemodel-resulting-process.js')
+  typeof import('../src/lib/model/resulting-process.js')
 > {
-  return loadDistModule('src/lib/lifecyclemodel-resulting-process.js');
+  return loadDistModule('src/lib/model/resulting-process.js');
 }
 
 async function loadDistLifecyclemodelTestInternals(): Promise<typeof __testInternals> {
@@ -1650,7 +1649,7 @@ test('runLifecyclemodelBuildResultingProcess rejects projections without an exte
   }
 });
 
-test('executeCli can run lifecyclemodel build-resulting-process end to end', async () => {
+test('resulting-process operation creates its complete artifact set', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-lm-cli-e2e-'));
   const modelPath = path.join(dir, 'model.json');
   const processPath = path.join(dir, `proc-cli_${VERSION}.json`);
@@ -1707,33 +1706,13 @@ test('executeCli can run lifecyclemodel build-resulting-process end to end', asy
   });
 
   try {
-    const result = await executeCli(
-      ['lifecyclemodel', 'build-resulting-process', '--input', requestPath, '--json'],
-      {
-        env: process.env,
-        dotEnvStatus: {
-          loaded: false,
-          path: '/tmp/.env',
-          count: 0,
-        },
-        fetchImpl: async () => ({
-          ok: true,
-          status: 200,
-          headers: {
-            get: () => 'application/json',
-          },
-          text: async () => '{}',
-        }),
-      },
-    );
-
-    assert.equal(result.exitCode, 0);
-    assert.equal(result.stderr, '');
-
-    const payload = JSON.parse(result.stdout) as JsonRecord;
+    const payload = await runLifecyclemodelBuildResultingProcess({
+      inputPath: requestPath,
+      env: process.env,
+    });
     assert.equal(payload.status, 'prepared_local_bundle');
     assert.equal(payload.projected_process_count, 1);
-    assert.equal((payload.source_model as JsonRecord).reference_process_instance_id, 'cli-inst');
+    assert.equal(payload.source_model.reference_process_instance_id, 'cli-inst');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
