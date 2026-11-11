@@ -14,7 +14,7 @@ checkPaths:
   - AGENTS.md
   - src/lib/**
 lastReviewedAt: 2026-11-11
-lastReviewedCommit: a1f41e60c64954fe0caf9320785e7a79615417ac
+lastReviewedCommit: 188b901c08aea4787090e8f3ad5e6df757920b61
 lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
 ---
 

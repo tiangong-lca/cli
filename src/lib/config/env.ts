@@ -1,4 +1,5 @@
 import { DEFAULT_OAUTH_REDIRECT_URI } from '../auth/oauth-loopback.js';
+import { stripTrailingSlashes } from '../transport/url.js';
 
 export type EnvSpec = {
   key: string;
@@ -55,7 +56,7 @@ function isProductionBase(value: string): boolean {
     PRODUCTION_PROJECT_URL,
     `${PRODUCTION_PROJECT_URL}/functions/v1`,
     `${PRODUCTION_PROJECT_URL}/rest/v1`,
-  ].includes(value.replace(/\/+$/u, ''));
+  ].includes(stripTrailingSlashes(value));
 }
 
 export function hasProductionProfileMismatch(env: NodeJS.ProcessEnv): boolean {

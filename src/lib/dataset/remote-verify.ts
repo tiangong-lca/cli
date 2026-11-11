@@ -16,6 +16,7 @@ import {
   type LoadedExactReferenceIntent,
 } from './exact-reference-intent.js';
 import type { FetchLike } from '../transport/http.js';
+import { stripTrailingSlashes } from '../transport/url.js';
 import {
   createSupabaseDataClient,
   requireSupabaseRestRuntime,
@@ -565,7 +566,7 @@ function buildRemoteUrl(
   id: string,
   version: string | null,
 ): string {
-  const url = new URL(`${restBaseUrl.replace(/\/+$/u, '')}/${table}`);
+  const url = new URL(`${stripTrailingSlashes(restBaseUrl)}/${table}`);
   url.searchParams.set('id', `eq.${id}`);
   if (version) {
     url.searchParams.set('version', `eq.${version}`);
@@ -594,7 +595,7 @@ function buildRemotePayloadUrl(
   id: string,
   version: string | null,
 ): string {
-  const url = new URL(`${restBaseUrl.replace(/\/+$/u, '')}/${table}`);
+  const url = new URL(`${stripTrailingSlashes(restBaseUrl)}/${table}`);
   url.searchParams.set('select', 'id,version,user_id,state_code,modified_at,json,json_ordered');
   url.searchParams.set('id', `eq.${id}`);
   if (version === null) {

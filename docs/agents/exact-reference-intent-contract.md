@@ -17,8 +17,8 @@ checkPaths:
   - src/lib/dataset/command.ts
   - src/cli.ts
   - test/dataset-exact-reference-intent.test.ts
-lastReviewedAt: 2026-11-09
-lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedAt: 2026-11-11
+lastReviewedCommit: 188b901c08aea4787090e8f3ad5e6df757920b61
 lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 related:
   - ../../AGENTS.md

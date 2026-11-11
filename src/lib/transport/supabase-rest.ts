@@ -1,6 +1,7 @@
 // data-api-relations: processes
 import { CliError } from '../../shared/errors.js';
 import type { FetchLike } from './http.js';
+import { stripTrailingSlashes } from './url.js';
 import {
   createSupabaseDataClient,
   deriveSupabaseRestBaseUrl,
@@ -38,7 +39,7 @@ function buildProcessUrl(
     latestOnly?: boolean;
   },
 ): string {
-  const url = new URL(`${restBaseUrl.replace(/\/+$/u, '')}/processes`);
+  const url = new URL(`${stripTrailingSlashes(restBaseUrl)}/processes`);
   url.searchParams.set('select', 'id,version,json,modified_at,state_code');
   url.searchParams.set('id', `eq.${options.id}`);
 

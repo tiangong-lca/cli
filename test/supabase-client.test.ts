@@ -72,7 +72,7 @@ test('requireSupabaseRestRuntime, URL derivation, and auth headers follow the sh
     'https://example.supabase.co',
   );
   assert.equal(
-    deriveSupabaseProjectBaseUrl('https://example.supabase.co/rest/v1'),
+    deriveSupabaseProjectBaseUrl('https://example.supabase.co/rest/v1///'),
     'https://example.supabase.co',
   );
   assert.equal(
@@ -89,6 +89,10 @@ test('requireSupabaseRestRuntime, URL derivation, and auth headers follow the sh
   );
   assert.throws(
     () => deriveSupabaseProjectBaseUrl('https://example.supabase.co/unsupported/path'),
+    (error) => error instanceof CliError && error.code === 'SUPABASE_REST_BASE_URL_INVALID',
+  );
+  assert.throws(
+    () => deriveSupabaseProjectBaseUrl('///'),
     (error) => error instanceof CliError && error.code === 'SUPABASE_REST_BASE_URL_INVALID',
   );
 

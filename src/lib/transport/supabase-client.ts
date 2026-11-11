@@ -8,6 +8,7 @@ import {
 } from '../auth/oauth-loopback.js';
 import { requireOAuthClientId } from '../auth/oauth-pkce.js';
 import { isDataApiAuthRefreshReplaySafe } from './supabase-data-api-replay.js';
+import { stripTrailingSlashes } from './url.js';
 
 export type SupabaseAuthMode = 'oauth' | 'access_token';
 
@@ -163,7 +164,7 @@ export function requireSupabaseRestRuntime(
 }
 
 function normalizeBaseUrl(apiBaseUrl: string): string {
-  const normalized = apiBaseUrl.trim().replace(/\/+$/u, '');
+  const normalized = stripTrailingSlashes(apiBaseUrl.trim());
   if (!normalized) {
     throw new CliError('Cannot derive Supabase URLs from an empty API base URL.', {
       code: 'SUPABASE_REST_BASE_URL_INVALID',
