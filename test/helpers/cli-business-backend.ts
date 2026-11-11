@@ -244,10 +244,10 @@ export function createBusinessBackend() {
         response = json({ ok: true, data: { reviewId } });
       } else {
         if (!drafts.has(reviewId))
-          return json(
-            { ok: false, results: [{ reviewId, ok: false, code: 'REVIEW_DRAFT_REQUIRED' }] },
-            409,
-          );
+          return json({
+            ok: false,
+            results: [{ reviewId, ok: false, code: 'REVIEW_DRAFT_REQUIRED', status: 409 }],
+          });
         decisions.set(reviewId, String(body.decision));
         response = json({ ok: true, results: [{ reviewId, ok: true }] });
       }

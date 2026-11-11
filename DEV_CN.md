@@ -23,7 +23,7 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-11
-lastReviewedCommit: 3f86761eff9745d39a38ed4e3778398170048eb4
+lastReviewedCommit: 8a145ea331328dd139b1078cd526eb9ec37f9853
 lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
 related:
   - AGENTS.md

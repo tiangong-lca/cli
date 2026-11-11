@@ -336,6 +336,22 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
       assert.equal((materials.data as Json).historicalSnapshot, false);
       backend.assign(reviewId);
       await invoke(['review', 'list', '--role', 'reviewer'], businessReviewer);
+      if (type === 'process') {
+        const withoutDraft = await review(
+          'decide',
+          {
+            ...binding('process-approve-without-draft', businessReviewer),
+            reviewId,
+            expectedState: 1,
+            decision: 'approve',
+          },
+          businessReviewer,
+          1,
+        );
+        assert.equal(withoutDraft.outcome, 'service_rejected');
+        assert.equal((withoutDraft.error as Json).code, 'REVIEW_DRAFT_REQUIRED');
+        assert.equal((withoutDraft.error as Json).category, 'precondition');
+      }
       const draft = {
         ...binding(`${type}-draft`, businessReviewer),
         reviewId,
