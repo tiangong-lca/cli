@@ -414,6 +414,61 @@ test('HTTP Review refusal codes survive every supported mutation without exposin
   }
 });
 
+test('Review preserves documented endpoint refusals and recovers them without dispatch', async (t) => {
+  for (const [action, code, status, category] of [
+    ['submit', 'INVALID_DATASET_TABLE', 400, 'input'],
+    ['submit', 'ROOT_DATASET_NOT_OWNED', 403, 'authentication'],
+    ['resubmit', 'APPROVED_DATASET_IMMUTABLE', 409, 'conflict'],
+    ['comment', 'REVIEWER_REQUIRED', 403, 'authentication'],
+    ['comment', 'INVALID_COMMENT_JSON', 400, 'input'],
+    ['comment', 'INVALID_REVIEW_STATE', 409, 'conflict'],
+    ['comment', 'INVALID_COMMENT_STATE', 409, 'conflict'],
+    ['decide', 'REVIEWER_REQUIRED', 403, 'authentication'],
+    ['decide', 'REVIEW_COMMENT_NOT_PENDING', 409, 'conflict'],
+  ] as const) {
+    const refusal = { ok: false, code, message: 'Bearer hidden-secret' };
+    const f = setup(t, {
+      httpStatus: action === 'decide' ? 200 : status,
+      payload:
+        action === 'decide' ? { ok: false, results: [{ ...refusal, reviewId, status }] } : refusal,
+      ...(action === 'resubmit' ? { state: -1 } : {}),
+    });
+    const request =
+      action === 'submit'
+        ? submit
+        : action === 'resubmit'
+          ? { ...submit, reviewId, expectedState: -1, changeSummary: 'fixed' }
+          : {
+              ...base,
+              reviewId,
+              expectedState: 1,
+              ...(action === 'comment' ? { json: {} } : { decision: 'approve' }),
+            };
+    const first = await f.writer(action, request, false);
+    assert.equal(first.outcome, 'service_rejected', code);
+    assert.equal(first.error?.code, code);
+    assert.equal(first.error?.category, category);
+    assert.ok(!JSON.stringify(first).includes('hidden-secret'));
+    assert.deepEqual((await f.writer(action, request, false)).error, first.error);
+    assert.equal(f.calls.length, 1);
+  }
+});
+
+test('Review does not infer refusal from codes outside their service path or status', async (t) => {
+  for (const [httpStatus, code, status] of [
+    [403, 'REVIEWER_REQUIRED', undefined],
+    [403, 'REFERENCE_ACCESS_DENIED', undefined],
+    [409, 'REFERENCE_OWNER_UNRESOLVED', undefined],
+    [409, 'ROOT_DATASET_NOT_OWNED', undefined],
+    [409, 'ROOT_DATASET_NOT_OWNED', 403],
+  ] as const) {
+    const f = setup(t, { httpStatus, payload: { ok: false, code, status } });
+    assert.equal((await f.writer('submit', submit, false)).status, 'unknown', code);
+    assert.equal((await f.writer('submit', submit, false)).status, 'unknown', code);
+    assert.equal(f.calls.length, 1);
+  }
+});
+
 test('missing Review and target materials use the same absence category and runtime exit code', async (t) => {
   for (const options of [{ reviewMissing: true }, { noTarget: true }]) {
     const f = setup(t, options);

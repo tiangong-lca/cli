@@ -1,4 +1,8 @@
-import { applyServiceRejection, serviceRejection } from './service-rejection.js';
+import {
+  applyServiceRejection,
+  serviceRejection,
+  type ServiceRejectionRules,
+} from './service-rejection.js';
 import {
   datasetTables,
   editableTypes,
@@ -14,6 +18,30 @@ import { result, CommandInputError, type CommandResult } from '../shared/command
 import { contentDigest } from './dataset-content.js';
 
 export type ReviewMutationAction = 'submit' | 'resubmit' | 'comment' | 'decide';
+
+// Only refusals whose service branches precede durable writes qualify here.
+// Reference checks inside cmd_review_submit can follow reference creation.
+const submissionRefusals = {
+  INVALID_DATASET_TABLE: { status: 400, category: 'input' },
+  ROOT_DATASET_NOT_OWNED: { status: 403, category: 'authentication' },
+  APPROVED_DATASET_IMMUTABLE: { status: 409, category: 'conflict' },
+} satisfies ServiceRejectionRules;
+const reviewerRequired = { status: 403, category: 'authentication' } as const;
+const reviewRefusals: Record<ReviewMutationAction, ServiceRejectionRules> = {
+  submit: submissionRefusals,
+  resubmit: submissionRefusals,
+  comment: {
+    REVIEWER_REQUIRED: reviewerRequired,
+    INVALID_COMMENT_JSON: { status: 400, category: 'input' },
+    INVALID_REVIEW_STATE: { status: 409, category: 'conflict' },
+    INVALID_COMMENT_STATE: { status: 409, category: 'conflict' },
+  },
+  decide: {
+    REVIEWER_REQUIRED: reviewerRequired,
+    REVIEW_COMMENT_NOT_PENDING: { status: 409, category: 'conflict' },
+  },
+};
+
 export type ReviewMutationIntent = {
   binding: JsonObject;
   requestId: string;
@@ -254,7 +282,7 @@ export async function executeReviewWrite(
       if (payload.ok === false) {
         const selected =
           action === 'decide' && Array.isArray(payload.results) ? payload.results[0] : payload;
-        const rejection = serviceRejection(selected, status);
+        const rejection = serviceRejection(selected, status, reviewRefusals[action]);
         if (!rejection) throw new Error('Unproven rejection acknowledgement');
         applyServiceRejection(value, rejection);
       } else {

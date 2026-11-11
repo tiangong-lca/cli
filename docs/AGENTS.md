@@ -14,9 +14,9 @@ checkPaths:
   - docs/**
   - AGENTS.md
   - .docpact/config.yaml
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
-lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
+lastReviewedAt: 2026-11-11
+lastReviewedCommit: 3f86761eff9745d39a38ed4e3778398170048eb4
+lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

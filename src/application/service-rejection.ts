@@ -2,6 +2,9 @@ import type { CommandResult } from '../shared/command-result.js';
 import type { CommandErrorCategory } from '../shared/command-error-categories.js';
 
 export type ServiceRejection = { code: string; category: CommandErrorCategory };
+export type ServiceRejectionRules = Readonly<
+  Record<string, { status: number; category: CommandErrorCategory }>
+>;
 // Existing Edge pre-admission failures and transactional database rejection codes.
 // Unknown RPC failures, 5xx and arbitrary envelopes do not prove absence of effects.
 const rejectedCodes: Record<string, CommandErrorCategory> = {
@@ -24,7 +27,11 @@ const rejectedCodes: Record<string, CommandErrorCategory> = {
   MODEL_NOT_FOUND: 'not_found_or_not_visible',
   PGRST116: 'not_found_or_not_visible',
 };
-export function serviceRejection(payload: unknown, status = 200): ServiceRejection | null {
+export function serviceRejection(
+  payload: unknown,
+  status = 200,
+  endpointRules?: ServiceRejectionRules,
+): ServiceRejection | null {
   if (
     !((status >= 200 && status < 300) || [400, 401, 403, 404, 409, 422].includes(status)) ||
     typeof payload !== 'object' ||
@@ -38,11 +45,18 @@ export function serviceRejection(payload: unknown, status = 200): ServiceRejecti
     'results' in value ||
     ('status' in value && ![400, 401, 403, 404, 409, 422].includes(value.status as number)) ||
     value.ok !== false ||
-    typeof value.code !== 'string' ||
-    !Object.hasOwn(rejectedCodes, value.code)
+    typeof value.code !== 'string'
   )
     return null;
-  return { code: value.code, category: rejectedCodes[value.code]! };
+  const code = value.code;
+  if (Object.hasOwn(rejectedCodes, code)) return { code, category: rejectedCodes[code]! };
+  if (!endpointRules || !Object.hasOwn(endpointRules, code)) return null;
+
+  const rule = endpointRules[code]!;
+  // An Edge batch decision reports its bound item's rejection under HTTP 200.
+  if ((value.status ?? status) !== rule.status || (status !== 200 && status !== rule.status))
+    return null;
+  return { code, category: rule.category };
 }
 export class ServiceRejectedError extends Error {
   constructor(readonly receipt: ServiceRejection) {

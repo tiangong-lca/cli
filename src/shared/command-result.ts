@@ -10,7 +10,7 @@ export type CommandResult = {
   completeness: Record<string, unknown>;
   artifacts: Array<{ path: string; purpose: string; bytes: number }>;
   warnings: Array<{ code: string; message: string }>;
-  error: null | { category: string; code: string; message: string };
+  error: null | { category: CommandErrorCategory; code: string; message: string };
   nextActions: Array<{ description: string; command?: string }>;
   replyTemplate: string | null;
 };

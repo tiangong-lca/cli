@@ -202,6 +202,7 @@ test('classification failures retain actual blockers and redact unexpected upstr
   });
   assert.equal(result.exitCode, 1);
   assert.equal(parsed(result).error.code, 'CLASSIFICATION_NOT_FOUND');
+  assert.equal(parsed(result).error.category, 'not_found_or_not_visible');
   assert.equal(parsed(result).data.blockers[0].code, 'classification_parent_unknown');
   const output = path.join(directory(t), 'result.json');
   await runClassificationCommand(

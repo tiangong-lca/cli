@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
-lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
+lastReviewedAt: 2026-11-11
+lastReviewedCommit: 3f86761eff9745d39a38ed4e3778398170048eb4
+lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -122,6 +122,8 @@ Study tests exercise the contained owner codecs/renderers and exact selected API
 Core help must distinguish text and machine output for each advertised action, reject unavailable options before IO, expose actual action defaults and preserve canonical operation names for subgroup discovery and errors. Retained tools remain discoverable under their independent protocols. Output tests compare same-condition missing/invisible categories, unknown-count pagination, verified deletion continuations and attachment-preview templates.
 
 Write qualification distinguishes contract-backed no-effect refusals from unconfirmed effects. Safe codes/categories and original rejected receipts must survive fresh-process recovery without replay; raw service messages and credentials never enter the result or journal. Network loss, unrecognized/malformed/5xx acknowledgments and mismatched or mixed decision receipts remain unknown. Exercise lock errors through their CLI conversion while retaining public class identity and locking tests. Source-free installed tests establish client behavior separately from actual service transaction proof.
+
+Review refusal fixtures use the service's actual root ownership, approved dataset, and reviewer assignment codes. A reviewer decision can return HTTP 200 with a failed item bound to the requested review. Test that item's rejection and recovery through a fresh CLI process. Reference access or ownership checks can fail after earlier reference writes, so their receipts remain `unknown`.
 
 ## Actual service and installed qualification
 

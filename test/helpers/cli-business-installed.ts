@@ -549,9 +549,13 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
       ...binding('definitive-submit'),
       targets: [{ type: 'source', ...sourceIdentity }],
     };
-    backend.rejectReplies.set('app_dataset_submit_review', { status: 403, code: 'FORBIDDEN' });
+    backend.rejectReplies.set('app_dataset_submit_review', {
+      status: 403,
+      code: 'ROOT_DATASET_NOT_OWNED',
+    });
     const rejectedReview = await review('submit', refusedSubmit, businessActor, 1);
     assert.equal(rejectedReview.outcome, 'service_rejected');
+    assert.equal((rejectedReview.error as Json).code, 'ROOT_DATASET_NOT_OWNED');
     assert.equal((rejectedReview.error as Json).category, 'authentication');
     const postedReview = backend.calls.filter((call) =>
       call.path.endsWith('/app_dataset_submit_review'),
@@ -610,6 +614,27 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
     )!;
     const reviewId = String(own.id);
     backend.assign(reviewId);
+    const unassignedDecision = {
+      ...binding('unassigned-decision'),
+      reviewId,
+      expectedState: 1,
+      decision: 'approve',
+    };
+    const deniedDecision = await review('decide', unassignedDecision, businessActor, 1);
+    assert.equal(deniedDecision.outcome, 'service_rejected');
+    assert.equal((deniedDecision.error as Json).code, 'REVIEWER_REQUIRED');
+    assert.equal((deniedDecision.error as Json).category, 'authentication');
+    const deniedPosts = backend.calls.filter((c) =>
+      c.path.endsWith('/app_review_batch_decision'),
+    ).length;
+    assert.deepEqual(
+      (await review('decide', unassignedDecision, businessActor, 1)).error,
+      deniedDecision.error,
+    );
+    assert.equal(
+      backend.calls.filter((c) => c.path.endsWith('/app_review_batch_decision')).length,
+      deniedPosts,
+    );
     await review(
       'comment',
       { ...binding('lost-decision-draft', businessReviewer), reviewId, expectedState: 1, json: {} },

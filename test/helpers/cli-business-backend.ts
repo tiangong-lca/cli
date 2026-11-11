@@ -204,8 +204,16 @@ export function createBusinessBackend() {
       );
     } else if (endpoint === 'app_dataset_submit_review') {
       const row = rows.get(key(String(body.table), String(body.id), String(body.version)));
-      if (!row || row.user_id !== actor || row.state_code !== 0)
-        return json({ ok: false, code: 'DATA_NOT_EDITABLE' }, 409);
+      if (!row) return json({ ok: false, code: 'DATASET_NOT_FOUND' }, 404);
+      if (row.user_id !== actor) return json({ ok: false, code: 'ROOT_DATASET_NOT_OWNED' }, 403);
+      if (row.state_code !== 0)
+        return json(
+          {
+            ok: false,
+            code: row.state_code === 100 ? 'APPROVED_DATASET_IMMUTABLE' : 'DATA_UNDER_REVIEW',
+          },
+          409,
+        );
       const reviewId = randomUUID();
       reviews.set(reviewId, {
         id: reviewId,
@@ -224,8 +232,13 @@ export function createBusinessBackend() {
     ) {
       const reviewId = String(body.reviewId ?? (body.reviewIds as string[])[0]);
       const review = reviews.get(reviewId);
-      if (!review || actor !== businessReviewer)
-        return json({ ok: false, code: 'REVIEWER_REQUIRED' }, 403);
+      if (!review || actor !== businessReviewer) {
+        const code = review ? 'REVIEWER_REQUIRED' : 'REVIEW_NOT_FOUND';
+        const status = review ? 403 : 404;
+        return endpoint === 'app_review_batch_decision'
+          ? json({ ok: false, results: [{ reviewId, ok: false, code, status }] })
+          : json({ ok: false, code }, status);
+      }
       if (endpoint === 'app_review_save_comment_draft') {
         drafts.add(reviewId);
         response = json({ ok: true, data: { reviewId } });

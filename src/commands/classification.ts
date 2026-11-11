@@ -142,7 +142,7 @@ export async function runClassificationCommand(
         : 'Selected local classification entries read; no dataset fields were assigned.';
     if (report.status === 'blocked')
       value.error = {
-        category: 'not_found',
+        category: 'not_found_or_not_visible',
         code: 'CLASSIFICATION_NOT_FOUND',
         message: value.summary,
       };
