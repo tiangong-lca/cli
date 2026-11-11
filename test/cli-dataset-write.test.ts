@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync, readdirSync, readFileSync, chmodSync, mkdirSync } 
 import path from 'node:path';
 import os from 'node:os';
 import { datasetWriter } from '../src/adapters/dataset-write.js';
+import { isPrivateJournalFile } from '../src/adapters/private-mutation-journal.js';
 import { qualifyDatasetWrite } from '../src/adapters/dataset-write-checks.js';
 import { makeFlow } from './helpers/flow-content.js';
 import { datasetValidation } from '../src/adapters/dataset-local.js';
@@ -189,6 +190,17 @@ test('model create uses the existing atomic service with no generated mutations 
     assert.equal(failed.writes(), 1);
     assert.equal(failed.bodies[0]!.mode, 'create');
   }
+});
+
+test('journal admission applies POSIX mode checks and requires a regular file on every platform', () => {
+  const privateFile = { isFile: () => true, mode: 0o600 };
+  const sharedFile = { ...privateFile, mode: 0o644 };
+  const directory = { isFile: () => false, mode: 0o700 };
+  assert.equal(isPrivateJournalFile(privateFile, 'linux'), true);
+  assert.equal(isPrivateJournalFile(sharedFile, 'linux'), false);
+  assert.equal(isPrivateJournalFile(sharedFile, 'win32'), true);
+  assert.equal(isPrivateJournalFile(directory, 'linux'), false);
+  assert.equal(isPrivateJournalFile(directory, 'win32'), false);
 });
 
 test('unknown writes retain recovery, never replay, and reject changed request binding', async (t) => {

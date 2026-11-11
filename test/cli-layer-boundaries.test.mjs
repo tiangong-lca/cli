@@ -96,13 +96,13 @@ test('graph extraction includes multiline/type/side-effect/dynamic imports and d
   assert.deepEqual(
     moduleCycles(
       new Map([
-        ['/a.js', "import './b.js'"],
-        ['/b.js', "export { a } from './a.js'"],
+        [path.join(root, 'a.js'), "import './b.js'"],
+        [path.join(root, 'b.js'), "export { a } from './a.js'"],
       ]),
     ).length,
     1,
   );
-  assert.deepEqual(moduleCycles(new Map([['/a.js', "import './missing.js'"]])), []);
+  assert.deepEqual(moduleCycles(new Map([[path.join(root, 'a.js'), "import './missing.js'"]])), []);
   assert.equal(isTypeOnlyModule('export {};\n//# sourceMappingURL=types.js.map'), true);
   assert.equal(isTypeOnlyModule('export const value = 1;'), false);
 });

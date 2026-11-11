@@ -1,12 +1,20 @@
 import { runLockCommandError } from '../lib/locks/command-error.js';
 import { contentDigest as mutationDigest } from '../shared/json-content-digest.js';
-import { existsSync, lstatSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, type Stats } from 'node:fs';
 import path from 'node:path';
 import { withBatchRunLock } from '../lib/locks/run-lock.js';
 import { CommandInputError } from '../shared/command-result.js';
 import { writeCommandOutput } from '../shared/command-files.js';
 
 import type { MutationJournal } from '../application/operation-ports.js';
+
+export function isPrivateJournalFile(
+  stat: Pick<Stats, 'isFile' | 'mode'>,
+  platform: NodeJS.Platform,
+): boolean {
+  return stat.isFile() && (platform === 'win32' || (stat.mode & 0o077) === 0);
+}
+
 /** Private storage and two lock domains only. Callers own replay/acknowledgment policy. */
 export async function withMutationJournal<T>(
   options: {
@@ -39,8 +47,7 @@ export async function withMutationJournal<T>(
               path: file,
               read() {
                 if (!existsSync(file)) return null;
-                const stat = lstatSync(file);
-                if (!stat.isFile() || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0))
+                if (!isPrivateJournalFile(lstatSync(file), process.platform))
                   throw new CommandInputError(
                     'JOURNAL_UNSAFE',
                     'Recovery journal must be a private regular file.',
