@@ -15,7 +15,7 @@ checkPaths:
   - src/commands/**
 lastReviewedAt: 2026-11-12
 lastReviewedCommit: e5dcfaf578033019a80f470e0b02dd249f18d56d
-lastReviewedNote: 'CLI #477: reviewed local runtime setup, saved calculation retrieval and normal sparse LCIA applicability; no hosted activation or automatic native distribution is claimed.'
+lastReviewedNote: 'Reviewed local Model package installation, native readiness and independent full Study case acceptance; public release and other platform execution remain separate.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -57,9 +57,9 @@ lastReviewedNote: 'CLI #477: reviewed local runtime setup, saved calculation ret
 | 背景发现 | 显式公共/当前账号搜索，Flow/Process 匹配版本及状态过滤。 | 随代表性建模场景持续检验召回与选择信息。 |
 | 背景结果 | Process `results/get-result` 复用已有 HDF5 服务，解析结果身份并完整读取 LCI/LCIA；读取绑定及一次有界重启由适配层管理。 | 原生输入对多结果、版本变化和清单不完整保持明确诊断。 |
 | 输入准备 | Model `prepare` 组装显式图、所需数值文档及背景 LCI；远程依赖读取须显式开启。 | 持续覆盖更大及更多类型的业务模型。 |
-| 本地计算 | Model `calculate` 调用 Worker `model_calculate`，复用现有编译和求解核心；独立功能量、可提高预算及完整 Run 文件已实现。 | `setup model-calculation` 已支持引擎/方法缓存检查及配置复用；仍需原生组件安装分发、跨平台验收、性能和容量验证。该入口仍构建于 solver-worker crate，不能视作已分发的独立运行组件。 |
+| 本地计算 | Model `calculate` 调用 Worker `model_calculate`，复用现有编译和求解核心；独立功能量、可提高预算及完整 Run 文件已实现。 | `setup model-calculation --install` 已支持 macOS ARM64 本地包安装，包含重定位原生依赖和完整方法缓存；已有路径检查与配置复用保留。仍需公开发行分发、Linux/Windows 原生打包与执行验收、性能和容量验证。引擎构建于 solver-worker crate，不代表线上服务已启用。 |
 | 线上计算 | 已有 Study 的版本化项目、准备、运行、分析和报告协议。 | 无需创建 Study 的线上 Model 计算服务及受理/恢复；线上 Calculation 查询入口；本地 `calculation get/result --dir` 已支持摘要、LCI、LCIA 和活动量读取。 |
-| Study Skill | agent-skills 源码已补齐六阶段流程、资料收集/提取参考及本地 Model 命令；线上 Study 报告流程按需加载。 | 独立场景评估和已发布 CLI/原生组件组合的安装验收；源码完成不等于已发布。 |
+| Study Skill | agent-skills 源码已补齐七阶段流程、资料收集/提取参考、本地 Model 命令和本地报告；线上 Study 报告流程按需加载。 | 已按流程执行合成前景与真实背景的本地研究案例，覆盖数值预期、情景和报告；独立 Agent 自主评估及已发布 CLI/原生组件组合的安装验收分别进行。源码与本地候选完成不等于已发布。 |
 
 当前本地输入不要求调用方维护 hash 或服务器状态证明，内部计算身份与已发布 Study 协议隔离。聚合背景不重复展开或分配；完整零清单与读取不完整分别表达；完整方法中的稀疏因子定义不产生缺口警告。原始 Run 文件可直接读取，后续线上版本变化不使其失效。现有已发布版本不会因源码修改自动获得新增能力。
 

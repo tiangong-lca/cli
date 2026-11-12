@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - docs/interfaces/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: e5dcfaf578033019a80f470e0b02dd249f18d56d
-lastReviewedNote: 'CLI #477: reviewed local runtime setup, saved calculation retrieval and normal sparse LCIA applicability; no hosted activation or automatic native distribution is claimed.'
+lastReviewedCommit: 562cac6ee6f1a3af5dddce99fe9fb4d8930f3f8e
+lastReviewedNote: 'Reviewed local Model package installation, native readiness and independent full Study case acceptance; public release and other platform execution remain separate.'
 ---
 
 # CLI 目标接口设计
