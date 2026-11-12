@@ -106,12 +106,14 @@ export type DatasetAction =
   | 'save'
   | 'delete'
   | 'statistics'
+  | 'results'
+  | 'get-result'
   | 'upload-attachments';
 export type CanonicalDatasetAction = Exclude<DatasetAction, 'aggregate'>;
 export type DatasetOperation = (
   | { type: 'model'; action: 'graph' | 'build-resulting-process' }
   | { type: 'source'; action: 'upload-attachments' }
-  | { type: 'process'; action: 'statistics' }
+  | { type: 'process'; action: 'statistics' | 'results' | 'get-result' }
 ) & { request: JsonObject; inputPath: string };
 
 export type DatasetPorts = {
@@ -124,6 +126,7 @@ export type DatasetPorts = {
     limit: number,
     offset: number,
     state?: number,
+    scope?: 'public' | 'current-user',
   ): Promise<JsonObject>;
   operations(operation: DatasetOperation): Promise<JsonObject>;
   mutate(
@@ -156,7 +159,7 @@ export function actionsFor(type: DatasetType): DatasetAction[] {
     );
   if (['flow', 'process', 'source', 'contact'].includes(type)) actions.push('delete');
   if (type === 'model') actions.push('graph', 'build-resulting-process', 'aggregate');
-  if (type === 'process') actions.push('statistics');
+  if (type === 'process') actions.push('statistics', 'results', 'get-result');
   if (type === 'source') actions.push('upload-attachments');
   return actions;
 }

@@ -14,8 +14,8 @@ checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 763a3da
-lastReviewedNote: 'Reviewed state-100 Process discovery, separate HDF5 inventory acquisition, explicit background result binding and native verification limits; runtime contracts remain unchanged.'
+lastReviewedCommit: 095fcf8d9990461e7c764a32c50ddf653803c884
+lastReviewedNote: 'CLI #477: reviewed explicit search scopes and complete Process result reads, internal read recovery and low-friction calculation design; existing mutations and hosted protocols unchanged.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -49,6 +49,8 @@ lastReviewedNote: 'Reviewed state-100 Process discovery, separate HDF5 inventory
 ## Model 计算后续实施
 
 [Study 总体设计](../interfaces/study.md)和 [Model 计算设计](../interfaces/calculations.md)定义独立于 0.2.0 已有业务迁移的后续范围，不追加到本次迁移完成条件。Study 扩展为目标、资料、前景建模、背景选择及计算分析的完整研究流程，独立 Model 计算仍无需调用方预建 Study。这里记录源码核查结果和待交付项，不代表服务启用或新的科学验证。
+
+当前源码已补齐显式公共/当前账号搜索范围与 Flow/Process 状态过滤，并提供 `dataset process results`、`get-result` 的候选、概览、完整 LCI 和 LCIA 读取。读取适配层负责发布/运行上下文及一次有界重启，调用方无需填写 hash。输入准备和本地 Model 执行继续按下列阶段实施；现有已发布 0.2.0 的能力不会因源码变化自动升级。
 
 ### 已有基础与差距
 

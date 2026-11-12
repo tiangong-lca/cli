@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 899fe12a507c2cc3a454011c0918a57d65588968
-lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: 095fcf8d9990461e7c764a32c50ddf653803c884
+lastReviewedNote: 'CLI #477: reviewed explicit search scopes and complete Process result reads, internal read recovery and low-friction calculation design; existing mutations and hosted protocols unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -59,6 +59,8 @@ Managed-host launch selection stays in the generic CLI manager. Dedicated protoc
 Core commands project readable text help and machine help from the same factual manifests. Dataset action options/defaults and unavailable actions reflect the actual parser; translations has its own group discovery, and retained service/maintenance/package tools are discoverable without changing their output protocols. Root and classification discovery expose bounded structured help and content-bound local pagination. Authentication presentation reuses the existing OAuth, session and exact-identity implementations through an injected execution port. The common envelope stores the unchanged receipt under `data.receipt`; standalone output writes only that receipt. Public receipt parsing is unchanged. Doctor separates local runtime/configuration observations from an explicit public Auth health GET, which never refreshes sessions or verifies actor permission.
 
 Dataset uses one typed command router for all eight object types. Model `build-resulting-process` and its `aggregate` alias share a canonical operation and implementation. Calculation inputs are explicit snapshots; exact remote Process lookups never fall back to latest. Source uploads verify selected bytes and independent readback, preserve failed references and do not save Source content.
+
+Process result discovery and complete inventory reads use `application/process-results.ts` with a dedicated authenticated adapter. Caller selections remain Process/Result identities; the adapter owns publication/runtime pagination context and one bounded whole-read restart. Public/current-user search scopes are explicit; Flow/Process filtering uses the existing matched-version service contract.
 
 `src/commands/dataset-discovery.ts` owns query result presentation. Model graph metadata never enters identity context; explicit Process exchange projections are labeled incomplete content. Statistics adapts bounded visible-row reads and uses `src/lib/process-statistics/summary.ts` directly, without a second legacy scan or Markdown-report workflow; count drift, repeated identities and scan bounds remain partial observations. `contract` exposes verified released public definitions rather than retired authoring/identity workflow gates. Executed checks and omitted layers belong to validation reports.
 

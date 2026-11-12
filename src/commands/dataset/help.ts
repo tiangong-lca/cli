@@ -50,7 +50,7 @@ export const flags: Record<CanonicalDatasetAction, string[]> = {
   get: ['id', 'version', 'fields'],
   list: ['owner', 'state', 'limit', 'cursor', 'fields'],
   versions: ['id', 'limit', 'cursor', 'fields'],
-  search: ['query', 'state', 'limit'],
+  search: ['query', 'state', 'scope', 'limit'],
   contract: ['include'],
   'list-references': ['id', 'version', 'input', 'limit', 'cursor'],
   validate: ['input', 'checks'],
@@ -63,6 +63,8 @@ export const flags: Record<CanonicalDatasetAction, string[]> = {
   create: ['input', 'dry-run'],
   save: ['input', 'dry-run'],
   delete: ['input', 'dry-run'],
+  results: ['id', 'version'],
+  'get-result': ['id', 'version', 'result-id', 'kind', 'max-items'],
   statistics: ['input', 'scope', 'owner', 'state', 'group-by', 'max-rows'],
   'upload-attachments': ['input', 'dry-run'],
 };
@@ -156,6 +158,8 @@ function actionExample(type: DatasetType, action: CanonicalDatasetAction): strin
   const command = `tiangong-lca dataset ${type} ${action}`;
   const id = '00000000-0000-4000-8000-000000000001';
   switch (action) {
+    case 'results':
+    case 'get-result':
     case 'get':
       return `${command} --id ${id} --version 01.00.000 --json`;
     case 'versions':
@@ -214,23 +218,33 @@ export function help(type: DatasetType, action?: CanonicalDatasetAction) {
     defaults:
       action === 'validate'
         ? { checks: type === 'lciamethod' ? ['schema'] : ['schema', 'business'] }
-        : action && ['list', 'versions', 'search', 'list-references'].includes(action)
-          ? { limit: 20 }
-          : action === 'statistics'
-            ? { scope: 'visible', groupBy: ['state'], maxRows: 10000 }
-            : action && ['create', 'save', 'delete', 'upload-attachments'].includes(action)
-              ? { dryRun: false }
-              : {},
+        : action === 'search'
+          ? { limit: 20, scope: 'current-user' }
+          : action && ['list', 'versions', 'list-references'].includes(action)
+            ? { limit: 20 }
+            : action === 'statistics'
+              ? { scope: 'visible', groupBy: ['state'], maxRows: 10000 }
+              : action && ['create', 'save', 'delete', 'upload-attachments'].includes(action)
+                ? { dryRun: false }
+                : {},
     limitations:
-      action === 'search'
+      action === 'get-result'
         ? [
-            'Search uses the current actor latest-version candidate scope; continuation cursors are not supported. Narrow the query.',
+            'Read overview (default), lci or lcia. LCI requires --output and reads all pages; --max-items defaults to 100000. Use --result-id only to disambiguate results. Service bindings and one bounded whole-read restart are automatic.',
           ]
-        : action === 'validate'
-          ? ['Remote reference relationship checks require independently selected evidence.']
-          : action && ['create', 'save', 'delete'].includes(action)
-            ? ['Unavailable server protections fail explicitly before mutation.']
-            : [],
+        : action === 'results'
+          ? [
+              'List published direct results for one exact Process version. No calculation is started.',
+            ]
+          : action === 'search'
+            ? [
+                'Search scope: current-user (default) or public (state 100). Flow/Process search matches exact versions; other types use the service candidate version policy. Cursors are not supported; narrow the query.',
+              ]
+            : action === 'validate'
+              ? ['Remote reference relationship checks require independently selected evidence.']
+              : action && ['create', 'save', 'delete'].includes(action)
+                ? ['Unavailable server protections fail explicitly before mutation.']
+                : [],
     errors: {
       0: 'completed or accepted',
       1: 'business failure, partial/incomplete or unknown result',

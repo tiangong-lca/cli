@@ -8,6 +8,7 @@ import { CommandInputError } from '../shared/command-result.js';
 import { runLifecyclemodelGraph } from '../lib/model/graph.js';
 import { runLifecyclemodelBuildResultingProcess } from '../lib/model/resulting-process.js';
 import { uploadSourceAttachments } from './source-attachments.js';
+import { processResults } from './process-results.js';
 import { processStatistics } from './process-statistics.js';
 import type { FetchLike } from '../lib/transport/http.js';
 
@@ -20,6 +21,8 @@ export function datasetOperations(
       return uploadSourceAttachments(request, inputPath, env, fetchImpl);
     if (type === 'process' && action === 'statistics')
       return processStatistics(request, env, fetchImpl);
+    if (type === 'process' && (action === 'results' || action === 'get-result'))
+      return processResults(request, action === 'results', env, fetchImpl);
     const directory = mkdtempSync(path.join(os.tmpdir(), 'tiangong-dataset-'));
     const input = path.join(directory, 'input.json');
     const read = (file: string) => JSON.parse(readFileSync(file, 'utf8'));

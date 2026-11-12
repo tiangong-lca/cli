@@ -33,6 +33,8 @@ Dataset `get` 必须提供版本，或显式使用 `--version latest`。`latest`
 
 ## 背景过程发现
 
+`search --scope public` 查询状态 100 的公共数据，`--scope current-user` 查询当前账号数据（默认）。公共范围不接受其他状态过滤。Flow/Process 使用精确版本匹配搜索；搜索返回实际版本，不把不同版本合并为隐含 latest。`results` 与 `get-result` 的过程结果读取行为见 [Process](datasets/processes.md#已发布结果读取)。
+
 为 [Study 建模](study.md)提供明确的当前账号与获准访问的背景数据查询范围；选择范围不授予新权限。Process 候选及其详情保留精确版本，按实际可用信息提供参考产品、单位、清单类型、技术、地域、时间、边界和覆盖情况；缺失属性不得推断为匹配。
 
 线上背景候选明确筛选 `state_code=100`，不筛选 `LCI result` 类型字段。数据集查询与计算结果读取分别提供：按精确 Process 版本解析对应结果，读取概览、聚合 LCI 或 LCIA；若结果有独立身份，必须保留其与 Process 的绑定。可计算性遵循[消费契约](study.md#背景过程与显式连接)，状态 100 本身不证明已存在可读的完整结果。搜索返回候选，Agent 读取并明确选择后才写入 Model 连接；搜索和精确读取不自动改写模型或启动计算。

@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - AGENTS.md
   - src/lib/**
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 188b901c08aea4787090e8f3ad5e6df757920b61
-lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: 095fcf8d9990461e7c764a32c50ddf653803c884
+lastReviewedNote: 'CLI #477: reviewed explicit search scopes and complete Process result reads, internal read recovery and low-friction calculation design; existing mutations and hosted protocols unchanged.'
 ---
 
 # Existing runtime safeguards

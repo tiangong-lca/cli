@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - docs/interfaces/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 763a3da
-lastReviewedNote: 'Reviewed state-100 Process discovery, separate HDF5 inventory acquisition, explicit background result binding and native verification limits; runtime contracts remain unchanged.'
+lastReviewedCommit: 095fcf8d9990461e7c764a32c50ddf653803c884
+lastReviewedNote: 'CLI #477: reviewed explicit search scopes and complete Process result reads, internal read recovery and low-friction calculation design; existing mutations and hosted protocols unchanged.'
 ---
 
 # CLI 目标接口设计

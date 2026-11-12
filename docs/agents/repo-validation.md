@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 899fe12a507c2cc3a454011c0918a57d65588968
-lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: 095fcf8d9990461e7c764a32c50ddf653803c884
+lastReviewedNote: 'CLI #477: reviewed explicit search scopes and complete Process result reads, internal read recovery and low-friction calculation design; existing mutations and hosted protocols unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml

@@ -86,6 +86,16 @@ Unit Group 业务校验检查单位内部 ID 及参考单位的唯一定位。`c
 
 Process 支持 `get --fields exchanges` 读取交换项投影，投影不构成可直接保存的完整内容。`statistics --group-by state,classification [--owner <id>] [--state <code>]` 汇总明确可见范围；默认最多扫描 10000 条，通过 `--max-rows` 调整。扫描不完整返回部分结果，完整分组使用 `--output` 获取。
 
+过程背景查询支持显式公共范围，结果读取复用现有已发布 HDF5 服务。以下为当前源码新增能力：
+
+```bash
+tiangong-lca dataset process search --query electricity --scope public --state 100 --json
+tiangong-lca dataset process results --id <process-id> --version <version> --json
+tiangong-lca dataset process get-result --id <process-id> --version <version> --kind lci --output background.json --json
+```
+
+结果发布身份和分页由 CLI 内部管理；调用方不提供 hash。完整 LCI 写入文件，终端只返回摘要。存在多个结果时用 `--result-id` 明确选择；读取不会触发计算。`--max-items` 调整本次读取预算，默认 100000。
+
 普通 `--help` 返回可读文本，`--help --json` 返回实际动作的机器契约、默认值与限制。新入口的 JSON 返回业务结果、完整性和上下文。下一步提示仅包含说明与可选命令，回复模板为安装包中的 Markdown 路径。大校验报告可通过 `--output` 保存；终端只显示有界摘要。缺少模板时仍保留真实业务结果。
 
 ## 环境与身份上下文
