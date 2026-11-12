@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 74240b58c738a0baaaed06687a92f31527225b5c
-lastReviewedNote: 'CLI #477: reviewed editable Model inputs, explicit background result reads, bounded local execution, configurable budgets and truthful factor coverage; hosted protocols and mutations remain unchanged.'
+lastReviewedCommit: 54d330846333d58dd896e9e886d5b54888ee71b1
+lastReviewedNote: 'CLI #477: reviewed local runtime setup, saved calculation retrieval and normal sparse LCIA applicability; no hosted activation or automatic native distribution is claimed.'
 ---
 
 # TianGong LCA CLI
@@ -98,7 +98,9 @@ tiangong-lca dataset process get-result --id <process-id> --version <version> --
 
 ```bash
 tiangong-lca dataset model prepare --input request.json --output input.json --json
-tiangong-lca dataset model calculate --file input.json --engine model_calculate --static-cache ./lcia-cache --output-dir ./run-1 --json
+tiangong-lca setup model-calculation --engine model_calculate --static-cache ./lcia-cache --json
+tiangong-lca dataset model calculate --file input.json --output-dir ./run-1 --json
+tiangong-lca calculation result --dir ./run-1 --kind lcia --json
 ```
 
 输入字段和预算见 [Model 计算契约](docs/interfaces/calculations.md#本地文件契约)。结果保存本次输入、数值轴和覆盖诊断；有因子缺口时明确报告 LCIA 分数不完整。当前源码支持本地链路，原生组件的正式安装分发、独立线上 Model 计算和统一 Calculation 查询入口仍由实施计划跟踪。

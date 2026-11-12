@@ -14,8 +14,8 @@ checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 74240b58c738a0baaaed06687a92f31527225b5c
-lastReviewedNote: 'CLI #477: reviewed editable Model inputs, explicit background result reads, bounded local execution, configurable budgets and truthful factor coverage; hosted protocols and mutations remain unchanged.'
+lastReviewedCommit: 54d330846333d58dd896e9e886d5b54888ee71b1
+lastReviewedNote: 'CLI #477: reviewed local runtime setup, saved calculation retrieval and normal sparse LCIA applicability; no hosted activation or automatic native distribution is claimed.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -55,15 +55,15 @@ lastReviewedNote: 'CLI #477: reviewed editable Model inputs, explicit background
 | 领域 | 当前源码能力 | 后续交付 |
 | --- | --- | --- |
 | 背景发现 | 显式公共/当前账号搜索，Flow/Process 匹配版本及状态过滤。 | 随代表性建模场景持续检验召回与选择信息。 |
-| 背景结果 | Process `results/get-result` 复用已有 HDF5 服务，解析结果身份并完整读取 LCI/LCIA；读取绑定及一次有界重启由适配层管理。 | 原生输入对多结果、版本变化和覆盖缺口保持明确诊断。 |
+| 背景结果 | Process `results/get-result` 复用已有 HDF5 服务，解析结果身份并完整读取 LCI/LCIA；读取绑定及一次有界重启由适配层管理。 | 原生输入对多结果、版本变化和清单不完整保持明确诊断。 |
 | 输入准备 | Model `prepare` 组装显式图、所需数值文档及背景 LCI；远程依赖读取须显式开启。 | 持续覆盖更大及更多类型的业务模型。 |
-| 本地计算 | Model `calculate` 调用 Worker `model_calculate`，复用现有编译和求解核心；独立功能量、可提高预算及完整 Run 文件已实现。 | 原生组件安装分发、跨平台验收、性能和容量验证。该入口仍构建于 solver-worker crate，不能视作已分发的独立运行组件。 |
-| 线上计算 | 已有 Study 的版本化项目、准备、运行、分析和报告协议。 | 无需创建 Study 的线上 Model 计算服务及受理/恢复；统一 Calculation 查询入口。 |
-| Study Skill | 现有流程主要从已选 Model 开始。 | agent-skills 实现资料引导、提取与缺口分析、前景建模和背景选择。 |
+| 本地计算 | Model `calculate` 调用 Worker `model_calculate`，复用现有编译和求解核心；独立功能量、可提高预算及完整 Run 文件已实现。 | `setup model-calculation` 已支持引擎/方法缓存检查及配置复用；仍需原生组件安装分发、跨平台验收、性能和容量验证。该入口仍构建于 solver-worker crate，不能视作已分发的独立运行组件。 |
+| 线上计算 | 已有 Study 的版本化项目、准备、运行、分析和报告协议。 | 无需创建 Study 的线上 Model 计算服务及受理/恢复；线上 Calculation 查询入口；本地 `calculation get/result --dir` 已支持摘要、LCI、LCIA 和活动量读取。 |
+| Study Skill | agent-skills 源码已补齐六阶段流程、资料收集/提取参考及本地 Model 命令；线上 Study 报告流程按需加载。 | 独立场景评估和已发布 CLI/原生组件组合的安装验收；源码完成不等于已发布。 |
 
-当前本地输入不要求调用方维护 hash 或服务器状态证明，内部计算身份与已发布 Study 协议隔离。聚合背景不重复展开或分配；完整零清单、读取不完整与因子缺口分别表达。原始 Run 文件可直接读取，后续线上版本变化不使其失效。现有已发布版本不会因源码修改自动获得新增能力。
+当前本地输入不要求调用方维护 hash 或服务器状态证明，内部计算身份与已发布 Study 协议隔离。聚合背景不重复展开或分配；完整零清单与读取不完整分别表达；完整方法中的稀疏因子定义不产生缺口警告。原始 Run 文件可直接读取，后续线上版本变化不使其失效。现有已发布版本不会因源码修改自动获得新增能力。
 
-实现与验证记录分别维护在 [CLI #477](https://github.com/tiangong-lca/cli/issues/477) 和 [Worker #370](https://github.com/tiangong-lca/worker/issues/370)。已取得真实背景读取、合成数值预期和禁止联网的本地执行证据；这与完整 LCIA 覆盖、科学审核、跨平台安装和线上服务验收分别判断。
+实现与验证记录分别维护在 [CLI #477](https://github.com/tiangong-lca/cli/issues/477) 和 [Worker #370](https://github.com/tiangong-lca/worker/issues/370)。已取得真实背景读取、合成数值预期和禁止联网的本地执行证据；这与科学审核、跨平台安装和线上服务验收分别判断。
 
 ### 实施顺序与所有者
 
@@ -78,7 +78,7 @@ lastReviewedNote: 'CLI #477: reviewed editable Model inputs, explicit background
 ### 场景验收
 
 - 用有明确预期值的模型，将一个前景过程连接到已知参考量的聚合背景清单，核对缩放、清单和 LCIA；其原始组成过程即使可访问也不重复计入，不再次应用已完成的分配。
-- 覆盖前景直接排放、多个独立需求复用背景、残余未闭合交换、方法缺口、单位不匹配及来源不可见；不以静默截断或默认零制造成功。
+- 覆盖前景直接排放、多个独立需求复用背景、残余未闭合交换、方法数据损坏、正常稀疏因子、单位不匹配及来源不可见；不以静默截断或默认零制造成功。
 - 对状态 100 Process 及其 HDF5 结果验证“可发现—精确版本结果解析—完整 LCI 读取—准备—计算”路径；覆盖独立 Result 身份、多结果选择、分页为空但有游标、发布或运行版本变化、参考量缩放及单位匹配。仅有指标分数、不完整结果和权限拒绝不能进入计算；读取授权不升级为修改或发布权限。
 - 本地固定输入在禁止网络且无数据库/队列时完成计算；覆盖组件未安装、方法缓存缺失、预算覆盖、扩大模型规模、进程中断、产物重取和任务拥有资源清理。
 - 对相同固定输入及引擎版本比较线上与本地结果，按引擎声明的数值标准验收；分别记录真实服务、原生执行和模拟测试证据。

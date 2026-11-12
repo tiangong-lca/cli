@@ -26,7 +26,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 74240b58c738a0baaaed06687a92f31527225b5c
+lastReviewedCommit: 54d330846333d58dd896e9e886d5b54888ee71b1
 lastReviewedNote: 'CLI #477: reviewed installed Model command qualification; native engine installation remains separate and release authority, versions and workflows are unchanged.'
 related:
   - ../AGENTS.md

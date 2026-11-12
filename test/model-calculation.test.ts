@@ -423,7 +423,7 @@ test('command help, preparation artifacts and calculation completion remain sepa
     ],
     ports,
   );
-  assert.equal(noEngine.exitCode, 2);
+  assert.equal(noEngine.exitCode, 1);
   ports.operations = async () => ({
     engine: 'native',
     engineVersion: '1',

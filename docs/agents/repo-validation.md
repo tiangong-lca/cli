@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 74240b58c738a0baaaed06687a92f31527225b5c
-lastReviewedNote: 'CLI #477: reviewed editable Model inputs, explicit background result reads, bounded local execution, configurable budgets and truthful factor coverage; hosted protocols and mutations remain unchanged.'
+lastReviewedCommit: 54d330846333d58dd896e9e886d5b54888ee71b1
+lastReviewedNote: 'CLI #477: reviewed local runtime setup, saved calculation retrieval and normal sparse LCIA applicability; no hosted activation or automatic native distribution is claimed.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -159,4 +159,4 @@ The event SHA and workflow-definition SHA are separate facts (`github.sha` and `
 
 Git-backed test fixtures must clear inherited repository routing (`GIT_DIR`, `GIT_COMMON_DIR`, `GIT_WORK_TREE`, index/object paths and prefix) before running Git or release-shell commands in temporary repositories. Preserve scoped configuration/credential inputs. The release-context suite exercises a foreign Git hook environment and verifies its config, HEAD, index and files remain byte-identical. This isolation is required when the suite runs from the pre-push hook in a linked worktree.
 
-Local Model validation must cover editable input snapshots, dependency closure without automatic providers, aggregate backgrounds without double expansion, whole-process timeout/no retry, exclusive Run directories, compact artifact replies and explicit factor gaps. Private real-background probes supplement synthetic numerical oracles; neither replaces native distribution qualification.
+Local Model validation must cover editable input snapshots, dependency closure without automatic providers, aggregate backgrounds without double expansion, whole-process timeout/no retry, exclusive Run directories, compact artifact replies and normal method-specific sparse characterization. Setup must verify engine/cache before saving, preserve configuration on failure, avoid forwarding credentials and support read-only checks. Saved Run retrieval must join original axes and values without recalculation or online validation, preserve full output artifacts and reject corruption. Private real-background probes supplement synthetic numerical oracles; neither replaces native distribution qualification.

@@ -1,3 +1,4 @@
+import { resolveModelRuntime, modelRuntimeEnvironment } from './model-runtime.js';
 import { spawnSync } from 'node:child_process';
 import { existsSync, statSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -72,16 +73,7 @@ export function calculateLocalModel(
       'CALCULATION_INPUT_INVALID',
       'Use dataset model prepare to assemble a complete local input.',
     );
-  const engine = text(
-    request.engine ?? env.TIANGONG_LCA_MODEL_ENGINE,
-    '--engine or TIANGONG_LCA_MODEL_ENGINE',
-  );
-  const cache = path.resolve(
-    text(
-      request.staticCache ?? env.TIANGONG_LCA_MODEL_STATIC_CACHE,
-      '--static-cache or TIANGONG_LCA_MODEL_STATIC_CACHE',
-    ),
-  );
+  const { engine, staticCache: cache } = resolveModelRuntime(request, env);
   const output = path.resolve(text(request.outputDir, '--output-dir'));
   if (existsSync(output))
     throw new CommandInputError(
@@ -131,23 +123,7 @@ export function calculateLocalModel(
         timeout: Number(timeout),
         killSignal: 'SIGKILL',
         maxBuffer: 1024 * 1024,
-        env: Object.fromEntries(
-          Object.entries(env).filter(([k]) =>
-            [
-              'PATH',
-              'HOME',
-              'USERPROFILE',
-              'TMPDIR',
-              'TMP',
-              'TEMP',
-              'SystemRoot',
-              'SYSTEMROOT',
-              'WINDIR',
-              'LD_LIBRARY_PATH',
-              'DYLD_LIBRARY_PATH',
-            ].includes(k),
-          ),
-        ),
+        env: modelRuntimeEnvironment(env),
       },
     );
     if (execution.error || execution.status !== 0) {

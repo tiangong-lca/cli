@@ -163,7 +163,7 @@ export const requestShapes: Partial<Record<CanonicalDatasetAction, unknown>> = {
   calculate: {
     file: 'complete lca.model-input.v1 JSON from prepare',
     engine: 'native executable; or TIANGONG_LCA_MODEL_ENGINE',
-    staticCache: 'installed LCIA factor directory; or TIANGONG_LCA_MODEL_STATIC_CACHE',
+    staticCache: 'LCIA factor directory; environment or saved setup configuration',
     outputDir: 'new local Run directory',
     timeoutMs: 'whole-process deadline; default 120000',
   },
@@ -254,7 +254,7 @@ export function help(type: DatasetType, action?: CanonicalDatasetAction) {
     limitations:
       action === 'calculate'
         ? [
-            'Local complete inputs only; no login, network lookup, upload or retry. Install the native engine and factor cache explicitly. Source input is copied into the new Run. timeout-ms is a whole-process deadline; limits.timeoutMs bounds numerical preparation/execution.',
+            'Local complete inputs only; no login, network lookup, upload or retry. Use setup model-calculation to verify and save installed engine/cache paths. Explicit flags override environment then saved configuration. Source input is copied into the new Run. timeout-ms is a whole-process deadline; limits.timeoutMs bounds numerical preparation/execution.',
           ]
         : action === 'prepare'
           ? [

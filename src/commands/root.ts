@@ -14,6 +14,8 @@ Usage:
   tiangong-lca <command> [subcommand] [options]
 
 Implemented Commands:
+  setup      model-calculation environment preparation
+  calculation get | result
   doctor     environment diagnostics
   auth       login | status | whoami | doctor-auth | logout | identity-receipt
   dataset    <flow|process|model|source|contact|flowproperty|unitgroup|lciamethod> <action>

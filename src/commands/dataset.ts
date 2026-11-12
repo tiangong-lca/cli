@@ -345,19 +345,11 @@ export async function runDatasetCommand(
         };
         value.artifacts.push(...(value.data.artifacts as CommandResult['artifacts']));
         delete value.data.artifacts;
-        if (value.data.completeLciaScores === false) {
-          value.summary =
-            'Local calculation completed with missing characterization factors; LCIA scores are incomplete. Inspect coverage in result.json.';
-          value.warnings.push({
-            code: 'LCIA_COVERAGE_INCOMPLETE',
-            message:
-              'Missing factors remain explicit; computed values are not complete LCIA scores.',
-          });
-        }
         value.nextActions = [
           {
             description:
-              'Read result.json with prepared.json for inventory/method axes, factor coverage and diagnostics. Compare independent runs without changing the input snapshot.',
+              'Read the saved inventory and method results. Compare independent runs without changing the input snapshot.',
+            command: `tiangong-lca calculation get --dir ${shellArgument(String(value.data.outputDirectory))} --json`,
           },
         ];
       } else

@@ -6,6 +6,8 @@ export function rootHelp(usage: string): CommandIO {
     schemaVersion: 1,
     command: 'tiangong-lca',
     commands: {
+      setup: ['model-calculation'],
+      calculation: ['get', 'result'],
       doctor: ['local diagnostics', '--online selected Auth health'],
       auth: ['login', 'status', 'whoami', 'doctor-auth', 'logout', 'identity-receipt'],
       dataset: {
@@ -26,7 +28,7 @@ export function rootHelp(usage: string): CommandIO {
     packageTools: ['dataset import-lca convert', 'validation run'],
     outputProtocols: {
       core: {
-        commands: ['doctor', 'auth', 'dataset', 'review'],
+        commands: ['setup', 'calculation', 'doctor', 'auth', 'dataset', 'review'],
         machineHelp: true,
         results: 'Shared result on stdout; stable structured errors.',
       },

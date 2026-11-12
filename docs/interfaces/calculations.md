@@ -67,7 +67,7 @@ Model 文件不等于完整计算输入。准备阶段必须解析精确引用�
 - 本地计算只消费显式提供的输入与声明的本地依赖。缺失内容时返回具体依赖及可继续操作，不自动登录、联网下载或选择最新版本。
 - 需要远程获取依赖时，由显式准备操作执行认证、访问和内容固定；准备成功不能被报告成计算完成。
 - 线上任务可由其服务按声明的契约完成输入准备，必须保留准备状态、采用的精确依赖及诊断。计算内核只接收准备完成的输入。
-- 结构合法、引用完整、数值可计算和方法覆盖是不同检查。缺失因子、截断项及不支持条件由所属规则明确表达，不能静默补零或简化模型。
+- 结构合法、引用完整、数值可计算和方法覆盖是不同检查。完整且有效的方法因子集中，没有为某个 Flow 定义因子表示该 Flow 不参与该方法的影响贡献，不构成缺口或警告，也不使结果不完整。方法文件缺失、读取不完整、损坏或无效数值仍明确报错；截断项和不支持条件不能静默省略。
 
 ## 显式模型与背景聚合清单
 
@@ -120,7 +120,7 @@ Process 状态、结果可用性、读取权限和数值输入资格分别验证
 
 线上计算默认返回 `accepted`；可选的有界 `--wait` 在预算结束时保留任务身份并返回真实状态，不把等待结束当作任务结束。本地计算默认等待本次进程并交付结果；进程中断不意味着后台已完成。两种路径均返回实际执行方式、输入身份、引擎及版本、计算身份、状态、诊断和产物位置。
 
-核心结果遵循[通用约定](conventions.md)和 [AI 上下文](ai-context.md)。执行状态与结果有效性、单位、方法覆盖、缺失因子、假设和限制分别保留。未产生结果时不得给出默认零值。`nextActions` 提供带真实选择信息的查询或恢复命令，`replyTemplate` 使用简单 Markdown 引用；不建立另一套工作流协议。
+核心结果遵循[通用约定](conventions.md)和 [AI 上下文](ai-context.md)。执行状态与结果有效性、单位、方法选择、假设和限制分别保留；正常的方法适用范围不作为缺失诊断。未产生结果时不得给出默认零值。`nextActions` 提供带真实选择信息的查询或恢复命令，`replyTemplate` 使用简单 Markdown 引用；不建立另一套工作流协议。
 
 ## 失败与恢复
 
@@ -149,8 +149,10 @@ Process 状态、结果可用性、读取权限和数值输入资格分别验证
 
 每项文件选择也可以使用 `content` 直接提供 JSON；Model 可显式选择 `remote: {id, version}`。`datasets` 是数值依赖目录，不要求用户手工枚举已包含的重复引用。缺失依赖由明确诊断指出；`allowRemoteLookup: true` 只补齐模型已引用的精确 Process、Flow、参考 FlowProperty 和 UnitGroup。Source、Contact 和背景过程上游不因来源引用被递归展开。
 
-背景文件使用完整 `get-result --kind lci` 产物，绑定 Model 中选定的 Process；LCIA 分数不能替代背景清单。准备输出是 `lca.model-input.v1`，直接保存 Model、实际采用的数据文档、背景清单、方法、功能量、显式 `cutoffs` 和可选 `limits`。该文件可编辑，不包含调用方必须维护的 hash 或服务器授权凭据。准备成功表示依赖组装完成，数值规则和因子覆盖在引擎执行时验证。
+背景文件使用完整 `get-result --kind lci` 产物，绑定 Model 中选定的 Process；LCIA 分数不能替代背景清单。准备输出是 `lca.model-input.v1`，直接保存 Model、实际采用的数据文档、背景清单、方法、功能量、显式 `cutoffs` 和可选 `limits`。该文件可编辑，不包含调用方必须维护的 hash 或服务器授权凭据。准备成功表示依赖组装完成，数值规则和方法数据完整性在引擎执行时验证。
 
-`calculate --file input.json --engine <executable> --static-cache <directory> --output-dir <new-directory>` 使用声明的本地引擎及因子目录。引擎和目录也可通过 `TIANGONG_LCA_MODEL_ENGINE`、`TIANGONG_LCA_MODEL_STATIC_CACHE` 配置，命令行优先。每次运行使用新目录，保存 `input.json`、`prepared.json`、`result.json` 和 `summary.json`；输入快照保留实际计算内容，结果与轴、方法和覆盖诊断一起解释。旧目录不覆盖，进程失败不自动重试。
+`calculate --file input.json --engine <executable> --static-cache <directory> --output-dir <new-directory>` 使用声明的本地引擎及因子目录。`setup model-calculation --engine <executable> --static-cache <directory>` 检查引擎及完整方法缓存后保存配置，后续计算可省略这两个参数。优先级为命令行、`TIANGONG_LCA_MODEL_ENGINE` / `TIANGONG_LCA_MODEL_STATIC_CACHE`、已保存配置。`setup model-calculation --check` 只验证当前配置。每次运行使用新目录，保存 `input.json`、`prepared.json`、`result.json` 和 `summary.json`；输入快照保留实际计算内容，结果与轴、方法和数值诊断一起解释。旧目录不覆盖，进程失败不自动重试。
 
 `--timeout-ms` 是整个引擎进程的期限，默认 120000；`limits.timeoutMs` 是原生编译及求解阶段预算，默认 30000。`limits` 另支持 `maxInputBytes`（4194304）、`maxDocuments`（512）、`maxInstances`（64）、`maxViews`（128）、`maxExchanges`（4096）、`maxDenseCells`（131072）、`maxArtifactBytes`（4194304）和 `maxMemoryBytes`（268435456）。这些是可提高的资源默认值；内存预算是编译及矩阵分配估算，不是包含因子加载及原生库的操作系统 RSS 保证。引擎仍执行正数、机器整数范围、维度和数值检查，不支持的参数明确拒绝。
+
+`calculation get --dir <run-directory>` 读取已保存的完成摘要；`calculation result --dir <run-directory> --kind lcia|lci|activities` 将保存的值与保存的轴对应。默认返回 LCIA，标准输出最多 20 项，完整结果使用 `--output <new-file>`。读取不会联网、启动引擎或重新计算；缺失、损坏和不匹配的文件明确失败，旧 Run 不因新的线上数据或本地配置失效。

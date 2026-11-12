@@ -176,6 +176,43 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
     );
     assert.equal((missingEngine.error as Json).code, 'CALCULATION_EXECUTION_FAILED');
     assert.ok(!existsSync(path.join(directory, 'new-run')));
+    const setupHelp = await invoke(['setup', 'model-calculation', '--help']);
+    assert.ok((setupHelp.options as string[]).includes('--check'));
+    const setupFailure = await invoke(
+      [
+        'setup',
+        'model-calculation',
+        '--engine',
+        path.join(directory, 'absent-engine'),
+        '--static-cache',
+        directory,
+      ],
+      businessActor,
+      1,
+    );
+    assert.equal((setupFailure.error as Json).code, 'MODEL_RUNTIME_CHECK_FAILED');
+    const savedRun = path.join(directory, 'saved-model-run');
+    mkdirSync(savedRun);
+    writeFileSync(
+      path.join(savedRun, 'summary.json'),
+      JSON.stringify({ schemaVersion: 1, status: 'completed', profile: 'lca.model-local.v1' }),
+    );
+    writeFileSync(
+      path.join(savedRun, 'prepared.json'),
+      JSON.stringify({
+        profileId: 'lca.model-local.v1',
+        modelHash: 'fixture',
+        numeric: { methodAxes: [{ methodId: 'method' }] },
+      }),
+    );
+    writeFileSync(
+      path.join(savedRun, 'result.json'),
+      JSON.stringify({ profileId: 'lca.model-local.v1', modelHash: 'fixture', h: [0] }),
+    );
+    const saved = await invoke(['calculation', 'get', '--dir', savedRun]);
+    assert.equal((saved.data as Json).status, 'completed');
+    const scores = await invoke(['calculation', 'result', '--dir', savedRun]);
+    assert.deepEqual((scores.data as Json).items, [{ methodId: 'method', amount: 0 }]);
     for (const command of ['search', 'flow', 'process', 'lifecyclemodel', 'qa', 'publish']) {
       await invoke([command, '--help'], businessActor, 2, 'UNKNOWN_COMMAND');
     }
