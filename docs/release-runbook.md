@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
-lastReviewedNote: 'CLI #477: reviewed platform-specific Model package installation, Linux glibc admission and Windows executable selection; setup and scientific input contracts remain shared.'
+lastReviewedCommit: 3cf4274f263f4fcd7932cca460f50f5a4edf499a
+lastReviewedNote: 'CLI #477: reviewed deterministic file-backed hook fixture input after Linux ARM64 EPIPE; real Git round-trip coverage and production deletion/source gates remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
