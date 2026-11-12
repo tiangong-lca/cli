@@ -14,8 +14,8 @@ checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 81d3ca5a20e68ef118cfa71f4b344c82b537e8c8
-lastReviewedNote: 'Reviewed complete Study workflow, explicit aggregate-inventory background consumption, configurable local budgets and source-evidenced implementation gaps; runtime contracts remain unchanged.'
+lastReviewedCommit: 763a3da
+lastReviewedNote: 'Reviewed state-100 Process discovery, separate HDF5 inventory acquisition, explicit background result binding and native verification limits; runtime contracts remain unchanged.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -57,19 +57,27 @@ lastReviewedNote: 'Reviewed complete Study workflow, explicit aggregate-inventor
 | 线上 CLI | 0.2.0 的 `study` 提供项目、模型准备、运行、分析及报告等版本化协议。 | Model 来源选择入口、独立 Calculation 查询，以及与现有 Study 前置条件兼容的独立计算服务路径。 |
 | 计算组件 | Worker 的 `study::prepare/execute` 和本地 `study_compile` 已能使用固定来源包与方法缓存计算，无需运行数据库和队列；源码入口为 `crates/solver-worker/src/bin/study_compile.rs`。 | 复用现有数值实现，整理本地输入和功能单位契约、运行组件交付、进程管理和 CLI 接入；不能把开发入口视为已发布的用户运行组件。 |
 | 显式连接 | Study 编译器按 Model 已声明连接计算，不做背景 provider 推断。 | 保持这一规则；资料与背景选择由 Skill 建模阶段完成，依赖准备不扩展供应关系。 |
-| 背景发现 | CLI `src/adapters/dataset-search.ts` 的混合搜索使用 `data_source: my`。 | 明确获准访问的背景数据搜索与精确读取范围、候选语义和可计算性信息，不将当前账号搜索描述为全库发现。 |
-| Result 消费 | Worker 的 Study 来源准入仍拒绝保留 Result 状态（包括 120）；现有泛用读取和导出也有自己的准入边界。 | 由 Database/Edge/Worker 所有者定义并交付聚合清单型 Result 消费契约；同步查询、读取、准备、因子匹配和计算准入，保留权限，不仅删除一个状态判断。 |
+| 背景发现 | CLI `src/adapters/dataset-search.ts` 的混合搜索使用 `data_source: my`；默认 latest 分支未将状态过滤传到版本查询契约。 | 修正范围选择与端到端状态过滤，返回候选名称、精确身份及真实状态；不将当前账号搜索描述为公共背景发现，不宣称未生效的过滤。 |
+| 背景结果消费 | 状态 100 Process 与独立 HDF5 聚合结果是两类读取。Edge `lca_release_results` 已有 `source_results`、`final_query`，Worker 已有 v2 HDF5 reader；CLI 未暴露对应查询和输入准备。 | 复用结果通道：按精确 Process 解析并选择结果，固定发布和读取运行版本，读取完整 LCI，整理为引擎输入；保留结果参考量、Flow/单位身份和边界，不放开保留状态的普通来源准入。 |
 | 本地预算 | 现有 Study Bounds 固定容量上限，仅允许较小预算；任意功能单位的输入仍有部分关联 StudyBinding。 | 独立计算设置与可配置资源预算，公开默认值和不可覆盖安全上限；不能伪造 Study 身份或绕过数值检查。 |
 | Study Skill | 现有计算流程主要从已选 Model 开始。 | agent-skills 另行实现资料引导、提取与缺口分析、前景建模和背景选择，保持 CLI 原子操作边界。 |
 
-Worker 核查基线为 `c9665557943dd9794f78e76d4822658934e5725e` 的 Study 编译器和运行契约。上述结论来自源码及既有契约，不是本轮重新执行的数值、真实服务或平台分发测试。已有本地能力可复用，可配置安装和完整业务链仍需验证。
+Worker 核查基线为 `c9665557943dd9794f78e76d4822658934e5725e` 的 Study 编译器和运行契约。本地已完成离线构建、25 项编译器测试及禁止网络的合成数值验证：前景直接排放 1 加上 2 单位背景、每单位排放 3，得到 LCI 与所选因子为 1 的 LCIA 结果均为 7；未声明的供应连接按预期拒绝。该证据支持复用现有数值核心，不证明真实 HDF5 背景已接入，也不构成平台分发验收。
+
+现有独立可执行程序仍位于包含数据库和网络包装的 solver-worker crate 中。本次合成样例总耗时约 19 秒、内部求解记录为 1 毫秒，输入和方法缓存准备成本须单独分析；建议抽取共享编译/求解库及薄本地入口，避免为本地计算复制线上队列设施。固定输入、功能单位、预算和背景结果适配完成后，再验证代表性业务模型。
+
+### 只读线上验证与证据边界
+
+本轮 `list --state 100` 及精确读取可取得状态 100 Process；但 `search --query electricity --state 100 --limit 3` 的三个候选精确读回均为状态 200，确认搜索范围与过滤需要修正。另取列表中的 3 个状态 100 样本，复用 CLI 认证实现直接调用现有结果 API；均经 `source_results` 解析到一个 direct 结果，`final_query` 返回完整 LCI（393、393、399 项）及各 25 项 LCIA 指标；参考量、精确 Flow 版本与语义单位均可读取。另将第一个样本按每页 100 项读取，4 页共 393 项，与单页读取一致，查询固定同一发布及 runtime revision。
+
+旧 `mode: query` 对相同样本返回不可用，新 v2 通道成功；旧路径的失败不能作为线上数据缺失证据。这里证明既有结果服务可读，未证明 CLI 已有正式结果命令，也未证明这些真实清单已经通过本地输入适配和整模计算。普通 Process 的原始 exchanges 不替代 HDF5 聚合清单，状态 200 的 `LCI result` 样本不作为本设计的背景准入依据。
 
 ### 实施顺序与所有者
 
 | 顺序 | 工作及所有者 | 验收边界 |
 | --- | --- | --- |
 | 1 | Worker 所有者用代表性显式模型验证现有 `study_compile`，核实完整输入与方法缓存；CLI 对照现有协议。 | 得到可复核的本地数值与诊断，不启动业务数据库或队列，不自动补 provider；记录可复用代码与真实缺口。 |
-| 2 | Database/Edge/Worker 明确聚合清单背景数据的身份、边界及可读可计算契约，CLI 设计对应查询和输入准备。 | 支持合格结果清单而不开放仅有 LCIA 分数的结果；来源追溯不重复展开已聚合负荷，权限和原始资料披露分别受控。 |
+| 2 | CLI 接入状态 100 背景发现及现有 HDF5 结果读取，Worker 定义聚合结果输入适配；仅在现有结果契约确有缺口时由 Edge/Database 补齐。 | 验证精确 Process → 对应结果 → 全量分页 LCI → 固定输入；不依赖 `LCI result` 字段，不重复展开已聚合负荷。缺少结果、发布变化、读取失败和完整零清单分别报告。 |
 | 3 | Worker 交付独立计算参数、可配置预算和可分发本地组件，CLI 接入运行支撑及 Model 计算。 | 安装准备和计算分开；预算按规则覆盖，保留安全检查；缺失依赖明确返回，本地计算无隐式网络或上传。 |
 | 4 | Edge/Database/Worker 交付独立线上计算前提，CLI 接入受理、查询和原请求恢复。 | 无隐式项目创建；线上受理与完成区分；响应丢失不重复创建计算，有限 Worker 重试保留尝试。 |
 | 5 | agent-skills 基于已交付的 CLI 能力实现 Study 六阶段及子 Skill 协作。 | 从用户资料到前景与聚合背景模型，再到可解释结果；缺口、来源、假设、修订和旧结果的关系可继续追踪。 |
@@ -78,7 +86,7 @@ Worker 核查基线为 `c9665557943dd9794f78e76d4822658934e5725e` 的 Study 编�
 
 - 用有明确预期值的模型，将一个前景过程连接到已知参考量的聚合背景清单，核对缩放、清单和 LCIA；其原始组成过程即使可访问也不重复计入，不再次应用已完成的分配。
 - 覆盖前景直接排放、多个独立需求复用背景、残余未闭合交换、方法缺口、单位不匹配及来源不可见；不以静默截断或默认零制造成功。
-- 对聚合清单型 Result 验证“可发现—精确读取—准备—计算”完整路径；对仅有指标分数、不合格内容和权限拒绝验证失败边界。读取授权不升级为修改或发布权限。
+- 对状态 100 Process 及其 HDF5 结果验证“可发现—精确版本结果解析—完整 LCI 读取—准备—计算”路径；覆盖独立 Result 身份、多结果选择、分页为空但有游标、发布或运行版本变化、参考量缩放及单位匹配。仅有指标分数、不完整结果和权限拒绝不能进入计算；读取授权不升级为修改或发布权限。
 - 本地固定输入在禁止网络且无数据库/队列时完成计算；覆盖组件未安装、方法缓存缺失、预算覆盖、扩大模型规模、进程中断、产物重取和任务拥有资源清理。
 - 对相同固定输入及引擎版本比较线上与本地结果，按引擎声明的数值标准验收；分别记录真实服务、原生执行和模拟测试证据。
 - Study 使用代表性资料验证统计口径与来源提取、关键缺口追问、背景选择依据及最小范围修订；计算成功不自动触发数据集发布或报告分享。

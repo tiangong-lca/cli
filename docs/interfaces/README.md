@@ -13,15 +13,15 @@ whenToUpdate:
 checkPaths:
   - docs/interfaces/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 81d3ca5a20e68ef118cfa71f4b344c82b537e8c8
-lastReviewedNote: 'Reviewed complete Study workflow, explicit aggregate-inventory background consumption, configurable local budgets and source-evidenced implementation gaps; runtime contracts remain unchanged.'
+lastReviewedCommit: 763a3da
+lastReviewedNote: 'Reviewed state-100 Process discovery, separate HDF5 inventory acquisition, explicit background result binding and native verification limits; runtime contracts remain unchanged.'
 ---
 
 # CLI 目标接口设计
 
 本目录定义 CLI 的目标接口设计基线：能力范围、命令归属、输入输出责任和操作边界。正文使用规范性表述，作为实现与验收的依据；它不表示全部目标命令已上线。已发布版本的可执行行为以该版本帮助及现行执行契约为准。现状盘点、实现差距与迁移计划在本目录之外维护。
 
-本目录覆盖 Dataset 对象、审核及 Model 计算的目标接口。Model 计算按来源选择线上任务或本地执行；其后续实施与已发布的 0.2.0 重构范围分别记录。Release 沿用现有接口，不纳入本轮优化；跨类型数据包操作不在本轮确定新的命令组织方式。
+本目录覆盖 Dataset 对象、审核及 Model 计算的目标接口。Model 计算按来源选择线上任务或本地执行；背景输入选择状态 100 的 Process，并通过独立结果通道准备完整聚合 LCI。其后续实施与已发布的 0.2.0 重构范围分别记录。Release 沿用现有接口，不纳入本轮优化；跨类型数据包操作不在本轮确定新的命令组织方式。
 
 ## 核心目标
 
