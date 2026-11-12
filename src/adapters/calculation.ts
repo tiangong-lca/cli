@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { object, type JsonObject } from '../application/dataset-types.js';
@@ -5,12 +6,13 @@ import { CommandInputError } from '../shared/command-result.js';
 
 export function readLocalCalculation(directory: string, kind: string): JsonObject {
   const root = path.resolve(directory);
-  const read = (name: string): JsonObject => {
+  const read = (name: string): { content: JsonObject; bytes: Buffer } => {
     const file = path.join(root, name);
     try {
       const stat = statSync(file);
       if (!stat.isFile() || stat.size > 256 * 1024 * 1024) throw new Error('invalid');
-      return object(JSON.parse(readFileSync(file, 'utf8')), name);
+      const bytes = readFileSync(file);
+      return { content: object(JSON.parse(bytes.toString('utf8')), name), bytes };
     } catch {
       throw new CommandInputError(
         'CALCULATION_ARTIFACT_UNAVAILABLE',
@@ -19,7 +21,7 @@ export function readLocalCalculation(directory: string, kind: string): JsonObjec
       );
     }
   };
-  const summary = read('summary.json');
+  const { content: summary } = read('summary.json');
   if (
     summary.schemaVersion !== 1 ||
     summary.status !== 'completed' ||
@@ -39,13 +41,14 @@ export function readLocalCalculation(directory: string, kind: string): JsonObjec
         ['input', 'prepared', 'result', 'summary'].map((v) => [v, path.join(root, `${v}.json`)]),
       ),
     };
-  const prepared = read('prepared.json');
-  const result = read('result.json');
+  const { content: prepared, bytes: preparedBytes } = read('prepared.json');
+  const { content: result } = read('result.json');
   if (
     prepared.profileId !== summary.profile ||
     result.profileId !== summary.profile ||
     typeof prepared.modelHash !== 'string' ||
-    prepared.modelHash !== result.modelHash
+    prepared.modelHash !== result.modelHash ||
+    result.preparedArtifactSha256 !== createHash('sha256').update(preparedBytes).digest('hex')
   )
     throw new CommandInputError(
       'CALCULATION_ARTIFACT_MISMATCH',

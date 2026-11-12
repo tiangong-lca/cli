@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: e5dcfaf578033019a80f470e0b02dd249f18d56d
-lastReviewedNote: 'CLI #477: reviewed single-language report switching, Platform-style offline Model rendering, report layout and print/browser regressions; runtime and release authority remain unchanged.'
+lastReviewedCommit: 2e7194de7fad4592ae1b9305ea42457acb2deb8a
+lastReviewedNote: 'CLI #477: reviewed local runtime installation and saved Run integrity; command ownership, developer entrypoints and release authority remain unchanged.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

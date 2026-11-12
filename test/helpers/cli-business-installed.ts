@@ -207,7 +207,14 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
     );
     writeFileSync(
       path.join(savedRun, 'result.json'),
-      JSON.stringify({ profileId: 'lca.model-local.v1', modelHash: 'fixture', h: [0] }),
+      JSON.stringify({
+        profileId: 'lca.model-local.v1',
+        modelHash: 'fixture',
+        preparedArtifactSha256: createHash('sha256')
+          .update(readFileSync(path.join(savedRun, 'prepared.json')))
+          .digest('hex'),
+        h: [0],
+      }),
     );
     const saved = await invoke(['calculation', 'get', '--dir', savedRun]);
     assert.equal((saved.data as Json).status, 'completed');

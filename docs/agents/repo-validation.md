@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: '247227bd7260165c582fa0f9a1371c73d4760470'
-lastReviewedNote: 'CLI #477: reviewed single-language report switching, Platform-style offline Model rendering, report layout and print/browser regressions; runtime and release authority remain unchanged.'
+lastReviewedCommit: 2e7194de7fad4592ae1b9305ea42457acb2deb8a
+lastReviewedNote: 'CLI #477: reviewed local installer validation and error guidance, generated Run integrity, and native package verification; no caller-maintained hashes or research workflow orchestration added.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -159,7 +159,7 @@ The event SHA and workflow-definition SHA are separate facts (`github.sha` and `
 
 Git-backed test fixtures must clear inherited repository routing (`GIT_DIR`, `GIT_COMMON_DIR`, `GIT_WORK_TREE`, index/object paths and prefix) before running Git or release-shell commands in temporary repositories. Preserve scoped configuration/credential inputs. The release-context suite exercises a foreign Git hook environment and verifies its config, HEAD, index and files remain byte-identical. This isolation is required when the suite runs from the pre-push hook in a linked worktree.
 
-Local Model validation must cover editable input snapshots, dependency closure without automatic providers, aggregate backgrounds without double expansion, whole-process timeout/no retry, exclusive Run directories, compact artifact replies and normal method-specific sparse characterization. Setup must verify engine/cache before saving, preserve configuration on failure, avoid forwarding credentials and support read-only checks. Saved Run retrieval must join original axes and values without recalculation or online validation, preserve full output artifacts and reject corruption. Private real-background probes supplement synthetic numerical oracles; neither replaces native distribution qualification.
+Local Model validation must cover editable input snapshots, dependency closure without automatic providers, aggregate backgrounds without double expansion, whole-process timeout/no retry, exclusive Run directories, compact artifact replies and normal method-specific sparse characterization. Setup must verify engine/cache before saving, preserve configuration on failure, avoid forwarding credentials and support read-only checks. Saved Run retrieval must join original axes and values without recalculation or online validation, preserve full output artifacts and reject corruption. Check the native result’s existing prepared-artifact digest before joining saved axes; changing an axis while retaining the model identity must fail. This integrity check is internal to generated Runs and adds no caller-maintained hash or dependency on current runtime configuration. Private real-background probes supplement synthetic numerical oracles; neither replaces native distribution qualification.
 
 ## Local HTML report qualification
 
@@ -167,4 +167,4 @@ Run `node scripts/report-browser-smoke.mjs <new-output-directory>` after buildin
 
 ### Local Model installation
 
-Exercise `test/model-install.test.ts` with the existing full gate. Corrupted or changed archives, unsafe paths, unsupported hosts and native-check failures must leave prior configuration intact and remove only the new owned installation. A native package case must start with empty CLI state and deny network plus developer library/cache paths, then install, check, prepare, calculate and inspect saved results. Synthetic foreground records and real background acquisition remain distinguishable; sparse method applicability is not an incomplete score. Packaging and execution on one OS do not qualify the remaining targets or a public release.
+Exercise `test/model-install.test.ts` with the existing full gate. Corrupted or changed archives, unsafe paths, incomplete method-cache inventories, unsupported hosts and native-check failures must leave prior configuration intact and remove only the new owned installation. Public command tests require local filesystem/archive errors to return environment guidance, without directing callers to authentication or remote services. A native package case must start with empty CLI state and deny network plus developer library/cache paths, then install, check, prepare, calculate and inspect saved results. Synthetic foreground records and real background acquisition remain distinguishable; sparse method applicability is not an incomplete score. Packaging and execution on one OS do not qualify the remaining targets or a public release.

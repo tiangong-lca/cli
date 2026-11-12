@@ -7,6 +7,7 @@ import { installModelRuntime, setupLocalModel } from '../src/adapters/model-inst
 import { writeRuntimeComponentArchive } from '../src/lib/runtime/archive-writer.js';
 import { hashRuntimeFile } from '../src/lib/runtime/files.js';
 import { modelRuntimeFile } from '../src/adapters/model-runtime.js';
+import { runSetupCommand } from '../src/commands/setup.js';
 
 async function fixture(t: { after(fn: () => void): void }) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'model-install-'));
@@ -15,6 +16,7 @@ async function fixture(t: { after(fn: () => void): void }) {
   const files = [];
   for (const name of [
     'bin/model_calculate',
+    'cache/lciamethods/cache_manifest.json',
     'cache/lciamethods/flow_factors.json.gz',
     'cache/lciamethods/list.json',
   ]) {
@@ -133,6 +135,12 @@ test('rejects incompatible, unsafe, oversized and corrupted packages before exec
       v.archive.bytes++;
     },
     (v) => {
+      v.archive.bytes = 512 * 1024 * 1024 + 1;
+    },
+    (v) => {
+      v.files[1]!.path = 'cache/lciamethods/missing.json';
+    },
+    (v) => {
       v.files[0]!.sha256 = '0'.repeat(64);
     },
   ];
@@ -180,4 +188,40 @@ test('setup rejects conflicting installation options and routes missing runtime 
     );
   await assert.rejects(setupLocalModel({ check: true }, f.env), /Run setup/u);
   await assert.rejects(setupLocalModel({ install: f.dir }, f.env));
+});
+
+test('local installation failures give local recovery guidance, never service/authentication errors', async (t) => {
+  const f = await fixture(t);
+  const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')!;
+  const originalArch = Object.getOwnPropertyDescriptor(process, 'arch')!;
+  Object.defineProperty(process, 'platform', { value: 'darwin' });
+  Object.defineProperty(process, 'arch', { value: 'arm64' });
+  t.after(() => {
+    Object.defineProperty(process, 'platform', originalPlatform);
+    Object.defineProperty(process, 'arch', originalArch);
+  });
+  const invoke = (bundle: string) =>
+    runSetupCommand(['model-calculation', '--install', bundle, '--json'], (r) =>
+      setupLocalModel(r, f.env),
+    );
+  for (const empty of ['', '   ']) {
+    const reply = await invoke(empty);
+    assert.equal(reply.exitCode, 2);
+    assert.equal(JSON.parse(reply.stdout).error.code, 'VALUE_REQUIRED');
+  }
+  for (const invalid of [null, 123, {}])
+    await assert.rejects(setupLocalModel({ install: invalid }, f.env), /non-empty string/u);
+  const missing = await invoke(path.join(f.dir, 'missing'));
+  assert.equal(missing.exitCode, 1);
+  assert.equal(JSON.parse(missing.stdout).error.category, 'environment');
+  assert.equal(JSON.parse(missing.stdout).error.code, 'MODEL_INSTALL_UNAVAILABLE');
+  fs.writeFileSync(path.join(f.dir, 'manifest.json'), 'not json');
+  assert.equal(JSON.parse((await invoke(f.dir)).stdout).error.code, 'MODEL_INSTALL_UNAVAILABLE');
+  f.manifest.files[0]!.path = '../escape';
+  f.save();
+  const unsafe = JSON.parse((await invoke(f.dir)).stdout);
+  assert.equal(unsafe.error.code, 'MODEL_INSTALL_INVALID');
+  assert.equal(unsafe.error.category, 'environment');
+  assert.match(unsafe.summary, /portable file path/u);
+  assert.equal(fs.existsSync(modelRuntimeFile(f.env)), false);
 });

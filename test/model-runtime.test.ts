@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
@@ -120,7 +121,14 @@ function savedRun(dir: string) {
       views: [{ instanceId: 'p' }],
     },
   };
-  const result = { profileId: summary.profile, modelHash: 'internal', g: [7], h: [0], x: [1] };
+  const result = {
+    profileId: summary.profile,
+    modelHash: 'internal',
+    preparedArtifactSha256: createHash('sha256').update(JSON.stringify(prepared)).digest('hex'),
+    g: [7],
+    h: [0],
+    x: [1],
+  };
   write('summary', summary);
   write('prepared', prepared);
   write('result', result);
@@ -143,6 +151,7 @@ test('saved calculation joins immutable axes and values without engine, network,
     { profileId: 'other' },
     { modelHash: undefined },
     { modelHash: 'different' },
+    { numeric: { ...f.prepared.numeric, inventoryAxes: [{ flowId: 'wrong-flow' }] } },
   ]) {
     f.write('prepared', { ...f.prepared, ...change });
     assert.throws(() => readLocalCalculation(dir, 'lci'), /same calculation/u);
@@ -155,7 +164,12 @@ test('saved calculation joins immutable axes and values without engine, network,
     assert.throws(() => readLocalCalculation(dir, 'lci'), /inconsistent/u);
   }
   f.write('result', f.result);
-  f.write('prepared', { ...f.prepared, numeric: { inventoryAxes: undefined } });
+  const malformed = { ...f.prepared, numeric: { inventoryAxes: undefined } };
+  f.write('prepared', malformed);
+  f.write('result', {
+    ...f.result,
+    preparedArtifactSha256: createHash('sha256').update(JSON.stringify(malformed)).digest('hex'),
+  });
   assert.throws(() => readLocalCalculation(dir, 'lci'), /inconsistent/u);
   for (const raw of ['invalid', '[]']) {
     writeFileSync(path.join(dir, 'summary.json'), raw);

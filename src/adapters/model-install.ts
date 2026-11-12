@@ -13,7 +13,8 @@ import {
 import type { ComponentFile } from '../lib/runtime/manifest-types.js';
 import { resolveCliStateDirectory } from '../shared/state-directory.js';
 import { CommandInputError } from '../shared/command-result.js';
-import type { JsonObject } from '../application/dataset-types.js';
+import { text, type JsonObject } from '../application/dataset-types.js';
+import { CliError } from '../shared/errors.js';
 import { setupModelRuntime } from './model-runtime.js';
 
 function invalid(message: string): never {
@@ -32,14 +33,14 @@ export async function installModelRuntime(
     invalid(
       'Local Model package installation currently requires macOS ARM64. Other hosts may configure an independently installed engine with --engine and --static-cache.',
     );
-  const source = path.resolve(bundle);
+  const source = path.resolve(text(bundle, '--install'));
   const manifestPath = path.join(source, 'manifest.json');
   if (!fs.lstatSync(manifestPath).isFile() || fs.statSync(manifestPath).size > 1024 * 1024)
     invalid('Expected a regular manifest.json of at most 1 MiB in the selected package directory.');
   const manifest = record(JSON.parse(fs.readFileSync(manifestPath, 'utf8')), 'Model package');
   if (manifest.schema !== 'lca.model-runtime-package.v1' || manifest.platform !== host)
     invalid('Model package schema or platform is incompatible with this host.');
-  const files: ComponentFile[] = array(manifest.files, 1024, 3).map((value) => {
+  const files: ComponentFile[] = array(manifest.files, 1024, 4).map((value) => {
     const file = record(value, 'file');
     if (file.mode !== 420 && file.mode !== 493) invalid('Package file mode must be 0644 or 0755.');
     return {
@@ -57,6 +58,7 @@ export async function installModelRuntime(
     invalid('Unpacked Model package exceeds 2 GiB.');
   for (const required of [
     'bin/model_calculate',
+    'cache/lciamethods/cache_manifest.json',
     'cache/lciamethods/list.json',
     'cache/lciamethods/flow_factors.json.gz',
   ])
@@ -65,7 +67,7 @@ export async function installModelRuntime(
     invalid('Model engine must be executable.');
   const archive = path.join(source, 'runtime.tar.gz');
   const expected = record(manifest.archive, 'archive');
-  const bytes = integer(expected.bytes, 1024 * 1024 * 1024, 1);
+  const bytes = integer(expected.bytes, 512 * 1024 * 1024, 1);
   const digest = sha(expected.sha256);
   const actual = hashRuntimeFile(archive, 'runtime.tar.gz');
   if (actual.bytes !== bytes || actual.sha256 !== digest)
@@ -107,7 +109,18 @@ export async function setupLocalModel(
         'ARGUMENTS_INVALID',
         '--install cannot be combined with --check, --engine or --static-cache.',
       );
-    return installModelRuntime(String(request.install), env);
+    const bundle = text(request.install, '--install');
+    try {
+      return await installModelRuntime(bundle, env);
+    } catch (error) {
+      if (error instanceof CommandInputError) throw error;
+      if (error instanceof CliError) invalid(error.message);
+      throw new CommandInputError(
+        'MODEL_INSTALL_UNAVAILABLE',
+        'Cannot read or install the selected local package. Check manifest.json, runtime.tar.gz and local directory permissions. No login or service connection is needed.',
+        'environment',
+      );
+    }
   }
   return setupModelRuntime(request, env);
 }
