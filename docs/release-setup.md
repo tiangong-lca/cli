@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 7217a1053e6028db3eac32041cf06776506a972f
-lastReviewedNote: 'CLI #477: reviewed local report presentation and installed/browser verification; release configuration, publication authority and documentation boundaries are unchanged.'
+lastReviewedCommit: '247227bd7260165c582fa0f9a1371c73d4760470'
+lastReviewedNote: 'CLI #477: reviewed single-language report switching, Platform-style offline Model rendering, report layout and print/browser regressions; runtime and release authority remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

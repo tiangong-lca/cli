@@ -56,13 +56,35 @@ try {
   assert.equal(await page.locator('#model-svg').evaluate((el) => el.style.width), '180%');
   await page.locator('#graph-fit').click();
   assert.equal(await page.locator('#model-svg').evaluate((el) => el.style.width), '100%');
+  await page.screenshot({ path: path.join(directory, 'chinese.png'), fullPage: true });
   await page.locator('#report-language').selectOption('en');
   assert.equal(await page.locator('h1 [lang=zh]').isVisible(), false);
   assert.equal(await page.locator('h1 [lang=en]').isVisible(), true);
+  await page.screenshot({ path: path.join(directory, 'english.png'), fullPage: true });
+  await page.pdf({
+    path: path.join(directory, 'report-en.pdf'),
+    preferCSSPageSize: true,
+    printBackground: true,
+  });
   await page.locator('#report-language').selectOption('zh');
   assert.equal(await page.locator('h1 [lang=zh]').isVisible(), true);
   assert.equal(await page.locator('h1 [lang=en]').isVisible(), false);
-  await page.locator('#report-language').selectOption('bilingual');
+  assert.equal(await page.locator('#report-language option').count(), 2);
+  assert.equal(await page.title(), '可重复使用水瓶 · 生命周期研究');
+  assert.equal(
+    await page
+      .locator('[data-language-text=en]:not([data-only])')
+      .evaluateAll((items) => items.every((el) => getComputedStyle(el).display === 'none')),
+    true,
+  );
+  assert.equal(
+    await page
+      .locator('.node-title-bar')
+      .first()
+      .evaluate((el) => getComputedStyle(el).fill),
+    'rgb(92, 36, 106)',
+  );
+  assert.equal(await page.locator('.node-port').count(), 6);
   const rows = page.locator('#section-2 tbody tr');
   await page.locator('#section-2 input').fill('electricity');
   assert.equal(await rows.nth(1).isVisible(), false);

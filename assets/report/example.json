@@ -4,7 +4,7 @@
     "en": "Synthetic demonstration — illustrates the report interface, not measured environmental performance.",
     "zh": "合成演示数据——用于展示报告能力，不代表实测环境表现。"
   },
-  "language": "bilingual",
+  "language": "zh",
   "sections": [
     {
       "title": { "en": "Goal and scope", "zh": "目标与范围" },

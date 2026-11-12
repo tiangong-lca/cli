@@ -14,8 +14,8 @@ checkPaths:
   - AGENTS.md
   - src/lib/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: '7217a1053e6028db3eac32041cf06776506a972f'
-lastReviewedNote: 'CLI #477: reviewed standalone JSON-to-HTML report rendering, embedded Model/bilingual/print scope, local artifact safeguards and browser/installed proof; hosted signed reports remain independent.'
+lastReviewedCommit: '247227bd7260165c582fa0f9a1371c73d4760470'
+lastReviewedNote: 'CLI #477: reviewed single-language report switching, Platform-style offline Model rendering, report layout and print/browser regressions; runtime and release authority remain unchanged.'
 ---
 
 # Existing runtime safeguards

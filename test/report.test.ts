@@ -20,7 +20,7 @@ test('report validates a presentation projection without scientific, revision or
   assert.equal(report.results[0].value, 2.4);
   assert.equal(report.sections[1].table!.rows[0][1], 2);
   const minimal = parseResearchReport({ title: 'Editable research note' });
-  assert.equal(minimal.language, 'bilingual');
+  assert.equal(minimal.language, 'zh');
   assert.equal(minimal.model, undefined);
   assert.deepEqual(minimal.sections, []);
   assert.ok(!Object.hasOwn(minimal, 'hash'));
@@ -38,6 +38,7 @@ test('report rejects malformed shapes, dangling graph/evidence links and unsafe 
     { title: { en: '' } },
     { title: 'x', hash: 'invented' },
     { title: 'x', language: 'fr' },
+    { title: 'x', language: 'bilingual' },
   ];
   const variants = [
     { sections: 'text' },
@@ -140,6 +141,10 @@ test('renderer keeps facts and complete details in one deterministic offline esc
   assert.match(safe, />0 <\/p>/u);
   assert.match(safe, />— kg<\/p>/u);
   assert.match(safe, /<td>—<\/td>/u);
+  assert.match(
+    renderResearchReport(parseResearchReport({ title: { en: 'Only English' } })),
+    /<title>Only English<\/title>/u,
+  );
   assert.match(
     renderResearchReport(parseResearchReport({ title: { en: 'Only English' }, language: 'en' })),
     /data-language="en"/u,

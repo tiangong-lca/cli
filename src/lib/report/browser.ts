@@ -1,10 +1,16 @@
 /** Fixed enhancement; report text is never evaluated as code. */
 export const REPORT_BROWSER = String.raw`(() => {
   const language = document.querySelector('#report-language');
-  language.addEventListener('change', () => {
+  const updateLanguage = () => {
     document.documentElement.dataset.language = language.value;
-    document.documentElement.lang = language.value === 'zh' ? 'zh' : 'en';
-  });
+    document.documentElement.lang = language.value;
+    document.title = document.querySelector('h1').innerText;
+    for (const element of document.querySelectorAll('[data-label-en]')) {
+      element.setAttribute('aria-label', language.value === 'zh' ? element.dataset.labelZh : element.dataset.labelEn);
+    }
+  };
+  language.addEventListener('change', updateLanguage);
+  updateLanguage();
   document.querySelector('#report-print').addEventListener('click', () => window.print());
   for (const block of document.querySelectorAll('[data-table]')) {
     const input = block.querySelector('input');

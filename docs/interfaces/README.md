@@ -45,7 +45,7 @@ AI 决定任务目标、选择证据与操作顺序。CLI 执行明确动作，�
 | 入口 | 对象 | 责任 |
 | --- | --- | --- |
 | `dataset <type> <action>` | 某一类型的数据集。 | 查询、校验、创建、保存和类型特有操作；Model 包含计算入口。 |
-| `report render` | 本地报告 JSON。 | 生成离线、双语、交互式 HTML，内嵌模型；PDF 使用浏览器打印。 |
+| `report render` | 本地报告 JSON。 | 生成离线交互式 HTML，内嵌模型；中英文切换且每次只显示一种语言，PDF 使用浏览器打印。 |
 | `calculation <action>` | 一次模型计算及其结果。 | 查询状态、获取绑定输入和引擎身份的结果；执行位置由模型来源决定。 |
 | `study <action>` | 计算项目、情景及报告。 | 为 Study Skill 提供项目持久化、运行、分析和报告原语；完整建模研究由 Skill 组织，既有协议保持独立。 |
 | `dataset classification <action>` | 分类或地理位置目录。 | 按明确目录和版本导航。 |

@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: '7217a1053e6028db3eac32041cf06776506a972f'
-lastReviewedNote: 'CLI #477: reviewed standalone JSON-to-HTML report rendering, embedded Model/bilingual/print scope, local artifact safeguards and browser/installed proof; hosted signed reports remain independent.'
+lastReviewedCommit: '247227bd7260165c582fa0f9a1371c73d4760470'
+lastReviewedNote: 'CLI #477: reviewed single-language report switching, Platform-style offline Model rendering, report layout and print/browser regressions; runtime and release authority remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -163,4 +163,4 @@ Local Model validation must cover editable input snapshots, dependency closure w
 
 ## Local HTML report qualification
 
-Run `node scripts/report-browser-smoke.mjs <new-output-directory>` after building, with the existing pinned Playwright Chromium installed (`pnpm exec playwright install chromium`). This separate rendered-browser check verifies offline graph selection/zoom, language controls, table filtering, print restoration of all rows/details, actual PDF bytes, mobile overflow and no-JavaScript content. It retains HTML/PDF/screenshots and a receipt for review; the caller owns retention/cleanup. Package tests render the shipped synthetic example with native Node outside source, without a browser runtime dependency. Input/security/output behavior remains in the full source coverage gate. Browser proof is host-specific and does not establish other native platforms or scientific validity.
+Run `node scripts/report-browser-smoke.mjs <new-output-directory>` after building, with the existing pinned Playwright Chromium installed (`pnpm exec playwright install chromium`). This separate rendered-browser check verifies offline graph selection/zoom, mutually exclusive Chinese/English content and localized page title/controls, table filtering, print restoration of all rows/details, actual PDF bytes, mobile overflow and no-JavaScript content. It retains HTML/PDF/screenshots and a receipt for review; the caller owns retention/cleanup. Package tests render the shipped synthetic example with native Node outside source, without a browser runtime dependency. Input/security/output behavior remains in the full source coverage gate. Browser proof is host-specific and does not establish other native platforms or scientific validity.

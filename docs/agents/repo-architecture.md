@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: '7217a1053e6028db3eac32041cf06776506a972f'
-lastReviewedNote: 'CLI #477: reviewed standalone JSON-to-HTML report rendering, embedded Model/bilingual/print scope, local artifact safeguards and browser/installed proof; hosted signed reports remain independent.'
+lastReviewedCommit: '247227bd7260165c582fa0f9a1371c73d4760470'
+lastReviewedNote: 'CLI #477: reviewed single-language report switching, Platform-style offline Model rendering, report layout and print/browser regressions; runtime and release authority remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -259,4 +259,6 @@ Study P4 adds `assets/study-contract/v5/` and an independent `assets/study-rende
 
 ## Local report presentation
 
-`commands/report.ts` owns strict discovery/arguments and shared results. `application/report.ts` validates a lightweight presentation projection and defines its output port. `adapters/report.ts` writes a separate local artifact; `lib/report/` renders escaped text, SVG, bilingual and print presentation with fixed embedded enhancements. Composition selects the writer. This path performs no remote access, calculation or hosted Study state change and never consumes or modifies signed hosted renderer assets.
+`commands/report.ts` owns strict discovery/arguments and shared results. `application/report.ts` validates a lightweight presentation projection and defines its output port. `adapters/report.ts` writes a separate local artifact; `lib/report/` renders escaped text, SVG, single-language Chinese/English switching and print presentation with fixed embedded enhancements. Composition selects the writer. This path performs no remote access, calculation or hosted Study state change and never consumes or modifies signed hosted renderer assets.
+
+The report Model view follows Platform’s LifeCycleModels title-bar, 6px node, 8px square endpoint and IO grouping conventions, with the TianGong light brand primary. CLI owns the offline SVG implementation; it does not import Platform’s React/X6 page, service adapters or editing state. Node summaries link to complete supplied details.

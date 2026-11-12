@@ -38,7 +38,7 @@ export function runReportCommand(args: string[], write: ReportPort): CommandIO {
         input: {
           title: 'text or {en,zh}',
           subtitle: 'optional text or {en,zh}',
-          language: 'en | zh | bilingual (default)',
+          language: 'en | zh (default)',
           sections: '[{title,body?,sources?,table?:{columns,rows}}]',
           sources: '[{id,title,url?,note?}]',
           model:
@@ -49,7 +49,7 @@ export function runReportCommand(args: string[], write: ReportPort): CommandIO {
         defaults:
           'Only title is required. Text is escaped plain text; no HTML or Markdown execution. Untranslated text remains visible with its language label. No automatic links/providers or per-node contribution inference.',
         output:
-          'Self-contained HTML with bilingual switching, graph detail links, table filtering, and complete print layout. Print / Save as PDF uses the reader’s browser; this command writes HTML only.',
+          'Self-contained HTML with single-language Chinese/English switching, graph detail links, table filtering, and complete print layout. Print / Save as PDF uses the reader’s browser; this command writes HTML only.',
         example: 'tiangong-lca report render --input report.json --output report.html --json',
         exampleInput: {
           title: { en: 'Product study', zh: '产品研究' },

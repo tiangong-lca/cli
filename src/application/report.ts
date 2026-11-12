@@ -29,7 +29,7 @@ export type ReportEdge = {
 export type ResearchReport = {
   title: ReportText;
   subtitle?: ReportText;
-  language: 'en' | 'zh' | 'bilingual';
+  language: 'en' | 'zh';
   sections: ReportSection[];
   model?: { nodes: ReportNode[]; edges: ReportEdge[] };
   results: { label: ReportText; value: number; unit: string; method?: ReportText }[];
@@ -99,9 +99,8 @@ export function parseResearchReport(input: unknown): ResearchReport {
     'sources',
     'limitations',
   ]);
-  const language = r.language ?? 'bilingual';
-  if (!['en', 'zh', 'bilingual'].includes(language as string))
-    invalid('language', 'en, zh or bilingual');
+  const language = r.language ?? 'zh';
+  if (!['en', 'zh'].includes(language as string)) invalid('language', 'en or zh');
   const sources = list(r.sources, 'sources').map((value, i) => {
     const at = `sources[${i}]`;
     const s = object(value, at, ['id', 'title', 'url', 'note']);

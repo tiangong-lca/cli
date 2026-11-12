@@ -33,7 +33,7 @@ tiangong-lca report render --input report.json --output report.html --json
 | 字段 | 内容 |
 | --- | --- |
 | `title`, `subtitle` | 标题与可选副标题，使用文本格式。 |
-| `language` | `en`、`zh`、`bilingual`，默认双语；用户可在 HTML 中切换。 |
+| `language` | `en` 或 `zh`，默认 `zh`；每次只显示一种语言，用户可在 HTML 中切换。 |
 | `sections` | `{title, body?, sources?, table?}` 数组，按输入顺序呈现正文；表格为 `{columns, rows}`，单元格是文本或有限数值。 |
 | `model` | `{nodes, edges}` 图形投影，来源于调用方选择的 Model 和 Process；不是直接提交规范 Model 文档。 |
 | `results` | `{label, value, unit, method?}` 数组；共享同一份数值和单位，`method` 可注明所选 Run 和方法。 |
@@ -67,7 +67,9 @@ tiangong-lca report render --input report.json --output report.html --json
 
 ## HTML 与 PDF
 
-HTML 包含样式、固定交互代码和 SVG 模型，不加载 CDN、字体、远程数据或计算运行时。目录、模型节点、连接编号和来源锚点可点击；模型支持缩放和适应宽度；表格可筛选。节点详情和全部数值本来就在文档中，关闭 JavaScript 仍可阅读。
+中英文作为同一内容的两套文本保存，阅读和打印均一次显示一种语言，不并排或上下重复展示。标题、正文、表格、模型标签和界面控件随语言选择切换。只有一种语言的内容保留原文并标注，渲染器不补写翻译。
+
+HTML 包含样式、固定交互代码和 SVG 模型，不加载 CDN、字体、远程数据或计算运行时。目录、模型节点、连接编号和来源锚点可点击；模型支持缩放和适应宽度；表格可筛选。模型沿用 Platform 的天工主色、过程标题栏、圆角节点、左右输入输出分组、方形连接点与点阵画布视觉规则，以离线 SVG 实现。图示连接点只表示已提供的过程间连接，不推断规范交换端口身份；节点内的输入输出预览不替代完整详情。节点详情和全部数值本来就在文档中，关闭 JavaScript 仍可阅读。
 
 “打印 / 导出 PDF”打开浏览器打印界面，用户选择保存为 PDF。打印沿用所选语言，隐藏操作控件，恢复所有被筛选隐藏的表格行，保留模型、完整详情和来源链接文字。CLI 本身只生成 HTML，无需安装浏览器或启动 PDF 服务；自动化 PDF 转换不属于此命令。
 
