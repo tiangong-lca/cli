@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 955642482771a270fd49a199d1d7c86fcccc9ce2
-lastReviewedNote: 'Reviewed source-based model calculation, optional Study, execution and recovery boundaries; future implementation remains separate from released 0.2.0 capabilities.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: 81d3ca5a20e68ef118cfa71f4b344c82b537e8c8
+lastReviewedNote: 'Reviewed complete Study workflow, explicit aggregate-inventory background consumption, configurable local budgets and source-evidenced implementation gaps; runtime contracts remain unchanged.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -48,16 +48,42 @@ lastReviewedNote: 'Reviewed source-based model calculation, optional Study, exec
 
 ## Model 计算后续实施
 
-[Model 计算设计](../interfaces/calculations.md)定义独立于 0.2.0 已有业务迁移的后续范围，不追加到本次迁移完成条件。0.2.0 已有 `study` 支持线上计算项目与运行协议；`dataset model calculate`、独立 `calculation` 入口、无需调用方预建 Study 的计算及本地执行尚未按该设计实现。本文不证明现有 Worker 已具有无数据库、无队列依赖的独立内核。
+[Study 总体设计](../interfaces/study.md)和 [Model 计算设计](../interfaces/calculations.md)定义独立于 0.2.0 已有业务迁移的后续范围，不追加到本次迁移完成条件。Study 扩展为目标、资料、前景建模、背景选择及计算分析的完整研究流程，独立 Model 计算仍无需调用方预建 Study。这里记录源码核查结果和待交付项，不代表服务启用或新的科学验证。
+
+### 已有基础与差距
+
+| 领域 | 已有基础 | 需要交付 |
+| --- | --- | --- |
+| 线上 CLI | 0.2.0 的 `study` 提供项目、模型准备、运行、分析及报告等版本化协议。 | Model 来源选择入口、独立 Calculation 查询，以及与现有 Study 前置条件兼容的独立计算服务路径。 |
+| 计算组件 | Worker 的 `study::prepare/execute` 和本地 `study_compile` 已能使用固定来源包与方法缓存计算，无需运行数据库和队列；源码入口为 `crates/solver-worker/src/bin/study_compile.rs`。 | 复用现有数值实现，整理本地输入和功能单位契约、运行组件交付、进程管理和 CLI 接入；不能把开发入口视为已发布的用户运行组件。 |
+| 显式连接 | Study 编译器按 Model 已声明连接计算，不做背景 provider 推断。 | 保持这一规则；资料与背景选择由 Skill 建模阶段完成，依赖准备不扩展供应关系。 |
+| 背景发现 | CLI `src/adapters/dataset-search.ts` 的混合搜索使用 `data_source: my`。 | 明确获准访问的背景数据搜索与精确读取范围、候选语义和可计算性信息，不将当前账号搜索描述为全库发现。 |
+| Result 消费 | Worker 的 Study 来源准入仍拒绝保留 Result 状态（包括 120）；现有泛用读取和导出也有自己的准入边界。 | 由 Database/Edge/Worker 所有者定义并交付聚合清单型 Result 消费契约；同步查询、读取、准备、因子匹配和计算准入，保留权限，不仅删除一个状态判断。 |
+| 本地预算 | 现有 Study Bounds 固定容量上限，仅允许较小预算；任意功能单位的输入仍有部分关联 StudyBinding。 | 独立计算设置与可配置资源预算，公开默认值和不可覆盖安全上限；不能伪造 Study 身份或绕过数值检查。 |
+| Study Skill | 现有计算流程主要从已选 Model 开始。 | agent-skills 另行实现资料引导、提取与缺口分析、前景建模和背景选择，保持 CLI 原子操作边界。 |
+
+Worker 核查基线为 `c9665557943dd9794f78e76d4822658934e5725e` 的 Study 编译器和运行契约。上述结论来自源码及既有契约，不是本轮重新执行的数值、真实服务或平台分发测试。已有本地能力可复用，可配置安装和完整业务链仍需验证。
+
+### 实施顺序与所有者
 
 | 顺序 | 工作及所有者 | 验收边界 |
 | --- | --- | --- |
-| 1 | CLI 对照现有 Study 契约；Worker 所有者核实并划分计算内核、输入准备和任务包装。 | 明确可复用代码、完整输入契约、引擎能力和跨仓依赖；不得在 CLI 复制科学规则。 |
-| 2 | 计算内核及输入准备所有者交付固定输入包和最小本地运行方式；CLI 设计执行配置与运行支撑适配。 | 不启动业务数据库和消息队列即可处理完整本地输入；缺失依赖明确拒绝，安装准备与计算执行分开。 |
-| 3 | Edge/Database/Worker 所有者核实独立线上计算所需服务契约，CLI 接入按来源选择的 Model 入口和结果查询。 | 不要求调用方预建 Study，不隐式创建未披露项目；线上受理与完成区分，本地不上传，失败不跨位置降级。 |
-| 4 | CLI 与引擎所有者完成实际两条路径验收。 | 相同固定输入和引擎版本按声明容差比较数值；验证请求丢失恢复、Worker 重试不重复创建计算、本地失败、产物重取、资源清理及无网络本地执行。 |
+| 1 | Worker 所有者用代表性显式模型验证现有 `study_compile`，核实完整输入与方法缓存；CLI 对照现有协议。 | 得到可复核的本地数值与诊断，不启动业务数据库或队列，不自动补 provider；记录可复用代码与真实缺口。 |
+| 2 | Database/Edge/Worker 明确聚合清单背景数据的身份、边界及可读可计算契约，CLI 设计对应查询和输入准备。 | 支持合格结果清单而不开放仅有 LCIA 分数的结果；来源追溯不重复展开已聚合负荷，权限和原始资料披露分别受控。 |
+| 3 | Worker 交付独立计算参数、可配置预算和可分发本地组件，CLI 接入运行支撑及 Model 计算。 | 安装准备和计算分开；预算按规则覆盖，保留安全检查；缺失依赖明确返回，本地计算无隐式网络或上传。 |
+| 4 | Edge/Database/Worker 交付独立线上计算前提，CLI 接入受理、查询和原请求恢复。 | 无隐式项目创建；线上受理与完成区分；响应丢失不重复创建计算，有限 Worker 重试保留尝试。 |
+| 5 | agent-skills 基于已交付的 CLI 能力实现 Study 六阶段及子 Skill 协作。 | 从用户资料到前景与聚合背景模型，再到可解释结果；缺口、来源、假设、修订和旧结果的关系可继续追踪。 |
 
-命令帮助、简单下一步提示和回复模板必须随实际能力交付。已有 Study 协议、历史结果和恢复文件保留原含义；本地结果接收、跨位置计算与下游 Skill 迁移另行确定范围。后端和 Worker 变更在其所有者仓库交付，CLI 文档不预先承诺服务已支持。
+### 场景验收
+
+- 用有明确预期值的模型，将一个前景过程连接到已知参考量的聚合背景清单，核对缩放、清单和 LCIA；其原始组成过程即使可访问也不重复计入，不再次应用已完成的分配。
+- 覆盖前景直接排放、多个独立需求复用背景、残余未闭合交换、方法缺口、单位不匹配及来源不可见；不以静默截断或默认零制造成功。
+- 对聚合清单型 Result 验证“可发现—精确读取—准备—计算”完整路径；对仅有指标分数、不合格内容和权限拒绝验证失败边界。读取授权不升级为修改或发布权限。
+- 本地固定输入在禁止网络且无数据库/队列时完成计算；覆盖组件未安装、方法缓存缺失、预算覆盖、扩大模型规模、进程中断、产物重取和任务拥有资源清理。
+- 对相同固定输入及引擎版本比较线上与本地结果，按引擎声明的数值标准验收；分别记录真实服务、原生执行和模拟测试证据。
+- Study 使用代表性资料验证统计口径与来源提取、关键缺口追问、背景选择依据及最小范围修订；计算成功不自动触发数据集发布或报告分享。
+
+命令帮助、简单下一步提示和回复模板随实际能力交付。已有 Study 协议及历史恢复文件保持原含义；背景聚合数据的消费不等于接收并信任用户上传的计算结果。本地结果上传接收、跨位置提交和既有调用方迁移另行确定范围。跨仓变更在各自所有者仓库交付，本次只完善设计及后续验收依据。
 
 ## 实施顺序
 

@@ -12,9 +12,9 @@ whenToUpdate:
   - when the documented scope or behavior changes
 checkPaths:
   - docs/interfaces/**
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 955642482771a270fd49a199d1d7c86fcccc9ce2
-lastReviewedNote: 'Reviewed source-based model calculation, optional Study, execution and recovery boundaries; future implementation remains separate from released 0.2.0 capabilities.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: 81d3ca5a20e68ef118cfa71f4b344c82b537e8c8
+lastReviewedNote: 'Reviewed complete Study workflow, explicit aggregate-inventory background consumption, configurable local budgets and source-evidenced implementation gaps; runtime contracts remain unchanged.'
 ---
 
 # CLI 目标接口设计
@@ -46,7 +46,7 @@ AI 决定任务目标、选择证据与操作顺序。CLI 执行明确动作，�
 | --- | --- | --- |
 | `dataset <type> <action>` | 某一类型的数据集。 | 查询、校验、创建、保存和类型特有操作；Model 包含计算入口。 |
 | `calculation <action>` | 一次模型计算及其结果。 | 查询状态、获取绑定输入和引擎身份的结果；执行位置由模型来源决定。 |
-| `study <action>` | 计算项目、情景及报告。 | 按需组织计算记录、分析、报告审核和分享；沿用现行协议。 |
+| `study <action>` | 计算项目、情景及报告。 | 为 Study Skill 提供项目持久化、运行、分析和报告原语；完整建模研究由 Skill 组织，既有协议保持独立。 |
 | `dataset classification <action>` | 分类或地理位置目录。 | 按明确目录和版本导航。 |
 | `review <action>` | 审核申请、审核包与审核单。 | 提交、重新提交、查询进度、获取材料、记录意见和决定、撤回申请。 |
 | `release <action>` | 数据产品 Release 及交付产物。 | 沿用现有接口，本轮不调整命令和行为。 |
@@ -71,7 +71,7 @@ tiangong-lca release publish
 - `validate` 执行规则检查；`review` 记录授权主体对明确内容的审核。自动检查通过不等于审核通过。
 - `review submit` 和 `review resubmit` 统一提交及重新提交审核，支持 Flow、Process、Model、Source、Contact 的单对象或审核包。默认包含关联数据，`includeRelated: false` 限定所选内容；提交者与审核者共享同一命令树。
 - Release 面向产品版本、内容清单和交付产物。数据入库、草稿保存、数据审核、发布批准和公开发布具有不同的成功条件。
-- Model 是计算对象，Run 是独立计算记录，Study 是可选组织容器。线上模型默认提交线上任务，本地模型默认本地执行；输入不完整时显式准备，不自动跨位置执行。详见[Model 计算](calculations.md)。
+- Model 是计算对象，Run 是独立计算记录；Study 是组织资料、建模、背景选择和分析的研究对象，对独立 Model 计算保持可选。线上模型默认提交线上任务，本地模型默认本地执行；输入不完整时显式准备，不自动跨位置执行。详见[Model 计算](calculations.md)。
 - 本地处理生成候选内容，远程写入显式使用 `create` 或 `save`。转换、聚合、补丁和附件上传不隐式保存数据集。
 - 环境与账号管理不承担业务修复。业务状态查询归属相应对象；安装缓存和会话状态不能替代业务结果。
 - 专项数据修复流程的范围选择、审批批次与任务编排由调用方工作流承担。CLI 保留通用维护原语及其安全约束；Batch 调度是公共库能力，不建立业务命令入口。
@@ -96,7 +96,8 @@ tiangong-lca release publish
 | --- | --- |
 | 数据生产计划、AI 生成、证据取舍、修复队列、任务交接与完成判断 | Foundry 或调用方工作流；可复用 Agent 流程由 Skills 提供。 |
 | 专项生产修复的范围、审批、轮次和执行编排 | Utilities 等受治理的运维流程；调用 CLI 的受约束读写原语。 |
-| Study 的计算项目组织、分析、报告、报告审核及分享 | 独立产品接口；Model 计算通过明确身份与其关联，不强制先创建项目。现行协议不因新目标入口自动迁移。 |
+| Study 的研究引导、资料处理、前景建模、背景选择及结果解释 | Study Skill 编排，子 Skill 提供可复用资料能力；CLI 执行明确业务操作。完整边界见 [Study 总体设计](study.md)。 |
+| Study 项目持久化、分析及报告审核与分享 | 独立产品接口；Model 计算通过明确身份关联，不强制先创建项目。现行协议不因目标设计自动迁移。 |
 | 计算内核、线上队列调度与 Worker 重试 | 所属计算及任务服务；CLI 适配明确操作，本地执行无需复制线上数据库和队列。 |
 | 组件安装、缓存租约、固定 PCR 工具执行 | 运行支撑层，单独发现，不成为数据生产阶段。 |
 | 数据库权限、审核状态转换、发布资格、科学规则 | 所属领域服务或规则包；CLI 消费并准确表达，不另建权威规则。 |
@@ -128,6 +129,7 @@ tiangong-lca release publish
 | [Dataset](datasets/README.md) | 类型能力矩阵、创建与保存、与审核的边界。 |
 | [Flow](datasets/flows.md) | 流、属性和单位引用。 |
 | [Process](datasets/processes.md) | 交换项、引用及业务校验。 |
+| [Study 总体设计](study.md) | 从资料到前景、背景模型与计算分析的流程、产物及职责。 |
 | [Model 计算](calculations.md) | 模型来源、完整输入、引擎与执行器、运行结果及恢复边界。 |
 | [Model](datasets/models.md) | 模型图、生成模型结果过程与关联数据。 |
 | [Source](datasets/sources.md) | 来源记录、附件传输与引用。 |
