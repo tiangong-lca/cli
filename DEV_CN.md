@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 54d330846333d58dd896e9e886d5b54888ee71b1
-lastReviewedNote: 'CLI #477: reviewed editable Model inputs, explicit background result reads, bounded local execution, configurable budgets and truthful factor coverage; hosted protocols and mutations remain unchanged.'
+lastReviewedCommit: 7217a1053e6028db3eac32041cf06776506a972f
+lastReviewedNote: 'CLI #477: reviewed local report presentation and installed/browser verification; release configuration, publication authority and documentation boundaries are unchanged.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

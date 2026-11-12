@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 54d330846333d58dd896e9e886d5b54888ee71b1
-lastReviewedNote: 'CLI #477: reviewed local runtime setup, saved calculation retrieval and normal sparse LCIA applicability; no hosted activation or automatic native distribution is claimed.'
+lastReviewedCommit: '7217a1053e6028db3eac32041cf06776506a972f'
+lastReviewedNote: 'CLI #477: reviewed standalone JSON-to-HTML report rendering, embedded Model/bilingual/print scope, local artifact safeguards and browser/installed proof; hosted signed reports remain independent.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -255,4 +255,8 @@ Study P4 adds `assets/study-contract/v5/` and an independent `assets/study-rende
 
 ## Local Model calculation
 
-`application/model-calculation.ts` resolves only explicit numerical dependency identities through ports. `adapters/model-calculation.ts` loads selected files/authenticated exact reads and invokes the explicitly configured native executable with bounded, shell-free IO. The local child receives system runtime variables rather than CLI authentication credentials. Commands distinguish dependency preparation, numerical completion and incomplete factor coverage. Worker owns `lca.model-input.v1`, native scientific rules and Run artifacts; no server SourceInput authorization or StudyBinding is fabricated.
+`application/model-calculation.ts` resolves only explicit numerical dependency identities through ports. `adapters/model-calculation.ts` loads selected files/authenticated exact reads and invokes the explicitly configured native executable with bounded, shell-free IO. The local child receives system runtime variables rather than CLI authentication credentials. Commands distinguish dependency preparation, numerical completion and invalid or missing numerical inputs; normal method-specific sparse characterization is not a coverage gap. Worker owns `lca.model-input.v1`, native scientific rules and Run artifacts; no server SourceInput authorization or StudyBinding is fabricated.
+
+## Local report presentation
+
+`commands/report.ts` owns strict discovery/arguments and shared results. `application/report.ts` validates a lightweight presentation projection and defines its output port. `adapters/report.ts` writes a separate local artifact; `lib/report/` renders escaped text, SVG, bilingual and print presentation with fixed embedded enhancements. Composition selects the writer. This path performs no remote access, calculation or hosted Study state change and never consumes or modifies signed hosted renderer assets.

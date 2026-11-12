@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 54d330846333d58dd896e9e886d5b54888ee71b1
-lastReviewedNote: 'CLI #477: reviewed local runtime setup, saved calculation retrieval and normal sparse LCIA applicability; no hosted activation or automatic native distribution is claimed.'
+lastReviewedCommit: '7217a1053e6028db3eac32041cf06776506a972f'
+lastReviewedNote: 'CLI #477: reviewed standalone JSON-to-HTML report rendering, embedded Model/bilingual/print scope, local artifact safeguards and browser/installed proof; hosted signed reports remain independent.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -160,3 +160,7 @@ The event SHA and workflow-definition SHA are separate facts (`github.sha` and `
 Git-backed test fixtures must clear inherited repository routing (`GIT_DIR`, `GIT_COMMON_DIR`, `GIT_WORK_TREE`, index/object paths and prefix) before running Git or release-shell commands in temporary repositories. Preserve scoped configuration/credential inputs. The release-context suite exercises a foreign Git hook environment and verifies its config, HEAD, index and files remain byte-identical. This isolation is required when the suite runs from the pre-push hook in a linked worktree.
 
 Local Model validation must cover editable input snapshots, dependency closure without automatic providers, aggregate backgrounds without double expansion, whole-process timeout/no retry, exclusive Run directories, compact artifact replies and normal method-specific sparse characterization. Setup must verify engine/cache before saving, preserve configuration on failure, avoid forwarding credentials and support read-only checks. Saved Run retrieval must join original axes and values without recalculation or online validation, preserve full output artifacts and reject corruption. Private real-background probes supplement synthetic numerical oracles; neither replaces native distribution qualification.
+
+## Local HTML report qualification
+
+Run `node scripts/report-browser-smoke.mjs <new-output-directory>` after building, with the existing pinned Playwright Chromium installed (`pnpm exec playwright install chromium`). This separate rendered-browser check verifies offline graph selection/zoom, language controls, table filtering, print restoration of all rows/details, actual PDF bytes, mobile overflow and no-JavaScript content. It retains HTML/PDF/screenshots and a receipt for review; the caller owns retention/cleanup. Package tests render the shipped synthetic example with native Node outside source, without a browser runtime dependency. Input/security/output behavior remains in the full source coverage gate. Browser proof is host-specific and does not establish other native platforms or scientific validity.

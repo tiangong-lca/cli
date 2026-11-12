@@ -158,3 +158,7 @@ pnpm prepush:gate
 下游迁移在 CLI 正式 Release 后由调用方分别推进，其完成状态不作为 CLI 验收条件。
 
 `lib` 按能力划分；Alias、Length×time、Flow-identity 专项修复流程不随包提供。Batch 调度保留在 `@tiangong-lca/cli/batch` 公共库，CLI 内部直接使用共享并发锁设施。
+
+## Local research reports
+
+`tiangong-lca report render --input report.json --output report.html --json` renders explicit research content into one offline HTML file with bilingual switching, clickable Model nodes/connections, sources, filterable tables and complete print layout. Use its Print / Save as PDF button for browser PDF export. The CLI does not translate, calculate, discover providers or register a hosted Study. Only `title` is required; read `report render --help --json`, the [input contract](docs/interfaces/report.md) and [synthetic example](assets/report/example.json). Existing outputs require `--force`; input files remain protected.

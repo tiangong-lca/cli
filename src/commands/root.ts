@@ -16,6 +16,7 @@ Usage:
 Implemented Commands:
   setup      model-calculation environment preparation
   calculation get | result
+  report     render (local JSON to interactive HTML; browser PDF printing)
   doctor     environment diagnostics
   auth       login | status | whoami | doctor-auth | logout | identity-receipt
   dataset    <flow|process|model|source|contact|flowproperty|unitgroup|lciamethod> <action>

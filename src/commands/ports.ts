@@ -1,3 +1,4 @@
+import type { ReportPort } from '../application/report.js';
 import type { DotEnvLoadResult } from '../lib/config/dotenv.js';
 import type { FetchLike } from '../lib/transport/http.js';
 import type {
@@ -35,6 +36,7 @@ import type { runDatasetMaintenanceApply } from '../lib/maintenance/apply.js';
 import type { runDatasetMaintenanceVerify } from '../lib/maintenance/verify.js';
 
 export type CliDeps = {
+  writeResearchReportImpl?: ReportPort;
   env: NodeJS.ProcessEnv;
   dotEnvStatus: DotEnvLoadResult;
   fetchImpl: FetchLike;

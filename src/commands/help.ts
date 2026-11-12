@@ -8,6 +8,7 @@ export function rootHelp(usage: string): CommandIO {
     commands: {
       setup: ['model-calculation'],
       calculation: ['get', 'result'],
+      report: ['render'],
       doctor: ['local diagnostics', '--online selected Auth health'],
       auth: ['login', 'status', 'whoami', 'doctor-auth', 'logout', 'identity-receipt'],
       dataset: {
@@ -28,7 +29,7 @@ export function rootHelp(usage: string): CommandIO {
     packageTools: ['dataset import-lca convert', 'validation run'],
     outputProtocols: {
       core: {
-        commands: ['setup', 'calculation', 'doctor', 'auth', 'dataset', 'review'],
+        commands: ['setup', 'calculation', 'report', 'doctor', 'auth', 'dataset', 'review'],
         machineHelp: true,
         results: 'Shared result on stdout; stable structured errors.',
       },

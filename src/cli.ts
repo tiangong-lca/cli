@@ -10,6 +10,7 @@ import { reviewReader } from './adapters/review-read.js';
 import { reviewWriter } from './adapters/review-write.js';
 import { reviewMaterials } from './adapters/review-materials.js';
 import { runAuthCommand } from './commands/auth.js';
+import { runReportCommand } from './commands/report.js';
 import { runSetupCommand } from './commands/setup.js';
 import { setupModelRuntime } from './adapters/model-runtime.js';
 import { runCalculationCommand } from './commands/calculation.js';
@@ -66,6 +67,7 @@ async function executeCore(argv: string[], deps: ResolvedCliDeps): Promise<CliRe
   try {
     if (argv[0] === 'dataset' && (!argv[1] || argv[1].startsWith('-')))
       return runDatasetHelp(argv.slice(1));
+    if (argv[0] === 'report') return runReportCommand(argv.slice(1), deps.writeResearchReportImpl);
     if (argv[0] === 'setup')
       return runSetupCommand(argv.slice(1), (request) => setupModelRuntime(request, deps.env));
     if (argv[0] === 'calculation')

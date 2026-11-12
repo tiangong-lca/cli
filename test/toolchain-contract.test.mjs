@@ -1,3 +1,4 @@
+import { assertInstalledReport } from './helpers/report-installed.ts';
 import { assertInstalledBusiness } from './helpers/cli-business-installed.ts';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
@@ -739,6 +740,7 @@ maybePackTest(
       rmSync(cleanRepository, { recursive: true, force: true });
       await assertInstalledStudyRecovery(installedPackageRoot, consumerRoot);
       await assertInstalledBusiness(installedPackageRoot, consumerRoot);
+      assertInstalledReport(installedPackageRoot, consumerRoot);
 
       const consumerTree = pnpmList(consumerRoot, 'typescript');
       assert.deepEqual(
