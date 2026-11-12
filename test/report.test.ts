@@ -3,6 +3,7 @@ import test from 'node:test';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, linkSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { parseResearchReport } from '../src/application/report.js';
 import { renderResearchReport } from '../src/lib/report/render.js';
 import { writeResearchReport } from '../src/adapters/report.js';
@@ -236,7 +237,7 @@ test('help and invalid arguments never invoke the renderer; arbitrary render fai
     ['render', '--input', 'missing', '--output', 'x'],
   ])
     assert.equal(runReportCommand(args, noWrite).exitCode, 2);
-  const source = new URL('../assets/report/example.json', import.meta.url).pathname;
+  const source = fileURLToPath(new URL('../assets/report/example.json', import.meta.url));
   const failure = runReportCommand(
     ['render', '--input', source, '--output', 'x', '--json'],
     noWrite,
