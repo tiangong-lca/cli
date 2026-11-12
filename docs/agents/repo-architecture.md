@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 095fcf8d9990461e7c764a32c50ddf653803c884
-lastReviewedNote: 'CLI #477: reviewed explicit search scopes and complete Process result reads, internal read recovery and low-friction calculation design; existing mutations and hosted protocols unchanged.'
+lastReviewedCommit: 74240b58c738a0baaaed06687a92f31527225b5c
+lastReviewedNote: 'CLI #477: reviewed editable Model inputs, explicit background result reads, bounded local execution, configurable budgets and truthful factor coverage; hosted protocols and mutations remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -252,3 +252,7 @@ The SDK owns compatibility interpretation. Whole-inventory legacy Output shares 
 Allocation serialization follows the public three-decimal `Perc` boundary using deterministic largest remainder, tied by stable final target numbering. The sidecar reports actual percentage/amount error per target and bounds error below 0.001 percentage points, or inventory amount × 0.00001; conservation is qualified within this tolerance.
 
 Study P4 adds `assets/study-contract/v5/` and an independent `assets/study-renderer/v2/` package. Existing Study modules adapt explicit V5 commands and journals while preserving older codecs, renderer graphs and defaults. Scientific computation remains Worker-owned; current authorization and profile/finalization policy remain server-owned. The Study CLI contract owns exact source pins and rollback-safe historical-read semantics.
+
+## Local Model calculation
+
+`application/model-calculation.ts` resolves only explicit numerical dependency identities through ports. `adapters/model-calculation.ts` loads selected files/authenticated exact reads and invokes the explicitly configured native executable with bounded, shell-free IO. The local child receives system runtime variables rather than CLI authentication credentials. Commands distinguish dependency preparation, numerical completion and incomplete factor coverage. Worker owns `lca.model-input.v1`, native scientific rules and Run artifacts; no server SourceInput authorization or StudyBinding is fabricated.

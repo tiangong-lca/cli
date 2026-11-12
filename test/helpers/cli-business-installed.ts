@@ -115,6 +115,67 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
     return JSON.parse(readFileSync(file, 'utf8')) as Json;
   };
   try {
+    const localModel = {
+      lifeCycleModelDataSet: {
+        lifeCycleModelInformation: {
+          dataSetInformation: { 'common:UUID': 'installed-model' },
+          technology: {
+            processes: {
+              processInstance: {
+                referenceToProcess: { '@refObjectId': 'installed-process', '@version': '1' },
+              },
+            },
+          },
+        },
+        administrativeInformation: { publicationAndOwnership: { 'common:dataSetVersion': '1' } },
+      },
+    };
+    const localProcess = {
+      processDataSet: {
+        processInformation: { dataSetInformation: { 'common:UUID': 'installed-process' } },
+        administrativeInformation: { publicationAndOwnership: { 'common:dataSetVersion': '1' } },
+        exchanges: { exchange: [] },
+      },
+    };
+    const preparationRequest = jsonFile({
+      model: { content: localModel },
+      datasets: [{ content: localProcess }],
+      methods: [{ id: 'installed-method', version: '1' }],
+    });
+    const localInput = path.join(directory, 'model-input.json');
+    const preparedModel = await invoke([
+      'dataset',
+      'model',
+      'prepare',
+      '--input',
+      preparationRequest,
+      '--output',
+      localInput,
+    ]);
+    assert.equal(preparedModel.outcome, 'calculation_input_prepared');
+    assert.equal((preparedModel.data as Json).datasetCount, 1);
+    assert.deepEqual((JSON.parse(readFileSync(localInput, 'utf8')) as Json).model, localModel);
+    const calculationHelp = await invoke(['dataset', 'model', 'calculate', '--help']);
+    assert.ok((calculationHelp.options as string[]).includes('file'));
+    const missingEngine = await invoke(
+      [
+        'dataset',
+        'model',
+        'calculate',
+        '--file',
+        localInput,
+        '--engine',
+        path.join(directory, 'absent-engine'),
+        '--static-cache',
+        directory,
+        '--output-dir',
+        path.join(directory, 'new-run'),
+      ],
+      businessActor,
+      1,
+    );
+    assert.equal((missingEngine.error as Json).code, 'CALCULATION_EXECUTION_FAILED');
+    assert.ok(!existsSync(path.join(directory, 'new-run')));
     for (const command of ['search', 'flow', 'process', 'lifecyclemodel', 'qa', 'publish']) {
       await invoke([command, '--help'], businessActor, 2, 'UNKNOWN_COMMAND');
     }

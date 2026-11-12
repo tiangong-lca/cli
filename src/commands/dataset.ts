@@ -40,7 +40,7 @@ import {
   type CommandIO,
   type CommandResult,
 } from '../shared/command-result.js';
-import { common, flags, datasetHelpOutput, translationsHelp } from './dataset/help.js';
+import { commonFor, flags, datasetHelpOutput, translationsHelp } from './dataset/help.js';
 import { validationSummary, artifactSummary } from './dataset/presentation.js';
 export { runDatasetHelp } from './dataset/help.js';
 
@@ -106,7 +106,10 @@ export async function runDatasetCommand(
       );
     let values: Record<string, string | boolean | undefined>;
     try {
-      const allowed = [...common, ...(group ? [] : flags[action as CanonicalDatasetAction])];
+      const allowed = [
+        ...commonFor(group ? undefined : action),
+        ...(group ? [] : flags[action as CanonicalDatasetAction]),
+      ];
       const parsed = parseArgs({
         args: args.slice(group ? 1 : start),
         strict: true,
@@ -295,6 +298,75 @@ export async function runDatasetCommand(
               : 'Use this result as evidence; full LCI can be prepared as an explicit background input.',
         },
       ];
+    } else if (action === 'calculate' || action === 'prepare') {
+      const inputPath = text(
+        values[action === 'calculate' ? 'file' : 'input'],
+        action === 'calculate' ? '--file' : '--input',
+      );
+      if (action === 'prepare' && !values.output)
+        throw new CommandInputError(
+          'OUTPUT_REQUIRED',
+          'prepare requires --output for the complete calculation input.',
+        );
+      value = local;
+      value.data = await ports.operations({
+        type: 'model',
+        action,
+        inputPath,
+        request:
+          action === 'prepare'
+            ? readInput(inputPath)
+            : {
+                content: readInput(inputPath),
+                engine: string('engine'),
+                staticCache: string('static-cache'),
+                outputDir: text(values['output-dir'], '--output-dir'),
+                ...(values['timeout-ms'] === undefined
+                  ? {}
+                  : { timeoutMs: Number(values['timeout-ms']) }),
+              },
+      });
+      artifact = value.data;
+      value.outcome = action === 'prepare' ? 'calculation_input_prepared' : 'calculation_completed';
+      value.summary =
+        action === 'prepare'
+          ? 'Calculation input assembled; numerical validation and calculation have not run.'
+          : 'Local calculation completed; input, results and diagnostics saved in the new Run directory.';
+      value.completeness = {
+        scope: action === 'prepare' ? 'numerical_dependencies' : 'local_calculation',
+        remoteMutation: false,
+      };
+      if (action === 'calculate') {
+        value.context.effectiveInput = {
+          execution: 'local',
+          engine: value.data.engine,
+          engineVersion: value.data.engineVersion,
+          outputDirectory: value.data.outputDirectory,
+        };
+        value.artifacts.push(...(value.data.artifacts as CommandResult['artifacts']));
+        delete value.data.artifacts;
+        if (value.data.completeLciaScores === false) {
+          value.summary =
+            'Local calculation completed with missing characterization factors; LCIA scores are incomplete. Inspect coverage in result.json.';
+          value.warnings.push({
+            code: 'LCIA_COVERAGE_INCOMPLETE',
+            message:
+              'Missing factors remain explicit; computed values are not complete LCIA scores.',
+          });
+        }
+        value.nextActions = [
+          {
+            description:
+              'Read result.json with prepared.json for inventory/method axes, factor coverage and diagnostics. Compare independent runs without changing the input snapshot.',
+          },
+        ];
+      } else
+        value.nextActions = [
+          {
+            description:
+              'Configure the local engine and LCIA factor cache, then calculate the prepared input.',
+          },
+        ];
     } else if (action === 'contract') {
       const include = csv(
         string('include') ?? 'schema,methodology,ruleset',
@@ -526,6 +598,15 @@ export async function runDatasetCommand(
         if (value.status === 'completed') value.status = 'partial';
       }
       if (value.artifacts.length) {
+        if (action === 'prepare') {
+          value.data = {
+            schemaVersion: value.data.schemaVersion,
+            datasetCount: (value.data.datasets as unknown[]).length,
+            backgroundCount: (value.data.backgrounds as unknown[]).length,
+            methods: value.data.methods,
+            amount: value.data.amount,
+          };
+        }
         if (action === 'get-result') {
           const details = object(value.data.data, 'result data');
           value.data = {

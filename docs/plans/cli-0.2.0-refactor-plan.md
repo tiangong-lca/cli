@@ -14,8 +14,8 @@ checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 095fcf8d9990461e7c764a32c50ddf653803c884
-lastReviewedNote: 'CLI #477: reviewed explicit search scopes and complete Process result reads, internal read recovery and low-friction calculation design; existing mutations and hosted protocols unchanged.'
+lastReviewedCommit: 74240b58c738a0baaaed06687a92f31527225b5c
+lastReviewedNote: 'CLI #477: reviewed editable Model inputs, explicit background result reads, bounded local execution, configurable budgets and truthful factor coverage; hosted protocols and mutations remain unchanged.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -50,29 +50,20 @@ lastReviewedNote: 'CLI #477: reviewed explicit search scopes and complete Proces
 
 [Study 总体设计](../interfaces/study.md)和 [Model 计算设计](../interfaces/calculations.md)定义独立于 0.2.0 已有业务迁移的后续范围，不追加到本次迁移完成条件。Study 扩展为目标、资料、前景建模、背景选择及计算分析的完整研究流程，独立 Model 计算仍无需调用方预建 Study。这里记录源码核查结果和待交付项，不代表服务启用或新的科学验证。
 
-当前源码已补齐显式公共/当前账号搜索范围与 Flow/Process 状态过滤，并提供 `dataset process results`、`get-result` 的候选、概览、完整 LCI 和 LCIA 读取。读取适配层负责发布/运行上下文及一次有界重启，调用方无需填写 hash。输入准备和本地 Model 执行继续按下列阶段实施；现有已发布 0.2.0 的能力不会因源码变化自动升级。
+### 当前实现与差距
 
-### 已有基础与差距
-
-| 领域 | 已有基础 | 需要交付 |
+| 领域 | 当前源码能力 | 后续交付 |
 | --- | --- | --- |
-| 线上 CLI | 0.2.0 的 `study` 提供项目、模型准备、运行、分析及报告等版本化协议。 | Model 来源选择入口、独立 Calculation 查询，以及与现有 Study 前置条件兼容的独立计算服务路径。 |
-| 计算组件 | Worker 的 `study::prepare/execute` 和本地 `study_compile` 已能使用固定来源包与方法缓存计算，无需运行数据库和队列；源码入口为 `crates/solver-worker/src/bin/study_compile.rs`。 | 复用现有数值实现，整理本地输入和功能单位契约、运行组件交付、进程管理和 CLI 接入；不能把开发入口视为已发布的用户运行组件。 |
-| 显式连接 | Study 编译器按 Model 已声明连接计算，不做背景 provider 推断。 | 保持这一规则；资料与背景选择由 Skill 建模阶段完成，依赖准备不扩展供应关系。 |
-| 背景发现 | CLI `src/adapters/dataset-search.ts` 的混合搜索使用 `data_source: my`；默认 latest 分支未将状态过滤传到版本查询契约。 | 修正范围选择与端到端状态过滤，返回候选名称、精确身份及真实状态；不将当前账号搜索描述为公共背景发现，不宣称未生效的过滤。 |
-| 背景结果消费 | 状态 100 Process 与独立 HDF5 聚合结果是两类读取。Edge `lca_release_results` 已有 `source_results`、`final_query`，Worker 已有 v2 HDF5 reader；CLI 未暴露对应查询和输入准备。 | 复用结果通道：按精确 Process 解析并选择结果，固定发布和读取运行版本，读取完整 LCI，整理为引擎输入；保留结果参考量、Flow/单位身份和边界，不放开保留状态的普通来源准入。 |
-| 本地预算 | 现有 Study Bounds 固定容量上限，仅允许较小预算；任意功能单位的输入仍有部分关联 StudyBinding。 | 独立计算设置与可配置资源预算，公开默认值和不可覆盖安全上限；不能伪造 Study 身份或绕过数值检查。 |
-| Study Skill | 现有计算流程主要从已选 Model 开始。 | agent-skills 另行实现资料引导、提取与缺口分析、前景建模和背景选择，保持 CLI 原子操作边界。 |
+| 背景发现 | 显式公共/当前账号搜索，Flow/Process 匹配版本及状态过滤。 | 随代表性建模场景持续检验召回与选择信息。 |
+| 背景结果 | Process `results/get-result` 复用已有 HDF5 服务，解析结果身份并完整读取 LCI/LCIA；读取绑定及一次有界重启由适配层管理。 | 原生输入对多结果、版本变化和覆盖缺口保持明确诊断。 |
+| 输入准备 | Model `prepare` 组装显式图、所需数值文档及背景 LCI；远程依赖读取须显式开启。 | 持续覆盖更大及更多类型的业务模型。 |
+| 本地计算 | Model `calculate` 调用 Worker `model_calculate`，复用现有编译和求解核心；独立功能量、可提高预算及完整 Run 文件已实现。 | 原生组件安装分发、跨平台验收、性能和容量验证。该入口仍构建于 solver-worker crate，不能视作已分发的独立运行组件。 |
+| 线上计算 | 已有 Study 的版本化项目、准备、运行、分析和报告协议。 | 无需创建 Study 的线上 Model 计算服务及受理/恢复；统一 Calculation 查询入口。 |
+| Study Skill | 现有流程主要从已选 Model 开始。 | agent-skills 实现资料引导、提取与缺口分析、前景建模和背景选择。 |
 
-Worker 核查基线为 `c9665557943dd9794f78e76d4822658934e5725e` 的 Study 编译器和运行契约。本地已完成离线构建、25 项编译器测试及禁止网络的合成数值验证：前景直接排放 1 加上 2 单位背景、每单位排放 3，得到 LCI 与所选因子为 1 的 LCIA 结果均为 7；未声明的供应连接按预期拒绝。该证据支持复用现有数值核心，不证明真实 HDF5 背景已接入，也不构成平台分发验收。
+当前本地输入不要求调用方维护 hash 或服务器状态证明，内部计算身份与已发布 Study 协议隔离。聚合背景不重复展开或分配；完整零清单、读取不完整与因子缺口分别表达。原始 Run 文件可直接读取，后续线上版本变化不使其失效。现有已发布版本不会因源码修改自动获得新增能力。
 
-现有独立可执行程序仍位于包含数据库和网络包装的 solver-worker crate 中。本次合成样例总耗时约 19 秒、内部求解记录为 1 毫秒，输入和方法缓存准备成本须单独分析；建议抽取共享编译/求解库及薄本地入口，避免为本地计算复制线上队列设施。固定输入、功能单位、预算和背景结果适配完成后，再验证代表性业务模型。
-
-### 只读线上验证与证据边界
-
-本轮 `list --state 100` 及精确读取可取得状态 100 Process；但 `search --query electricity --state 100 --limit 3` 的三个候选精确读回均为状态 200，确认搜索范围与过滤需要修正。另取列表中的 3 个状态 100 样本，复用 CLI 认证实现直接调用现有结果 API；均经 `source_results` 解析到一个 direct 结果，`final_query` 返回完整 LCI（393、393、399 项）及各 25 项 LCIA 指标；参考量、精确 Flow 版本与语义单位均可读取。另将第一个样本按每页 100 项读取，4 页共 393 项，与单页读取一致，查询固定同一发布及 runtime revision。
-
-旧 `mode: query` 对相同样本返回不可用，新 v2 通道成功；旧路径的失败不能作为线上数据缺失证据。这里证明既有结果服务可读，未证明 CLI 已有正式结果命令，也未证明这些真实清单已经通过本地输入适配和整模计算。普通 Process 的原始 exchanges 不替代 HDF5 聚合清单，状态 200 的 `LCI result` 样本不作为本设计的背景准入依据。
+实现与验证记录分别维护在 [CLI #477](https://github.com/tiangong-lca/cli/issues/477) 和 [Worker #370](https://github.com/tiangong-lca/worker/issues/370)。已取得真实背景读取、合成数值预期和禁止联网的本地执行证据；这与完整 LCIA 覆盖、科学审核、跨平台安装和线上服务验收分别判断。
 
 ### 实施顺序与所有者
 
@@ -93,7 +84,7 @@ Worker 核查基线为 `c9665557943dd9794f78e76d4822658934e5725e` 的 Study 编�
 - 对相同固定输入及引擎版本比较线上与本地结果，按引擎声明的数值标准验收；分别记录真实服务、原生执行和模拟测试证据。
 - Study 使用代表性资料验证统计口径与来源提取、关键缺口追问、背景选择依据及最小范围修订；计算成功不自动触发数据集发布或报告分享。
 
-命令帮助、简单下一步提示和回复模板随实际能力交付。已有 Study 协议及历史恢复文件保持原含义；背景聚合数据的消费不等于接收并信任用户上传的计算结果。本地结果上传接收、跨位置提交和既有调用方迁移另行确定范围。跨仓变更在各自所有者仓库交付，本次只完善设计及后续验收依据。
+命令帮助、简单下一步提示和回复模板随实际能力交付。已有 Study 协议及历史恢复文件保持原含义；背景聚合数据的消费不等于接收并信任用户上传的计算结果。本地结果上传接收、跨位置提交和既有调用方迁移另行确定范围。跨仓变更在各自所有者仓库交付，并分别记录源码验证、发布和 workspace 集成状态。
 
 ## 实施顺序
 

@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 095fcf8d9990461e7c764a32c50ddf653803c884
-lastReviewedNote: 'CLI #477: reviewed explicit search scopes and complete Process result reads, internal read recovery and low-friction calculation design; existing mutations and hosted protocols unchanged.'
+lastReviewedCommit: 74240b58c738a0baaaed06687a92f31527225b5c
+lastReviewedNote: 'CLI #477: reviewed editable Model inputs, explicit background result reads, bounded local execution, configurable budgets and truthful factor coverage; hosted protocols and mutations remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -158,3 +158,5 @@ Publication floor: new-identity publication (tag creation and release) requires 
 The event SHA and workflow-definition SHA are separate facts (`github.sha` and `github.workflow_sha`). Both tag pushes and exact-tag dispatch must match the resolved release commit; a moved tag or divergent workflow fails before publication. The workflow regression reads the actual YAML-to-shell bindings so one SHA cannot be substituted for the other. The shared source policy is loaded as ESM by the private CommonJS helpers without requiring a build or application runtime imports.
 
 Git-backed test fixtures must clear inherited repository routing (`GIT_DIR`, `GIT_COMMON_DIR`, `GIT_WORK_TREE`, index/object paths and prefix) before running Git or release-shell commands in temporary repositories. Preserve scoped configuration/credential inputs. The release-context suite exercises a foreign Git hook environment and verifies its config, HEAD, index and files remain byte-identical. This isolation is required when the suite runs from the pre-push hook in a linked worktree.
+
+Local Model validation must cover editable input snapshots, dependency closure without automatic providers, aggregate backgrounds without double expansion, whole-process timeout/no retry, exclusive Run directories, compact artifact replies and explicit factor gaps. Private real-background probes supplement synthetic numerical oracles; neither replaces native distribution qualification.

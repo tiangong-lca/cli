@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - README.md
   - src/commands/**
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 899fe12a507c2cc3a454011c0918a57d65588968
-lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: 74240b58c738a0baaaed06687a92f31527225b5c
+lastReviewedNote: 'CLI #477: reviewed editable Model inputs, explicit background result reads, bounded local execution, configurable budgets and truthful factor coverage; hosted protocols and mutations remain unchanged.'
 ---
 
 # TianGong LCA CLI
@@ -93,6 +93,15 @@ tiangong-lca dataset process search --query electricity --scope public --state 1
 tiangong-lca dataset process results --id <process-id> --version <version> --json
 tiangong-lca dataset process get-result --id <process-id> --version <version> --kind lci --output background.json --json
 ```
+
+本地 Model 计算使用显式安装的原生引擎和 LCIA 因子目录；不会启动数据库或队列，也不会自动下载依赖：
+
+```bash
+tiangong-lca dataset model prepare --input request.json --output input.json --json
+tiangong-lca dataset model calculate --file input.json --engine model_calculate --static-cache ./lcia-cache --output-dir ./run-1 --json
+```
+
+输入字段和预算见 [Model 计算契约](docs/interfaces/calculations.md#本地文件契约)。结果保存本次输入、数值轴和覆盖诊断；有因子缺口时明确报告 LCIA 分数不完整。当前源码支持本地链路，原生组件的正式安装分发、独立线上 Model 计算和统一 Calculation 查询入口仍由实施计划跟踪。
 
 结果发布身份和分页由 CLI 内部管理；调用方不提供 hash。完整 LCI 写入文件，终端只返回摘要。存在多个结果时用 `--result-id` 明确选择；读取不会触发计算。`--max-items` 调整本次读取预算，默认 100000。
 

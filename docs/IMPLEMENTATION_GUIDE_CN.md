@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 095fcf8d9990461e7c764a32c50ddf653803c884
-lastReviewedNote: 'CLI #477: reviewed explicit search scopes and complete Process result reads, internal read recovery and low-friction calculation design; existing mutations and hosted protocols unchanged.'
+lastReviewedCommit: 74240b58c738a0baaaed06687a92f31527225b5c
+lastReviewedNote: 'CLI #477: reviewed editable Model inputs, explicit background result reads, bounded local execution, configurable budgets and truthful factor coverage; hosted protocols and mutations remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

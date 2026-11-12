@@ -111,7 +111,8 @@ Process 状态、结果可用性、读取权限和数值输入资格分别验证
 
 | 目标入口 | 意图 |
 | --- | --- |
-| `dataset model calculate` | 按明确模型来源计算；`--input` 承载功能单位、方法和参数等计算设置，不能再声明冲突的模型来源。 |
+| `dataset model prepare` | 从显式 Model、数据文件和背景清单组装本地计算输入；可显式允许读取缺失的精确数值依赖，不选择 provider。 |
+| `dataset model calculate` | 按明确模型来源计算；本地 `--file` 接收完整计算输入，其中包含功能单位、方法和参数；不能再声明冲突的模型来源。 |
 | `calculation get` | 使用返回的计算选择信息查询当前状态，不重新发起计算。 |
 | `calculation result` | 获取并验证绑定该次输入与引擎身份的结果，大产物通过文件交付。 |
 
@@ -130,3 +131,26 @@ Process 状态、结果可用性、读取权限和数值输入资格分别验证
 - 结果写文件失败：保留已完成计算的身份，优先重取结果，不为了补文件再计算。
 
 本地结果不自动进入线上 Study。未来的结果接收必须单独声明来源、验证和信任规则，服务端不能仅因上传成功就把结果认作自身计算或已审核结果。已有 Study 的版本化协议和原请求恢复记录继续按其[现行契约](../agents/study-cli-contract.md)解释，不能用新入口重写历史身份。
+
+## 本地文件契约
+
+`prepare --input request.json --output input.json` 接收下列业务选择。相对文件路径以请求文件所在目录为基准；stdin 引用文件时使用绝对路径。
+
+```json
+{
+  "model": { "file": "model.json" },
+  "datasets": [{ "file": "foreground.json" }],
+  "backgrounds": [{ "file": "background-lci.json" }],
+  "methods": [{ "id": "method-uuid", "version": "01.00.000" }],
+  "amount": 1,
+  "allowRemoteLookup": false
+}
+```
+
+每项文件选择也可以使用 `content` 直接提供 JSON；Model 可显式选择 `remote: {id, version}`。`datasets` 是数值依赖目录，不要求用户手工枚举已包含的重复引用。缺失依赖由明确诊断指出；`allowRemoteLookup: true` 只补齐模型已引用的精确 Process、Flow、参考 FlowProperty 和 UnitGroup。Source、Contact 和背景过程上游不因来源引用被递归展开。
+
+背景文件使用完整 `get-result --kind lci` 产物，绑定 Model 中选定的 Process；LCIA 分数不能替代背景清单。准备输出是 `lca.model-input.v1`，直接保存 Model、实际采用的数据文档、背景清单、方法、功能量、显式 `cutoffs` 和可选 `limits`。该文件可编辑，不包含调用方必须维护的 hash 或服务器授权凭据。准备成功表示依赖组装完成，数值规则和因子覆盖在引擎执行时验证。
+
+`calculate --file input.json --engine <executable> --static-cache <directory> --output-dir <new-directory>` 使用声明的本地引擎及因子目录。引擎和目录也可通过 `TIANGONG_LCA_MODEL_ENGINE`、`TIANGONG_LCA_MODEL_STATIC_CACHE` 配置，命令行优先。每次运行使用新目录，保存 `input.json`、`prepared.json`、`result.json` 和 `summary.json`；输入快照保留实际计算内容，结果与轴、方法和覆盖诊断一起解释。旧目录不覆盖，进程失败不自动重试。
+
+`--timeout-ms` 是整个引擎进程的期限，默认 120000；`limits.timeoutMs` 是原生编译及求解阶段预算，默认 30000。`limits` 另支持 `maxInputBytes`（4194304）、`maxDocuments`（512）、`maxInstances`（64）、`maxViews`（128）、`maxExchanges`（4096）、`maxDenseCells`（131072）、`maxArtifactBytes`（4194304）和 `maxMemoryBytes`（268435456）。这些是可提高的资源默认值；内存预算是编译及矩阵分配估算，不是包含因子加载及原生库的操作系统 RSS 保证。引擎仍执行正数、机器整数范围、维度和数值检查，不支持的参数明确拒绝。

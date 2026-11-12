@@ -6,6 +6,7 @@ import { attachReplyTemplate, renderResult } from '../../shared/command-presenta
 import { result, type CommandIO } from '../../shared/command-result.js';
 
 export const common = ['help', 'json', 'output', 'force'];
+export const commonFor = (action?: string) => (action === 'calculate' ? ['help', 'json'] : common);
 export function runDatasetHelp(args: string[]): CommandIO {
   try {
     const { values } = parseArgs({
@@ -59,6 +60,8 @@ export const flags: Record<CanonicalDatasetAction, string[]> = {
   'translations extract': ['input'],
   'translations apply': ['input'],
   graph: ['input'],
+  prepare: ['input'],
+  calculate: ['file', 'engine', 'static-cache', 'output-dir', 'timeout-ms'],
   'build-resulting-process': ['input'],
   create: ['input', 'dry-run'],
   save: ['input', 'dry-run'],
@@ -147,6 +150,23 @@ export const requestShapes: Partial<Record<CanonicalDatasetAction, unknown>> = {
     groupBy: 'state and/or classification; default [state]',
     maxRows: '1..100000; default 10000; incomplete scans return partial',
   },
+  prepare: {
+    model: { file: 'canonical Model JSON path' },
+    datasets: [{ file: 'canonical supporting Dataset JSON path' }],
+    backgrounds: [{ file: 'complete Process get-result --kind lci artifact' }],
+    methods: [{ id: 'LCIA method UUID', version: 'exact version' }],
+    amount: 'positive functional amount; default 1',
+    cutoffs: 'explicit declared unconnected ports; default []',
+    limits: 'optional native resource budgets',
+    allowRemoteLookup: 'false by default; true fetches missing exact numerical dependencies only',
+  },
+  calculate: {
+    file: 'complete lca.model-input.v1 JSON from prepare',
+    engine: 'native executable; or TIANGONG_LCA_MODEL_ENGINE',
+    staticCache: 'installed LCIA factor directory; or TIANGONG_LCA_MODEL_STATIC_CACHE',
+    outputDir: 'new local Run directory',
+    timeoutMs: 'whole-process deadline; default 120000',
+  },
   graph: { content: 'canonical Model content' },
   'build-resulting-process': {
     source_model: 'explicit model content or json_ordered_path',
@@ -158,6 +178,10 @@ function actionExample(type: DatasetType, action: CanonicalDatasetAction): strin
   const command = `tiangong-lca dataset ${type} ${action}`;
   const id = '00000000-0000-4000-8000-000000000001';
   switch (action) {
+    case 'prepare':
+      return `${command} --input request.json --output input.json --json`;
+    case 'calculate':
+      return `${command} --file input.json --engine model_calculate --static-cache ./lcia-cache --output-dir ./run-1 --json`;
     case 'results':
     case 'get-result':
     case 'get':
@@ -194,7 +218,7 @@ export function help(type: DatasetType, action?: CanonicalDatasetAction) {
         .map((name) => [name, 'Not exposed for this type by the current service interface.']),
     ),
     aliases: type === 'model' ? { aggregate: 'build-resulting-process' } : {},
-    options: [...common, ...(action ? flags[action] : [])],
+    options: [...commonFor(action), ...(action ? flags[action] : [])],
     request: action ? (requestShapes[action] ?? null) : null,
     result: {
       schemaVersion: 1,
@@ -228,23 +252,33 @@ export function help(type: DatasetType, action?: CanonicalDatasetAction) {
                 ? { dryRun: false }
                 : {},
     limitations:
-      action === 'get-result'
+      action === 'calculate'
         ? [
-            'Read overview (default), lci or lcia. LCI requires --output and reads all pages; --max-items defaults to 100000. Use --result-id only to disambiguate results. Service bindings and one bounded whole-read restart are automatic.',
+            'Local complete inputs only; no login, network lookup, upload or retry. Install the native engine and factor cache explicitly. Source input is copied into the new Run. timeout-ms is a whole-process deadline; limits.timeoutMs bounds numerical preparation/execution.',
           ]
-        : action === 'results'
+        : action === 'prepare'
           ? [
-              'List published direct results for one exact Process version. No calculation is started.',
+              'Requires --output. File selections are relative to the request file. Preparation resolves numerical dependencies, without calculating or selecting providers. Methods/factors are checked by the explicitly configured engine at calculation time. Backgrounds replace original Process inventories.',
             ]
-          : action === 'search'
+          : action === 'get-result'
             ? [
-                'Search scope: current-user (default) or public (state 100). Flow/Process search matches exact versions; other types use the service candidate version policy. Cursors are not supported; narrow the query.',
+                'Read overview (default), lci or lcia. LCI requires --output and reads all pages; --max-items defaults to 100000. Use --result-id only to disambiguate results. Service bindings and one bounded whole-read restart are automatic.',
               ]
-            : action === 'validate'
-              ? ['Remote reference relationship checks require independently selected evidence.']
-              : action && ['create', 'save', 'delete'].includes(action)
-                ? ['Unavailable server protections fail explicitly before mutation.']
-                : [],
+            : action === 'results'
+              ? [
+                  'List published direct results for one exact Process version. No calculation is started.',
+                ]
+              : action === 'search'
+                ? [
+                    'Search scope: current-user (default) or public (state 100). Flow/Process search matches exact versions; other types use the service candidate version policy. Cursors are not supported; narrow the query.',
+                  ]
+                : action === 'validate'
+                  ? [
+                      'Remote reference relationship checks require independently selected evidence.',
+                    ]
+                  : action && ['create', 'save', 'delete'].includes(action)
+                    ? ['Unavailable server protections fail explicitly before mutation.']
+                    : [],
     errors: {
       0: 'completed or accepted',
       1: 'business failure, partial/incomplete or unknown result',

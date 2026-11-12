@@ -22,6 +22,7 @@ language: zh-CN
 | `diff` / `patch` | 比较或应用明确的本地内容修改。 |
 | `list-references` | 列出当前内容的出向数据集引用，包含类型、ID、版本及出现位置；不逐一查询引用目标。 |
 | `translations extract` / `translations apply` | 提取多语言字段或回填给定译文。 |
+| `prepare` | 组装显式模型、数值依赖、背景 LCI 和计算设置，交付可独立使用的本地输入。 |
 | `calculate` | 线上精确版本默认提交线上计算任务，本地文件默认本地执行；不修改模型或自动创建 Study。 |
 | `graph` | 从明确模型内容生成图结构和连接发现。 |
 | `build-resulting-process`（别名 `aggregate`） | 根据明确模型、Process 内容、投影及分配配置生成结果 Process 候选和来源关系。 |
