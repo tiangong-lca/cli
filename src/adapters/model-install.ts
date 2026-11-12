@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { extractRuntimeArchive } from '../lib/runtime/archive.js';
 import { hashRuntimeFile } from '../lib/runtime/files.js';
+import { inspectRuntimeHost } from '../lib/runtime/host.js';
 import {
   array,
   integer,
@@ -27,12 +28,15 @@ export async function installModelRuntime(
   env: NodeJS.ProcessEnv,
   check: typeof setupModelRuntime = setupModelRuntime,
   host = `${process.platform}-${process.arch}`,
+  glibc = host.startsWith('linux-') ? inspectRuntimeHost().glibc : null,
 ): Promise<JsonObject> {
-  // This installer currently qualifies only the self-contained Apple Silicon package.
-  if (host !== 'darwin-arm64')
+  if (!['darwin-arm64', 'linux-x64', 'linux-arm64', 'win32-x64'].includes(host))
     invalid(
-      'Local Model package installation currently requires macOS ARM64. Other hosts may configure an independently installed engine with --engine and --static-cache.',
+      'Local Model packages support macOS ARM64, Linux glibc x64/ARM64 and Windows x64. macOS Intel is unsupported.',
     );
+  if (host.startsWith('linux-') && !glibc)
+    invalid('Local Model Linux packages require glibc; musl is unsupported.');
+  const executable = host === 'win32-x64' ? 'bin/model_calculate.exe' : 'bin/model_calculate';
   const source = path.resolve(text(bundle, '--install'));
   const manifestPath = path.join(source, 'manifest.json');
   if (!fs.lstatSync(manifestPath).isFile() || fs.statSync(manifestPath).size > 1024 * 1024)
@@ -57,13 +61,13 @@ export async function installModelRuntime(
   if (files.reduce((sum, file) => sum + file.bytes, 0) > 2 * 1024 * 1024 * 1024)
     invalid('Unpacked Model package exceeds 2 GiB.');
   for (const required of [
-    'bin/model_calculate',
+    executable,
     'cache/lciamethods/cache_manifest.json',
     'cache/lciamethods/list.json',
     'cache/lciamethods/flow_factors.json.gz',
   ])
     if (!files.some((file) => file.path === required)) invalid(`Package is missing ${required}.`);
-  if (files.find((file) => file.path === 'bin/model_calculate')!.mode !== 493)
+  if (files.find((file) => file.path === executable)!.mode !== 493)
     invalid('Model engine must be executable.');
   const archive = path.join(source, 'runtime.tar.gz');
   const expected = record(manifest.archive, 'archive');
@@ -89,7 +93,7 @@ export async function installModelRuntime(
     await extractRuntimeArchive(snapshot, root, { files });
     fs.unlinkSync(snapshot);
     const result = check(
-      { engine: path.join(root, 'bin/model_calculate'), staticCache: path.join(root, 'cache') },
+      { engine: path.join(root, executable), staticCache: path.join(root, 'cache') },
       env,
     );
     complete = true;

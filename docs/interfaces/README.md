@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - docs/interfaces/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 562cac6ee6f1a3af5dddce99fe9fb4d8930f3f8e
-lastReviewedNote: 'Reviewed local Model package installation, native readiness and independent full Study case acceptance; public release and other platform execution remain separate.'
+lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
+lastReviewedNote: 'CLI #477: reviewed platform-specific Model package installation, Linux glibc admission and Windows executable selection; setup and scientific input contracts remain shared.'
 ---
 
 # CLI 目标接口设计

@@ -9,13 +9,13 @@ import { hashRuntimeFile } from '../src/lib/runtime/files.js';
 import { modelRuntimeFile } from '../src/adapters/model-runtime.js';
 import { runSetupCommand } from '../src/commands/setup.js';
 
-async function fixture(t: { after(fn: () => void): void }) {
+async function fixture(t: { after(fn: () => void): void }, host = 'darwin-arm64') {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'model-install-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const payload = path.join(dir, 'payload');
   const files = [];
   for (const name of [
-    'bin/model_calculate',
+    host === 'win32-x64' ? 'bin/model_calculate.exe' : 'bin/model_calculate',
     'cache/lciamethods/cache_manifest.json',
     'cache/lciamethods/flow_factors.json.gz',
     'cache/lciamethods/list.json',
@@ -38,7 +38,7 @@ async function fixture(t: { after(fn: () => void): void }) {
   );
   const manifest = {
     schema: 'lca.model-runtime-package.v1',
-    platform: 'darwin-arm64',
+    platform: host,
     files,
     archive,
   };
@@ -96,8 +96,11 @@ test('rejects incompatible, unsafe, oversized and corrupted packages before exec
   const never = () => {
     throw new Error('must not execute');
   };
-  for (const host of ['darwin-x64', 'linux-x64', 'win32-x64'])
-    await assert.rejects(installModelRuntime(f.dir, f.env, never, host), /requires macOS/u);
+  for (const host of ['darwin-x64', 'linux-ia32', 'win32-arm64'])
+    await assert.rejects(
+      installModelRuntime(f.dir, f.env, never, host),
+      /macOS Intel is unsupported/u,
+    );
   const original = structuredClone(f.manifest);
   const mutations: ((v: typeof original) => void)[] = [
     (v) => {
@@ -224,4 +227,41 @@ test('local installation failures give local recovery guidance, never service/au
   assert.equal(unsafe.error.category, 'environment');
   assert.match(unsafe.summary, /portable file path/u);
   assert.equal(fs.existsSync(modelRuntimeFile(f.env)), false);
+});
+
+test('all supported package targets select their native executable and reject wrong-platform bundles', async (t) => {
+  for (const host of ['darwin-arm64', 'linux-x64', 'linux-arm64', 'win32-x64']) {
+    const f = await fixture(t, host);
+    const expected = host === 'win32-x64' ? 'model_calculate.exe' : 'model_calculate';
+    const result = await installModelRuntime(
+      f.dir,
+      f.env,
+      (request) => {
+        assert.equal(path.basename(String(request.engine)), expected);
+        assert.equal(fs.readFileSync(String(request.engine), 'utf8'), `bin/${expected}`);
+        return { configured: true };
+      },
+      host,
+      '2.36',
+    );
+    assert.equal(result.installed, true);
+    if (host.startsWith('linux-'))
+      await assert.rejects(
+        installModelRuntime(f.dir, f.env, undefined, host, null),
+        /musl is unsupported/u,
+      );
+    const other = host === 'linux-x64' ? 'linux-arm64' : 'linux-x64';
+    await assert.rejects(
+      installModelRuntime(
+        f.dir,
+        f.env,
+        () => {
+          throw new Error('must not execute');
+        },
+        other,
+        '2.36',
+      ),
+      /incompatible/u,
+    );
+  }
 });

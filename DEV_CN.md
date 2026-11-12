@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 2e7194de7fad4592ae1b9305ea42457acb2deb8a
-lastReviewedNote: 'CLI #477: reviewed local runtime installation and saved Run integrity; command ownership, developer entrypoints and release authority remain unchanged.'
+lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
+lastReviewedNote: 'CLI #477: reviewed native Model package host selection; developer tooling, publication and downstream adoption boundaries remain unchanged.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

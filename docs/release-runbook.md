@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 2e7194de7fad4592ae1b9305ea42457acb2deb8a
-lastReviewedNote: 'CLI #477: reviewed local installer validation and error guidance, generated Run integrity, and native package verification; no caller-maintained hashes or research workflow orchestration added.'
+lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
+lastReviewedNote: 'CLI #477: reviewed platform-specific Model package installation, Linux glibc admission and Windows executable selection; setup and scientific input contracts remain shared.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

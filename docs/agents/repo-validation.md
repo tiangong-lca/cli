@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 2e7194de7fad4592ae1b9305ea42457acb2deb8a
-lastReviewedNote: 'CLI #477: reviewed local installer validation and error guidance, generated Run integrity, and native package verification; no caller-maintained hashes or research workflow orchestration added.'
+lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
+lastReviewedNote: 'CLI #477: reviewed platform-specific Model package installation, Linux glibc admission and Windows executable selection; setup and scientific input contracts remain shared.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -167,4 +167,4 @@ Run `node scripts/report-browser-smoke.mjs <new-output-directory>` after buildin
 
 ### Local Model installation
 
-Exercise `test/model-install.test.ts` with the existing full gate. Corrupted or changed archives, unsafe paths, incomplete method-cache inventories, unsupported hosts and native-check failures must leave prior configuration intact and remove only the new owned installation. Public command tests require local filesystem/archive errors to return environment guidance, without directing callers to authentication or remote services. A native package case must start with empty CLI state and deny network plus developer library/cache paths, then install, check, prepare, calculate and inspect saved results. Synthetic foreground records and real background acquisition remain distinguishable; sparse method applicability is not an incomplete score. Packaging and execution on one OS do not qualify the remaining targets or a public release.
+Exercise `test/model-install.test.ts` with the existing full gate. Corrupted or changed archives, unsafe paths, incomplete method-cache inventories, unsupported hosts (including musl), mismatched package targets and native-check failures must leave prior configuration intact and remove only the new owned installation. Public command tests require local filesystem/archive errors to return environment guidance, without directing callers to authentication or remote services. A native package case must start with empty CLI state and deny network plus developer library/cache paths, then install, check, prepare, calculate and inspect saved results. Synthetic foreground records and real background acquisition remain distinguishable; sparse method applicability is not an incomplete score. Exercise platform selection for macOS ARM64, Linux glibc x64/ARM64 and Windows x64, including the Windows `.exe` entrypoint and rejection before filesystem changes on unsupported hosts. Packaging and execution on one OS do not qualify the remaining targets or a public release.

@@ -61,7 +61,7 @@ export function resolveModelRuntime(
   if (!engine || !staticCache)
     throw new CommandInputError(
       'MODEL_RUNTIME_NOT_CONFIGURED',
-      'Run setup model-calculation --install <trusted-package-directory> (macOS ARM64), or configure an existing installation with --engine <executable> --static-cache <directory>.',
+      'Run setup model-calculation --install <trusted-package-directory> (macOS ARM64, Linux glibc x64/ARM64, Windows x64), or configure an existing installation with --engine <executable> --static-cache <directory>.',
       'environment',
     );
   return {

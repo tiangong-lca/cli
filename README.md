@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 54d330846333d58dd896e9e886d5b54888ee71b1
-lastReviewedNote: 'CLI #477: reviewed local runtime setup, saved calculation retrieval and normal sparse LCIA applicability; no hosted activation or automatic native distribution is claimed.'
+lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
+lastReviewedNote: 'CLI #477: reviewed platform-specific Model package installation, Linux glibc admission and Windows executable selection; setup and scientific input contracts remain shared.'
 ---
 
 # TianGong LCA CLI
@@ -109,7 +109,7 @@ tiangong-lca calculation result --dir ./run-1 --kind lcia --json
 
 普通 `--help` 返回可读文本，`--help --json` 返回实际动作的机器契约、默认值与限制。新入口的 JSON 返回业务结果、完整性和上下文。下一步提示仅包含说明与可选命令，回复模板为安装包中的 Markdown 路径。大校验报告可通过 `--output` 保存；终端只显示有界摘要。缺少模板时仍保留真实业务结果。
 
-安装包入口适用于 macOS ARM64，要求明确选择可信的本地包。已有引擎也可通过 `--engine <executable> --static-cache <directory>` 配置；`setup model-calculation --check` 检查保存的环境。公开下载发布和其他平台原生安装分别验收。
+安装包入口支持 macOS ARM64、Linux glibc x64/ARM64、Windows x64，要求明确选择与当前平台匹配的可信本地包。已有引擎也可通过 `--engine <executable> --static-cache <directory>` 配置；`setup model-calculation --check` 检查保存的环境。公开下载发布与各目标平台的原生执行分别验收；支持安装包格式不代表已有公开发行包。
 
 ## 环境与身份上下文
 

@@ -43,7 +43,7 @@ export async function runSetupCommand(
         ],
         defaults: { check: false, timeoutMs: 120000 },
         effects:
-          'Install an explicitly trusted local Model package (macOS ARM64), including native dependencies and LCIA methods, or configure existing engine/cache paths. Save configuration only after a successful readiness check. --install cannot be combined with path options or --check. --check is read-only. No login, download, database or queue is needed. Previous installations and Runs are retained.',
+          'Install an explicitly trusted local Model package (macOS ARM64, Linux glibc x64/ARM64, Windows x64), including native dependencies and LCIA methods, or configure existing engine/cache paths. Save configuration only after a successful readiness check. --install cannot be combined with path options or --check. --check is read-only. No login, download, database or queue is needed. Previous installations and Runs are retained.',
         example:
           'tiangong-lca setup model-calculation --install /path/to/model-runtime-package --json',
         next: 'dataset model calculate --file input.json --output-dir run-1 --json',
