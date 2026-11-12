@@ -39,9 +39,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 899fe12a507c2cc3a454011c0918a57d65588968
-lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: 3cf4274f263f4fcd7932cca460f50f5a4edf499a
+lastReviewedNote: 'CLI #477: reviewed deterministic file-backed hook fixture input after Linux ARM64 EPIPE; real Git round-trip coverage and production deletion/source gates remain unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md

@@ -18,6 +18,7 @@ import {
 } from '../application/dataset-types.js';
 import { queryCursor } from '../application/dataset-discovery.js';
 import { discoverDatasets } from './dataset-discovery.js';
+import { processResultRequest } from '../application/process-results.js';
 import { statisticsRequest } from './dataset-statistics.js';
 import {
   shellArgument,
@@ -39,7 +40,7 @@ import {
   type CommandIO,
   type CommandResult,
 } from '../shared/command-result.js';
-import { common, flags, datasetHelpOutput, translationsHelp } from './dataset/help.js';
+import { commonFor, flags, datasetHelpOutput, translationsHelp } from './dataset/help.js';
 import { validationSummary, artifactSummary } from './dataset/presentation.js';
 export { runDatasetHelp } from './dataset/help.js';
 
@@ -105,7 +106,10 @@ export async function runDatasetCommand(
       );
     let values: Record<string, string | boolean | undefined>;
     try {
-      const allowed = [...common, ...(group ? [] : flags[action as CanonicalDatasetAction])];
+      const allowed = [
+        ...commonFor(group ? undefined : action),
+        ...(group ? [] : flags[action as CanonicalDatasetAction]),
+      ];
       const parsed = parseArgs({
         args: args.slice(group ? 1 : start),
         strict: true,
@@ -223,14 +227,25 @@ export async function runDatasetCommand(
       const state = values.state === undefined ? undefined : Number(values.state);
       if (state !== undefined && !Number.isSafeInteger(state))
         throw new CommandInputError('STATE_INVALID', '--state must be an integer code.');
-      const found = await ports.search(type, query, limit, 0, state);
+      const scope = string('scope') ?? 'current-user';
+      if (scope !== 'public' && scope !== 'current-user')
+        throw new CommandInputError(
+          'SEARCH_SCOPE_INVALID',
+          '--scope must be public or current-user.',
+        );
+      if (scope === 'public' && state !== undefined && state !== 100)
+        throw new CommandInputError(
+          'SEARCH_STATE_INVALID',
+          'Public search uses state 100. Select current-user for other states.',
+        );
+      const found = await ports.search(type, query, limit, 0, state, scope);
       value = local;
       value.data = { candidates: found.candidates };
       value.context = {
         environment: found.environment,
         actor: { status: 'online_session' },
         observation: { source: 'domain_search', time: ports.now() },
-        effectiveInput: { query, limit, state },
+        effectiveInput: { query, limit, state, scope },
         defaultedInputs: values.limit === undefined ? { limit: 20 } : {},
       };
       value.completeness = { ...found, candidates: undefined, environment: undefined };
@@ -243,6 +258,107 @@ export async function runDatasetCommand(
         },
       ];
       artifact = found;
+    } else if (action === 'results' || action === 'get-result') {
+      const request = processResultRequest({
+        id: string('id'),
+        version: string('version'),
+        resultId: string('result-id'),
+        kind: string('kind'),
+        ...(values['max-items'] === undefined ? {} : { maxItems: Number(values['max-items']) }),
+      });
+      if (action === 'get-result' && request.kind === 'lci' && !values.output)
+        throw new CommandInputError(
+          'OUTPUT_REQUIRED',
+          'Complete LCI inventories require --output <file>. Use --kind overview for a compact preview.',
+        );
+      value = local;
+      value.data = await ports.operations({ type: 'process', action, request, inputPath: '' });
+      value.context = {
+        environment: value.data.environment,
+        effectiveInput: request,
+        observation: { source: 'published_result', time: ports.now() },
+      };
+      delete value.data.environment;
+      value.completeness = {
+        scope: 'one_process_published_results',
+        complete: true,
+        truncated: false,
+      };
+      value.outcome = action === 'results' ? 'result_candidates_returned' : 'published_result_read';
+      value.summary =
+        action === 'results'
+          ? 'Published result candidates read; no calculation started.'
+          : `Published ${request.kind.toUpperCase()} read completely; no calculation started.`;
+      artifact = value.data;
+      value.nextActions = [
+        {
+          description:
+            action === 'results'
+              ? 'Read one result with get-result; select --result-id when several candidates exist.'
+              : 'Use this result as evidence; full LCI can be prepared as an explicit background input.',
+        },
+      ];
+    } else if (action === 'calculate' || action === 'prepare') {
+      const inputPath = text(
+        values[action === 'calculate' ? 'file' : 'input'],
+        action === 'calculate' ? '--file' : '--input',
+      );
+      if (action === 'prepare' && !values.output)
+        throw new CommandInputError(
+          'OUTPUT_REQUIRED',
+          'prepare requires --output for the complete calculation input.',
+        );
+      value = local;
+      value.data = await ports.operations({
+        type: 'model',
+        action,
+        inputPath,
+        request:
+          action === 'prepare'
+            ? readInput(inputPath)
+            : {
+                content: readInput(inputPath),
+                engine: string('engine'),
+                staticCache: string('static-cache'),
+                outputDir: text(values['output-dir'], '--output-dir'),
+                ...(values['timeout-ms'] === undefined
+                  ? {}
+                  : { timeoutMs: Number(values['timeout-ms']) }),
+              },
+      });
+      artifact = value.data;
+      value.outcome = action === 'prepare' ? 'calculation_input_prepared' : 'calculation_completed';
+      value.summary =
+        action === 'prepare'
+          ? 'Calculation input assembled; numerical validation and calculation have not run.'
+          : 'Local calculation completed; input, results and diagnostics saved in the new Run directory.';
+      value.completeness = {
+        scope: action === 'prepare' ? 'numerical_dependencies' : 'local_calculation',
+        remoteMutation: false,
+      };
+      if (action === 'calculate') {
+        value.context.effectiveInput = {
+          execution: 'local',
+          engine: value.data.engine,
+          engineVersion: value.data.engineVersion,
+          outputDirectory: value.data.outputDirectory,
+        };
+        value.artifacts.push(...(value.data.artifacts as CommandResult['artifacts']));
+        delete value.data.artifacts;
+        value.nextActions = [
+          {
+            description:
+              'Read the saved inventory and method results. Compare independent runs without changing the input snapshot.',
+            command: `tiangong-lca calculation get --dir ${shellArgument(String(value.data.outputDirectory))} --json`,
+          },
+        ];
+      } else
+        value.nextActions = [
+          {
+            description:
+              'Configure the local engine and LCIA factor cache, then calculate the prepared input.',
+          },
+        ];
     } else if (action === 'contract') {
       const include = csv(
         string('include') ?? 'schema,methodology,ruleset',
@@ -474,9 +590,33 @@ export async function runDatasetCommand(
         if (value.status === 'completed') value.status = 'partial';
       }
       if (value.artifacts.length) {
+        if (action === 'prepare') {
+          value.data = {
+            schemaVersion: value.data.schemaVersion,
+            datasetCount: (value.data.datasets as unknown[]).length,
+            backgroundCount: (value.data.backgrounds as unknown[]).length,
+            methods: value.data.methods,
+            amount: value.data.amount,
+          };
+        }
+        if (action === 'get-result') {
+          const details = object(value.data.data, 'result data');
+          value.data = {
+            ...value.data,
+            data: {
+              result: details.result,
+              ...(Array.isArray(details.items) ? { itemCount: details.items.length } : {}),
+              ...(Array.isArray(details.impacts) ? { impactCount: details.impacts.length } : {}),
+              ...(details.lciAvailable === undefined
+                ? {}
+                : { lciAvailable: details.lciAvailable, lciaAvailable: details.lciaAvailable }),
+            },
+          };
+        }
         if (action === 'get') delete value.data.content;
         if (
           [
+            'get-result',
             'diff',
             'patch',
             'translations extract',

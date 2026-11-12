@@ -1,0 +1,136 @@
+{
+  "title": { "en": "Reusable bottle · life cycle study", "zh": "可重复使用水瓶 · 生命周期研究" },
+  "subtitle": {
+    "en": "Synthetic demonstration — illustrates the report interface, not measured environmental performance.",
+    "zh": "合成演示数据——用于展示报告能力，不代表实测环境表现。"
+  },
+  "language": "zh",
+  "sections": [
+    {
+      "title": { "en": "Goal and scope", "zh": "目标与范围" },
+      "body": {
+        "en": "Functional unit: one bottle at the factory gate.\nThe illustrative system includes material preparation and assembly. Use and end-of-life are outside this demonstration.",
+        "zh": "功能单位：一只出厂水瓶。\n示例系统包含材料准备和装配。本演示不包含使用及报废阶段。"
+      },
+      "sources": ["brief"]
+    },
+    {
+      "title": { "en": "Inventory and assumptions", "zh": "清单与假设" },
+      "body": {
+        "en": "All values below are supplied by the caller. The renderer does not calculate, translate or infer providers.",
+        "zh": "以下数值均由调用方提供。渲染器不执行计算、翻译或供应者推断。"
+      },
+      "table": {
+        "columns": [
+          { "en": "Input", "zh": "投入" },
+          { "en": "Amount", "zh": "数量" },
+          { "en": "Unit", "zh": "单位" }
+        ],
+        "rows": [
+          [{ "en": "Electricity", "zh": "电力" }, 2, "kWh"],
+          [{ "en": "Material", "zh": "材料" }, 0.3, "kg"]
+        ]
+      },
+      "sources": ["inventory"]
+    }
+  ],
+  "model": {
+    "nodes": [
+      {
+        "id": "grid",
+        "label": { "en": "Electricity supply", "zh": "电力供应" },
+        "kind": "background",
+        "details": {
+          "en": "An explicitly selected aggregated background. Its upstream graph is not expanded.",
+          "zh": "显式选择的聚合背景，不展开其上游过程。"
+        },
+        "outputs": ["2 kWh"],
+        "sources": ["inventory"]
+      },
+      {
+        "id": "material",
+        "label": { "en": "Material preparation", "zh": "材料准备" },
+        "details": {
+          "en": "Synthetic foreground operation with a declared electricity input.",
+          "zh": "声明电力投入的合成前景过程。"
+        },
+        "inputs": ["2 kWh"],
+        "outputs": ["0.3 kg"],
+        "sources": ["inventory"]
+      },
+      {
+        "id": "assembly",
+        "label": { "en": "Bottle assembly", "zh": "水瓶装配" },
+        "kind": "foreground",
+        "details": {
+          "en": "Reference output: one bottle. Connection amounts describe the supplied model, not renderer-derived scaling.",
+          "zh": "参考产出为一只水瓶。连接数量来自提供的模型，并非渲染器推算。"
+        },
+        "inputs": ["0.3 kg"],
+        "outputs": [{ "en": "1 bottle", "zh": "1 只水瓶" }]
+      }
+    ],
+    "edges": [
+      {
+        "id": "power",
+        "from": "grid",
+        "to": "material",
+        "label": { "en": "Electricity", "zh": "电力" },
+        "amount": 2,
+        "unit": "kWh",
+        "details": { "en": "Selected connection from the model.", "zh": "模型中已选择的连接。" }
+      },
+      {
+        "id": "stock",
+        "from": "material",
+        "to": "assembly",
+        "label": { "en": "Prepared material", "zh": "准备后的材料" },
+        "amount": 0.3,
+        "unit": "kg"
+      }
+    ]
+  },
+  "results": [
+    {
+      "label": { "en": "Illustrative climate indicator", "zh": "示例气候指标" },
+      "value": 2.4,
+      "unit": "kg CO2-eq",
+      "method": { "en": "Synthetic example / run-demo", "zh": "合成示例 / run-demo" }
+    },
+    {
+      "label": { "en": "Illustrative water indicator", "zh": "示例水指标" },
+      "value": 0.12,
+      "unit": "m³",
+      "method": "run-demo"
+    }
+  ],
+  "sources": [
+    {
+      "id": "brief",
+      "title": { "en": "Demonstration research brief", "zh": "演示研究说明" },
+      "note": {
+        "en": "Synthetic source; no user or production data.",
+        "zh": "合成来源，不包含用户或生产数据。"
+      }
+    },
+    {
+      "id": "inventory",
+      "title": { "en": "Demonstration inventory", "zh": "演示清单" },
+      "url": "https://example.org/",
+      "note": {
+        "en": "Example link and invented values for interface testing only.",
+        "zh": "示例链接及虚构数值，仅用于接口测试。"
+      }
+    }
+  ],
+  "limitations": [
+    {
+      "en": "These values cannot support a real product comparison. Replace them with actual selected Run results and explain their scope before drawing scientific conclusions.",
+      "zh": "这些数值不能用于真实产品比较。形成科学结论前，应替换为所选 Run 的实际结果并解释其适用范围。"
+    },
+    {
+      "en": "No per-node impact contribution data was supplied; the report does not infer contributions from totals.",
+      "zh": "未提供节点影响贡献数据；报告不会从总量推断贡献。"
+    }
+  ]
+}

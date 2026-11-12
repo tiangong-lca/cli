@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-11-11"
-lastReviewedCommit: "899fe12a507c2cc3a454011c0918a57d65588968"
-lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: 3cf4274f263f4fcd7932cca460f50f5a4edf499a
+lastReviewedNote: "CLI #477: reviewed deterministic file-backed hook fixture input after Linux ARM64 EPIPE; real Git round-trip coverage and production deletion/source gates remain unchanged."
 
 catalog:
   repos:
@@ -56,6 +56,7 @@ ownership:
           - src/adapters/**
           - src/shared/**
           - assets/reply-templates/**
+          - assets/report/**
           - src/batch.ts
           - src/auth-identity-receipt.ts
           - src/command-spec.ts
@@ -67,6 +68,7 @@ ownership:
           - src/lib/validation/**
           - src/lib/maintenance/**
           - src/lib/model/**
+          - src/lib/report/**
           - src/lib/dataset/**
           - src/lib/study/**
           - src/lib/pcr/**
@@ -152,6 +154,7 @@ coverage:
     - bin/**
     - src/**
     - assets/reply-templates/**
+    - assets/report/**
     - assets/runtime/**
     - assets/study-contract/**
     - assets/study-renderer/**
@@ -230,6 +233,7 @@ routing:
         - src/lib/dataset/**
         - src/lib/validation/**
         - src/lib/model/**
+        - src/lib/report/**
         - src/lib/maintenance/**
         - src/lib/pcr/**
         - src/lib/release/**
@@ -504,6 +508,8 @@ rules:
         kind: command-logic
       - path: src/shared/**
         kind: shared-runtime
+      - path: assets/report/**
+        kind: local-report-example
       - path: assets/reply-templates/**
         kind: artifact-runtime
     requiredDocs:

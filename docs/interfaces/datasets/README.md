@@ -29,6 +29,8 @@ Dataset 操作数据集内容、身份、版本和草稿状态。入口为 `tian
 
 Flow、Process、Model、Source、Contact 均可通过 `review submit` 或 `review resubmit` 提交单对象或审核包，默认包含关联数据。提交能力属于 Review，不在 Dataset 类型命令下重复提供。受保护的参考数据写入只通过其独立治理接口；不能因为某类型可校验就开放普通写入。LCIA Method 的结构可发现不意味着 CLI 提供方法执行或远程 CRUD。
 
+Model 的类型特有计算入口及独立计算记录遵循 [Model 计算设计](../calculations.md)，不将计算定义为全部 Dataset 的共同动作。LCIA Method 内容操作与计算引擎消费方法数据分别归属，存在方法 schema 不代表执行器支持该方法。
+
 ## 对象身份
 
 远程数据身份为 `type`、`id` 和 `version`，关联所属主体、可见范围、业务状态与服务端修订凭据。命令目标身份与内容内身份不一致时拒绝执行。数据业务版本、规则版本和并发修订分别表达。

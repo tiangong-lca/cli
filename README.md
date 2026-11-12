@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - README.md
   - src/commands/**
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 899fe12a507c2cc3a454011c0918a57d65588968
-lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
+lastReviewedNote: 'CLI #477: reviewed platform-specific Model package installation, Linux glibc admission and Windows executable selection; setup and scientific input contracts remain shared.'
 ---
 
 # TianGong LCA CLI
@@ -86,7 +86,30 @@ Unit Group 业务校验检查单位内部 ID 及参考单位的唯一定位。`c
 
 Process 支持 `get --fields exchanges` 读取交换项投影，投影不构成可直接保存的完整内容。`statistics --group-by state,classification [--owner <id>] [--state <code>]` 汇总明确可见范围；默认最多扫描 10000 条，通过 `--max-rows` 调整。扫描不完整返回部分结果，完整分组使用 `--output` 获取。
 
+过程背景查询支持显式公共范围，结果读取复用现有已发布 HDF5 服务。以下为当前源码新增能力：
+
+```bash
+tiangong-lca dataset process search --query electricity --scope public --state 100 --json
+tiangong-lca dataset process results --id <process-id> --version <version> --json
+tiangong-lca dataset process get-result --id <process-id> --version <version> --kind lci --output background.json --json
+```
+
+本地 Model 计算使用显式安装的原生引擎和 LCIA 因子目录；不会启动数据库或队列，也不会自动下载依赖：
+
+```bash
+tiangong-lca dataset model prepare --input request.json --output input.json --json
+tiangong-lca setup model-calculation --install ./model-runtime-package --json
+tiangong-lca dataset model calculate --file input.json --output-dir ./run-1 --json
+tiangong-lca calculation result --dir ./run-1 --kind lcia --json
+```
+
+输入字段和预算见 [Model 计算契约](docs/interfaces/calculations.md#本地文件契约)。结果保存本次输入、数值轴和覆盖诊断；有因子缺口时明确报告 LCIA 分数不完整。当前源码支持本地链路，原生组件的正式安装分发、独立线上 Model 计算和统一 Calculation 查询入口仍由实施计划跟踪。
+
+结果发布身份和分页由 CLI 内部管理；调用方不提供 hash。完整 LCI 写入文件，终端只返回摘要。存在多个结果时用 `--result-id` 明确选择；读取不会触发计算。`--max-items` 调整本次读取预算，默认 100000。
+
 普通 `--help` 返回可读文本，`--help --json` 返回实际动作的机器契约、默认值与限制。新入口的 JSON 返回业务结果、完整性和上下文。下一步提示仅包含说明与可选命令，回复模板为安装包中的 Markdown 路径。大校验报告可通过 `--output` 保存；终端只显示有界摘要。缺少模板时仍保留真实业务结果。
+
+安装包入口支持 macOS ARM64、Linux glibc x64/ARM64、Windows x64，要求明确选择与当前平台匹配的可信本地包。已有引擎也可通过 `--engine <executable> --static-cache <directory>` 配置；`setup model-calculation --check` 检查保存的环境。公开下载发布与各目标平台的原生执行分别验收；支持安装包格式不代表已有公开发行包。
 
 ## 环境与身份上下文
 
@@ -137,3 +160,7 @@ pnpm prepush:gate
 下游迁移在 CLI 正式 Release 后由调用方分别推进，其完成状态不作为 CLI 验收条件。
 
 `lib` 按能力划分；Alias、Length×time、Flow-identity 专项修复流程不随包提供。Batch 调度保留在 `@tiangong-lca/cli/batch` 公共库，CLI 内部直接使用共享并发锁设施。
+
+## Local research reports
+
+`tiangong-lca report render --input report.json --output report.html --json` renders explicit research content into one offline HTML file with Chinese/English switching (one language at a time, Chinese by default), clickable Model nodes/connections, sources, filterable tables and complete print layout. Use its Print / Save as PDF button for browser PDF export. The CLI does not translate, calculate, discover providers or register a hosted Study. Only `title` is required; read `report render --help --json`, the [input contract](docs/interfaces/report.md) and [synthetic example](assets/report/example.json). Existing outputs require `--force`; input files remain protected.

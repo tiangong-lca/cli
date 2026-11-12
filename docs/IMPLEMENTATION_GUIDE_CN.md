@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 899fe12a507c2cc3a454011c0918a57d65588968
-lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
+lastReviewedNote: 'CLI #477: reviewed platform-specific Model package installation, Linux glibc admission and Windows executable selection; setup and scientific input contracts remain shared.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -98,3 +98,5 @@ Review 适配已有业务语义：一个起始对象、服务端默认关联、�
 单元、协议模拟、真实本地服务与四平台 CI 分别提供各自证据。模拟成功不证明部署权限；本机通过不证明四平台执行。具体源码、运行结果和未执行事项保存在交付记录，不写入接口规范。
 
 核心帮助分别提供可读文本和 `--help --json` 机器契约，动作参数、默认值与限制按实际解析能力声明。写入错误只在已有服务契约证明未生效时记为明确拒绝；其余不确定结果继续禁止重放。拒绝结果仅保留安全错误码与类别，不复制远端原始文本。
+
+本地报告通过 `report render` 读取轻量报告 JSON；application 校验展示结构，lib/report 生成转义 HTML/SVG，adapter 独立写文件。Skill 提供正文、双语、实际模型投影和结果，渲染器不读取线上数据、不计算、不维护研究状态。浏览器交互和打印验证见[验证指南](agents/repo-validation.md)。

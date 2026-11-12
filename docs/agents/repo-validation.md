@@ -31,9 +31,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 899fe12a507c2cc3a454011c0918a57d65588968
-lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: 3cf4274f263f4fcd7932cca460f50f5a4edf499a
+lastReviewedNote: 'CLI #477: reviewed deterministic file-backed hook fixture input after Linux ARM64 EPIPE; real Git round-trip coverage and production deletion/source gates remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -158,3 +158,13 @@ Publication floor: new-identity publication (tag creation and release) requires 
 The event SHA and workflow-definition SHA are separate facts (`github.sha` and `github.workflow_sha`). Both tag pushes and exact-tag dispatch must match the resolved release commit; a moved tag or divergent workflow fails before publication. The workflow regression reads the actual YAML-to-shell bindings so one SHA cannot be substituted for the other. The shared source policy is loaded as ESM by the private CommonJS helpers without requiring a build or application runtime imports.
 
 Git-backed test fixtures must clear inherited repository routing (`GIT_DIR`, `GIT_COMMON_DIR`, `GIT_WORK_TREE`, index/object paths and prefix) before running Git or release-shell commands in temporary repositories. Preserve scoped configuration/credential inputs. The release-context suite exercises a foreign Git hook environment and verifies its config, HEAD, index and files remain byte-identical. This isolation is required when the suite runs from the pre-push hook in a linked worktree.
+
+Local Model validation must cover editable input snapshots, dependency closure without automatic providers, aggregate backgrounds without double expansion, whole-process timeout/no retry, exclusive Run directories, compact artifact replies and normal method-specific sparse characterization. Setup must verify engine/cache before saving, preserve configuration on failure, avoid forwarding credentials and support read-only checks. Saved Run retrieval must join original axes and values without recalculation or online validation, preserve full output artifacts and reject corruption. Check the native result’s existing prepared-artifact digest before joining saved axes; changing an axis while retaining the model identity must fail. This integrity check is internal to generated Runs and adds no caller-maintained hash or dependency on current runtime configuration. Private real-background probes supplement synthetic numerical oracles; neither replaces native distribution qualification.
+
+## Local HTML report qualification
+
+Run `node scripts/report-browser-smoke.mjs <new-output-directory>` after building, with the existing pinned Playwright Chromium installed (`pnpm exec playwright install chromium`). This separate rendered-browser check verifies offline graph selection/zoom, mutually exclusive Chinese/English content and localized page title/controls, table filtering, print restoration of all rows/details, actual PDF bytes, mobile overflow and no-JavaScript content. It retains HTML/PDF/screenshots and a receipt for review; the caller owns retention/cleanup. Package tests render the shipped synthetic example with native Node outside source, without a browser runtime dependency. Input/security/output behavior remains in the full source coverage gate. Browser proof is host-specific and does not establish other native platforms or scientific validity.
+
+### Local Model installation
+
+Exercise `test/model-install.test.ts` with the existing full gate. Corrupted or changed archives, unsafe paths, incomplete method-cache inventories, unsupported hosts (including musl), mismatched package targets and native-check failures must leave prior configuration intact and remove only the new owned installation. Public command tests require local filesystem/archive errors to return environment guidance, without directing callers to authentication or remote services. A native package case must start with empty CLI state and deny network plus developer library/cache paths, then install, check, prepare, calculate and inspect saved results. Synthetic foreground records and real background acquisition remain distinguishable; sparse method applicability is not an incomplete score. Exercise platform selection for macOS ARM64, Linux glibc x64/ARM64 and Windows x64, including the Windows `.exe` entrypoint and rejection before filesystem changes on unsupported hosts. Packaging and execution on one OS do not qualify the remaining targets or a public release.

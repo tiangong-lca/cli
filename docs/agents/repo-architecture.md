@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 899fe12a507c2cc3a454011c0918a57d65588968
-lastReviewedNote: 'Reviewed Review refusal classification by endpoint, durable recovery, and unified absence errors.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
+lastReviewedNote: 'CLI #477: reviewed platform-specific Model package installation, Linux glibc admission and Windows executable selection; setup and scientific input contracts remain shared.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -59,6 +59,8 @@ Managed-host launch selection stays in the generic CLI manager. Dedicated protoc
 Core commands project readable text help and machine help from the same factual manifests. Dataset action options/defaults and unavailable actions reflect the actual parser; translations has its own group discovery, and retained service/maintenance/package tools are discoverable without changing their output protocols. Root and classification discovery expose bounded structured help and content-bound local pagination. Authentication presentation reuses the existing OAuth, session and exact-identity implementations through an injected execution port. The common envelope stores the unchanged receipt under `data.receipt`; standalone output writes only that receipt. Public receipt parsing is unchanged. Doctor separates local runtime/configuration observations from an explicit public Auth health GET, which never refreshes sessions or verifies actor permission.
 
 Dataset uses one typed command router for all eight object types. Model `build-resulting-process` and its `aggregate` alias share a canonical operation and implementation. Calculation inputs are explicit snapshots; exact remote Process lookups never fall back to latest. Source uploads verify selected bytes and independent readback, preserve failed references and do not save Source content.
+
+Process result discovery and complete inventory reads use `application/process-results.ts` with a dedicated authenticated adapter. Caller selections remain Process/Result identities; the adapter owns publication/runtime pagination context and one bounded whole-read restart. Public/current-user search scopes are explicit; Flow/Process filtering uses the existing matched-version service contract.
 
 `src/commands/dataset-discovery.ts` owns query result presentation. Model graph metadata never enters identity context; explicit Process exchange projections are labeled incomplete content. Statistics adapts bounded visible-row reads and uses `src/lib/process-statistics/summary.ts` directly, without a second legacy scan or Markdown-report workflow; count drift, repeated identities and scan bounds remain partial observations. `contract` exposes verified released public definitions rather than retired authoring/identity workflow gates. Executed checks and omitted layers belong to validation reports.
 
@@ -250,3 +252,17 @@ The SDK owns compatibility interpretation. Whole-inventory legacy Output shares 
 Allocation serialization follows the public three-decimal `Perc` boundary using deterministic largest remainder, tied by stable final target numbering. The sidecar reports actual percentage/amount error per target and bounds error below 0.001 percentage points, or inventory amount × 0.00001; conservation is qualified within this tolerance.
 
 Study P4 adds `assets/study-contract/v5/` and an independent `assets/study-renderer/v2/` package. Existing Study modules adapt explicit V5 commands and journals while preserving older codecs, renderer graphs and defaults. Scientific computation remains Worker-owned; current authorization and profile/finalization policy remain server-owned. The Study CLI contract owns exact source pins and rollback-safe historical-read semantics.
+
+## Local Model calculation
+
+`application/model-calculation.ts` resolves only explicit numerical dependency identities through ports. `adapters/model-calculation.ts` loads selected files/authenticated exact reads and invokes the explicitly configured native executable with bounded, shell-free IO. The local child receives system runtime variables rather than CLI authentication credentials. Commands distinguish dependency preparation, numerical completion and invalid or missing numerical inputs; normal method-specific sparse characterization is not a coverage gap. Worker owns `lca.model-input.v1`, native scientific rules and Run artifacts; no server SourceInput authorization or StudyBinding is fabricated.
+
+## Local report presentation
+
+`commands/report.ts` owns strict discovery/arguments and shared results. `application/report.ts` validates a lightweight presentation projection and defines its output port. `adapters/report.ts` writes a separate local artifact; `lib/report/` renders escaped text, SVG, single-language Chinese/English switching and print presentation with fixed embedded enhancements. Composition selects the writer. This path performs no remote access, calculation or hosted Study state change and never consumes or modifies signed hosted renderer assets.
+
+The report Model view follows Platform’s LifeCycleModels title-bar, 6px node, 8px square endpoint and IO grouping conventions, with the TianGong light brand primary. CLI owns the offline SVG implementation; it does not import Platform’s React/X6 page, service adapters or editing state. Node summaries link to complete supplied details.
+
+### Local Model installation boundary
+
+`adapters/model-install.ts` consumes an explicitly selected local native package, reuses runtime archive/path/integrity primitives and verifies the installed engine through `model-runtime.ts` before configuration publication. Worker owns package production and scientific execution. Each installation has a private owned directory; failures remove only that directory, while existing installations and Runs are retained. No package hash becomes a research-input requirement.

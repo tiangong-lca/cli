@@ -18,8 +18,8 @@ checkPaths:
   - scripts/bootstrap/**
   - test/runtime-*.test.ts
   - package.json
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: e5dcfaf578033019a80f470e0b02dd249f18d56d
 lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 related:
   - docs/agents/repo-architecture.md

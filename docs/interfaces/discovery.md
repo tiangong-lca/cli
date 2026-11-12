@@ -31,6 +31,14 @@ Dataset `get` 必须提供版本，或显式使用 `--version latest`。`latest`
 
 `--owner` 只缩小可见范围，不授予他人权限。类型专属过滤字段通过帮助和请求契约发现；未知字段返回输入错误。搜索不支持的类型返回明确的能力错误，不降级为本地猜测。
 
+## 背景过程发现
+
+`search --scope public` 查询状态 100 的公共数据，`--scope current-user` 查询当前账号数据（默认）。公共范围不接受其他状态过滤。Flow/Process 使用精确版本匹配搜索；搜索返回实际版本，不把不同版本合并为隐含 latest。`results` 与 `get-result` 的过程结果读取行为见 [Process](datasets/processes.md#已发布结果读取)。
+
+为 [Study 建模](study.md)提供明确的当前账号与获准访问的背景数据查询范围；选择范围不授予新权限。Process 候选及其详情保留精确版本，按实际可用信息提供参考产品、单位、清单类型、技术、地域、时间、边界和覆盖情况；缺失属性不得推断为匹配。
+
+线上背景候选明确筛选 `state_code=100`，不筛选 `LCI result` 类型字段。数据集查询与计算结果读取分别提供：按精确 Process 版本解析对应结果，读取概览、聚合 LCI 或 LCIA；若结果有独立身份，必须保留其与 Process 的绑定。可计算性遵循[消费契约](study.md#背景过程与显式连接)，状态 100 本身不证明已存在可读的完整结果。搜索返回候选，Agent 读取并明确选择后才写入 Model 连接；搜索和精确读取不自动改写模型或启动计算。
+
 ## 分类与关系发现
 
 `dataset classification children --type <目录> [--parent <code>]` 返回直接子项；`dataset classification path --type <目录> --code <code>` 返回完整分类路径。结果携带目录身份和版本，地理位置使用 `location` 目录。目录导航不修改数据，分类赋值通过显式本地补丁完成。

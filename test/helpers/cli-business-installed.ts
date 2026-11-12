@@ -115,6 +115,111 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
     return JSON.parse(readFileSync(file, 'utf8')) as Json;
   };
   try {
+    const localModel = {
+      lifeCycleModelDataSet: {
+        lifeCycleModelInformation: {
+          dataSetInformation: { 'common:UUID': 'installed-model' },
+          technology: {
+            processes: {
+              processInstance: {
+                referenceToProcess: { '@refObjectId': 'installed-process', '@version': '1' },
+              },
+            },
+          },
+        },
+        administrativeInformation: { publicationAndOwnership: { 'common:dataSetVersion': '1' } },
+      },
+    };
+    const localProcess = {
+      processDataSet: {
+        processInformation: { dataSetInformation: { 'common:UUID': 'installed-process' } },
+        administrativeInformation: { publicationAndOwnership: { 'common:dataSetVersion': '1' } },
+        exchanges: { exchange: [] },
+      },
+    };
+    const preparationRequest = jsonFile({
+      model: { content: localModel },
+      datasets: [{ content: localProcess }],
+      methods: [{ id: 'installed-method', version: '1' }],
+    });
+    const localInput = path.join(directory, 'model-input.json');
+    const preparedModel = await invoke([
+      'dataset',
+      'model',
+      'prepare',
+      '--input',
+      preparationRequest,
+      '--output',
+      localInput,
+    ]);
+    assert.equal(preparedModel.outcome, 'calculation_input_prepared');
+    assert.equal((preparedModel.data as Json).datasetCount, 1);
+    assert.deepEqual((JSON.parse(readFileSync(localInput, 'utf8')) as Json).model, localModel);
+    const calculationHelp = await invoke(['dataset', 'model', 'calculate', '--help']);
+    assert.ok((calculationHelp.options as string[]).includes('file'));
+    const missingEngine = await invoke(
+      [
+        'dataset',
+        'model',
+        'calculate',
+        '--file',
+        localInput,
+        '--engine',
+        path.join(directory, 'absent-engine'),
+        '--static-cache',
+        directory,
+        '--output-dir',
+        path.join(directory, 'new-run'),
+      ],
+      businessActor,
+      1,
+    );
+    assert.equal((missingEngine.error as Json).code, 'CALCULATION_EXECUTION_FAILED');
+    assert.ok(!existsSync(path.join(directory, 'new-run')));
+    const setupHelp = await invoke(['setup', 'model-calculation', '--help']);
+    assert.ok((setupHelp.options as string[]).includes('--check'));
+    const setupFailure = await invoke(
+      [
+        'setup',
+        'model-calculation',
+        '--engine',
+        path.join(directory, 'absent-engine'),
+        '--static-cache',
+        directory,
+      ],
+      businessActor,
+      1,
+    );
+    assert.equal((setupFailure.error as Json).code, 'MODEL_RUNTIME_CHECK_FAILED');
+    const savedRun = path.join(directory, 'saved-model-run');
+    mkdirSync(savedRun);
+    writeFileSync(
+      path.join(savedRun, 'summary.json'),
+      JSON.stringify({ schemaVersion: 1, status: 'completed', profile: 'lca.model-local.v1' }),
+    );
+    writeFileSync(
+      path.join(savedRun, 'prepared.json'),
+      JSON.stringify({
+        profileId: 'lca.model-local.v1',
+        modelHash: 'fixture',
+        numeric: { methodAxes: [{ methodId: 'method' }] },
+      }),
+    );
+    writeFileSync(
+      path.join(savedRun, 'result.json'),
+      JSON.stringify({
+        profileId: 'lca.model-local.v1',
+        modelHash: 'fixture',
+        preparedArtifactSha256: createHash('sha256')
+          .update(readFileSync(path.join(savedRun, 'prepared.json')))
+          .digest('hex'),
+        h: [0],
+      }),
+    );
+    const saved = await invoke(['calculation', 'get', '--dir', savedRun]);
+    assert.equal((saved.data as Json).status, 'completed');
+    const scores = await invoke(['calculation', 'result', '--dir', savedRun]);
+    assert.deepEqual((scores.data as Json).items, [{ methodId: 'method', amount: 0 }]);
     for (const command of ['search', 'flow', 'process', 'lifecyclemodel', 'qa', 'publish']) {
       await invoke([command, '--help'], businessActor, 2, 'UNKNOWN_COMMAND');
     }

@@ -1,4 +1,6 @@
 ---
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
 title: 环境验证与运行诊断接口
 docType: guide
 scope: repo
@@ -24,6 +26,14 @@ language: zh-CN
 默认诊断只读。每项结果记录检查对象、观察值、状态和原因；未检查项单独返回。配置只显示定位问题所需的非秘密信息。在线诊断不得派发数据写入、计算、审核或发布。
 
 诊断成功仅证明检查范围内的条件满足。账号在线核验使用 `auth whoami` 或 `auth doctor-auth`；业务权限继续由具体服务检查。
+
+## 本地计算环境准备
+
+`setup model-calculation --install <package-directory>` 安装明确选择并信任的本地引擎包，包含原生依赖及完整 LCIA 方法数据。安装校验与真实引擎自检成功后才保存配置；失败清理本次安装并保留原配置。安装包内部校验不要求研究输入维护 hash 或版本绑定。安装入口支持 macOS ARM64、Linux glibc x64/ARM64 和 Windows x64，拒绝不支持的主机和平台不匹配的包。Unix 使用 `bin/model_calculate`，Windows 使用 `bin/model_calculate.exe`，调用方使用相同命令和配置。各平台分别完成原生执行与发行验证。安装无需登录、数据库或队列，不自动下载、发布或删除旧安装和 Run。
+
+`setup model-calculation --engine <executable> --static-cache <directory>` 检查已安装引擎的 Model 输入能力和完整 LCIA 方法缓存。成功后保存可复用路径配置；失败保持原配置。`setup model-calculation --check` 只检查当前选择，不写配置。显式参数优先于环境变量，其次使用保存的配置。引擎相对文件路径在保存时转为绝对路径。
+
+准备操作不登录、不启动业务数据库或队列、不计算模型。没有适用因子是方法正常的稀疏定义；缓存损坏或缺失才是环境错误。引擎与缓存的安装分发使用独立运行支撑，不能将路径配置成功描述为已下载或已安装组件。
 
 ## 返回上下文
 

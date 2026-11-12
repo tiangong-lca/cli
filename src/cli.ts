@@ -10,6 +10,11 @@ import { reviewReader } from './adapters/review-read.js';
 import { reviewWriter } from './adapters/review-write.js';
 import { reviewMaterials } from './adapters/review-materials.js';
 import { runAuthCommand } from './commands/auth.js';
+import { runReportCommand } from './commands/report.js';
+import { runSetupCommand } from './commands/setup.js';
+import { setupLocalModel } from './adapters/model-install.js';
+import { runCalculationCommand } from './commands/calculation.js';
+import { readLocalCalculation } from './adapters/calculation.js';
 import { runDoctorCommand } from './commands/doctor.js';
 import { doctorPorts } from './adapters/doctor.js';
 import { runClassificationCommand } from './commands/classification.js';
@@ -62,6 +67,11 @@ async function executeCore(argv: string[], deps: ResolvedCliDeps): Promise<CliRe
   try {
     if (argv[0] === 'dataset' && (!argv[1] || argv[1].startsWith('-')))
       return runDatasetHelp(argv.slice(1));
+    if (argv[0] === 'report') return runReportCommand(argv.slice(1), deps.writeResearchReportImpl);
+    if (argv[0] === 'setup')
+      return runSetupCommand(argv.slice(1), (request) => setupLocalModel(request, deps.env));
+    if (argv[0] === 'calculation')
+      return runCalculationCommand(argv.slice(1), readLocalCalculation);
     if (argv[0] === 'review')
       return await runReviewCommand(argv.slice(1), reviewReader(deps.env, deps.fetchImpl), {
         mutate: reviewWriter(deps.env, deps.fetchImpl),

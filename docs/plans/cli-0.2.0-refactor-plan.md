@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: c983f8a76d57e03ecde8c64cffc42ca8155befce
-lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and AI context, lock errors and retained protocol/target-design boundaries.'
+lastReviewedAt: 2026-11-12
+lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
+lastReviewedNote: 'CLI #477: reviewed platform-specific Model package installation, Linux glibc admission and Windows executable selection; setup and scientific input contracts remain shared.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -45,6 +45,46 @@ lastReviewedNote: 'Reviewed contract-backed refusal recovery, truthful help and 
 服务端缺口与下游迁移分别处理。CLI 目标能力所必需的服务契约需要提前核实；缺失的后端能力由所属仓库另行交付，作为对应 CLI 能力的外部依赖，不在 CLI 内模拟权限、事务或审核状态。尚未满足的依赖必须保留为阻断项，不能通过 mock 测试宣称真实能力已完成。
 
 本计划的终点是可供评审的 CLI 0.2.0 候选版本。代码集成、正式发布和 workspace 集成遵循对应的交付流程，具体执行状态记录在 Issue/PR 中。
+
+## Model 计算后续实施
+
+[Study 总体设计](../interfaces/study.md)和 [Model 计算设计](../interfaces/calculations.md)定义独立于 0.2.0 已有业务迁移的后续范围，不追加到本次迁移完成条件。Study 扩展为目标、资料、前景建模、背景选择及计算分析的完整研究流程，独立 Model 计算仍无需调用方预建 Study。这里记录源码核查结果和待交付项，不代表服务启用或新的科学验证。
+
+### 当前实现与差距
+
+| 领域 | 当前源码能力 | 后续交付 |
+| --- | --- | --- |
+| 背景发现 | 显式公共/当前账号搜索，Flow/Process 匹配版本及状态过滤。 | 随代表性建模场景持续检验召回与选择信息。 |
+| 背景结果 | Process `results/get-result` 复用已有 HDF5 服务，解析结果身份并完整读取 LCI/LCIA；读取绑定及一次有界重启由适配层管理。 | 原生输入对多结果、版本变化和清单不完整保持明确诊断。 |
+| 输入准备 | Model `prepare` 组装显式图、所需数值文档及背景 LCI；远程依赖读取须显式开启。 | 持续覆盖更大及更多类型的业务模型。 |
+| 本地计算 | Model `calculate` 调用 Worker `model_calculate`，复用现有编译和求解核心；独立功能量、可提高预算及完整 Run 文件已实现。 | `setup model-calculation --install` 已支持 macOS ARM64、Linux glibc x64/ARM64、Windows x64 的平台匹配与可执行文件选择，包含原生依赖和完整方法缓存；已有路径检查与配置复用保留。Worker 提供对应打包与数值验收入口，各目标平台仍须独立保留真实执行证据；公开发行、性能和容量验证另行验收。引擎构建于 solver-worker crate，不代表线上服务已启用。 |
+| 线上计算 | 已有 Study 的版本化项目、准备、运行、分析和报告协议。 | 无需创建 Study 的线上 Model 计算服务及受理/恢复；线上 Calculation 查询入口；本地 `calculation get/result --dir` 已支持摘要、LCI、LCIA 和活动量读取。 |
+| Study Skill | agent-skills 源码已补齐七阶段流程、资料收集/提取参考、本地 Model 命令和本地报告；线上 Study 报告流程按需加载。 | 已按流程执行合成前景与真实背景的本地研究案例，覆盖数值预期、情景和报告；独立 Agent 自主评估及已发布 CLI/原生组件组合的安装验收分别进行。源码与本地候选完成不等于已发布。 |
+
+当前本地输入不要求调用方维护 hash 或服务器状态证明，内部计算身份与已发布 Study 协议隔离。聚合背景不重复展开或分配；完整零清单与读取不完整分别表达；完整方法中的稀疏因子定义不产生缺口警告。原始 Run 文件可直接读取，后续线上版本变化不使其失效。现有已发布版本不会因源码修改自动获得新增能力。
+
+实现与验证记录分别维护在 [CLI #477](https://github.com/tiangong-lca/cli/issues/477) 和 [Worker #370](https://github.com/tiangong-lca/worker/issues/370)。已取得真实背景读取、合成数值预期和禁止联网的本地执行证据；这与科学审核、跨平台安装和线上服务验收分别判断。
+
+### 实施顺序与所有者
+
+| 顺序 | 工作及所有者 | 验收边界 |
+| --- | --- | --- |
+| 1 | Worker 所有者用代表性显式模型验证现有 `study_compile`，核实完整输入与方法缓存；CLI 对照现有协议。 | 得到可复核的本地数值与诊断，不启动业务数据库或队列，不自动补 provider；记录可复用代码与真实缺口。 |
+| 2 | CLI 接入状态 100 背景发现及现有 HDF5 结果读取，Worker 定义聚合结果输入适配；仅在现有结果契约确有缺口时由 Edge/Database 补齐。 | 验证精确 Process → 对应结果 → 全量分页 LCI → 固定输入；不依赖 `LCI result` 字段，不重复展开已聚合负荷。缺少结果、发布变化、读取失败和完整零清单分别报告。 |
+| 3 | Worker 交付独立计算参数、可配置预算和可分发本地组件，CLI 接入运行支撑及 Model 计算。 | 安装准备和计算分开；预算按规则覆盖，保留安全检查；缺失依赖明确返回，本地计算无隐式网络或上传。 |
+| 4 | Edge/Database/Worker 交付独立线上计算前提，CLI 接入受理、查询和原请求恢复。 | 无隐式项目创建；线上受理与完成区分；响应丢失不重复创建计算，有限 Worker 重试保留尝试。 |
+| 5 | agent-skills 基于已交付的 CLI 能力实现 Study 六阶段及子 Skill 协作。 | 从用户资料到前景与聚合背景模型，再到可解释结果；缺口、来源、假设、修订和旧结果的关系可继续追踪。 |
+
+### 场景验收
+
+- 用有明确预期值的模型，将一个前景过程连接到已知参考量的聚合背景清单，核对缩放、清单和 LCIA；其原始组成过程即使可访问也不重复计入，不再次应用已完成的分配。
+- 覆盖前景直接排放、多个独立需求复用背景、残余未闭合交换、方法数据损坏、正常稀疏因子、单位不匹配及来源不可见；不以静默截断或默认零制造成功。
+- 对状态 100 Process 及其 HDF5 结果验证“可发现—精确版本结果解析—完整 LCI 读取—准备—计算”路径；覆盖独立 Result 身份、多结果选择、分页为空但有游标、发布或运行版本变化、参考量缩放及单位匹配。仅有指标分数、不完整结果和权限拒绝不能进入计算；读取授权不升级为修改或发布权限。
+- 本地固定输入在禁止网络且无数据库/队列时完成计算；覆盖组件未安装、方法缓存缺失、预算覆盖、扩大模型规模、进程中断、产物重取和任务拥有资源清理。
+- 对相同固定输入及引擎版本比较线上与本地结果，按引擎声明的数值标准验收；分别记录真实服务、原生执行和模拟测试证据。
+- Study 使用代表性资料验证统计口径与来源提取、关键缺口追问、背景选择依据及最小范围修订；计算成功不自动触发数据集发布或报告分享。
+
+命令帮助、简单下一步提示和回复模板随实际能力交付。已有 Study 协议及历史恢复文件保持原含义；背景聚合数据的消费不等于接收并信任用户上传的计算结果。本地结果上传接收、跨位置提交和既有调用方迁移另行确定范围。跨仓变更在各自所有者仓库交付，并分别记录源码验证、发布和 workspace 集成状态。
 
 ## 实施顺序
 
@@ -238,3 +278,7 @@ Flow 参考属性的本地业务约束由同一纯校验器承载：内部 ID �
 当前原子操作须区分服务契约明确拒绝与结果未知：前者保留安全错误码、类别及原拒绝结果，后者保留不重放保护。HTTP 状态或通用 `ok:false` 不能单独证明未生效；单项审核决定须核对请求身份、成员数和结果一致性。历史日志不自动升级为新的拒绝证据。
 
 人类帮助和机器帮助使用同一事实来源，按动作声明参数、默认值、请求和限制。不支持的搜索续页不进入当前帮助；translations 子组可发现，operation 不含选项。根和 Dataset 帮助列出保留工具及独立协议。完整性未知、目标不存在、锁冲突、删除完成和上传预览分别返回真实的类别、退出码、推荐动作和模板。
+
+## 本地研究报告呈现
+
+`report render` 是独立 JSON 到 HTML 的原子呈现操作。Study Skill 负责组织报告内容和调用；报告内嵌 Platform 风格模型、单语言中英切换、表格交互和完整打印布局；默认中文，阅读和打印均不同时展示两种语言。验证覆盖输入结构与引用、文本转义及无联网、输出覆盖与输入保护、实际浏览器交互/PDF、安装包资产，以及不改动已有线上签名报告。完整 Agent 科学研究评估与四平台发布验收仍分别记录，不由呈现测试推定。

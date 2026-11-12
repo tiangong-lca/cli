@@ -1,3 +1,4 @@
+import { writeResearchReport } from './adapters/report.js';
 import { runDatasetClassificationChildren } from './lib/dataset/classification.js';
 import { runDatasetClassificationPath } from './lib/dataset/classification.js';
 import { runValidation } from './lib/validation/validation.js';
@@ -19,6 +20,7 @@ import type { CliDeps, ResolvedCliDeps } from './cli-deps.js';
 export function composeCliDeps(deps: CliDeps): ResolvedCliDeps {
   return {
     ...deps,
+    writeResearchReportImpl: deps.writeResearchReportImpl ?? writeResearchReport,
     runDatasetClassificationChildrenImpl:
       deps.runDatasetClassificationChildrenImpl ?? runDatasetClassificationChildren,
     runDatasetClassificationPathImpl:

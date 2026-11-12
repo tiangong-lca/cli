@@ -6,6 +6,7 @@ import { attachReplyTemplate, renderResult } from '../../shared/command-presenta
 import { result, type CommandIO } from '../../shared/command-result.js';
 
 export const common = ['help', 'json', 'output', 'force'];
+export const commonFor = (action?: string) => (action === 'calculate' ? ['help', 'json'] : common);
 export function runDatasetHelp(args: string[]): CommandIO {
   try {
     const { values } = parseArgs({
@@ -50,7 +51,7 @@ export const flags: Record<CanonicalDatasetAction, string[]> = {
   get: ['id', 'version', 'fields'],
   list: ['owner', 'state', 'limit', 'cursor', 'fields'],
   versions: ['id', 'limit', 'cursor', 'fields'],
-  search: ['query', 'state', 'limit'],
+  search: ['query', 'state', 'scope', 'limit'],
   contract: ['include'],
   'list-references': ['id', 'version', 'input', 'limit', 'cursor'],
   validate: ['input', 'checks'],
@@ -59,10 +60,14 @@ export const flags: Record<CanonicalDatasetAction, string[]> = {
   'translations extract': ['input'],
   'translations apply': ['input'],
   graph: ['input'],
+  prepare: ['input'],
+  calculate: ['file', 'engine', 'static-cache', 'output-dir', 'timeout-ms'],
   'build-resulting-process': ['input'],
   create: ['input', 'dry-run'],
   save: ['input', 'dry-run'],
   delete: ['input', 'dry-run'],
+  results: ['id', 'version'],
+  'get-result': ['id', 'version', 'result-id', 'kind', 'max-items'],
   statistics: ['input', 'scope', 'owner', 'state', 'group-by', 'max-rows'],
   'upload-attachments': ['input', 'dry-run'],
 };
@@ -145,6 +150,23 @@ export const requestShapes: Partial<Record<CanonicalDatasetAction, unknown>> = {
     groupBy: 'state and/or classification; default [state]',
     maxRows: '1..100000; default 10000; incomplete scans return partial',
   },
+  prepare: {
+    model: { file: 'canonical Model JSON path' },
+    datasets: [{ file: 'canonical supporting Dataset JSON path' }],
+    backgrounds: [{ file: 'complete Process get-result --kind lci artifact' }],
+    methods: [{ id: 'LCIA method UUID', version: 'exact version' }],
+    amount: 'positive functional amount; default 1',
+    cutoffs: 'explicit declared unconnected ports; default []',
+    limits: 'optional native resource budgets',
+    allowRemoteLookup: 'false by default; true fetches missing exact numerical dependencies only',
+  },
+  calculate: {
+    file: 'complete lca.model-input.v1 JSON from prepare',
+    engine: 'native executable; or TIANGONG_LCA_MODEL_ENGINE',
+    staticCache: 'LCIA factor directory; environment or saved setup configuration',
+    outputDir: 'new local Run directory',
+    timeoutMs: 'whole-process deadline; default 120000',
+  },
   graph: { content: 'canonical Model content' },
   'build-resulting-process': {
     source_model: 'explicit model content or json_ordered_path',
@@ -156,6 +178,12 @@ function actionExample(type: DatasetType, action: CanonicalDatasetAction): strin
   const command = `tiangong-lca dataset ${type} ${action}`;
   const id = '00000000-0000-4000-8000-000000000001';
   switch (action) {
+    case 'prepare':
+      return `${command} --input request.json --output input.json --json`;
+    case 'calculate':
+      return `${command} --file input.json --engine model_calculate --static-cache ./lcia-cache --output-dir ./run-1 --json`;
+    case 'results':
+    case 'get-result':
     case 'get':
       return `${command} --id ${id} --version 01.00.000 --json`;
     case 'versions':
@@ -190,7 +218,7 @@ export function help(type: DatasetType, action?: CanonicalDatasetAction) {
         .map((name) => [name, 'Not exposed for this type by the current service interface.']),
     ),
     aliases: type === 'model' ? { aggregate: 'build-resulting-process' } : {},
-    options: [...common, ...(action ? flags[action] : [])],
+    options: [...commonFor(action), ...(action ? flags[action] : [])],
     request: action ? (requestShapes[action] ?? null) : null,
     result: {
       schemaVersion: 1,
@@ -214,23 +242,43 @@ export function help(type: DatasetType, action?: CanonicalDatasetAction) {
     defaults:
       action === 'validate'
         ? { checks: type === 'lciamethod' ? ['schema'] : ['schema', 'business'] }
-        : action && ['list', 'versions', 'search', 'list-references'].includes(action)
-          ? { limit: 20 }
-          : action === 'statistics'
-            ? { scope: 'visible', groupBy: ['state'], maxRows: 10000 }
-            : action && ['create', 'save', 'delete', 'upload-attachments'].includes(action)
-              ? { dryRun: false }
-              : {},
+        : action === 'search'
+          ? { limit: 20, scope: 'current-user' }
+          : action && ['list', 'versions', 'list-references'].includes(action)
+            ? { limit: 20 }
+            : action === 'statistics'
+              ? { scope: 'visible', groupBy: ['state'], maxRows: 10000 }
+              : action && ['create', 'save', 'delete', 'upload-attachments'].includes(action)
+                ? { dryRun: false }
+                : {},
     limitations:
-      action === 'search'
+      action === 'calculate'
         ? [
-            'Search uses the current actor latest-version candidate scope; continuation cursors are not supported. Narrow the query.',
+            'Local complete inputs only; no login, network lookup, upload or retry. Use setup model-calculation to verify and save installed engine/cache paths. Explicit flags override environment then saved configuration. Source input is copied into the new Run. timeout-ms is a whole-process deadline; limits.timeoutMs bounds numerical preparation/execution.',
           ]
-        : action === 'validate'
-          ? ['Remote reference relationship checks require independently selected evidence.']
-          : action && ['create', 'save', 'delete'].includes(action)
-            ? ['Unavailable server protections fail explicitly before mutation.']
-            : [],
+        : action === 'prepare'
+          ? [
+              'Requires --output. File selections are relative to the request file. Preparation resolves numerical dependencies, without calculating or selecting providers. Methods/factors are checked by the explicitly configured engine at calculation time. Backgrounds replace original Process inventories.',
+            ]
+          : action === 'get-result'
+            ? [
+                'Read overview (default), lci or lcia. LCI requires --output and reads all pages; --max-items defaults to 100000. Use --result-id only to disambiguate results. Service bindings and one bounded whole-read restart are automatic.',
+              ]
+            : action === 'results'
+              ? [
+                  'List published direct results for one exact Process version. No calculation is started.',
+                ]
+              : action === 'search'
+                ? [
+                    'Search scope: current-user (default) or public (state 100). Flow/Process search matches exact versions; other types use the service candidate version policy. Cursors are not supported; narrow the query.',
+                  ]
+                : action === 'validate'
+                  ? [
+                      'Remote reference relationship checks require independently selected evidence.',
+                    ]
+                  : action && ['create', 'save', 'delete'].includes(action)
+                    ? ['Unavailable server protections fail explicitly before mutation.']
+                    : [],
     errors: {
       0: 'completed or accepted',
       1: 'business failure, partial/incomplete or unknown result',
