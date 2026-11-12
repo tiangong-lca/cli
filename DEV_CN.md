@@ -23,7 +23,7 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: '247227bd7260165c582fa0f9a1371c73d4760470'
+lastReviewedCommit: e5dcfaf578033019a80f470e0b02dd249f18d56d
 lastReviewedNote: 'CLI #477: reviewed single-language report switching, Platform-style offline Model rendering, report layout and print/browser regressions; runtime and release authority remain unchanged.'
 related:
   - AGENTS.md

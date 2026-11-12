@@ -262,3 +262,7 @@ Study P4 adds `assets/study-contract/v5/` and an independent `assets/study-rende
 `commands/report.ts` owns strict discovery/arguments and shared results. `application/report.ts` validates a lightweight presentation projection and defines its output port. `adapters/report.ts` writes a separate local artifact; `lib/report/` renders escaped text, SVG, single-language Chinese/English switching and print presentation with fixed embedded enhancements. Composition selects the writer. This path performs no remote access, calculation or hosted Study state change and never consumes or modifies signed hosted renderer assets.
 
 The report Model view follows Platform’s LifeCycleModels title-bar, 6px node, 8px square endpoint and IO grouping conventions, with the TianGong light brand primary. CLI owns the offline SVG implementation; it does not import Platform’s React/X6 page, service adapters or editing state. Node summaries link to complete supplied details.
+
+### Local Model installation boundary
+
+`adapters/model-install.ts` consumes an explicitly selected local native package, reuses runtime archive/path/integrity primitives and verifies the installed engine through `model-runtime.ts` before configuration publication. Worker owns package production and scientific execution. Each installation has a private owned directory; failures remove only that directory, while existing installations and Runs are retained. No package hash becomes a research-input requirement.

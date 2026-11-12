@@ -13,7 +13,7 @@ whenToUpdate:
 checkPaths:
   - docs/interfaces/**
 lastReviewedAt: 2026-11-12
-lastReviewedCommit: 54d330846333d58dd896e9e886d5b54888ee71b1
+lastReviewedCommit: e5dcfaf578033019a80f470e0b02dd249f18d56d
 lastReviewedNote: 'CLI #477: reviewed local runtime setup, saved calculation retrieval and normal sparse LCIA applicability; no hosted activation or automatic native distribution is claimed.'
 ---
 

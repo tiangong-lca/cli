@@ -22,6 +22,7 @@ export async function runSetupCommand(
         help: { type: 'boolean', short: 'h' },
         json: { type: 'boolean' },
         check: { type: 'boolean' },
+        install: { type: 'string' },
         engine: { type: 'string' },
         'static-cache': { type: 'string' },
       },
@@ -33,12 +34,18 @@ export async function runSetupCommand(
     if (!action || flags.help) {
       const help = {
         command: 'setup model-calculation',
-        options: ['--engine <executable>', '--static-cache <directory>', '--check', '--json'],
+        options: [
+          '--install <package-directory>',
+          '--engine <executable>',
+          '--static-cache <directory>',
+          '--check',
+          '--json',
+        ],
         defaults: { check: false, timeoutMs: 120000 },
         effects:
-          'Check an explicitly installed engine and its complete LCIA factor cache. Save reusable local configuration only after success. --check inspects without writing. No login, calculation, download or database/queue startup.',
+          'Install an explicitly trusted local Model package (macOS ARM64), including native dependencies and LCIA methods, or configure existing engine/cache paths. Save configuration only after a successful readiness check. --install cannot be combined with path options or --check. --check is read-only. No login, download, database or queue is needed. Previous installations and Runs are retained.',
         example:
-          'tiangong-lca setup model-calculation --engine /path/to/model_calculate --static-cache /path/to/lcia-cache --json',
+          'tiangong-lca setup model-calculation --install /path/to/model-runtime-package --json',
         next: 'dataset model calculate --file input.json --output-dir run-1 --json',
       };
       return {
@@ -53,6 +60,7 @@ export async function runSetupCommand(
       engine: flags.engine,
       staticCache: flags['static-cache'],
       check: flags.check === true,
+      install: flags.install,
     });
     value.outcome = flags.check ? 'environment_checked' : 'environment_configured';
     value.summary = flags.check

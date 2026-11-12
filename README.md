@@ -98,7 +98,7 @@ tiangong-lca dataset process get-result --id <process-id> --version <version> --
 
 ```bash
 tiangong-lca dataset model prepare --input request.json --output input.json --json
-tiangong-lca setup model-calculation --engine model_calculate --static-cache ./lcia-cache --json
+tiangong-lca setup model-calculation --install ./model-runtime-package --json
 tiangong-lca dataset model calculate --file input.json --output-dir ./run-1 --json
 tiangong-lca calculation result --dir ./run-1 --kind lcia --json
 ```
@@ -108,6 +108,8 @@ tiangong-lca calculation result --dir ./run-1 --kind lcia --json
 结果发布身份和分页由 CLI 内部管理；调用方不提供 hash。完整 LCI 写入文件，终端只返回摘要。存在多个结果时用 `--result-id` 明确选择；读取不会触发计算。`--max-items` 调整本次读取预算，默认 100000。
 
 普通 `--help` 返回可读文本，`--help --json` 返回实际动作的机器契约、默认值与限制。新入口的 JSON 返回业务结果、完整性和上下文。下一步提示仅包含说明与可选命令，回复模板为安装包中的 Markdown 路径。大校验报告可通过 `--output` 保存；终端只显示有界摘要。缺少模板时仍保留真实业务结果。
+
+安装包入口适用于 macOS ARM64，要求明确选择可信的本地包。已有引擎也可通过 `--engine <executable> --static-cache <directory>` 配置；`setup model-calculation --check` 检查保存的环境。公开下载发布和其他平台原生安装分别验收。
 
 ## 环境与身份上下文
 
