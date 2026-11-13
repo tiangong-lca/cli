@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: dd02e887a2e75d8ab8f636560736ba6b97d1d9d0
-lastReviewedNote: 'Reviewed signed Model connection guidance and diagnostics; documentation and development procedures remain unchanged.'
+lastReviewedCommit: 'bd1de97b723620921cf76de06d2abb0b4bf44174'
+lastReviewedNote: 'CLI #484: reviewed search-name projection after integrating upstream Model diagnostics; both behaviors and existing runtime, dependency and delivery contracts are preserved.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

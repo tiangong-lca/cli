@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: dd02e887a2e75d8ab8f636560736ba6b97d1d9d0
-lastReviewedNote: 'Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged.'
+lastReviewedCommit: 'bd1de97b723620921cf76de06d2abb0b4bf44174'
+lastReviewedNote: 'CLI #484: reviewed search-name projection after integrating upstream Model diagnostics; both behaviors and existing runtime, dependency and delivery contracts are preserved.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -61,6 +61,8 @@ Core commands project readable text help and machine help from the same factual 
 Dataset uses one typed command router for all eight object types. Model `build-resulting-process` and its `aggregate` alias share a canonical operation and implementation. Calculation inputs are explicit snapshots; exact remote Process lookups never fall back to latest. Source uploads verify selected bytes and independent readback, preserve failed references and do not save Source content.
 
 Process result discovery and complete inventory reads use `application/process-results.ts` with a dedicated authenticated adapter. Caller selections remain Process/Result identities; the adapter owns publication/runtime pagination context and one bounded whole-read restart. Public/current-user search scopes are explicit; Flow/Process filtering uses the existing matched-version service contract.
+
+Dataset search projects names from the selected type's canonical information node, independently of JSON key order. Flow, Process and Model retain the complete structured `name`; Source and Contact retain `common:shortName`, including localized object/array forms. Missing names remain null. Projection uses the search response without extra candidate reads or changes to service ordering and completeness.
 
 `src/commands/dataset-discovery.ts` owns query result presentation. Model graph metadata never enters identity context; explicit Process exchange projections are labeled incomplete content. Statistics adapts bounded visible-row reads and uses `src/lib/process-statistics/summary.ts` directly, without a second legacy scan or Markdown-report workflow; count drift, repeated identities and scan bounds remain partial observations. `contract` exposes verified released public definitions rather than retired authoring/identity workflow gates. Executed checks and omitted layers belong to validation reports.
 
