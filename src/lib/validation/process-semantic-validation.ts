@@ -4,6 +4,7 @@ import { type SafeParseSchema, normalizeIssuePath } from './tidas-sdk-validation
 
 type JsonObject = Record<string, unknown>;
 export type ProcessSemanticContext = {
+  reference_documents?: readonly JsonObject[];
   /** Complete exact Flow documents; identity, type and hash are recomputed on every admission. */
   flow_documents?: readonly JsonObject[];
   candidate_sha256?: string;

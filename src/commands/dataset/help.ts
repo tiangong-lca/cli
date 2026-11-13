@@ -54,7 +54,7 @@ export const flags: Record<CanonicalDatasetAction, string[]> = {
   search: ['query', 'state', 'scope', 'limit'],
   contract: ['include'],
   'list-references': ['id', 'version', 'input', 'limit', 'cursor'],
-  validate: ['input', 'checks'],
+  validate: ['input', 'checks', 'reference-documents'],
   diff: ['input'],
   patch: ['input'],
   'translations extract': ['input'],
@@ -84,6 +84,11 @@ export const requestShapes: Partial<Record<CanonicalDatasetAction, unknown>> = {
       },
     ],
   },
+  validate: {
+    content: 'canonical dataset JSON in --input',
+    referenceDocuments:
+      'optional --reference-documents JSON object {documents: [...]} of exact Flow/FlowProperty/UnitGroup documents for Process annual evidence; not stored in content',
+  },
   create: {
     id: 'UUID',
     version: '00.00.000',
@@ -110,7 +115,6 @@ export const requestShapes: Partial<Record<CanonicalDatasetAction, unknown>> = {
     expectedActor: 'online user UUID',
     expectedEnvironment: 'exact project origin',
   },
-  validate: { content: 'canonical TIDAS JSON supplied directly as input' },
   diff: { before: 'canonical content', after: 'canonical content' },
   patch: {
     content: 'canonical content',

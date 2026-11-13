@@ -168,3 +168,5 @@ pnpm prepush:gate
 ## Local research reports
 
 `tiangong-lca report render --input report.json --output report.html --json` renders explicit research content into one offline HTML file with Chinese/English switching (one language at a time, Chinese by default), clickable Model nodes/connections, sources, filterable tables and complete print layout. Use its Print / Save as PDF button for browser PDF export. The CLI does not translate, calculate, discover providers or register a hosted Study. Only `title` is required; read `report render --help --json`, the [input contract](docs/interfaces/report.md) and [synthetic example](assets/report/example.json). Existing outputs require `--force`; input files remain protected.
+
+Process 年度量验证支持有明确年度推导和精确参考单位证据的 Platform 展示形式，原始字段保持不变。离线使用 `dataset process validate --reference-documents references.json` 提供独立参考文档；保存 dry-run 使用当前账号可见的精确引用。支持的声明和限制见 [Process 年度量](docs/interfaces/datasets/processes.md#年度量与-platform-展示兼容)。

@@ -43,6 +43,7 @@ export type DatasetValidateRowReport = {
   issues: DatasetValidateIssue[];
   payload_sha256?: string;
   validation_layers?: DatasetValidationLayers;
+  annual_volume?: ReturnType<typeof validateProcessPayload>['annual_volume'];
   allocation_semantics?: ReturnType<typeof validateProcessPayload>['allocation_semantics'];
 };
 
@@ -66,6 +67,7 @@ export type DatasetValidateReport = {
 };
 
 export type RunDatasetValidateOptions = {
+  referenceDocuments?: readonly Record<string, unknown>[];
   inputPath: string;
   type?: string | null;
   outDir?: string | null;
@@ -392,7 +394,10 @@ export async function runDatasetValidate(
   const requestedType = normalizeType(options.type);
   const rows = materializeDatasetRows(options.inputPath, options.rawInput);
   const reports = rows.map((row) =>
-    validateRow(row, requestedType, options.schemas, semanticContextFromInput(row.row)),
+    validateRow(row, requestedType, options.schemas, {
+      ...semanticContextFromInput(row.row),
+      reference_documents: options.referenceDocuments,
+    }),
   );
   const invalidRows = reports.filter((row) => row.status === 'invalid');
   const files = buildFiles(options.outDir);

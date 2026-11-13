@@ -1,3 +1,4 @@
+import { analyzeProcessAnnualVolume } from './process-annual-projection.js';
 import {
   analyzeProcessPayloadSemantics,
   type ProcessSemanticContext,
@@ -31,6 +32,7 @@ export type ProcessPayloadValidationIssue = {
 };
 
 export type ProcessPayloadValidationResult = {
+  annual_volume?: ReturnType<typeof analyzeProcessAnnualVolume>;
   allocation_semantics?: ReturnType<typeof analyzeProcessPayloadSemantics>;
   payload_sha256?: string;
   validation_layers?: DatasetValidationLayers;
@@ -89,7 +91,17 @@ export function validateProcessPayload(
 ): ProcessPayloadValidationResult {
   const allocation_semantics = analyzeProcessPayloadSemantics(payload, context);
   const outcome = validateSchemaWithDeepFallback(schema, structuredClone(payload), createEntity);
-  const requiredFieldIssues = collectProcessRequiredFieldIssues(payload);
+  const annual_volume = analyzeProcessAnnualVolume(payload, context.reference_documents);
+  const requiredFieldIssues = [
+    ...collectProcessRequiredFieldIssues(payload).filter(
+      (issue) =>
+        !(
+          issue.code === 'annual_supply_or_production_volume_not_annualized' &&
+          annual_volume.status === 'passed'
+        ),
+    ),
+    ...annual_volume.issues,
+  ];
   const placeholderIssues = collectProcessPlaceholderIssues(payload);
   const { additional_multilingual_issues, ...evidence } = buildDatasetValidationLayers(
     payload,
@@ -112,6 +124,7 @@ export function validateProcessPayload(
       issues: [],
       ...evidence,
       allocation_semantics,
+      annual_volume,
     };
   }
 
@@ -134,6 +147,7 @@ export function validateProcessPayload(
     issues,
     ...evidence,
     allocation_semantics,
+    annual_volume,
   };
 }
 

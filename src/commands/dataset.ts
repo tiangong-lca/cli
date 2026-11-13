@@ -12,6 +12,7 @@ import {
   requireContent,
   text,
   object,
+  isObject,
   type DatasetType,
   type DatasetPorts,
   type JsonObject,
@@ -32,7 +33,11 @@ import {
   patchContent,
 } from '../application/dataset-content.js';
 import { extractTranslations, applyTranslations } from '../application/dataset-translations.js';
-import { readCommandInput, writeCommandOutput } from '../shared/command-files.js';
+import {
+  readCommandInput,
+  writeCommandOutput,
+  assertSeparateCommandFiles,
+} from '../shared/command-files.js';
 import { attachReplyTemplate, renderResult } from '../shared/command-presentation.js';
 import {
   CommandInputError,
@@ -486,7 +491,34 @@ export async function runDatasetCommand(
             'CHECKS_UNSUPPORTED',
             'LCIA Method currently supports schema checks only.',
           );
-        const validation = await ports.validate(type, requireContent(type, request), checks);
+        let referenceDocuments: JsonObject[] | undefined;
+        if (values['reference-documents'] !== undefined) {
+          if (values.output)
+            assertSeparateCommandFiles(
+              String(values.output),
+              String(values['reference-documents']),
+            );
+          const supplied = readInput(
+            text(values['reference-documents'], '--reference-documents'),
+          ).documents;
+          if (
+            type !== 'process' ||
+            !checks.includes('business') ||
+            !Array.isArray(supplied) ||
+            supplied.some((x) => !isObject(x))
+          )
+            throw new CommandInputError(
+              'ANNUAL_REFERENCE_INPUT_INVALID',
+              'Process business validation accepts --reference-documents as an object with a documents array of exact reference datasets.',
+            );
+          referenceDocuments = supplied as JsonObject[];
+        }
+        const validation = await ports.validate(
+          type,
+          requireContent(type, request),
+          checks,
+          referenceDocuments,
+        );
         value.data = { validation };
         artifact = validation;
         value.outcome = `validation_${validation.status}`;

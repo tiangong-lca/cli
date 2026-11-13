@@ -121,7 +121,12 @@ export type DatasetOperation = (
 export type DatasetPorts = {
   read(type: DatasetType, query: DatasetQuery): Promise<DatasetPage>;
   contract(type: DatasetType, include: string[]): Promise<JsonObject>;
-  validate(type: DatasetType, content: JsonObject, checks: string[]): Promise<JsonObject>;
+  validate(
+    type: DatasetType,
+    content: JsonObject,
+    checks: string[],
+    referenceDocuments?: JsonObject[],
+  ): Promise<JsonObject>;
   search(
     type: DatasetType,
     query: string,

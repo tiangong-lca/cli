@@ -638,7 +638,7 @@ test('the exact 100% source-coverage gate remains in the pnpm pre-push path', ()
   assert.match(packageContractCommand, /test\/toolchain-contract\.test\.mjs/u);
   assert.equal(
     entrypointsCommand,
-    'pnpm build && node --import tsx --test test/bin.test.ts test/main.test.ts',
+    'pnpm build && node --import tsx --test test/bin.test.ts test/main.test.ts test/cli-process-annual-projection.test.ts',
   );
   assert.equal(PACKAGE_JSON.scripts?.['peers:check'], 'pnpm peers check');
   assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+peers:check(?:\s|&&|$)/u);

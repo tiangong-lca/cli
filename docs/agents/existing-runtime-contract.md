@@ -14,8 +14,8 @@ checkPaths:
   - AGENTS.md
   - src/lib/**
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: dd02e887a2e75d8ab8f636560736ba6b97d1d9d0
-lastReviewedNote: 'Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged.'
+lastReviewedCommit: bd1de97b723620921cf76de06d2abb0b4bf44174
+lastReviewedNote: 'Reviewed Process annual projection evidence, independent reference inputs and native validation coverage; existing ownership, release and mutation safeguards remain unchanged.'
 ---
 
 # Existing runtime safeguards

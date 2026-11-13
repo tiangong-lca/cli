@@ -266,3 +266,9 @@ The report Model view follows Platform’s LifeCycleModels title-bar, 6px node, 
 ### Local Model installation boundary
 
 `adapters/model-install.ts` consumes an explicitly selected local native package, reuses runtime archive/path/integrity primitives and verifies the installed engine through `model-runtime.ts` before configuration publication. Worker owns package production and scientific execution. Each installation has a private owned directory; failures remove only that directory, while existing installations and Runs are retained. No package hash becomes a research-input requirement.
+
+## Process annual quantity compatibility
+
+`process-annual-projection.ts` validates annual meaning independently of allocation semantics. `process-reference-unit.ts` resolves exact complete reference documents with the pinned SDK schemas and the existing Flow/UnitGroup consistency checks. The pure modules never fetch, rewrite content or infer annual production. The supported bilingual one-reference-batch declaration and user commands are defined in [Process interfaces](../interfaces/datasets/processes.md#年度量与-platform-展示兼容).
+
+`process-annual-evidence.ts` supplies current-user exact reference reads to combined business/reference validation and ordinary write qualification. Local validation receives optional reference documents through a separate command input, never merged into the candidate. Annual evidence is recomputed on each new save; the existing mutation journal and original-result recovery remain unchanged.
