@@ -15,7 +15,7 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: dd02e887a2e75d8ab8f636560736ba6b97d1d9d0
+lastReviewedCommit: bd1de97b723620921cf76de06d2abb0b4bf44174
 lastReviewedNote: 'Reviewed signed Model connection guidance and diagnostics; documentation and development procedures remain unchanged.'
 related:
   - ../AGENTS.md

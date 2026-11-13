@@ -14,7 +14,7 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 64cf39d4cdd938225609814d2b494dbcec0b7d3a
+lastReviewedCommit: bd1de97b723620921cf76de06d2abb0b4bf44174
 lastReviewedNote: 'CLI #481: reviewed published Model capabilities, native runtime installation, sparse LCIA interpretation and installed-package verification.'
 ---
 
@@ -92,7 +92,7 @@ tiangong-lca dataset process results --id <process-id> --version <version> --jso
 tiangong-lca dataset process get-result --id <process-id> --version <version> --kind lci --output background.json --json
 ```
 
-本地 Model 计算使用显式安装的原生引擎与 LCIA 方法缓存。从 [Worker Model runtime 发布页](https://github.com/tiangong-lca/worker/releases/tag/model-runtime-v0.1.0)下载与本机匹配的 `model-runtime-<platform>.tar.gz`，按同页 `SHA256SUMS` 校验后解压到 `model-runtime-package`。安装入口读取其中的 `manifest.json` 和 `runtime.tar.gz`，一并安装引擎、原生依赖和方法数据；本地计算无需登录、数据库或队列。
+本地 Model 计算使用显式安装的原生引擎与 LCIA 方法缓存。从 [Worker Model runtime 发布页](https://github.com/tiangong-lca/worker/releases)下载与本机匹配的 `model-runtime-<platform>.tar.gz`，按同页 `SHA256SUMS` 校验后解压到 `model-runtime-package`。安装入口读取其中的 `manifest.json` 和 `runtime.tar.gz`，一并安装引擎、原生依赖和方法数据；本地计算无需登录、数据库或队列。
 
 ```bash
 tiangong-lca dataset model prepare --input request.json --output input.json --json
