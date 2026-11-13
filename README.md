@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: f02958d597f7903115ddf59de179da1ca167c107
-lastReviewedNote: 'CLI #479: reviewed version-only 0.2.1 release; command contracts, dependencies, package exports and release gates remain unchanged.'
+lastReviewedCommit: 64cf39d4cdd938225609814d2b494dbcec0b7d3a
+lastReviewedNote: 'CLI #481: reviewed published Model capabilities, native runtime installation, sparse LCIA interpretation and installed-package verification.'
 ---
 
 # TianGong LCA CLI
@@ -26,7 +26,7 @@ lastReviewedNote: 'CLI #479: reviewed version-only 0.2.1 release; command contra
 
 ## 当前状态
 
-当前源码对应 CLI 0.2.0。查看已安装版本和实际帮助：
+Model 准备与计算、运行时安装、Process 结果读取和 HTML 报告从 CLI 0.2.1 起提供。查看已安装版本和实际帮助：
 
 ```bash
 tiangong-lca --version
@@ -53,7 +53,7 @@ tiangong-lca auth login
 tiangong-lca auth whoami --json
 ```
 
-下列 Dataset 示例适用于 CLI 0.2.0。官方环境登录使用浏览器 OAuth。短期令牌只能通过受支持的秘密环境边界注入，不写入命令参数。身份、权限和配置说明见[认证设计](docs/interfaces/identity.md)及安装版本的 `auth --help`。
+下列示例使用类型化 Dataset 接口。官方环境登录使用浏览器 OAuth。短期令牌只能通过受支持的秘密环境边界注入，不写入命令参数。身份、权限和配置说明见[认证设计](docs/interfaces/identity.md)及安装版本的 `auth --help`。
 
 ## 能力组织
 
@@ -66,14 +66,12 @@ tiangong-lca auth whoami --json
 
 最终接口按对象组织，完整范围见[目标设计](docs/interfaces/README.md)。表中的命令方向不是当前全部可执行命令清单。研究、生产计划和跨阶段任务编排由调用方负责。
 
-## 当前源码的 Dataset 入口
+## Dataset 使用示例
 
 ```bash
-pnpm install --frozen-lockfile
-pnpm build
-node bin/tiangong-lca.js dataset process get --help --json
-node bin/tiangong-lca.js dataset process get --id <process-id> --version <version> --output process.json --json
-node bin/tiangong-lca.js dataset process validate --input process.json --output validation.json --json
+tiangong-lca dataset process get --help --json
+tiangong-lca dataset process get --id <process-id> --version <version> --output process.json --json
+tiangong-lca dataset process validate --input process.json --output validation.json --json
 ```
 
 `get` 必须显式选择精确版本或 `latest`，精确版本不存在时不回退。`--output` 保存完整内容，默认拒绝覆盖已有文件。未指定输出文件时 JSON 包含完整内容；人类输出只呈现摘要。
@@ -86,7 +84,7 @@ Unit Group 业务校验检查单位内部 ID 及参考单位的唯一定位。`c
 
 Process 支持 `get --fields exchanges` 读取交换项投影，投影不构成可直接保存的完整内容。`statistics --group-by state,classification [--owner <id>] [--state <code>]` 汇总明确可见范围；默认最多扫描 10000 条，通过 `--max-rows` 调整。扫描不完整返回部分结果，完整分组使用 `--output` 获取。
 
-过程背景查询支持显式公共范围，结果读取复用现有已发布 HDF5 服务。以下为当前源码新增能力：
+过程背景查询支持显式公共范围，结果读取复用现有已发布 HDF5 服务。查询与结果读取示例：
 
 ```bash
 tiangong-lca dataset process search --query electricity --scope public --state 100 --json
@@ -94,7 +92,7 @@ tiangong-lca dataset process results --id <process-id> --version <version> --jso
 tiangong-lca dataset process get-result --id <process-id> --version <version> --kind lci --output background.json --json
 ```
 
-本地 Model 计算使用显式安装的原生引擎和 LCIA 因子目录；不会启动数据库或队列，也不会自动下载依赖：
+本地 Model 计算使用显式安装的原生引擎与 LCIA 方法缓存。从 [Worker Model runtime 发布页](https://github.com/tiangong-lca/worker/releases/tag/model-runtime-v0.1.0)下载与本机匹配的 `model-runtime-<platform>.tar.gz`，按同页 `SHA256SUMS` 校验后解压到 `model-runtime-package`。安装入口读取其中的 `manifest.json` 和 `runtime.tar.gz`，一并安装引擎、原生依赖和方法数据；本地计算无需登录、数据库或队列。
 
 ```bash
 tiangong-lca dataset model prepare --input request.json --output input.json --json
@@ -103,13 +101,19 @@ tiangong-lca dataset model calculate --file input.json --output-dir ./run-1 --js
 tiangong-lca calculation result --dir ./run-1 --kind lcia --json
 ```
 
-输入字段和预算见 [Model 计算契约](docs/interfaces/calculations.md#本地文件契约)。结果保存本次输入、数值轴和覆盖诊断；有因子缺口时明确报告 LCIA 分数不完整。当前源码支持本地链路，原生组件的正式安装分发、独立线上 Model 计算和统一 Calculation 查询入口仍由实施计划跟踪。
+输入字段和预算见 [Model 计算契约](docs/interfaces/calculations.md#本地文件契约)。结果保存本次输入、数值轴、方法和数值诊断。某个 Flow 在所选 LCIA 方法中没有定义因子时，对该方法不产生贡献，这是正常的稀疏适用性，不作为因子缺口或分数不完整报告。方法文件损坏、输入缺失和结果读取不完整仍是错误。独立线上 Model 计算以实际服务能力为准，不因本地运行时发布而自动可用。
+
+研究报告以 JSON 为输入，生成可交互 HTML；中英文通过切换显示，PDF 使用浏览器打印导出：
+
+```bash
+tiangong-lca report render --input report.json --output report.html --json
+```
 
 结果发布身份和分页由 CLI 内部管理；调用方不提供 hash。完整 LCI 写入文件，终端只返回摘要。存在多个结果时用 `--result-id` 明确选择；读取不会触发计算。`--max-items` 调整本次读取预算，默认 100000。
 
 普通 `--help` 返回可读文本，`--help --json` 返回实际动作的机器契约、默认值与限制。新入口的 JSON 返回业务结果、完整性和上下文。下一步提示仅包含说明与可选命令，回复模板为安装包中的 Markdown 路径。大校验报告可通过 `--output` 保存；终端只显示有界摘要。缺少模板时仍保留真实业务结果。
 
-安装包入口支持 macOS ARM64、Linux glibc x64/ARM64、Windows x64，要求明确选择与当前平台匹配的可信本地包。已有引擎也可通过 `--engine <executable> --static-cache <directory>` 配置；`setup model-calculation --check` 检查保存的环境。公开下载发布与各目标平台的原生执行分别验收；支持安装包格式不代表已有公开发行包。
+安装包入口支持 macOS ARM64、Linux glibc x64/ARM64、Windows x64，要求明确选择与当前平台匹配的可信本地包。已有引擎也可通过 `--engine <executable> --static-cache <directory>` 配置；`setup model-calculation --check` 检查保存的环境。发布包覆盖上述四个平台；Linux 包要求 glibc 2.39 或更新版本。包内包含原生依赖、方法缓存与组件许可，同一发布提供对应源码和各平台验收记录。
 
 ## 环境与身份上下文
 

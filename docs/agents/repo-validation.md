@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: f02958d597f7903115ddf59de179da1ca167c107
-lastReviewedNote: 'CLI #479: reviewed version-only 0.2.1 release; command contracts, dependencies, package exports and release gates remain unchanged.'
+lastReviewedCommit: 64cf39d4cdd938225609814d2b494dbcec0b7d3a
+lastReviewedNote: 'CLI #481: reviewed release onboarding and bounded package-test stage timing; runtime contracts, dependency graph, assertions and publishing authority are unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -62,6 +62,8 @@ pnpm prepush:gate
 The complete gate verifies bundled public rules, lint/typecheck and Data API consumers, peers, the independent package lane, independent launcher/entrypoint tests, full-source coverage and its exact 100% assertion. Never add coverage exclusions, ignore pragmas or weaker assertions to pass a refactor. Only the existing Windows-native and explicitly enabled service lanes may use their documented environment gates.
 
 `pnpm test:entrypoints` runs outside coverage instrumentation so native launcher and process IO remain independently exercised. `pnpm test:package` likewise runs independently; its source-free installed CLI uses native Node and production dependencies. The repository-only tsx loader orchestrates tests and is not a consumer runtime requirement.
+
+The complete installed-package scenario has a five-minute aggregate test budget on all hosts, with elapsed stage diagnostics for dependency installation, packaging, launchers, recovery, business operations and reports. Per-process timeouts and all behavioral assertions remain required; this aggregate CI budget is not a product performance promise.
 
 ## Architecture and behavior regressions
 

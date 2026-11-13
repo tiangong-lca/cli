@@ -22,7 +22,7 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: f02958d597f7903115ddf59de179da1ca167c107
+lastReviewedCommit: 64cf39d4cdd938225609814d2b494dbcec0b7d3a
 lastReviewedNote: 'CLI #479: reviewed version-only 0.2.1 release; commands, dependencies and publication boundaries remain unchanged.'
 related:
   - ../AGENTS.md
