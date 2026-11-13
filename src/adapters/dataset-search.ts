@@ -3,6 +3,7 @@ import {
   datasetWrappers,
   isObject,
   type DatasetPorts,
+  type DatasetType,
 } from '../application/dataset-types.js';
 import {
   requireSupabaseRestRuntime,
@@ -12,6 +13,17 @@ import {
 import { resolveSupabaseUserSession } from '../lib/auth/supabase-session.js';
 import { postJson, type FetchLike } from '../lib/transport/http.js';
 import { CliError } from '../shared/errors.js';
+
+const informationKeys = {
+  flow: 'flowInformation',
+  process: 'processInformation',
+  model: 'lifeCycleModelInformation',
+  source: 'sourceInformation',
+  contact: 'contactInformation',
+  flowproperty: 'flowPropertiesInformation',
+  unitgroup: 'unitGroupInformation',
+  lciamethod: 'LCIAMethodInformation',
+} as const satisfies Record<DatasetType, string>;
 
 export function datasetSearcher(
   env: NodeJS.ProcessEnv,
@@ -49,9 +61,7 @@ export function datasetSearcher(
           exitCode: 1,
         });
       const content = isObject(row.json) ? row.json[datasetWrappers[type]] : null;
-      const info = isObject(content)
-        ? Object.entries(content).find(([key]) => key.endsWith('Information'))?.[1]
-        : null;
+      const info = isObject(content) ? content[informationKeys[type]] : null;
       const identity =
         isObject(info) && isObject(info.dataSetInformation) ? info.dataSetInformation : {};
       return {

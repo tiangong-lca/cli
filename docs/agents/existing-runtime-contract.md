@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - AGENTS.md
   - src/lib/**
-lastReviewedAt: 2026-11-12
-lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
-lastReviewedNote: 'CLI #477: reviewed platform-specific Model package installation, Linux glibc admission and Windows executable selection; setup and scientific input contracts remain shared.'
+lastReviewedAt: 2026-11-13
+lastReviewedCommit: 162d69572464fed6b588b91f30d64a91dade72b7
+lastReviewedNote: 'CLI #484: reviewed typed search name projection and order-independent regressions; ownership, runtime, dependency and release contracts remain unchanged.'
 ---
 
 # Existing runtime safeguards

@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 64cf39d4cdd938225609814d2b494dbcec0b7d3a
-lastReviewedNote: 'CLI #479: reviewed version-only 0.2.1 release; commands, dependencies and publication boundaries remain unchanged.'
+lastReviewedCommit: 162d69572464fed6b588b91f30d64a91dade72b7
+lastReviewedNote: 'CLI #484: reviewed search projection regression coverage; documentation, toolchain, packaging and release procedures are unchanged.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

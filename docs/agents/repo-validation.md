@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 64cf39d4cdd938225609814d2b494dbcec0b7d3a
-lastReviewedNote: 'CLI #481: reviewed release onboarding and bounded package-test stage timing; runtime contracts, dependency graph, assertions and publishing authority are unchanged.'
+lastReviewedCommit: 162d69572464fed6b588b91f30d64a91dade72b7
+lastReviewedNote: 'CLI #484: reviewed typed search name projection and order-independent regressions; ownership, runtime, dependency and release contracts remain unchanged.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -122,6 +122,8 @@ Study tests exercise the contained owner codecs/renderers and exact selected API
 ## Review-result and discovery regressions
 
 Core help must distinguish text and machine output for each advertised action, reject unavailable options before IO, expose actual action defaults and preserve canonical operation names for subgroup discovery and errors. Retained tools remain discoverable under their independent protocols. Output tests compare same-condition missing/invisible categories, unknown-count pagination, verified deletion continuations and attachment-preview templates.
+
+Search regressions exercise all five searchable types with administrative information before and after the canonical information node. Preserve structured multilingual names and Source/Contact short names; missing or malformed canonical nodes must not borrow names from unrelated information. Assert unchanged candidate order, exact identity/version, scores, request scope/filters, completeness and one search request without per-candidate reads.
 
 Write qualification distinguishes contract-backed no-effect refusals from unconfirmed effects. Safe codes/categories and original rejected receipts must survive fresh-process recovery without replay; raw service messages and credentials never enter the result or journal. Network loss, unrecognized/malformed/5xx acknowledgments and mismatched or mixed decision receipts remain unknown. Exercise lock errors through their CLI conversion while retaining public class identity and locking tests. Source-free installed tests establish client behavior separately from actual service transaction proof.
 

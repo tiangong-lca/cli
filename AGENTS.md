@@ -40,8 +40,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 64cf39d4cdd938225609814d2b494dbcec0b7d3a
-lastReviewedNote: 'CLI #481: reviewed release onboarding and bounded package-test stage timing; runtime contracts, dependency graph, assertions and publishing authority are unchanged.'
+lastReviewedCommit: 162d69572464fed6b588b91f30d64a91dade72b7
+lastReviewedNote: 'CLI #484: reviewed typed search name projection and order-independent regressions; ownership, runtime, dependency and release contracts remain unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
