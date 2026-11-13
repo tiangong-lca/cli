@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-11-12
-lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
-lastReviewedNote: 'CLI #477: reviewed platform-specific Model package installation, Linux glibc admission and Windows executable selection; setup and scientific input contracts remain shared.'
+lastReviewedAt: 2026-11-13
+lastReviewedCommit: f02958d597f7903115ddf59de179da1ca167c107
+lastReviewedNote: 'CLI #479: reviewed version-only 0.2.1 release; commands, dependencies and publication boundaries remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
