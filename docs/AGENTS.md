@@ -15,8 +15,8 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 64cf39d4cdd938225609814d2b494dbcec0b7d3a
-lastReviewedNote: 'CLI #481: reviewed release onboarding and bounded package-test stage timing; runtime contracts, dependency graph, assertions and publishing authority are unchanged.'
+lastReviewedCommit: 162d69572464fed6b588b91f30d64a91dade72b7
+lastReviewedNote: 'CLI #483: reviewed bounded Model diagnostics; documentation roles and development/release procedures remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

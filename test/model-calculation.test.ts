@@ -466,3 +466,68 @@ test('command help, preparation artifacts and calculation completion remain sepa
   assert.match(help('model', 'calculate').examples[0]!, /--file/u);
   assert.match(help('model', 'prepare').examples[0]!, /--output/u);
 });
+
+test('native input diagnostics retain bounded port identities without forwarding arbitrary stderr or retrying', (t) => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'model-diagnostics-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const messages = [
+    'local_background_reference_missing instance=b reference=p matches=0',
+    'local_background_reference_mismatch instance=b reference=p expected_flow=feed expected_version=1 expected_direction=Output actual_flow=other actual_version=2 actual_direction=Input',
+    'study_ambiguous_or_missing_exchange_port instance=c flow=feed version=1 direction=Input matches=2',
+  ];
+  const cases = [
+    ...messages.map((message) => ({
+      stderr: `Error: ${message}\nprivate details`,
+      expected: message,
+    })),
+    { stderr: `Error: ${messages[0]}\r\nprivate details`, expected: messages[0] },
+    { stderr: `Error: ${messages[1]}`, expected: messages[1] },
+    {
+      stderr:
+        'Error: local_background_reference_missing instance=/private/secret reference=p matches=0',
+      expected: undefined,
+    },
+    {
+      stderr: `Error: local_background_reference_missing instance=${'x'.repeat(129)} reference=p matches=0`,
+      expected: undefined,
+    },
+    { stderr: `Error: ${messages[0]} token=private-secret`, expected: undefined },
+    { stderr: 'Error: unknown_failure token=private-secret', expected: undefined },
+    { stderr: 'Error: bad-code private-secret', expected: undefined },
+  ];
+  for (const [index, item] of cases.entries()) {
+    let calls = 0;
+    const execute = (() => {
+      calls++;
+      return { status: 1, stderr: item.stderr, stdout: '', pid: 1, output: [], signal: null };
+    }) as unknown as typeof spawnSync;
+    assert.throws(
+      () =>
+        calculateLocalModel(
+          {
+            content: { schemaVersion: 'lca.model-input.v1' },
+            engine: 'configured-engine',
+            staticCache: dir,
+            outputDir: path.join(dir, `run-${index}`),
+          },
+          { PATH: processEnvPath() },
+          execute,
+        ),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        if (item.expected) {
+          assert.ok(error.message.includes(item.expected));
+          assert.match(error.message, /Inspect the named Process/u);
+        } else {
+          assert.doesNotMatch(error.message, /instance=|Inspect the named Process/u);
+        }
+        assert.doesNotMatch(
+          error.message,
+          /private details|private-secret|\/private\/secret|x{129}/u,
+        );
+        return true;
+      },
+    );
+    assert.equal(calls, 1);
+  }
+});
