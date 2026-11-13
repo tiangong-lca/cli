@@ -471,6 +471,8 @@ test('native input diagnostics retain bounded port identities without forwarding
   const dir = mkdtempSync(path.join(os.tmpdir(), 'model-diagnostics-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const messages = [
+    'study_connection_direction_mismatch flow=feed version=1 supplier_instance=b supplier_exchange=p supplier_direction=Output supplier_amount=-2e0 supplier_coefficient=-2e0 consumer_instance=a consumer_exchange=i consumer_direction=Input consumer_amount=2e0 consumer_coefficient=-2e0',
+    'study_connection_direction_mismatch flow=feed version=1 supplier_instance=b supplier_exchange=p supplier_direction=Output supplier_amount=1.23e-200 supplier_coefficient=1.23e-200 consumer_instance=a consumer_exchange=i consumer_direction=Output consumer_amount=1e+200 consumer_coefficient=1e+200',
     'local_background_reference_missing instance=b reference=p matches=0',
     'local_background_reference_mismatch instance=b reference=p expected_flow=feed expected_version=1 expected_direction=Output actual_flow=other actual_version=2 actual_direction=Input',
     'study_ambiguous_or_missing_exchange_port instance=c flow=feed version=1 direction=Input matches=2',
@@ -492,6 +494,15 @@ test('native input diagnostics retain bounded port identities without forwarding
       expected: undefined,
     },
     { stderr: `Error: ${messages[0]} token=private-secret`, expected: undefined },
+    {
+      stderr: `Error: ${messages[0]!.replace('supplier_amount=-2e0', 'supplier_amount=NaN')}`,
+      expected: undefined,
+    },
+    { stderr: `Error: ${messages[0]} private-secret`, expected: undefined },
+    {
+      stderr: `Error: ${messages[0]!.replace('supplier_coefficient=-2e0', 'supplier_coefficient=1e9999')}`,
+      expected: undefined,
+    },
     { stderr: 'Error: unknown_failure token=private-secret', expected: undefined },
     { stderr: 'Error: bad-code private-secret', expected: undefined },
   ];

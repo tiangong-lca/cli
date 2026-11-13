@@ -15,8 +15,8 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 162d69572464fed6b588b91f30d64a91dade72b7
-lastReviewedNote: 'CLI #483: reviewed bounded Model diagnostics; documentation roles and development/release procedures remain unchanged.'
+lastReviewedCommit: dd02e887a2e75d8ab8f636560736ba6b97d1d9d0
+lastReviewedNote: 'Reviewed signed Model connection guidance and diagnostics; documentation and development procedures remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

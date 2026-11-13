@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 162d69572464fed6b588b91f30d64a91dade72b7
-lastReviewedNote: 'CLI #483: reviewed bounded native Model input diagnostics; command schema, release procedures and runtime selection remain unchanged.'
+lastReviewedCommit: dd02e887a2e75d8ab8f636560736ba6b97d1d9d0
+lastReviewedNote: 'Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
