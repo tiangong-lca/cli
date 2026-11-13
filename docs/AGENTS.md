@@ -15,8 +15,8 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 162d69572464fed6b588b91f30d64a91dade72b7
-lastReviewedNote: 'CLI #484: reviewed search projection regression coverage; documentation, toolchain, packaging and release procedures are unchanged.'
+lastReviewedCommit: 'bd1de97b723620921cf76de06d2abb0b4bf44174'
+lastReviewedNote: 'CLI #484: reviewed search-name projection after integrating upstream Model diagnostics; both behaviors and existing runtime, dependency and delivery contracts are preserved.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

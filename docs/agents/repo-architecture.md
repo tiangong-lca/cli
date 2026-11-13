@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-13
-lastReviewedCommit: 162d69572464fed6b588b91f30d64a91dade72b7
-lastReviewedNote: 'CLI #484: reviewed typed search name projection and order-independent regressions; ownership, runtime, dependency and release contracts remain unchanged.'
+lastReviewedCommit: 'bd1de97b723620921cf76de06d2abb0b4bf44174'
+lastReviewedNote: 'CLI #484: reviewed search-name projection after integrating upstream Model diagnostics; both behaviors and existing runtime, dependency and delivery contracts are preserved.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml

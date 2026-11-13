@@ -62,6 +62,23 @@ export async function prepareModelInput(
   });
 }
 
+// Preserve only bounded, known input identities; never forward arbitrary engine stderr.
+function calculationDiagnostic(stderr: string): { detail: string; inputError: boolean } {
+  const code = /(?:^|\n)Error: ([a-z][a-z0-9_]{0,95})(?:\s|$)/u.exec(stderr)?.[1];
+  const token = '[A-Za-z0-9_.-]{1,128}';
+  const number = '-?[0-9](?:\\.[0-9]{1,17})?e[+-]?[0-9]{1,3}';
+  const patterns = [
+    `study_connection_direction_mismatch flow=${token} version=${token} supplier_instance=${token} supplier_exchange=${token} supplier_direction=(?:Input|Output) supplier_amount=${number} supplier_coefficient=${number} consumer_instance=${token} consumer_exchange=${token} consumer_direction=(?:Input|Output) consumer_amount=${number} consumer_coefficient=${number}`,
+    `local_background_reference_missing instance=${token} reference=${token} matches=[0-9]{1,6}`,
+    `local_background_reference_mismatch instance=${token} reference=${token} expected_flow=${token} expected_version=${token} expected_direction=(?:Input|Output) actual_flow=${token} actual_version=${token} actual_direction=(?:Input|Output)`,
+    `study_ambiguous_or_missing_exchange_port instance=${token} flow=${token} version=${token} direction=(?:Input|Output) matches=[0-9]{1,6}`,
+  ];
+  const context = new RegExp(`(?:^|\\n)Error: (${patterns.join('|')})(?=\\r?\\n|$)`, 'u').exec(
+    stderr,
+  )?.[1];
+  return { detail: context ?? code ?? '', inputError: context !== undefined };
+}
+
 export function calculateLocalModel(
   request: JsonObject,
   env: NodeJS.ProcessEnv,
@@ -127,10 +144,10 @@ export function calculateLocalModel(
       },
     );
     if (execution.error || execution.status !== 0) {
-      const diagnostic = /(?:^|\n)Error: ([a-z][a-z0-9_]+)(?:\s|$)/u.exec(execution.stderr)?.[1];
+      const diagnostic = calculationDiagnostic(execution.stderr);
       throw new CommandInputError(
         'CALCULATION_EXECUTION_FAILED',
-        `Local calculation did not complete${diagnostic ? ` (${diagnostic})` : ''}. Inspect the engine installation, input and resource limits. Retain any files in ${output}; no retry was attempted.`,
+        `Local calculation did not complete${diagnostic.detail ? ` (${diagnostic.detail})` : ''}. ${diagnostic.inputError ? 'Inspect the named Process reference and connection ports: Flow/version, direction, signed amounts and units. Nonzero connected coefficients must be opposite (Input=-amount, Output=amount). Preserve original signs and the published background quantity; correct the input and use a new Run.' : 'Inspect the engine installation, input and resource limits.'} Retain any files in ${output}; no retry was attempted.`,
         'precondition',
       );
     }
