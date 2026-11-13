@@ -15,7 +15,7 @@ checkPaths:
   - src/commands/**
 lastReviewedAt: 2026-11-13
 lastReviewedCommit: 64cf39d4cdd938225609814d2b494dbcec0b7d3a
-lastReviewedNote: 'CLI #481: reviewed published Model capabilities, native runtime installation and method-defined sparse LCIA interpretation.'
+lastReviewedNote: 'CLI #481: reviewed published Model capabilities, native runtime installation, sparse LCIA interpretation and installed-package verification.'
 ---
 
 # TianGong LCA CLI

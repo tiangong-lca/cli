@@ -660,9 +660,13 @@ const maybePackTest = process.env.TIANGONG_LCA_COVERAGE === '1' ? test.skip : te
 
 maybePackTest(
   'a clean pnpm tarball preserves bin plus typed ESM public subpaths without runtime build tools',
-  // The installed business scenarios launch many native processes on Windows runners.
-  { timeout: process.platform === 'win32' ? 300_000 : 180_000 },
+  // The full installed workflow launches many native processes on every host.
+  { timeout: 300_000 },
   async () => {
+    const startedAt = Date.now();
+    const stage = (name) => {
+      process.stderr.write(`[package-contract] ${name} after ${Date.now() - startedAt}ms\n`);
+    };
     const fixtureRoot = mkdtempSync(join(tmpdir(), 'tiangong-cli-pack-contract-'));
 
     try {
@@ -672,13 +676,16 @@ maybePackTest(
       mkdirSync(cleanRepository);
       mkdirSync(packRoot);
       mkdirSync(consumerRoot);
+      stage('copy source');
       copyCleanPackageSource(cleanRepository);
+      stage('install build dependencies');
 
       execFileSync(
         'pnpm',
         ['install', '--frozen-lockfile', '--ignore-scripts'],
         commandOptions(cleanRepository),
       );
+      stage('build and pack');
       const packOutput = execFileSync(
         'pnpm',
         ['pack', '--json', '--pack-destination', packRoot],
@@ -709,6 +716,7 @@ maybePackTest(
         )}\n`,
         { encoding: 'utf8', flag: 'wx' },
       );
+      stage('install production tarball');
       execFileSync(
         'pnpm',
         ['install', '--ignore-scripts', '--no-frozen-lockfile', '--no-lockfile'],
@@ -734,20 +742,26 @@ maybePackTest(
         '.bin',
         process.platform === 'win32' ? 'tiangong-lca.cmd' : 'tiangong-lca',
       );
+      stage('verify installed launchers and bootstrap');
       assertRootBinBehavior(installedBinPath, consumerRoot, installedManifest.version);
       assertProductionBootstrap(installedBinPath, consumerRoot);
       assertModuleHostBehavior(consumerRoot, cleanRepository, installedManifest.version);
       rmSync(cleanRepository, { recursive: true, force: true });
+      stage('verify installed Study recovery');
       await assertInstalledStudyRecovery(installedPackageRoot, consumerRoot);
+      stage('verify installed business operations');
       await assertInstalledBusiness(installedPackageRoot, consumerRoot);
+      stage('verify installed report');
       assertInstalledReport(installedPackageRoot, consumerRoot);
 
+      stage('verify production dependency tree');
       const consumerTree = pnpmList(consumerRoot, 'typescript');
       assert.deepEqual(
         collectDependencyVersions(consumerTree, 'typescript'),
         [],
         'the packed CLI must not bring TypeScript into a production consumer tree',
       );
+      stage('complete');
     } finally {
       rmSync(fixtureRoot, { recursive: true, force: true });
     }
