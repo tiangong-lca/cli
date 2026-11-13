@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - AGENTS.md
   - src/lib/**
-lastReviewedAt: 2026-11-12
-lastReviewedCommit: a106f0b4f5245cc3df007b9fa706c954485d38a5
-lastReviewedNote: 'CLI #477: reviewed platform-specific Model package installation, Linux glibc admission and Windows executable selection; setup and scientific input contracts remain shared.'
+lastReviewedAt: 2026-11-13
+lastReviewedCommit: dd02e887a2e75d8ab8f636560736ba6b97d1d9d0
+lastReviewedNote: 'Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged.'
 ---
 
 # Existing runtime safeguards
