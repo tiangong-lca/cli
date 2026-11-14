@@ -81,3 +81,31 @@ tiangong-lca review resubmit --input process-resubmission.json --json
 ```
 
 远程引用检查需要认证或明确的本地引用证据。审核进度与处理通过 [Review](../reviews.md) 完成。
+
+## 年度量与 Platform 展示兼容
+
+Process 业务验证保留 `annualSupplyOrProductionVolume` 的原始多语言内容。显式年度量（如 `1000 kg/year`、`1000 kg/年`）继续支持；数量须为有限正数且各语言一致。结构检查通过不等于年度依据充分。
+
+Platform 的“数值＋参考单位及功能单位描述”和“数值＋功能单位描述”可通过同一业务验证。此兼容路径要求唯一的定量参考交换项、精确版本的 Flow → FlowProperty → UnitGroup 单位链、匹配的本地化描述，以及稳定方法学中的可确定核验的年度推导。它不从参考交换量推测实际年产量，不自动补年度标记或重写正文。
+
+当前支持的回退限定为 Unit process、Product/Waste 参考流、实际年产量未知、仅本数据集适用的每年一个参考批次。每种年度字段语言都须有对应的 `dataTreatmentAndExtrapolationsPrinciples`。以下完整声明是受支持的中英文表达（数值与单位按实际证据填写）：
+
+```text
+For this dataset only, annual quantity is 1000 kg/year, assuming one reference batch per year (1000 kg per batch); actual annual production is unknown.
+```
+
+```text
+仅适用于本数据集：年度量为1000 kg/年，假设每年一个参考批次（每批1000 kg）；实际年产量未知。
+```
+
+完整声明同时约束年度量、批次数量、单位、周期和适用范围。两处数量必须与当前定量参考批次一致，单位必须与精确单位链一致；它只是显式建模假设，不是实测年产量或科学审核结论。CLI 不用关键词匹配任意叙述来推断结论。其他推导方式、否定或误导语句、缺失语言、数值冲突及不完整历史记录不能获得兼容通过。调用方必须先核实依据，不应为通过验证而机械替换原方法学。
+
+离线验证可显式提供独立参考文档文件，其结构为 `{"documents": [完整Flow, 完整FlowProperty, 完整UnitGroup]}`：
+
+```bash
+tiangong-lca dataset process validate --input process.json --reference-documents references.json --checks schema,business --json
+```
+
+参考文件只作为验证上下文，不写入 Process。缺少必需参考证据时结果为 `incomplete`，命令以非零状态退出。存在其他已确定的校验错误时仍为失败。启用 `--checks schema,business,references` 后，CLI 读取当前账号可见的精确引用链；同时提供本地证据时必须与这些读取一致。此检查不自动选择最新版本。
+
+`dataset process save --dry-run` 和实际保存前检复用同一校验及当前精确参考读取；dry-run 不创建写入意图或发送变更。年度量结果中的 `annual_volume` 记录候选内容、单位链文档及方法学文本的绑定。其他 schema、分配、引用、账号、草稿状态、完整前像和读回要求仍独立生效。过去的通过报告不授予后续保存权限。

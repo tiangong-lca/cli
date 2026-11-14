@@ -49,6 +49,7 @@ export const datasetValidation: DatasetPorts['validate'] = async (
   type: DatasetType,
   content: JsonObject,
   checks: string[],
+  referenceDocuments?: JsonObject[],
 ) => {
   requireContent(type, content);
   if (checks.includes('business') && type !== 'lciamethod') {
@@ -56,12 +57,20 @@ export const datasetValidation: DatasetPorts['validate'] = async (
       inputPath: '<content>',
       type: datasetKinds[type],
       rawInput: content,
+      referenceDocuments,
     });
     const row = report.rows[0]!;
     return {
       ...row,
       status:
-        row.allocation_semantics?.status === 'unresolved'
+        row.allocation_semantics?.status === 'unresolved' ||
+        (row.annual_volume?.status === 'unresolved' &&
+          row.issues.every((issue) =>
+            [
+              'annual_volume_reference_unresolved',
+              'annual_supply_or_production_volume_not_annualized',
+            ].includes(issue.code),
+          ))
           ? 'incomplete'
           : row.status === 'valid'
             ? 'passed'

@@ -41,7 +41,7 @@ checkPaths:
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-13
 lastReviewedCommit: bd1de97b723620921cf76de06d2abb0b4bf44174
-lastReviewedNote: 'Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged.'
+lastReviewedNote: 'Reviewed Process annual projection evidence, independent reference inputs and native validation coverage; existing ownership, release and mutation safeguards remain unchanged.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md

@@ -170,3 +170,16 @@ Run `node scripts/report-browser-smoke.mjs <new-output-directory>` after buildin
 ### Local Model installation
 
 Exercise `test/model-install.test.ts` with the existing full gate. Corrupted or changed archives, unsafe paths, incomplete method-cache inventories, unsupported hosts (including musl), mismatched package targets and native-check failures must leave prior configuration intact and remove only the new owned installation. Public command tests require local filesystem/archive errors to return environment guidance, without directing callers to authentication or remote services. A native package case must start with empty CLI state and deny network plus developer library/cache paths, then install, check, prepare, calculate and inspect saved results. Synthetic foreground records and real background acquisition remain distinguishable; sparse method applicability is not an incomplete score. Exercise platform selection for macOS ARM64, Linux glibc x64/ARM64 and Windows x64, including the Windows `.exe` entrypoint and rejection before filesystem changes on unsupported hosts. Packaging and execution on one OS do not qualify the remaining targets or a public release.
+
+## Isolated annual-projection candidate replay
+
+Build a reviewed candidate in its own worktree with the pinned toolchain and frozen lockfile. Select the candidate by its absolute launcher path; do not install it globally or modify the default CLI executable. Keep candidate validation artifacts and input copies in a separate working directory. Version publication remains the release workflow's responsibility.
+
+```bash
+node /absolute/candidate-checkout/bin/tiangong-lca.js dataset process validate --input process.json --reference-documents references.json --checks schema,business --json
+node /absolute/candidate-checkout/bin/tiangong-lca.js dataset process save --input process-save.json --dry-run --json
+```
+
+The second command uses the existing explicitly selected account/environment and performs authenticated reads only. Actual-account replay remains subject to the live-case authorization contract; synthetic HTTP tests do not establish production admission. Keep a checksum of input and expected-content files before/after replay, record the exact candidate commit and validation output, and compare unrelated blockers separately. Never rewrite a deployed dataset or methodology merely to obtain a passing replay.
+
+The annual-volume suite exercises both Platform projections through real schema/business rules, exact Flow/FlowProperty/UnitGroup evidence, bilingual derivation, malformed/contradictory assumptions, immutable candidate content, guarded dry-run, save/readback and no-repeat recovery. Native launcher tests use an isolated protocol server and make no production requests.

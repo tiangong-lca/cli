@@ -1,3 +1,4 @@
+import { ANNUAL_PERIOD_PATTERN } from './process-annual-projection.js';
 import type { JsonObject } from '../dataset/local.js';
 import { datasetRoot, firstNonEmpty, isRecord } from '../dataset/json.js';
 
@@ -7,8 +8,6 @@ const DATA_SOURCES_TREATMENT_FIELD =
   'processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness';
 const ANNUAL_SUPPLY_MISSING_DATA_SENTINEL_TEXT = '9999 missing-data-sentinel/year';
 const NUMERIC_TEXT_WITH_SUFFIX_PATTERN = /^[+-]?(\d+(\.\d*)?|\.\d+)([Ee][+-]?\d+)?\s+\S.*$/u;
-const ANNUAL_PERIOD_PATTERN =
-  /(?:\/\s*(?:year|yr|a)\b|\bper\s+(?:year|annum)\b|\/\s*年|每年|年度|年供应|年产)/iu;
 const ANNUAL_UNAVAILABLE_PATTERN =
   /\b(?:source\s+)?(?:production\s+)?volume\s+(?:unavailable|unknown|not\s+available)\b/iu;
 const REQUIRED_COMPLIANCE_FIELDS = [
