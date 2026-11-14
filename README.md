@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - README.md
   - src/commands/**
-lastReviewedAt: 2026-11-13
-lastReviewedCommit: bd1de97b723620921cf76de06d2abb0b4bf44174
+lastReviewedAt: 2026-11-14
+lastReviewedCommit: 11d71916c1cf9332ed4beee023a5dca6ba0589c1
 lastReviewedNote: 'CLI #481: reviewed published Model capabilities, native runtime installation, sparse LCIA interpretation and installed-package verification.'
 ---
 

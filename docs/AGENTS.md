@@ -14,8 +14,8 @@ checkPaths:
   - docs/**
   - AGENTS.md
   - .docpact/config.yaml
-lastReviewedAt: 2026-11-13
-lastReviewedCommit: bd1de97b723620921cf76de06d2abb0b4bf44174
+lastReviewedAt: 2026-11-14
+lastReviewedCommit: 11d71916c1cf9332ed4beee023a5dca6ba0589c1
 lastReviewedNote: 'Reviewed Process annual projection evidence, independent reference inputs and native validation coverage; existing ownership, release and mutation safeguards remain unchanged.'
 related:
   - ../AGENTS.md

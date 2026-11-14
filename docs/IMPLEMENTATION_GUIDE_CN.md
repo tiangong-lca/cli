@@ -21,8 +21,8 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-11-13
-lastReviewedCommit: bd1de97b723620921cf76de06d2abb0b4bf44174
+lastReviewedAt: 2026-11-14
+lastReviewedCommit: 11d71916c1cf9332ed4beee023a5dca6ba0589c1
 lastReviewedNote: 'Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged.'
 related:
   - ../AGENTS.md
