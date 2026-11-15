@@ -8,13 +8,22 @@ export type ReportSection = {
   sources: string[];
   table?: { columns: ReportText[]; rows: ReportCell[][] };
 };
+export type ReportExchange = {
+  id: string;
+  label: ReportText;
+  amount: number;
+  unit: string;
+  reference?: boolean;
+  note?: ReportText;
+};
+export type ReportFlow = ReportText | ReportExchange;
 export type ReportNode = {
   id: string;
   label: ReportText;
   kind: 'foreground' | 'background';
   details?: ReportText;
-  inputs: ReportText[];
-  outputs: ReportText[];
+  inputs: ReportFlow[];
+  outputs: ReportFlow[];
   sources: string[];
 };
 export type ReportEdge = {
@@ -25,6 +34,7 @@ export type ReportEdge = {
   amount?: number;
   unit?: string;
   details?: ReportText;
+  exchanges?: { from: string; to: string };
 };
 export type ReportContribution = {
   title: ReportText;
@@ -43,6 +53,7 @@ export type ReportResult = {
   value: number;
   unit: string;
   method?: ReportText;
+  context?: ReportText;
   summary?: boolean;
 };
 export type ResearchReport = {
@@ -105,6 +116,29 @@ function id(value: unknown, at: string): string {
 }
 function unique(ids: string[], at: string): void {
   if (new Set(ids).size !== ids.length) invalid(at, 'unique IDs');
+}
+
+function parseFlows(value: unknown, at: string): ReportFlow[] {
+  return list(value, at).map((item, i) => {
+    const path = `${at}[${i}]`;
+    if (!item || typeof item !== 'object' || !('id' in item)) return text(item, path);
+    const exchange = object(item, path, ['id', 'label', 'amount', 'unit', 'reference', 'note']);
+    const reference = exchange.reference;
+    if (reference !== undefined && typeof reference !== 'boolean')
+      invalid(`${path}.reference`, 'a boolean');
+    return {
+      id: id(exchange.id, `${path}.id`),
+      label: text(exchange.label, `${path}.label`),
+      amount: number(exchange.amount, `${path}.amount`),
+      unit: string(exchange.unit, `${path}.unit`),
+      reference,
+      note: optionalText(exchange.note, `${path}.note`),
+    };
+  });
+}
+
+function exchangeIds(flows: ReportFlow[]): string[] {
+  return flows.flatMap((flow) => (typeof flow === 'object' && 'id' in flow ? [flow.id] : []));
 }
 
 function parseAnalysis(value: unknown, nodeIds: Set<string>): ResearchReport['analysis'] {
@@ -245,13 +279,16 @@ export function parseResearchReport(input: unknown): ResearchReport {
       const kind = n.kind ?? 'foreground';
       if (kind !== 'foreground' && kind !== 'background')
         invalid(`${at}.kind`, 'foreground or background');
+      const inputs = parseFlows(n.inputs, `${at}.inputs`);
+      const outputs = parseFlows(n.outputs, `${at}.outputs`);
+      unique(exchangeIds([...inputs, ...outputs]), `${at}.exchanges`);
       return {
         id: id(n.id, `${at}.id`),
         label: text(n.label, `${at}.label`),
         kind,
         details: optionalText(n.details, `${at}.details`),
-        inputs: list(n.inputs, at).map((v) => text(v, at)),
-        outputs: list(n.outputs, at).map((v) => text(v, at)),
+        inputs,
+        outputs,
         sources: references(n.sources, `${at}.sources`),
       };
     });
@@ -260,13 +297,37 @@ export function parseResearchReport(input: unknown): ResearchReport {
       nodes.map((n) => n.id),
       'model.nodes',
     );
-    const nodeIds = new Set(nodes.map((n) => n.id));
+    const exchangesByNode = new Map(
+      nodes.map((node) => [node.id, new Set(exchangeIds([...node.inputs, ...node.outputs]))]),
+    );
     const edges = list(m.edges, 'model.edges').map((value, i): ReportEdge => {
       const at = `model.edges[${i}]`;
-      const e = object(value, at, ['id', 'from', 'to', 'label', 'amount', 'unit', 'details']);
+      const e = object(value, at, [
+        'id',
+        'from',
+        'to',
+        'label',
+        'amount',
+        'unit',
+        'details',
+        'exchanges',
+      ]);
       const from = id(e.from, `${at}.from`),
         to = id(e.to, `${at}.to`);
-      if (!nodeIds.has(from) || !nodeIds.has(to)) invalid(at, 'existing from/to node IDs');
+      const source = exchangesByNode.get(from),
+        target = exchangesByNode.get(to);
+      if (!source || !target) invalid(at, 'existing from/to node IDs');
+      let exchanges: ReportEdge['exchanges'];
+      if (e.exchanges !== undefined) {
+        const ends = object(e.exchanges, `${at}.exchanges`, ['from', 'to']);
+        const sourceId = id(ends.from, `${at}.exchanges.from`);
+        const targetId = id(ends.to, `${at}.exchanges.to`);
+        if (!source.has(sourceId))
+          invalid(`${at}.exchanges.from`, 'an exchange ID in the source node');
+        if (!target.has(targetId))
+          invalid(`${at}.exchanges.to`, 'an exchange ID in the target node');
+        exchanges = { from: sourceId, to: targetId };
+      }
       return {
         id: id(e.id, `${at}.id`),
         from,
@@ -275,6 +336,7 @@ export function parseResearchReport(input: unknown): ResearchReport {
         amount: e.amount === undefined ? undefined : number(e.amount, `${at}.amount`),
         unit: e.unit === undefined ? undefined : string(e.unit, `${at}.unit`),
         details: optionalText(e.details, `${at}.details`),
+        exchanges,
       };
     });
     unique(
@@ -285,7 +347,7 @@ export function parseResearchReport(input: unknown): ResearchReport {
   }
   const results = list(r.results, 'results').map((value, i) => {
     const at = `results[${i}]`;
-    const v = object(value, at, ['label', 'value', 'unit', 'method', 'summary']);
+    const v = object(value, at, ['label', 'value', 'unit', 'method', 'context', 'summary']);
     if (v.summary !== undefined && typeof v.summary !== 'boolean')
       invalid(`${at}.summary`, 'a boolean');
     return {
@@ -293,6 +355,7 @@ export function parseResearchReport(input: unknown): ResearchReport {
       value: number(v.value, `${at}.value`),
       unit: string(v.unit, `${at}.unit`),
       method: optionalText(v.method, `${at}.method`),
+      context: optionalText(v.context, `${at}.context`),
       summary: v.summary,
     };
   });

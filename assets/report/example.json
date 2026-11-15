@@ -79,7 +79,18 @@
           "en": "An explicitly selected aggregated background. Its upstream graph is not expanded.",
           "zh": "显式选择的聚合背景，不展开其上游过程。"
         },
-        "outputs": ["2 kWh"],
+        "outputs": [
+          {
+            "id": "power-out",
+            "label": {
+              "en": "Electricity",
+              "zh": "电力"
+            },
+            "amount": 1,
+            "unit": "kWh",
+            "reference": true
+          }
+        ],
         "sources": ["inventory"]
       },
       {
@@ -92,8 +103,29 @@
           "en": "Synthetic foreground operation with a declared electricity input.",
           "zh": "声明电力投入的合成前景过程。"
         },
-        "inputs": ["2 kWh"],
-        "outputs": ["0.3 kg"],
+        "inputs": [
+          {
+            "id": "power-in",
+            "label": {
+              "en": "Electricity",
+              "zh": "电力"
+            },
+            "amount": 2,
+            "unit": "kWh"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "stock-out",
+            "label": {
+              "en": "Prepared material",
+              "zh": "准备后的材料"
+            },
+            "amount": 0.3,
+            "unit": "kg",
+            "reference": true
+          }
+        ],
         "sources": ["inventory"]
       },
       {
@@ -107,11 +139,27 @@
           "en": "Reference output: one bottle. Connection amounts describe the supplied model, not renderer-derived scaling.",
           "zh": "参考产出为一只水瓶。连接数量来自提供的模型，并非渲染器推算。"
         },
-        "inputs": ["0.3 kg"],
+        "inputs": [
+          {
+            "id": "stock-in",
+            "label": {
+              "en": "Prepared material",
+              "zh": "准备后的材料"
+            },
+            "amount": 0.3,
+            "unit": "kg"
+          }
+        ],
         "outputs": [
           {
-            "en": "1 bottle",
-            "zh": "1 只水瓶"
+            "id": "bottle",
+            "label": {
+              "en": "Reusable bottle",
+              "zh": "可重复使用水瓶"
+            },
+            "amount": 1,
+            "unit": "pc",
+            "reference": true
           }
         ]
       }
@@ -130,6 +178,10 @@
         "details": {
           "en": "Selected connection from the model.",
           "zh": "模型中已选择的连接。"
+        },
+        "exchanges": {
+          "from": "power-out",
+          "to": "power-in"
         }
       },
       {
@@ -141,7 +193,11 @@
           "zh": "准备后的材料"
         },
         "amount": 0.3,
-        "unit": "kg"
+        "unit": "kg",
+        "exchanges": {
+          "from": "stock-out",
+          "to": "stock-in"
+        }
       }
     ]
   },
@@ -157,7 +213,11 @@
         "en": "Synthetic example / run-demo",
         "zh": "合成示例 / run-demo"
       },
-      "summary": true
+      "summary": true,
+      "context": {
+        "en": "One bottle at the factory gate",
+        "zh": "每只出厂水瓶"
+      }
     },
     {
       "label": {

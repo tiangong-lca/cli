@@ -281,9 +281,91 @@ test('model rendering keeps cycles and all supplied inputs without assuming inpu
   );
   const diagram = html.match(/<svg id="model-svg"[\s\S]+?<\/svg>/u)![0];
   assert.equal((diagram.match(/class="network-edge"/gu) ?? []).length, 3);
-  assert.match(diagram, /class="network-flow">\+2/u);
   assert.doesNotMatch(diagram, /Material 6|NaN/u);
-  assert.match(html, /<li>Material 6<\/li>/u);
+  assert.match(html, /<td colspan="3">Material 6<\/td>/u);
+});
+
+test('structured exchanges render independent quantities and explicit links, including reversed directions', () => {
+  const out = { id: 'pivot', label: 'Waste treatment', amount: -1, unit: 'kg', reference: true };
+  const inFlow = { id: 'waste', label: 'Waste', amount: 2, unit: 'kg', note: 'Declared inventory' };
+  const nodes = [
+    { id: 'provider', label: 'Treatment', kind: 'background', inputs: [out] },
+    { id: 'consumer', label: 'Production', outputs: [inFlow, 'Previously published text'] },
+  ];
+  const edge = {
+    id: 'disposal',
+    from: 'provider',
+    to: 'consumer',
+    label: 'Disposal',
+    exchanges: { from: 'pivot', to: 'waste' },
+  };
+  const report = (model: unknown) => parseResearchReport({ title: 'Disposal', model });
+  const html = renderResearchReport(report({ nodes, edges: [edge, { ...edge, id: 'second' }] }));
+  assert.match(html, /Reference input/u);
+  assert.match(html, /data-from-exchange="pivot" data-to-exchange="waste"/u);
+  assert.match(html, /data-exchange-id="waste"[^<]*<th[^>]*>Waste<ul class="exchange-links">/u);
+  assert.match(html, /<small>Declared inventory<\/small>/u);
+  assert.match(html, /<td colspan="3">Previously published text<\/td>/u);
+  assert.match(html, /<td class="exchange-amount">-1<\/td>/u);
+  assert.match(html, /data-default-process="node-consumer"/u);
+  const samePort = renderResearchReport(
+    report({
+      nodes: [nodes[0]],
+      edges: [{ ...edge, to: 'provider', exchanges: { from: 'pivot', to: 'pivot' } }],
+    }),
+  );
+  assert.equal((samePort.match(/class="exchange-link"/gu) ?? []).length, 1);
+  assert.match(
+    renderResearchReport(report({ nodes: [nodes[0]] })),
+    /data-default-process="node-provider"/u,
+  );
+  assert.throws(
+    () => report({ nodes, edges: [{ ...edge, exchanges: { from: 'waste', to: 'waste' } }] }),
+    /model\.edges\[0\]\.exchanges\.from/u,
+  );
+  assert.throws(
+    () => report({ nodes, edges: [{ ...edge, exchanges: { from: 'pivot', to: 'pivot' } }] }),
+    /model\.edges\[0\]\.exchanges\.to/u,
+  );
+  assert.throws(
+    () => report({ nodes, edges: [{ ...edge, exchanges: { from: 'pivot' } }] }),
+    /model\.edges\[0\]\.exchanges\.to/u,
+  );
+  assert.throws(() => report({ nodes: [{ ...nodes[0], outputs: [out] }] }), /unique IDs/u);
+  assert.throws(
+    () => report({ nodes: [{ ...nodes[0], inputs: [{ ...out, reference: 'yes' }] }] }),
+    /reference: expected a boolean/u,
+  );
+  assert.throws(
+    () => report({ nodes: [{ ...nodes[0], inputs: [{ ...out, unit: '' }] }] }),
+    /unit: expected nonempty text/u,
+  );
+  assert.throws(() => report({ nodes: [{ ...nodes[0], inputs: [null] }] }), /inputs\[0\]/u);
+});
+
+test('overview rounds its displayed value and preserves exact data and basis in the report', () => {
+  const html = renderResearchReport(
+    parseResearchReport({
+      title: 'Case',
+      results: [
+        {
+          label: 'Climate change',
+          value: 25.97121961,
+          unit: 'kg',
+          context: 'Trial calculation',
+          summary: true,
+        },
+        { label: 'Other indicator', value: 1, unit: 'kg' },
+      ],
+    }),
+  );
+  assert.match(html, /class="result-context">Trial calculation/u);
+  assert.match(html, /<data value="25.97121961" title="25.97121961">25.97<\/data>/u);
+  assert.match(
+    html,
+    /<td class="numeric">25.97121961<\/td><td>kg<\/td><td>Trial calculation<\/td>/u,
+  );
+  assert.match(html, /<td class="numeric">1<\/td><td>kg<\/td><td>—<\/td>/u);
 });
 
 test('report command performs exclusive HTML output, protects input aliases and returns bounded shared results', async () => {

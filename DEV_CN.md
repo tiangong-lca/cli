@@ -23,7 +23,7 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: a67e3733ee4ecb60951abe02e79af426b7965f40
+lastReviewedCommit: 489445b0956cb861cfc84ec1fe14877a1395f0ca
 lastReviewedNote: 'Reviewed native launcher and package validation guidance for offline report rendering.'
 related:
   - AGENTS.md

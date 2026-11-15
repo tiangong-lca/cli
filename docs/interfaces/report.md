@@ -36,12 +36,17 @@ tiangong-lca report render --input report.json --output report.html --json
 | `language` | `en` 或 `zh`，默认 `zh`；每次只显示一种语言，用户可在 HTML 中切换。 |
 | `sections` | `{title, body?, sources?, table?}` 数组，按输入顺序呈现正文；表格为 `{columns, rows}`，单元格是文本或有限数值。 |
 | `model` | `{nodes, edges}` 图形投影，来源于调用方选择的 Model 和 Process；不是直接提交规范 Model 文档。 |
-| `results` | `{label, value, unit, method?, summary?}` 数组。`method` 放入明细表。只有一项结果时默认在首页展示，可用 `summary: false` 隐藏；有多项结果时，首页展示明确标记 `summary: true` 的项。 |
+| `results` | `{label, value, unit, method?, context?, summary?}` 数组。`context` 说明该结果的参考量或其他核算口径。只有一项结果时默认在首页展示，可用 `summary: false` 隐藏；有多项结果时，首页展示标记 `summary: true` 的项。简报数值最多显示四位有效数字，明细表保留输入数值和计算方法。 |
 | `analysis` | 可选的 `{contributions?, sensitivity?}`，分别提供已取得的贡献和情景结果。 |
 | `sources` | `{id, title, url?, note?}` 数组，记录来源或本地资料位置说明；链接只允许无凭据的绝对 HTTP(S) URL。 |
 | `limitations` | 文本数组，用于结果解释、假设影响、适用范围和未解决的问题。 |
 
-节点为 `{id, label, kind?, details?, inputs?, outputs?, sources?}`；`kind` 是 `foreground` 或 `background`，默认前景。输入输出是说明性文本列表。连接为 `{id, from, to, label, amount?, unit?, details?}`，引用已声明节点；不会根据名称或数量推断连接。背景节点表示已选定的聚合边界，不展开上游。
+节点为 `{id, label, kind?, details?, inputs?, outputs?, sources?}`。`kind` 为 `foreground` 或 `background`，默认前景。背景节点表示已选定的聚合过程。`inputs` 和 `outputs` 可包含两种条目：
+
+- `{id, label, amount, unit, reference?, note?}` 用于可定位的交换项。`amount` 是有限数值，保留输入的符号，`reference: true` 将该项列入相应方向的参考交换。`note` 可记录该项的截断或建模说明。节点内的交换项 ID 在两个方向合计唯一。
+- 纯文本或双语文本可继续呈现为清单说明。文本条目无需 ID，图中连线不会匹配这些条目。
+
+连接为 `{id, from, to, label, amount?, unit?, details?, exchanges?: {from, to}}`。`from` 和 `to` 引用节点，`exchanges.from` 与 `exchanges.to` 分别引用对应节点中的交换项。端点按已保存模型的关系提供，交换项的输入输出方向和用量符号各自保留。连线的数量与交换项的数量都是各自声明的数据，例如供应过程的参考输出和消费过程的连接量可以不同。
 
 节点、连接和来源在各自集合内使用唯一 ID，只用于图内连接和页面锚点。ID 允许字母、数字、下划线和连字符，长度 1–80。`sources` 引用必须能在来源集合找到。检查这些结构是为了完整呈现，不是验证科学正确性。没有贡献数据时只展示已有结果，不从总影响推算节点贡献。
 
@@ -60,9 +65,31 @@ tiangong-lca report render --input report.json --output report.html --json
   ],
   "model": {
     "nodes": [
-      { "id": "assembly", "label": { "en": "Assembly", "zh": "装配" }, "outputs": ["1 product"] }
+      {
+        "id": "grid",
+        "label": "电力供应",
+        "kind": "background",
+        "outputs": [
+          { "id": "ref", "label": "交流电", "amount": 1, "unit": "MJ", "reference": true }
+        ]
+      },
+      {
+        "id": "assembly",
+        "label": "装配",
+        "inputs": [{ "id": "power", "label": "交流电", "amount": 2, "unit": "MJ" }]
+      }
     ],
-    "edges": []
+    "edges": [
+      {
+        "id": "power-link",
+        "from": "grid",
+        "to": "assembly",
+        "label": "供电",
+        "amount": 2,
+        "unit": "MJ",
+        "exchanges": { "from": "ref", "to": "power" }
+      }
+    ]
   },
   "limitations": [{ "en": "Calculation is pending.", "zh": "尚未完成计算。" }]
 }
@@ -74,7 +101,7 @@ tiangong-lca report render --input report.json --output report.html --json
 
 中英文作为同一内容的两套文本保存，阅读和打印均一次显示一种语言，不并排或上下重复展示。标题、正文、表格、模型标签和界面控件随语言选择切换。只有一种语言的内容保留原文并标注，渲染器不补写翻译。
 
-HTML 内嵌天工 Logo、固定封面配图、样式、交互代码和 SVG 模型。模型按输入的过程拓扑布局，支持平移、缩放、适应画布和全屏。选择节点或连线会在侧栏中显示完整详情。图示连接点表示输入提供的过程间连接；现有输入输出字段为描述性文本。关闭 JavaScript 时，报告仍可读取模型、详细清单、图表和数值。表格可筛选，来源可通过锚点查阅。
+HTML 内嵌天工 Logo、固定封面配图、样式、交互代码和 SVG 模型。模型按过程拓扑布局，支持平移、缩放、适应画布和全屏。选中节点时，图旁的详情按参考交换、输入流、输出流显示。带交换项引用的连线可定位目标节点的表格行；点击表内已连接的流可高亮对应连线。只有过程引用的连线可查看连接本身。完整过程清单可单独展开，关闭 JavaScript 或打印时直接展示。报告正文表格可筛选，来源可通过锚点查阅。
 
 “打印 / 导出 PDF”打开浏览器打印界面，用户选择保存为 PDF。打印沿用所选语言，隐藏操作控件，恢复所有被筛选隐藏的表格行，保留模型、完整详情和来源链接文字。CLI 本身只生成 HTML，无需安装浏览器或启动 PDF 服务；自动化 PDF 转换不属于此命令。
 

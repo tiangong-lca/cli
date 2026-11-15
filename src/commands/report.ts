@@ -42,14 +42,16 @@ export function runReportCommand(args: string[], write: ReportPort): CommandIO {
           sections: '[{title,body?,sources?,table?:{columns,rows}}]',
           sources: '[{id,title,url?,note?}]',
           model:
-            '{nodes:[{id,label,kind?,details?,inputs?,outputs?,sources?}],edges:[{id,from,to,label,amount?,unit?,details?}]}',
-          results: '[{label,value,unit,method?,summary?:boolean}]',
+            '{nodes:[{id,label,kind?,details?,inputs?,outputs?,sources?}],edges:[{id,from,to,label,amount?,unit?,details?,exchanges?:{from,to}}]}',
+          results: '[{label,value,unit,method?,context?,summary?:boolean}]',
           analysis: {
             contributions: '[{title,unit,total?,items:[{label,value,nodeId?}]}]',
             sensitivity: '[{title,unit,baseline,scenarios:[{label,value,description?}]}]',
           },
           limitations: '[text]',
         },
+        modelExchange:
+          'Each inputs/outputs item is text or {id,label,amount,unit,reference?:boolean,note?}. Edge exchanges.from/to identify the exact exchanges in the source/target nodes.',
         defaults:
           'Only title is required. Text is escaped plain text. A single result appears in the overview unless summary is false; with multiple results, mark summary:true on the principal results. Analysis is optional and displays supplied values only.',
         output:

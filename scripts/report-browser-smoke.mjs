@@ -45,18 +45,32 @@ try {
   await page.goto(pathToFileURL(html).href);
   assert.equal(await page.locator('html').getAttribute('data-interactive'), 'ready');
   assert.equal(await page.locator('#model-svg .graph-node').count(), 3);
+  const inspector = page.locator('.network-inspector');
+  const edge = page.locator('[data-graph-link="edge-power"]');
   await page.locator('#model-svg [data-graph-link="node-grid"]').click();
-  assert.match(await page.locator('#node-grid').getAttribute('class'), /selected/u);
-  await page.locator('[data-graph-link="edge-power"]').click();
-  assert.match(await page.locator('#edge-power').getAttribute('class'), /selected/u);
-  assert.ok(!(await page.locator('#node-grid').getAttribute('class')).includes('selected'));
-  assert.equal(await page.locator('.network-inspector h3').innerText(), '电力');
-  assert.equal(
-    await page.locator('.network-inspector .detail-id [lang=en]').first().isVisible(),
-    false,
-  );
+  assert.equal(await inspector.locator('h3').innerText(), '电力供应');
+  const sourceRow = inspector.locator('[data-exchange-id="power-out"]');
+  await sourceRow.getByRole('link', { name: '电力' }).press('Enter');
+  assert.equal(await inspector.locator('.process-header h3').innerText(), '电力供应');
+  assert.match(await sourceRow.getAttribute('class'), /exchange-current/u);
+  assert.equal(await sourceRow.locator('a').getAttribute('aria-current'), 'true');
+  assert.equal(await edge.getAttribute('aria-current'), 'true');
+  assert.equal(await sourceRow.locator('.exchange-amount').innerText(), '1');
+  assert.equal(await inspector.locator('.connection-amount').innerText(), '2 kWh');
+  await edge.locator('foreignObject').click();
+  const targetRow = inspector.locator('[data-exchange-id="power-in"]');
+  assert.match(await targetRow.getAttribute('class'), /exchange-current/u);
+  assert.equal(await inspector.locator('.process-header h3').innerText(), '材料准备');
+  assert.equal(await targetRow.locator('.exchange-amount').innerText(), '2');
+  assert.equal(await inspector.locator('.connection-route [lang=en]').first().isVisible(), false);
+  const catalog = page.locator('.catalog-toggle');
+  assert.equal(await page.locator('#node-grid').isVisible(), false);
+  await catalog.click();
+  assert.equal(await page.locator('#node-grid').isVisible(), true);
+  await catalog.click();
+  assert.equal(await page.locator('#node-grid').isVisible(), false);
   await page.locator('#contribution-1 [data-graph-link="node-material"]').click();
-  assert.equal(await page.locator('.network-inspector h3').innerText(), '材料准备');
+  assert.equal(await inspector.locator('.process-header h3').innerText(), '材料准备');
   assert.equal(await page.locator('#sensitivity-1 .analysis-row').count(), 2);
   assert.equal(await page.locator('.result-summary .result-tile').count(), 1);
   assert.equal(
@@ -102,13 +116,6 @@ try {
       .evaluateAll((items) => items.every((el) => getComputedStyle(el).display === 'none')),
     true,
   );
-  assert.equal(
-    await page
-      .locator('.node-title-bar')
-      .first()
-      .evaluate((el) => getComputedStyle(el).fill),
-    'rgb(121, 88, 135)',
-  );
   assert.equal(await page.locator('.node-port').count(), 4);
   const rows = page.locator('#section-2 tbody tr');
   await page.locator('#section-2 input').fill('electricity');
@@ -118,6 +125,8 @@ try {
   assert.equal(await rows.nth(1).isVisible(), true, 'print restores filtered rows');
   assert.equal(await page.locator('#node-assembly').isVisible(), true);
   assert.equal(await page.locator('#edge-power').isVisible(), true);
+  assert.equal(await page.locator('#node-grid [data-exchange-id=power-out]').isVisible(), true);
+  assert.equal(await inspector.isVisible(), false);
   assert.equal(await page.locator('.toolbar').isVisible(), false);
   const pdf = path.join(directory, 'report.pdf');
   await page.pdf({ path: pdf, preferCSSPageSize: true, printBackground: true });
@@ -159,7 +168,8 @@ try {
     browser: browser.version(),
     offline: true,
     checks: [
-      'graph details',
+      'bidirectional exchange selection and separate connection amount',
+      'collapsible complete process inventory',
       'zoom',
       'language switching',
       'table filter',

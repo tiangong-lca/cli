@@ -35,6 +35,8 @@ export const REPORT_BROWSER = String.raw`(() => {
   const zoomLabel = panel.querySelector('.network-zoom');
   const expand = panel.querySelector('.network-expand');
   const model = document.getElementById('model');
+  const catalog = model.querySelector('.process-catalog');
+  const catalogToggle = catalog.querySelector('.catalog-toggle');
   const dialog = document.createElement('dialog');
   const anchor = document.createComment('model viewer');
   const width = Number(graph.getAttribute('width'));
@@ -47,31 +49,56 @@ export const REPORT_BROWSER = String.raw`(() => {
   panel.before(anchor);
   document.body.append(dialog);
 
-  function select(id) {
+  function selection(id, rowLink) {
     const detail = document.getElementById(id);
     if (!detail?.classList.contains('detail') || !model.contains(detail)) return false;
 
-    for (const selected of model.querySelectorAll('.detail.selected')) selected.classList.remove('selected');
-    detail.classList.add('selected');
-    const copy = detail.cloneNode(true);
-    copy.classList.remove('selected');
+    const { fromNode, fromExchange, toNode, toExchange } = detail.dataset;
+    const current = inspector.dataset.node;
+    const clickedExchange = rowLink?.closest('tr').dataset.exchangeId;
+    const keepSource = current === 'node-' + fromNode && clickedExchange === fromExchange && Boolean(clickedExchange);
+    const nodeId = toNode ? 'node-' + (keepSource ? fromNode : toNode) : id;
+    const exchangeId = keepSource ? fromExchange : toExchange;
+    const process = document.getElementById(nodeId);
+    const copy = process.cloneNode(true);
     copy.removeAttribute('id');
     copy.removeAttribute('tabindex');
-    if (copy.classList.contains('connection')) {
-      for (const link of copy.querySelectorAll('a[href^="#node-"]')) {
-        const node = document.getElementById(link.getAttribute('href').slice(1));
-        const title = node?.querySelector('h3');
-        if (title) link.replaceChildren(...[...title.childNodes].map(child => child.cloneNode(true)));
-      }
-    }
+    inspector.dataset.node = nodeId;
     inspector.replaceChildren(copy);
+    inspector.scrollTop = 0;
+
     for (const link of graph.querySelectorAll('a')) {
-      const isSelected = link.getAttribute('href') === '#' + id;
-      link.classList.toggle('network-active', isSelected);
-      if (isSelected) link.setAttribute('aria-current', 'true');
+      const href = link.getAttribute('href');
+      const selected = href === '#' + id || (toNode && href === '#' + nodeId);
+      const connected = toNode && !selected && href === '#node-' + (keepSource ? toNode : fromNode);
+      link.classList.toggle('network-active', Boolean(selected));
+      link.classList.toggle('network-related', Boolean(connected));
+      if (selected) link.setAttribute('aria-current', 'true');
       else link.removeAttribute('aria-current');
     }
+    if (exchangeId) {
+      const row = copy.querySelector('[data-exchange-id="' + exchangeId + '"]');
+      const active = row.querySelector('a[href="#' + id + '"]');
+      row.classList.add('exchange-current');
+      active.setAttribute('aria-current', 'true');
+      const connection = detail.cloneNode(true);
+      connection.removeAttribute('id');
+      connection.removeAttribute('tabindex');
+      inspector.append(connection);
+      if (rowLink) active.focus({ preventScroll: true });
+      const lowerEdge = row.getBoundingClientRect().bottom - inspector.getBoundingClientRect().bottom;
+      if (lowerEdge > 0) inspector.scrollTop += lowerEdge + 12;
+    }
     return true;
+  }
+
+  function revealConnection(id) {
+    const edge = graph.querySelector('a[href="#' + id + '"] foreignObject');
+    const position = edge.getBoundingClientRect();
+    const view = viewport.getBoundingClientRect();
+    if (position.left < view.left || position.right > view.right || position.top < view.top || position.bottom > view.bottom) {
+      viewport.scrollBy(position.left - view.left - view.width / 2, position.top - view.top - view.height / 2);
+    }
   }
 
   function scale(next, center) {
@@ -144,9 +171,13 @@ export const REPORT_BROWSER = String.raw`(() => {
     }
     const link = event.target.closest('a[href^="#node-"], a[href^="#edge-"]');
     if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    if (!select(link.getAttribute('href').slice(1))) return;
+    const id = link.getAttribute('href').slice(1);
+    const insidePanel = panel.contains(link);
+    const rowLink = link.classList.contains('exchange-link') && inspector.contains(link) ? link : undefined;
+    if (!selection(id, rowLink)) return;
     event.preventDefault();
-    if (!panel.contains(link)) {
+    if (link.classList.contains('exchange-link')) revealConnection(id);
+    if (!insidePanel) {
       model.scrollIntoView({ block: 'start' });
       inspector.focus({ preventScroll: true });
     }
@@ -154,10 +185,15 @@ export const REPORT_BROWSER = String.raw`(() => {
 
   inspector.tabIndex = -1;
   inspector.setAttribute('aria-live', 'polite');
-  if (!select(location.hash.slice(1))) select(graph.querySelector('.network-node').getAttribute('href').slice(1));
+  catalogToggle.addEventListener('click', () => {
+    catalogToggle.setAttribute('aria-expanded', String(catalogToggle.getAttribute('aria-expanded') !== 'true'));
+  });
+  catalogToggle.setAttribute('aria-expanded', 'false');
+  catalogToggle.hidden = false;
   inspector.hidden = false;
   controls.hidden = false;
   panel.dataset.networkReady = 'true';
+  if (!selection(location.hash.slice(1))) selection(catalog.dataset.defaultProcess);
   fit();
   window.addEventListener('resize', fit);
   window.addEventListener('beforeprint', () => {

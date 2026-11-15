@@ -15,7 +15,8 @@ function table(columns: ReportText[], rows: ReportCell[][]): string {
 function resultsOverview(report: ResearchReport): string {
   const overview = report.results.filter((item) => item.summary ?? report.results.length === 1);
   if (!overview.length) return '';
-  return `<section class="result-summary" data-label-en="Key results" data-label-zh="主要结果">${overview.map((item) => `<article class="result-tile"><div class="result-label">${localized(item.label)}</div><div class="result-number">${escape(item.value)} <span>${escape(item.unit)}</span></div></article>`).join('')}</section>`;
+  const format = new Intl.NumberFormat(report.language, { maximumSignificantDigits: 4 });
+  return `<section class="result-summary" data-label-en="Key results" data-label-zh="主要结果">${overview.map((item) => `<article class="result-tile"><div class="result-label">${localized(item.label)}</div>${item.context ? `<div class="result-context">${localized(item.context)}</div>` : ''}<div class="result-number"><data value="${escape(item.value)}" title="${escape(item.value)}">${escape(format.format(item.value))}</data> <span>${escape(item.unit)}</span></div></article>`).join('')}</section>`;
 }
 /** A derived presentation of supplied facts, not an official signed Study export. */
 export function renderResearchReport(report: ResearchReport): string {
@@ -30,7 +31,8 @@ export function renderResearchReport(report: ResearchReport): string {
       title: { en: 'Model structure', zh: '模型结构' },
       html: graph(report.model),
     });
-  if (report.results.length)
+  if (report.results.length) {
+    const hasContext = report.results.some((result) => result.context !== undefined);
     sections.push({
       id: 'results',
       title: { en: 'Calculation results', zh: '计算结果' },
@@ -39,11 +41,19 @@ export function renderResearchReport(report: ResearchReport): string {
           { en: 'Indicator', zh: '指标' },
           { en: 'Value', zh: '数值' },
           { en: 'Unit', zh: '单位' },
+          ...(hasContext ? [{ en: 'Basis', zh: '核算口径' }] : []),
           { en: 'Method / Run', zh: '方法 / 运行' },
         ],
-        report.results.map((r) => [r.label, r.value, r.unit, r.method ?? '—']),
+        report.results.map((r) => [
+          r.label,
+          r.value,
+          r.unit,
+          ...(hasContext ? [r.context ?? '—'] : []),
+          r.method ?? '—',
+        ]),
       ),
     });
+  }
   for (const [i, block] of (report.analysis?.contributions ?? []).entries())
     sections.push({
       id: `contribution-${i + 1}`,
