@@ -31,7 +31,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: 4756dd3b59b1b7db53bd5c33d1e89ec38844e6ad
+lastReviewedCommit: 02583e9632c5b5075a935620e3b65f13e70eb8e0
 lastReviewedNote: 'Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged.'
 related:
   - ../../AGENTS.md
