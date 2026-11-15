@@ -34,9 +34,9 @@ tiangong-lca report render --input report.json --output report.html --json
 | --- | --- |
 | `title`, `subtitle` | 标题与可选副标题，使用文本格式。 |
 | `language` | `en` 或 `zh`，默认 `zh`；每次只显示一种语言，用户可在 HTML 中切换。 |
-| `sections` | `{title, body?, sources?, table?}` 数组，按输入顺序呈现正文；表格为 `{columns, rows}`，单元格是文本或有限数值。 |
+| `sections` | `{title, body?, sources?, table?}` 数组，按输入顺序呈现正文；表格为 `{columns, rows}`，单元格是文本或有限数值。超过 10 行时提供筛选。 |
 | `model` | `{nodes, edges}` 图形投影，来源于调用方选择的 Model 和 Process；不是直接提交规范 Model 文档。 |
-| `results` | `{label, value, unit, method?, context?, summary?}` 数组。`context` 说明该结果的参考量或其他核算口径。只有一项结果时默认在首页展示，可用 `summary: false` 隐藏；有多项结果时，首页展示标记 `summary: true` 的项。简报数值最多显示四位有效数字，明细表保留输入数值和计算方法。 |
+| `results` | `{label, value, unit, method?, context?, summary?}` 数组。`context` 说明该结果的参考量或其他核算口径。只有一项结果时默认在首页展示，可用 `summary: false` 隐藏；有多项结果时，首页展示标记 `summary: true` 的项。简报数值最多显示四位有效数字，明细表保留输入数值。`method` 填写面向读者的评价方法名称。 |
 | `analysis` | 可选的 `{contributions?, sensitivity?}`，分别提供已取得的贡献和情景结果。 |
 | `sources` | `{id, title, url?, note?}` 数组，记录来源或本地资料位置说明；链接只允许无凭据的绝对 HTTP(S) URL。 |
 | `interpretation` | 可选的 `{body, sources?}`。使用正文解释主要结果的形成原因、对情景变化的响应及其对研究目标的意义。排在计算结果与分析图表之后。 |
@@ -102,7 +102,7 @@ tiangong-lca report render --input report.json --output report.html --json
 
 中英文作为同一内容的两套文本保存，阅读和打印均一次显示一种语言，不并排或上下重复展示。标题、正文、表格、模型标签和界面控件随语言选择切换。只有一种语言的内容保留原文并标注，渲染器不补写翻译。
 
-HTML 内嵌天工 Logo、固定封面配图、样式、交互代码和 SVG 模型。模型按过程拓扑布局，支持平移、缩放、适应画布和全屏。选中节点时，图旁的详情按参考交换、输入流、输出流显示。带交换项引用的连线可定位目标节点的表格行；点击表内已连接的流可高亮对应连线。只有过程引用的连线可查看连接本身。完整过程清单可单独展开，关闭 JavaScript 或打印时直接展示。报告正文表格可筛选，正文、过程及分析的引用统一用编号，点击跳转至来源标题与说明。
+HTML 内嵌天工 Logo、内嵌封面背景、样式、交互代码和 SVG 模型。模型按过程拓扑布局，支持平移、缩放、适应画布和全屏。选中节点时，图旁的详情按参考交换、输入流、输出流显示。带交换项引用的连线可定位目标节点的表格行；点击表内已连接的流可高亮对应连线。只有过程引用的连线可查看连接本身。完整过程清单可单独展开，关闭 JavaScript 或打印时直接展示。报告正文表格可筛选，正文、过程及分析的引用统一用编号，点击跳转至来源标题与说明。
 
 “打印 / 导出 PDF”打开浏览器打印界面，用户选择保存为 PDF。打印沿用所选语言，隐藏操作控件，恢复所有被筛选隐藏的表格行，保留模型、完整详情和来源链接文字。CLI 本身只生成 HTML，无需安装浏览器或启动 PDF 服务；自动化 PDF 转换不属于此命令。
 

@@ -9,7 +9,18 @@ import { escape, localized, ui } from './text.js';
 import { graph } from './graph.js';
 
 function table(columns: ReportText[], rows: ReportCell[][]): string {
-  return `<div class="table-wrap" data-table><div class="table-controls"><label>${ui('Filter rows', '筛选表格')}<input type="search" data-label-en="Filter rows" data-label-zh="筛选表格"></label><span role="status">${rows.length} / ${rows.length}</span></div><table><thead><tr>${columns.map((c) => `<th scope="col">${localized(c)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td${typeof cell === 'number' ? ' class="numeric"' : ''}>${typeof cell === 'number' ? escape(cell) : localized(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const controls =
+    rows.length > 10
+      ? `<div class="table-controls"><label>${ui('Filter rows', '筛选表格')}<input type="search" data-label-en="Filter rows" data-label-zh="筛选表格"></label><span role="status">${rows.length} / ${rows.length}</span></div>`
+      : '';
+  const headings = columns.map((column) => `<th scope="col">${localized(column)}</th>`).join('');
+  const body = rows
+    .map(
+      (row) =>
+        `<tr>${row.map((cell) => `<td${typeof cell === 'number' ? ' class="numeric"' : ''}>${typeof cell === 'number' ? escape(cell) : localized(cell)}</td>`).join('')}</tr>`,
+    )
+    .join('');
+  return `<div class="table-wrap"${controls ? ' data-table' : ''}>${controls}<table><thead><tr>${headings}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 function resultsOverview(report: ResearchReport): string {
@@ -38,6 +49,7 @@ export function renderResearchReport(report: ResearchReport): string {
     });
   if (report.results.length) {
     const hasContext = report.results.some((result) => result.context !== undefined);
+    const hasMethod = report.results.some((result) => result.method !== undefined);
     sections.push({
       id: 'results',
       title: { en: 'Calculation results', zh: '计算结果' },
@@ -47,14 +59,14 @@ export function renderResearchReport(report: ResearchReport): string {
           { en: 'Value', zh: '数值' },
           { en: 'Unit', zh: '单位' },
           ...(hasContext ? [{ en: 'Basis', zh: '核算口径' }] : []),
-          { en: 'Method / Run', zh: '方法 / 运行' },
+          ...(hasMethod ? [{ en: 'Assessment method', zh: '评价方法' }] : []),
         ],
         report.results.map((r) => [
           r.label,
           r.value,
           r.unit,
           ...(hasContext ? [r.context ?? '—'] : []),
-          r.method ?? '—',
+          ...(hasMethod ? [r.method ?? '—'] : []),
         ]),
       ),
     });
@@ -109,5 +121,5 @@ export function renderResearchReport(report: ResearchReport): string {
     .join(
       '',
     )}</select><button id="report-print" class="primary-button">${ui('Print / Save as PDF', '打印 / 导出 PDF')}</button></div>
-<div class="page"><header class="hero"><div class="cover-copy"><div class="eyebrow">${ui('LIFE CYCLE ASSESSMENT', '生命周期评价')}</div><h1>${localized(report.title)}</h1>${report.subtitle ? `<p class="subtitle">${localized(report.subtitle)}</p>` : ''}</div><img class="cover-art" src="${brand.cover}" alt=""></header>${resultsOverview(report)}${sections.length ? `<div class="layout"><nav class="toc" data-label-en="Contents" data-label-zh="目录"><div class="toc-title">${ui('CONTENTS', '报告目录')}</div>${sections.map((s, i) => `<a href="#${s.id}">${String(i + 1).padStart(2, '0')} · ${localized(s.title)}</a>`).join('')}</nav><main>${sections.map((s) => `<section id="${s.id}" class="section"><h2>${localized(s.title)}</h2>${s.html}</section>`).join('')}</main></div>` : ''}</div><script>${REPORT_BROWSER}</script></body></html>\n`;
+<header class="hero" style="--cover-art:url('${brand.cover}')"><div class="cover-copy"><div class="eyebrow">${ui('LIFE CYCLE ASSESSMENT', '生命周期评价')}</div><h1>${localized(report.title)}</h1>${report.subtitle ? `<p class="subtitle">${localized(report.subtitle)}</p>` : ''}</div></header><div class="page">${resultsOverview(report)}${sections.length ? `<div class="layout"><nav class="toc" data-label-en="Contents" data-label-zh="目录"><div class="toc-title">${ui('CONTENTS', '报告目录')}</div>${sections.map((s, i) => `<a href="#${s.id}">${String(i + 1).padStart(2, '0')} · ${localized(s.title)}</a>`).join('')}</nav><main>${sections.map((s) => `<section id="${s.id}" class="section"><h2>${localized(s.title)}</h2>${s.html}</section>`).join('')}</main></div>` : ''}</div><script>${REPORT_BROWSER}</script></body></html>\n`;
 }

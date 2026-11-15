@@ -12,7 +12,11 @@ if (!process.argv[2])
 const directory = path.resolve(process.argv[2]);
 mkdirSync(directory, { recursive: false });
 const html = path.join(directory, 'report.html');
-const input = path.join(root, 'assets/report/example.json');
+const input = path.join(directory, 'report-input.json');
+const fixture = JSON.parse(readFileSync(path.join(root, 'assets/report/example.json'), 'utf8'));
+const inventory = fixture.sections[1].table;
+inventory.rows.push(...Array.from({ length: 9 }, (_, i) => [`Test item ${i + 1}`, i, 'kg']));
+writeFileSync(input, JSON.stringify(fixture));
 const result = spawnSync(
   process.execPath,
   [
@@ -78,15 +82,16 @@ try {
   assert.equal(await inspector.locator('.process-header h3').innerText(), '材料准备');
   assert.equal(await page.locator('#sensitivity-1 .analysis-row').count(), 2);
   assert.equal(await page.locator('.result-summary .result-tile').count(), 1);
-  assert.equal(
-    await page
-      .locator('img')
-      .evaluateAll(
-        (images) =>
-          images.length === 2 && images.every((image) => image.complete && image.naturalWidth > 0),
-      ),
-    true,
+  assert.ok(
+    await page.locator('.official-logo').evaluate((img) => img.complete && img.naturalWidth > 0),
   );
+  assert.equal(await page.locator('.hero img, #results input[type="search"]').count(), 0);
+  await page.locator('.hero').evaluate(async (hero) => {
+    const background = getComputedStyle(hero, '::before').backgroundImage;
+    const image = new Image();
+    image.src = background.slice(5, -2);
+    await image.decode();
+  });
   await page.locator('.network-expand').click();
   assert.equal(await page.locator('.network-dialog').isVisible(), true);
   const firstWidth = await page
@@ -125,7 +130,7 @@ try {
   const rows = page.locator('#section-2 tbody tr');
   await page.locator('#section-2 input').fill('electricity');
   assert.equal(await rows.nth(1).isVisible(), false);
-  assert.equal(await page.locator('#section-2 [role=status]').textContent(), '1 / 2');
+  assert.equal(await page.locator('#section-2 [role=status]').textContent(), '1 / 11');
   await page.emulateMedia({ media: 'print' });
   assert.equal(await rows.nth(1).isVisible(), true, 'print restores filtered rows');
   assert.equal(await page.locator('#node-assembly').isVisible(), true);
@@ -165,7 +170,7 @@ try {
   const staticPage = await noJs.newPage();
   await staticPage.goto(pathToFileURL(html).href);
   assert.equal(await staticPage.locator('#node-grid').isVisible(), true);
-  assert.equal(await staticPage.locator('#section-2 tbody tr').count(), 2);
+  assert.equal(await staticPage.locator('#section-2 tbody tr').count(), 11);
   assert.deepEqual(failures, []);
   assert.deepEqual(requests, []);
   const receipt = {

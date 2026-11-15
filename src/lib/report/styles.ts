@@ -9,6 +9,7 @@ export const REPORT_CSS = String.raw`
   --accent-wash: #f5eff7;
   --paper: #fff;
   --wash: #f8f6f9;
+  --page-gutter: 38px;
   --display: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "Iowan Old Style", Georgia, serif;
   font-family: "Avenir Next", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
   color: var(--ink);
@@ -42,8 +43,31 @@ h3 { font-size: 16px; line-height: 1.5; font-weight: 600; }
 .brand { font-weight: 600; letter-spacing: .09em; margin-right: auto; display: flex; align-items: center; gap: 12px; }
 .brand .localized { font-weight: 400; letter-spacing: .02em; color: var(--muted); }
 .brand-divider { color: #ccc7d0; font-weight: 400; }
-.page { max-width: 1280px; margin: auto; padding: 0 38px 64px; }
-.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 32%); gap: clamp(24px,5vw,68px); align-items: center; padding: 40px 0 34px; border-bottom: 1px solid var(--line); }
+.page { max-width: 1280px; margin: auto; padding: 0 var(--page-gutter) 64px; }
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(106deg, #fcfafc 8%, #f4edf9 53%, #eadef7 100%);
+  border-bottom: 1px solid var(--line);
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 max(24%, calc(50% - 220px));
+  z-index: -1;
+  background: var(--cover-art) 62% 48% / cover no-repeat;
+  mask-image: linear-gradient(90deg, transparent, #000 55%);
+}
+.cover-copy {
+  display: grid;
+  align-content: center;
+  max-width: 1280px;
+  min-height: clamp(290px, 31vw, 380px);
+  margin: auto;
+  padding: clamp(46px, 6vw, 78px) var(--page-gutter);
+}
+.cover-copy > :is(h1, .subtitle) { width: min(62%, 740px); }
 .eyebrow { color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: .115em; margin-bottom: 15px; }
 .eyebrow::after { content: ""; display: block; width: 36px; height: 2px; background: var(--accent); margin-top: 8px; }
 .subtitle { margin-top: 22px; max-width: 780px; font-size: 15px; color: var(--muted); line-height: 1.85; }
@@ -129,9 +153,11 @@ thead { display: table-header-group; }
   .toolbar { padding: 12px 16px; gap: 8px; flex-wrap: wrap; }
   .brand { width: 100%; margin-bottom: 4px; }
   .toolbar > label { margin-right: auto; }
-  .page { padding: 0 16px 32px; }
-  .hero { grid-template-columns: 1fr; gap: 22px; padding: 28px 0; }
-  .cover-art { max-width: 380px; }
+  :root { --page-gutter: 16px; }
+  .page { padding-bottom: 32px; }
+  .hero::before { inset-inline-start: 0; opacity: .44; background-position: 64% 48%; mask-image: linear-gradient(102deg, transparent, #000 76%); }
+  .cover-copy { min-height: 245px; }
+  .cover-copy > :is(h1, .subtitle) { width: min(94%, 560px); }
   .layout { display: block; margin-top: 24px; }
   .toc { position: static; max-height: none; display: flex; flex-wrap: wrap; margin-bottom: 22px; gap: 4px; }
   .toc-title { width: 100%; padding-left: 0; margin-bottom: 6px; }
@@ -153,7 +179,10 @@ thead { display: table-header-group; }
   .toolbar, .toc, .table-controls, .catalog-toggle { display: none!important; }
   .page { padding: 0; max-width: none; }
   .layout { display: block; margin-top: 20px; }
-  .hero { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 24px; padding: 0 0 24px; break-inside: avoid; }
+  .hero { break-inside: avoid; }
+  .hero::before { inset-inline-start: 24%; opacity: .58; }
+  .cover-copy { min-height: 0; padding: 12mm 8mm; }
+  .cover-copy > :is(h1, .subtitle) { width: 75%; }
   h1 { font-size: 27pt; }
   h2 { font-size: 17pt; break-after: avoid; }
   .section { border: 0; border-radius: 0; padding: 20px 0; margin: 0; break-inside: auto; border-bottom: 1px solid var(--line); }
@@ -170,7 +199,6 @@ thead { display: table-header-group; }
 }
 
 .official-logo { width: 34px; height: 34px; object-fit: contain; flex: none; }
-.cover-art { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 5px; }
 .result-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(238px, 100%), 1fr)); border-bottom: 1px solid var(--line); }
 .result-tile { display: grid; grid-template-columns: fit-content(58%) minmax(0, 1fr); align-items: baseline; gap: 3px 16px; padding: 21px 0 22px; }
 .result-tile + .result-tile { border-left: 1px solid var(--line); padding-left: 20px; }

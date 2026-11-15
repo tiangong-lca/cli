@@ -14,7 +14,7 @@ checkPaths:
   - AGENTS.md
   - src/lib/**
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: 1cb36c9e1b1825428f31db6cb379488743518567
+lastReviewedCommit: 9637924c9ff324d23984b9f89aa1010f1aa88105
 lastReviewedNote: 'Reviewed the separation of local report presentation and hosted Study runtime contracts.'
 ---
 

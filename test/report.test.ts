@@ -136,8 +136,9 @@ test('renderer keeps facts and complete details in one deterministic offline esc
   });
   const safe = renderResearchReport(variant);
   const images = safe.match(/<img\b[^>]*>/gu) ?? [];
-  assert.equal(images.length, 2);
-  assert.ok(images.every((image) => /src="data:image\/(svg\+xml|webp);base64,/u.test(image)));
+  assert.equal(images.length, 1);
+  assert.match(images[0], /src="data:image\/svg\+xml;base64,/u);
+  assert.match(safe, /<header class="hero" style="--cover-art:url\('data:image\/webp;base64,/u);
   assert.doesNotMatch(safe, /<img[^>]*(evil\.invalid|onerror=)/u);
   assert.match(safe, /&lt;\/script&gt;/u);
   assert.match(safe, /&quot;/u);
@@ -146,7 +147,7 @@ test('renderer keeps facts and complete details in one deterministic offline esc
   assert.match(safe, /data-language="zh"/u);
   assert.match(safe, />0 <\/p>/u);
   assert.match(safe, />— kg<\/p>/u);
-  assert.match(safe, /<td>—<\/td>/u);
+  assert.doesNotMatch(safe, /Assessment method/u);
   assert.match(
     renderResearchReport(parseResearchReport({ title: { en: 'Only English' } })),
     /<title>Only English<\/title>/u,
