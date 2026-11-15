@@ -18,5 +18,3 @@ export function localized(value: ReportText): string {
     .join('');
 }
 export const ui = (en: string, zh: string) => localized({ en, zh });
-export const refs = (ids: string[]) =>
-  `<div class="source-refs">${ids.map((id) => `<a href="#source-${id}">[${id}]</a>`).join('')}</div>`;

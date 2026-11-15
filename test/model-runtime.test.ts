@@ -299,3 +299,46 @@ test('calculation discovery, compact results and complete files preserve saved R
     0,
   );
 });
+
+test('calculation command exports contributions and compares two saved Run directories', async (t) => {
+  const makeRun = (quantity: number) => {
+    const dir = fixture(t);
+    const f = savedRun(dir);
+    const prepared = {
+      ...f.prepared,
+      numeric: {
+        methodAxes: [{ id: 'climate', version: '1', unit: 'kg' }],
+        views: [{ port: { instanceId: '1', exchangeId: '0' } }],
+        b: [[2]],
+        c: [[3]],
+        reference: { flow: { id: 'f', version: '1' }, unit: 'kg', pivot: 1 },
+      },
+    };
+    f.write('prepared', prepared);
+    f.write('summary', { ...f.summary, amount: 1 });
+    f.write('result', {
+      ...f.result,
+      preparedArtifactSha256: createHash('sha256').update(JSON.stringify(prepared)).digest('hex'),
+      x: [quantity],
+      h: [6 * quantity],
+      completeLciaScores: true,
+    });
+    return dir;
+  };
+  const dir = makeRun(1);
+  const scenario = makeRun(2);
+  const read = (args: string[]) => runCalculationCommand([...args, '--json'], readLocalCalculation);
+  const usage = JSON.parse((await read(['compare', '--help'])).stdout);
+  assert.ok(usage.options.includes('--scenario <scenario-run>'));
+  const exported = await read(['result', '--dir', dir, '--kind', 'contributions']);
+  assert.equal(exported.exitCode, 0, exported.stdout);
+  assert.equal(JSON.parse(exported.stdout).data.items[0].amount, 6);
+  const comparison = await read(['compare', '--dir', dir, '--scenario', scenario]);
+  assert.equal(comparison.exitCode, 0, comparison.stdout);
+  assert.deepEqual(JSON.parse(comparison.stdout).data.items[0], {
+    method: { id: 'climate', version: '1', unit: 'kg' },
+    baseline: 6,
+    scenario: 12,
+    change: 6,
+  });
+});

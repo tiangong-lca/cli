@@ -2,6 +2,11 @@ import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { object, type JsonObject } from '../application/dataset-types.js';
+import {
+  calculationBasis,
+  processContributions,
+  requireCompleteImpact,
+} from '../application/local-calculation-analysis.js';
 import { CommandInputError } from '../shared/command-result.js';
 
 export function readLocalCalculation(directory: string, kind: string): JsonObject {
@@ -56,9 +61,22 @@ export function readLocalCalculation(directory: string, kind: string): JsonObjec
       'precondition',
     );
   const numeric = object(prepared.numeric, 'numerical axes');
-  const axes =
-    kind === 'lci' ? numeric.inventoryAxes : kind === 'lcia' ? numeric.methodAxes : numeric.views;
-  const values = kind === 'lci' ? result.g : kind === 'lcia' ? result.h : result.x;
+  const context = {
+    execution: 'local',
+    outputDirectory: root,
+    maxResidual: result.maxResidual,
+    engine: summary.engine,
+    engineVersion: summary.engineVersion,
+  };
+  if (kind === 'contributions') {
+    const items = processContributions(numeric, result);
+    return { ...context, kind, count: items.length, items };
+  }
+  const comparable = kind === 'comparable-lcia';
+  if (comparable) requireCompleteImpact(result);
+  const impact = kind === 'lcia' || comparable;
+  const axes = kind === 'lci' ? numeric.inventoryAxes : impact ? numeric.methodAxes : numeric.views;
+  const values = kind === 'lci' ? result.g : impact ? result.h : result.x;
   if (
     !Array.isArray(axes) ||
     !Array.isArray(values) ||
@@ -71,13 +89,10 @@ export function readLocalCalculation(directory: string, kind: string): JsonObjec
       'precondition',
     );
   return {
-    execution: 'local',
-    outputDirectory: root,
+    ...context,
     kind,
     count: values.length,
     items: axes.map((axis, index) => ({ ...object(axis, 'axis'), amount: values[index] })),
-    maxResidual: result.maxResidual,
-    engine: summary.engine,
-    engineVersion: summary.engineVersion,
+    ...(comparable ? { reference: calculationBasis(numeric.reference, summary.amount) } : {}),
   };
 }

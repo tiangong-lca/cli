@@ -14,7 +14,7 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: 02583e9632c5b5075a935620e3b65f13e70eb8e0
+lastReviewedCommit: 0cb4e8570aeebc3d1ddc9c17ee6811164a9bf592
 lastReviewedNote: 'CLI #481: reviewed published Model capabilities, native runtime installation, sparse LCIA interpretation and installed-package verification.'
 ---
 
@@ -103,6 +103,8 @@ tiangong-lca calculation result --dir ./run-1 --kind lcia --json
 
 输入字段和预算见 [Model 计算契约](docs/interfaces/calculations.md#本地文件契约)。结果保存本次输入、数值轴、方法和数值诊断。某个 Flow 在所选 LCIA 方法中没有定义因子时，对该方法不产生贡献，这是正常的稀疏适用性，不作为因子缺口或分数不完整报告。方法文件损坏、输入缺失和结果读取不完整仍是错误。独立线上 Model 计算以实际服务能力为准，不因本地运行时发布而自动可用。
 
+`calculation result --kind contributions` 可导出过程贡献，`calculation compare` 可比较口径一致的基准与情景 Run。详见[本地计算接口](docs/interfaces/calculations.md)。
+
 研究报告以 JSON 为输入，生成可交互 HTML；中英文通过切换显示，PDF 使用浏览器打印导出：
 
 ```bash
@@ -167,6 +169,6 @@ pnpm prepush:gate
 
 ## Local research reports
 
-`tiangong-lca report render --input report.json --output report.html --json` renders explicit research content into one offline HTML file with Chinese/English switching (one language at a time, Chinese by default), clickable Model nodes/connections, sources, filterable tables and complete print layout. Use its Print / Save as PDF button for browser PDF export. The CLI does not translate, calculate, discover providers or register a hosted Study. Only `title` is required; read `report render --help --json`, the [input contract](docs/interfaces/report.md) and [synthetic example](assets/report/example.json). Existing outputs require `--force`; input files remain protected.
+`tiangong-lca report render --input report.json --output report.html --json` renders explicit research content into one offline HTML file with a branded cover, a results overview, an interactive Model viewer with linked exchange tables, optional contribution and sensitivity charts, bilingual presentation, and a print layout. Use its Print / Save as PDF button for browser PDF export. The CLI does not translate, calculate, discover providers or register a hosted Study. Only `title` is required; read `report render --help --json`, the [input contract](docs/interfaces/report.md) and [synthetic example](assets/report/example.json). Existing outputs require `--force`; input files remain protected.
 
 Process 年度量验证支持有明确年度推导和精确参考单位证据的 Platform 展示形式，原始字段保持不变。离线使用 `dataset process validate --reference-documents references.json` 提供独立参考文档；保存 dry-run 使用当前账号可见的精确引用。支持的声明和限制见 [Process 年度量](docs/interfaces/datasets/processes.md#年度量与-platform-展示兼容)。

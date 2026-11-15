@@ -116,7 +116,8 @@ Process 状态、结果可用性、读取权限和数值输入资格分别验证
 | `dataset model prepare` | 从显式 Model、数据文件和背景清单组装本地计算输入；可显式允许读取缺失的精确数值依赖，不选择 provider。 |
 | `dataset model calculate` | 按明确模型来源计算；本地 `--file` 接收完整计算输入，其中包含功能单位、方法和参数；不能再声明冲突的模型来源。 |
 | `calculation get` | 使用返回的计算选择信息查询当前状态，不重新发起计算。 |
-| `calculation result` | 获取并验证绑定该次输入与引擎身份的结果，大产物通过文件交付。 |
+| `calculation result` | 读取 LCIA、生命周期清单、过程用量和过程贡献。 |
+| `calculation compare` | 比较同口径的两个已完成本地 Run。 |
 
 计算选择信息必须包含本地或线上范围，不能仅凭一个 ID 猜测目的地。精确请求字段通过命令帮助发现。需要取消时，仅在执行器声明支持并能确认效果时提供相应动作。
 
@@ -157,4 +158,8 @@ Process 状态、结果可用性、读取权限和数值输入资格分别验证
 
 `--timeout-ms` 是整个引擎进程的期限，默认 120000；`limits.timeoutMs` 是原生编译及求解阶段预算，默认 30000。`limits` 另支持 `maxInputBytes`（4194304）、`maxDocuments`（512）、`maxInstances`（64）、`maxViews`（128）、`maxExchanges`（4096）、`maxDenseCells`（131072）、`maxArtifactBytes`（4194304）和 `maxMemoryBytes`（268435456）。这些是可提高的资源默认值；内存预算是编译及矩阵分配估算，不是包含因子加载及原生库的操作系统 RSS 保证。引擎仍执行正数、机器整数范围、维度和数值检查，不支持的参数明确拒绝。
 
-`calculation get --dir <run-directory>` 读取已保存的完成摘要；`calculation result --dir <run-directory> --kind lcia|lci|activities` 将保存的值与保存的轴对应。默认返回 LCIA，标准输出最多 20 项，完整结果使用 `--output <new-file>`。读取不会联网、启动引擎或重新计算；缺失、损坏和不匹配的文件明确失败，旧 Run 不因新的线上数据或本地配置失效。
+`calculation get --dir <run-directory>` 读取已保存的完成摘要；`calculation result --dir <run-directory> --kind lcia|lci|activities|contributions` 返回相应结果，其中 `activities` 对应过程用量。默认返回 LCIA，标准输出最多 20 项，完整结果使用 `--output <new-file>`。读取不会联网、启动引擎或重新计算；缺失、损坏和不匹配的文件明确失败，旧 Run 不因新的线上数据或本地配置失效。
+
+`calculation result --dir <run-directory> --kind contributions` 从完整 LCIA Run 的过程用量、单位过程清单和表征系数中分解影响。`items` 每行包含 `method`、过程实例端口 `port`、`amount` 和该方法的总影响 `total`。同一过程的多条计算视图按实例标识对应到报告模型。每个方法的有符号贡献之和必须与保存的总影响相符。
+
+`calculation compare --dir <baseline-run> --scenario <scenario-run> [--output <new-file>]` 比较两次已完成的本地计算。两次 Run 须采用相同的参考流、用量、单位、方向和影响评价方法。`items` 每行包含 `method`、`baseline`、`scenario` 和差值 `change`。敏感性分析先对声明的情景重新运行模型，再用此命令提取差异。报告保留情景变化和核算口径。

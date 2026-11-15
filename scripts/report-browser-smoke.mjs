@@ -12,7 +12,12 @@ if (!process.argv[2])
 const directory = path.resolve(process.argv[2]);
 mkdirSync(directory, { recursive: false });
 const html = path.join(directory, 'report.html');
-const input = path.join(root, 'assets/report/example.json');
+const input = path.join(directory, 'report-input.json');
+const fixture = JSON.parse(readFileSync(path.join(root, 'assets/report/example.json'), 'utf8'));
+fixture.model.referenceNodeId = 'assembly';
+const inventory = fixture.sections[1].table;
+inventory.rows.push(...Array.from({ length: 9 }, (_, i) => [`Test item ${i + 1}`, i, 'kg']));
+writeFileSync(input, JSON.stringify(fixture));
 const result = spawnSync(
   process.execPath,
   [
@@ -40,22 +45,84 @@ try {
   const page = await context.newPage();
   page.on('pageerror', (error) => failures.push(error.message));
   page.on('request', (request) => {
-    if (!request.url().startsWith('file:')) requests.push(request.url());
+    if (!/^(file|data):/u.test(request.url())) requests.push(request.url());
   });
   await page.goto(pathToFileURL(html).href);
   assert.equal(await page.locator('html').getAttribute('data-interactive'), 'ready');
   assert.equal(await page.locator('#model-svg .graph-node').count(), 3);
-  await page.locator('[data-graph-link="node-grid"]').click();
-  assert.match(await page.locator('#node-grid').getAttribute('class'), /selected/u);
-  await page.locator('[data-graph-link="edge-power"]').click();
-  assert.match(await page.locator('#edge-power').getAttribute('class'), /selected/u);
-  assert.ok(!(await page.locator('#node-grid').getAttribute('class')).includes('selected'));
-  await page.locator('#graph-zoom').focus();
-  await page.locator('#graph-zoom').press('End');
-  await page.locator('#graph-zoom').dispatchEvent('input');
-  assert.equal(await page.locator('#model-svg').evaluate((el) => el.style.width), '180%');
-  await page.locator('#graph-fit').click();
-  assert.equal(await page.locator('#model-svg').evaluate((el) => el.style.width), '100%');
+  const citation = page.locator('.source-refs a[href="#source-inventory"]').first();
+  assert.equal(await citation.innerText(), '[2]');
+  await citation.click();
+  assert.match(page.url(), /#source-inventory$/u);
+  assert.ok(await page.locator('#source-inventory:target').isVisible());
+  const inspector = page.locator('.network-inspector');
+  const edge = page.locator('[data-graph-link="edge-power"]');
+  await page.locator('#model-svg [data-graph-link="node-grid"]').click();
+  assert.equal(await inspector.locator('h3').innerText(), '电力供应');
+  const viewerLayout = () =>
+    page.locator('.network-workspace').evaluate((workspace) => {
+      const canvas = workspace.querySelector('.network-canvas').getBoundingClientRect();
+      const details = workspace.querySelector('.network-inspector').getBoundingClientRect();
+      return details.left >= canvas.right && details.top === canvas.top
+        ? 'side'
+        : details.top >= canvas.bottom && details.left === canvas.left
+          ? 'stacked'
+          : 'overlapping';
+    });
+  assert.equal(await viewerLayout(), 'side');
+  const headerFill = (id) =>
+    page
+      .locator(`#model-svg [href="#node-${id}"] .node-header`)
+      .evaluate((header) => getComputedStyle(header).fill);
+  assert.notEqual(await headerFill('grid'), await headerFill('material'));
+  const sourceRow = inspector.locator('[data-exchange-id="power-out"]');
+  await sourceRow.getByRole('link', { name: '电力' }).press('Enter');
+  assert.equal(await inspector.locator('.process-header h3').innerText(), '电力供应');
+  assert.match(await sourceRow.getAttribute('class'), /exchange-current/u);
+  assert.equal(await sourceRow.locator('a').getAttribute('aria-current'), 'true');
+  assert.equal(await edge.getAttribute('aria-current'), 'true');
+  assert.equal(await sourceRow.locator('.exchange-amount').innerText(), '1');
+  assert.equal(await inspector.locator('.connection-amount').innerText(), '2 kWh');
+  await edge.locator('foreignObject').click();
+  const targetRow = inspector.locator('[data-exchange-id="power-in"]');
+  assert.match(await targetRow.getAttribute('class'), /exchange-current/u);
+  assert.equal(await inspector.locator('.process-header h3').innerText(), '材料准备');
+  assert.equal(await targetRow.locator('.exchange-amount').innerText(), '2');
+  assert.equal(await inspector.locator('.connection-route [lang=en]').first().isVisible(), false);
+  const catalog = page.locator('.catalog-toggle');
+  assert.equal(await page.locator('#node-grid').isVisible(), false);
+  await catalog.click();
+  assert.equal(await page.locator('#node-grid').isVisible(), true);
+  await catalog.click();
+  assert.equal(await page.locator('#node-grid').isVisible(), false);
+  await page.locator('#contribution-1 [data-graph-link="node-material"]').click();
+  assert.equal(await inspector.locator('.process-header h3').innerText(), '材料准备');
+  assert.equal(await page.locator('#sensitivity-1 .analysis-row').count(), 2);
+  assert.equal(await page.locator('.result-summary .result-tile').count(), 1);
+  assert.ok(
+    await page.locator('.official-logo').evaluate((img) => img.complete && img.naturalWidth > 0),
+  );
+  assert.equal(await page.locator('.hero img, #results input[type="search"]').count(), 0);
+  await page.locator('.hero').evaluate(async (hero) => {
+    const background = getComputedStyle(hero, '::before').backgroundImage;
+    const image = new Image();
+    image.src = background.slice(5, -2);
+    await image.decode();
+  });
+  await page.locator('.network-expand').click();
+  assert.equal(await page.locator('.network-dialog').isVisible(), true);
+  assert.equal(await viewerLayout(), 'side');
+  const firstWidth = await page
+    .locator('#model-svg')
+    .evaluate((el) => el.getBoundingClientRect().width);
+  await page.locator('[data-zoom="in"]').click();
+  assert.ok(
+    (await page.locator('#model-svg').evaluate((el) => el.getBoundingClientRect().width)) >
+      firstWidth,
+  );
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.network-dialog').isVisible(), false);
+  await page.locator('[data-zoom="fit"]').click();
   await page.screenshot({ path: path.join(directory, 'chinese.png'), fullPage: true });
   await page.locator('#report-language').selectOption('en');
   assert.equal(await page.locator('h1 [lang=zh]').isVisible(), false);
@@ -77,22 +144,29 @@ try {
       .evaluateAll((items) => items.every((el) => getComputedStyle(el).display === 'none')),
     true,
   );
+  assert.equal(await page.locator('.node-port').count(), 5);
+  assert.equal(await page.locator('.node-header').count(), 3);
   assert.equal(
-    await page
-      .locator('.node-title-bar')
-      .first()
-      .evaluate((el) => getComputedStyle(el).fill),
-    'rgb(92, 36, 106)',
+    await page.locator('[data-graph-link="node-assembly"] .network-reference').count(),
+    1,
   );
-  assert.equal(await page.locator('.node-port').count(), 6);
+  const anchor = async (id) => {
+    const port = page.locator('#model-svg [data-graph-link="node-' + id + '"] .node-port').first();
+    return `${Number(await port.getAttribute('x')) + 4} ${Number(await port.getAttribute('y')) + 4}`;
+  };
+  const route = await edge.locator('.edge-path').getAttribute('d');
+  assert.ok(route.startsWith(`M ${await anchor('grid')} `));
+  assert.ok(route.endsWith(`L ${await anchor('material')}`));
   const rows = page.locator('#section-2 tbody tr');
   await page.locator('#section-2 input').fill('electricity');
   assert.equal(await rows.nth(1).isVisible(), false);
-  assert.equal(await page.locator('#section-2 [role=status]').textContent(), '1 / 2');
+  assert.equal(await page.locator('#section-2 [role=status]').textContent(), '1 / 11');
   await page.emulateMedia({ media: 'print' });
   assert.equal(await rows.nth(1).isVisible(), true, 'print restores filtered rows');
   assert.equal(await page.locator('#node-assembly').isVisible(), true);
   assert.equal(await page.locator('#edge-power').isVisible(), true);
+  assert.equal(await page.locator('#node-grid [data-exchange-id=power-out]').isVisible(), true);
+  assert.equal(await inspector.isVisible(), false);
   assert.equal(await page.locator('.toolbar').isVisible(), false);
   const pdf = path.join(directory, 'report.pdf');
   await page.pdf({ path: pdf, preferCSSPageSize: true, printBackground: true });
@@ -110,11 +184,12 @@ try {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: path.join(directory, 'desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await viewerLayout(), 'stacked');
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     true,
   );
-  await page.locator('#graph-fit').click();
+  await page.locator('[data-zoom="fit"]').click();
   assert.equal(
     await page.locator('.graph-scroll').evaluate((el) => el.scrollWidth <= el.clientWidth),
     true,
@@ -126,7 +201,7 @@ try {
   const staticPage = await noJs.newPage();
   await staticPage.goto(pathToFileURL(html).href);
   assert.equal(await staticPage.locator('#node-grid').isVisible(), true);
-  assert.equal(await staticPage.locator('#section-2 tbody tr').count(), 2);
+  assert.equal(await staticPage.locator('#section-2 tbody tr').count(), 11);
   assert.deepEqual(failures, []);
   assert.deepEqual(requests, []);
   const receipt = {
@@ -134,7 +209,9 @@ try {
     browser: browser.version(),
     offline: true,
     checks: [
-      'graph details',
+      'bidirectional exchange selection and separate connection amount',
+      'distinct background process styling and responsive inspector layout',
+      'collapsible complete process inventory',
       'zoom',
       'language switching',
       'table filter',

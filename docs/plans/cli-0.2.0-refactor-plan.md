@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
-lastReviewedAt: 2026-11-13
-lastReviewedCommit: bd1de97b723620921cf76de06d2abb0b4bf44174
-lastReviewedNote: 'Reviewed Process annual projection evidence, independent reference inputs and native validation coverage; existing ownership, release and mutation safeguards remain unchanged.'
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: 5d40620caeaa0b6c07f0545e3c321921c1d7d32c
+lastReviewedNote: 'Reviewed the local report renderer implementation and validation boundaries.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -58,7 +58,7 @@ lastReviewedNote: 'Reviewed Process annual projection evidence, independent refe
 | 背景结果 | Process `results/get-result` 复用已有 HDF5 服务，解析结果身份并完整读取 LCI/LCIA；读取绑定及一次有界重启由适配层管理。 | 原生输入对多结果、版本变化和清单不完整保持明确诊断。 |
 | 输入准备 | Model `prepare` 组装显式图、所需数值文档及背景 LCI；远程依赖读取须显式开启。 | 持续覆盖更大及更多类型的业务模型。 |
 | 本地计算 | Model `calculate` 调用 Worker `model_calculate`，复用现有编译和求解核心；独立功能量、可提高预算及完整 Run 文件已实现。 | `setup model-calculation --install` 已支持 macOS ARM64、Linux glibc x64/ARM64、Windows x64 的平台匹配与可执行文件选择，包含原生依赖和完整方法缓存；已有路径检查与配置复用保留。Worker 提供对应打包与数值验收入口，各目标平台仍须独立保留真实执行证据；公开发行、性能和容量验证另行验收。引擎构建于 solver-worker crate，不代表线上服务已启用。 |
-| 线上计算 | 已有 Study 的版本化项目、准备、运行、分析和报告协议。 | 无需创建 Study 的线上 Model 计算服务及受理/恢复；线上 Calculation 查询入口；本地 `calculation get/result --dir` 已支持摘要、LCI、LCIA 和活动量读取。 |
+| 线上计算 | 已有 Study 的版本化项目、准备、运行、分析和报告协议。 | 无需创建 Study 的线上 Model 计算服务及受理/恢复；线上 Calculation 查询入口；本地 `calculation get/result/compare --dir` 已支持摘要、LCI、LCIA、过程用量、过程贡献和情景比较。 |
 | Study Skill | agent-skills 源码已补齐七阶段流程、资料收集/提取参考、本地 Model 命令和本地报告；线上 Study 报告流程按需加载。 | 已按流程执行合成前景与真实背景的本地研究案例，覆盖数值预期、情景和报告；独立 Agent 自主评估及已发布 CLI/原生组件组合的安装验收分别进行。源码与本地候选完成不等于已发布。 |
 
 当前本地输入不要求调用方维护 hash 或服务器状态证明，内部计算身份与已发布 Study 协议隔离。聚合背景不重复展开或分配；完整零清单与读取不完整分别表达；完整方法中的稀疏因子定义不产生缺口警告。原始 Run 文件可直接读取，后续线上版本变化不使其失效。现有已发布版本不会因源码修改自动获得新增能力。
@@ -281,4 +281,4 @@ Flow 参考属性的本地业务约束由同一纯校验器承载：内部 ID �
 
 ## 本地研究报告呈现
 
-`report render` 是独立 JSON 到 HTML 的原子呈现操作。Study Skill 负责组织报告内容和调用；报告内嵌 Platform 风格模型、单语言中英切换、表格交互和完整打印布局；默认中文，阅读和打印均不同时展示两种语言。验证覆盖输入结构与引用、文本转义及无联网、输出覆盖与输入保护、实际浏览器交互/PDF、安装包资产，以及不改动已有线上签名报告。完整 Agent 科学研究评估与四平台发布验收仍分别记录，不由呈现测试推定。
+`report render` 是独立 JSON 到 HTML 的原子呈现操作。Study Skill 负责组织报告内容和调用；报告内嵌品牌封面、主要结果、可联动的模型图与交换项表格、输入提供的分析图表及打印布局。默认中文，阅读和打印均一次显示一种语言。验证覆盖输入结构与引用、文本转义及无联网、输出覆盖与输入保护、实际浏览器交互/PDF、安装包资产，以及不改动已有线上签名报告。完整 Agent 科学研究评估与四平台发布验收仍分别记录，不由呈现测试推定。

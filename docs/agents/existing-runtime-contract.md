@@ -14,8 +14,8 @@ checkPaths:
   - AGENTS.md
   - src/lib/**
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: a67e3733ee4ecb60951abe02e79af426b7965f40
-lastReviewedNote: 'Reviewed Process annual projection evidence, independent reference inputs and native validation coverage; existing ownership, release and mutation safeguards remain unchanged.'
+lastReviewedCommit: 5d40620caeaa0b6c07f0545e3c321921c1d7d32c
+lastReviewedNote: 'Reviewed the separation of local report presentation and hosted Study runtime contracts.'
 ---
 
 # Existing runtime safeguards

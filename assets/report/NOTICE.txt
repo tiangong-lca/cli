@@ -1,0 +1,5 @@
+tiangong-lca-logo.svg is the TianGong LCA light-theme brand asset from
+https://github.com/tiangong-lca/platform/blob/51b6529cab422c36a742aa164ae5041823595079/public/logo.svg
+
+lifecycle-cover.webp is the fixed, AI-generated abstract lifecycle illustration
+for the report cover, encoded as WebP for offline distribution.

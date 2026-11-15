@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: 02583e9632c5b5075a935620e3b65f13e70eb8e0
-lastReviewedNote: 'Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged.'
+lastReviewedCommit: 5d40620caeaa0b6c07f0545e3c321921c1d7d32c
+lastReviewedNote: 'Reviewed report input validation, bundled assets and the offline model viewer.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -261,7 +261,7 @@ Study P4 adds `assets/study-contract/v5/` and an independent `assets/study-rende
 
 `commands/report.ts` owns strict discovery/arguments and shared results. `application/report.ts` validates a lightweight presentation projection and defines its output port. `adapters/report.ts` writes a separate local artifact; `lib/report/` renders escaped text, SVG, single-language Chinese/English switching and print presentation with fixed embedded enhancements. Composition selects the writer. This path performs no remote access, calculation or hosted Study state change and never consumes or modifies signed hosted renderer assets.
 
-The report Model view follows Platform’s LifeCycleModels title-bar, 6px node, 8px square endpoint and IO grouping conventions, with the TianGong light brand primary. CLI owns the offline SVG implementation; it does not import Platform’s React/X6 page, service adapters or editing state. Node summaries link to complete supplied details.
+The report bundles its cover and logo under `assets/report/`. The Model viewer lays out declared connections in offline SVG and opens supplied node or edge content in a local detail panel. Optional analysis charts consume explicit report input. Rendering and presentation controls remain independent of Platform editing state and calculation services.
 
 ### Local Model installation boundary
 
