@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: ba06d3e375745e223a1f7143078bf0ee806afe64
-lastReviewedNote: 'Reviewed the report input, embedded assets and optional analysis blocks.'
+lastReviewedCommit: 3218afff1081a0e97e7ab4be81e0720d0c1e5931
+lastReviewedNote: 'CLI #507 reviews 0.4.0 publication of exact Flow name admission and the frozen SDK 0.8.0 dependency.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

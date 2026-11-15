@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: 67b7eef68ae3173f3d198aba692b9a2aaf0f2b84
-lastReviewedNote: 'CLI #506: reviewed Dataset Flow name diagnostics, references validation and resulting-Process generation.'
+lastReviewedCommit: 3218afff1081a0e97e7ab4be81e0720d0c1e5931
+lastReviewedNote: 'CLI #507 reviews 0.4.0 publication of exact Flow name admission and the frozen SDK 0.8.0 dependency.'
 ---
 
 # TianGong LCA CLI
