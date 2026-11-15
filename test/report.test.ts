@@ -133,7 +133,10 @@ test('renderer keeps facts and complete details in one deterministic offline esc
     results: [{ label: 'Negative', value: -2, unit: 'kg' }],
   });
   const safe = renderResearchReport(variant);
-  assert.doesNotMatch(safe, /<img/u);
+  const images = safe.match(/<img\b[^>]*>/gu) ?? [];
+  assert.equal(images.length, 2);
+  assert.ok(images.every((image) => /src="data:image\/(svg\+xml|webp);base64,/u.test(image)));
+  assert.doesNotMatch(safe, /<img[^>]*(evil\.invalid|onerror=)/u);
   assert.match(safe, /&lt;\/script&gt;/u);
   assert.match(safe, /&quot;/u);
   assert.match(safe, /&#39;/u);
@@ -150,6 +153,137 @@ test('renderer keeps facts and complete details in one deterministic offline esc
     renderResearchReport(parseResearchReport({ title: { en: 'Only English' }, language: 'en' })),
     /data-language="en"/u,
   );
+});
+
+test('overview uses explicit result selection and charts require supplied analysis', () => {
+  const baseline = { label: 'Baseline result', value: 4, unit: 'kg', method: 'Method detail' };
+  const alternate = { label: 'Other result', value: 7, unit: 'kg' };
+  const html = (results: unknown[], analysis?: unknown) =>
+    renderResearchReport(
+      parseResearchReport({
+        title: 'Case',
+        model: example.model,
+        sources: example.sources,
+        results,
+        analysis,
+      }),
+    );
+  const overview = (output: string) =>
+    output.match(/<section class="result-summary"[^>]*>.*?<\/section>/u)?.[0];
+  assert.match(overview(html([baseline]))!, /Baseline result/u);
+  assert.equal(overview(html([{ ...baseline, summary: false }])), undefined);
+  assert.equal(overview(html([baseline, alternate])), undefined);
+  const selected = overview(html([{ ...baseline, summary: true }, alternate]))!;
+  assert.match(selected, /Baseline result/u);
+  assert.doesNotMatch(selected, /Other result|Method detail/u);
+  assert.doesNotMatch(html([baseline]), /id="(?:contribution|sensitivity)-/u);
+
+  const output = html([baseline], {
+    contributions: [
+      {
+        title: 'Signed shares',
+        unit: 'kg',
+        total: 4,
+        items: [{ label: 'Supply', value: -2, nodeId: 'grid' }],
+      },
+      { title: 'Absolute contributions', unit: 'kg', items: [{ label: 'Demand', value: 6 }] },
+      {
+        title: 'Zero total',
+        unit: 'kg',
+        total: 0,
+        items: [{ label: 'No contribution', value: 0 }],
+      },
+      {
+        title: 'Large contribution',
+        unit: 'kg',
+        total: 1e-300,
+        items: [{ label: 'Large value', value: 1e300 }],
+      },
+    ],
+    sensitivity: [
+      {
+        title: 'Scenarios',
+        unit: 'kg',
+        baseline: 4,
+        scenarios: [{ label: 'Option', value: 5, description: 'Changed input' }],
+      },
+      {
+        title: 'Zero baseline',
+        unit: 'kg',
+        baseline: 0,
+        scenarios: [
+          { label: 'Increase', value: 2 },
+          { label: 'Decrease', value: -2 },
+        ],
+      },
+      {
+        title: 'Extreme values',
+        unit: 'kg',
+        baseline: -1e308,
+        scenarios: [{ label: 'Extreme', value: 1e308 }],
+      },
+    ],
+  });
+  assert.match(output, /href="#node-grid" data-graph-link="node-grid">Supply/u);
+  assert.match(output, /-50\.0%/u);
+  assert.match(output, /\+25\.0%/u);
+  assert.match(output, /Δ \+2 kg/u);
+  assert.match(output, /Changed input/u);
+  assert.doesNotMatch(output, /(?:NaN|Infinity)%/u);
+
+  for (const [value, message] of [
+    [
+      { contributions: [{ title: 'Empty', unit: 'kg', items: [] }] },
+      'analysis.contributions[0].items',
+    ],
+    [
+      {
+        contributions: [
+          { title: 'Missing', unit: 'kg', items: [{ label: 'X', value: 1, nodeId: 'missing' }] },
+        ],
+      },
+      'analysis.contributions[0].items[0].nodeId',
+    ],
+    [
+      { sensitivity: [{ title: 'Empty', unit: 'kg', baseline: 1, scenarios: [] }] },
+      'analysis.sensitivity[0].scenarios',
+    ],
+  ] as const) {
+    assert.throws(
+      () => html([], value),
+      (error: Error) => error.message.includes(message),
+    );
+  }
+  assert.throws(() => html([{ ...baseline, summary: 'yes' }]), { code: 'REPORT_INPUT_INVALID' });
+});
+
+test('model rendering keeps cycles and all supplied inputs without assuming input order', () => {
+  const html = renderResearchReport(
+    parseResearchReport({
+      title: 'Material cycle',
+      model: {
+        nodes: [
+          {
+            id: 'end',
+            label: 'Treatment',
+            inputs: Array.from({ length: 6 }, (_, index) => `Material ${index + 1}`),
+          },
+          { id: 'start', label: 'Production' },
+          { id: 'recovery', label: 'Recovery' },
+        ],
+        edges: [
+          { id: 'treat', from: 'start', to: 'end', label: 'Waste' },
+          { id: 'recover', from: 'end', to: 'recovery', label: 'Recovery feed' },
+          { id: 'return', from: 'recovery', to: 'start', label: 'Recovered material' },
+        ],
+      },
+    }),
+  );
+  const diagram = html.match(/<svg id="model-svg"[\s\S]+?<\/svg>/u)![0];
+  assert.equal((diagram.match(/class="network-edge"/gu) ?? []).length, 3);
+  assert.match(diagram, /class="network-flow">\+2/u);
+  assert.doesNotMatch(diagram, /Material 6|NaN/u);
+  assert.match(html, /<li>Material 6<\/li>/u);
 });
 
 test('report command performs exclusive HTML output, protects input aliases and returns bounded shared results', async () => {

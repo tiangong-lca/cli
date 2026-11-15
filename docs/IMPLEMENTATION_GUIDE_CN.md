@@ -21,9 +21,9 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-11-14
-lastReviewedCommit: 11d71916c1cf9332ed4beee023a5dca6ba0589c1
-lastReviewedNote: 'Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged.'
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: a67e3733ee4ecb60951abe02e79af426b7965f40
+lastReviewedNote: 'Reviewed the report input, embedded assets and optional analysis blocks.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -101,4 +101,4 @@ Review 适配已有业务语义：一个起始对象、服务端默认关联、�
 
 核心帮助分别提供可读文本和 `--help --json` 机器契约，动作参数、默认值与限制按实际解析能力声明。写入错误只在已有服务契约证明未生效时记为明确拒绝；其余不确定结果继续禁止重放。拒绝结果仅保留安全错误码与类别，不复制远端原始文本。
 
-本地报告通过 `report render` 读取轻量报告 JSON；application 校验展示结构，lib/report 生成转义 HTML/SVG，adapter 独立写文件。Skill 提供正文、双语、实际模型投影和结果，渲染器不读取线上数据、不计算、不维护研究状态。浏览器交互和打印验证见[验证指南](agents/repo-validation.md)。
+本地报告通过 `report render` 读取轻量报告 JSON；application 校验展示结构，lib/report 使用内置品牌资产与可选分析字段生成转义 HTML/SVG，adapter 独立写文件。Skill 提供正文、双语、实际模型投影和结果，渲染器不读取线上数据、不计算、不维护研究状态。浏览器交互和打印验证见[验证指南](agents/repo-validation.md)。

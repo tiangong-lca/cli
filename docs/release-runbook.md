@@ -25,9 +25,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-14
-lastReviewedCommit: 11d71916c1cf9332ed4beee023a5dca6ba0589c1
-lastReviewedNote: 'Reviewed Process annual projection evidence, independent reference inputs and native validation coverage; existing ownership, release and mutation safeguards remain unchanged.'
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: a67e3733ee4ecb60951abe02e79af426b7965f40
+lastReviewedNote: 'Reviewed the installed report asset change against the existing release qualification.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

@@ -35,6 +35,9 @@ export function assertInstalledReport(packageRoot: string, consumerRoot: string)
   assert.match(html, /id="model-svg"/u);
   assert.match(html, /打印 \/ 导出 PDF/u);
   assert.match(html, /script-src 'sha256-/u);
+  assert.match(html, /src="data:image\/webp;base64,/u);
+  assert.match(html, /src="data:image\/svg\+xml;base64,/u);
+  assert.match(html, /id="contribution-1"/u);
   assert.doesNotMatch(html, /<script[^>]+src=/u);
   assert.deepEqual(readFileSync(input), before);
   assert.ok(readFileSync(result.replyTemplate, 'utf8').length > 0);

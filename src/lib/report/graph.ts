@@ -1,51 +1,183 @@
-import type { ReportText, ResearchReport } from '../../application/report.js';
+import type {
+  ReportEdge,
+  ReportNode,
+  ReportText,
+  ResearchReport,
+} from '../../application/report.js';
 import { escape, localized, refs, ui } from './text.js';
 
-// Visual conventions follow Platform's LifeCycleModels view: primary title bars,
-// 6px node corners, left/right IO groups and 8px square connection endpoints.
-// These are presentation endpoints, not inferred canonical exchange/port identities.
-export function graph(model: NonNullable<ResearchReport['model']>): string {
-  const positions = new Map(
-    model.nodes.map((n, i) => [n.id, { x: 30 + (i % 3) * 355, y: 45 + Math.floor(i / 3) * 250 }]),
+type Model = NonNullable<ResearchReport['model']>;
+type LayoutNode = ReportNode & {
+  incoming: LayoutEdge[];
+  outgoing: LayoutEdge[];
+  depth: number;
+  x: number;
+  y: number;
+  height: number;
+};
+type LayoutEdge = ReportEdge & { source: LayoutNode; target: LayoutNode };
+
+const NODE_WIDTH = 236;
+const COLUMN_GAP = 98;
+const ROW_GAP = 32;
+const MARGIN = 24;
+const MAX_PREVIEW_FLOWS = 4;
+
+function layout(model: Model) {
+  const nodes = new Map<string, LayoutNode>(
+    model.nodes.map((node) => [
+      node.id,
+      {
+        ...node,
+        incoming: [],
+        outgoing: [],
+        depth: 0,
+        x: 0,
+        y: 0,
+        height: 0,
+      },
+    ]),
   );
-  const height = Math.ceil(model.nodes.length / 3) * 250 + 10;
-  const width = Math.min(3, model.nodes.length) * 355 - 65;
-  const edges = model.edges
-    .map((edge, i) => {
-      const a = positions.get(edge.from)!,
-        b = positions.get(edge.to)!;
-      const x1 = a.x + 230,
-        y1 = a.y + 115,
-        x2 = b.x,
-        y2 = b.y + 115;
-      const middle = (x1 + x2) / 2;
-      const d =
-        edge.from === edge.to
-          ? `M ${x1} ${y1} H ${x1 + 20} V ${a.y - 22} H ${a.x - 18} V ${y2} H ${x2}`
-          : `M ${x1} ${y1} H ${middle} V ${y2} H ${x2}`;
-      const labelX = edge.from === edge.to ? a.x + 65 : middle - 48;
-      const labelY = edge.from === edge.to ? a.y - 42 : (y1 + y2) / 2 - 44;
-      const quantity =
-        edge.amount === undefined && edge.unit === undefined
-          ? ''
-          : `${escape(edge.amount ?? '—')} ${escape(edge.unit ?? '')}`;
-      return `<a href="#edge-${edge.id}" data-graph-link="edge-${edge.id}" data-label-en="Connection ${i + 1}" data-label-zh="连接 ${i + 1}"><path class="edge-hit" d="${d}"/><path class="edge-path" marker-end="url(#arrow)" d="${d}"/><foreignObject x="${labelX}" y="${labelY}" width="96" height="40"><div xmlns="http://www.w3.org/1999/xhtml" class="edge-chip"><span>${String(i + 1).padStart(2, '0')}</span>${quantity}</div></foreignObject></a>`;
+  const edges = model.edges.map((edge) => {
+    const source = nodes.get(edge.from)!;
+    const target = nodes.get(edge.to)!;
+    const connection = { ...edge, source, target };
+    source.outgoing.push(connection);
+    target.incoming.push(connection);
+    return connection;
+  });
+  const pending = new Set(nodes.values());
+  const indegree = new Map(
+    [...nodes.values()].map((node) => [
+      node,
+      node.incoming.filter((edge) => edge.source !== node).length,
+    ]),
+  );
+  const queue = [...pending].filter((node) => indegree.get(node) === 0);
+  const columns: LayoutNode[][] = [];
+  for (let cursor = 0; pending.size;) {
+    // Start a remaining cycle in input order. For layout only, its closing edge routes back.
+    const node = cursor < queue.length ? queue[cursor++]! : pending.values().next().value!;
+    pending.delete(node);
+    (columns[node.depth] ??= []).push(node);
+    for (const { target } of node.outgoing) {
+      if (!pending.has(target)) continue;
+      target.depth = Math.max(target.depth, node.depth + 1);
+      indegree.set(target, indegree.get(target)! - 1);
+      if (indegree.get(target) === 0) queue.push(target);
+    }
+  }
+
+  for (const node of nodes.values()) {
+    const rows = Math.min(MAX_PREVIEW_FLOWS, Math.max(node.inputs.length, node.outputs.length));
+    const more = Math.max(node.inputs.length, node.outputs.length) > MAX_PREVIEW_FLOWS;
+    node.height = Math.max(
+      118,
+      86 + (rows + Number(more)) * 17,
+      65 + 15 * Math.max(node.incoming.length, node.outgoing.length),
+    );
+  }
+  const routedEdges = edges.filter((edge) => edge.target.depth !== edge.source.depth + 1);
+  const lanes = new Map(routedEdges.map((edge, index) => [edge, MARGIN + index * 14]));
+  const top = MARGIN + routedEdges.length * 14;
+  const columnHeights = columns.map(
+    (column) =>
+      column.reduce((height, node) => height + node.height, 0) + ROW_GAP * (column.length - 1),
+  );
+  const bodyHeight = Math.max(...columnHeights, 158);
+  for (const [index, column] of columns.entries()) {
+    let y = top + (bodyHeight - columnHeights[index]) / 2;
+    for (const node of column) {
+      node.x = MARGIN + index * (NODE_WIDTH + COLUMN_GAP);
+      node.y = y;
+      y += node.height + ROW_GAP;
+    }
+  }
+  return {
+    nodes: [...nodes.values()],
+    edges,
+    lanes,
+    width: 2 * MARGIN + columns.length * NODE_WIDTH + (columns.length - 1) * COLUMN_GAP,
+    height: top + bodyHeight + MARGIN,
+  };
+}
+
+function portY(node: LayoutNode, links: LayoutEdge[], edge: LayoutEdge) {
+  return node.y + 34 + (node.height - 40) * ((links.indexOf(edge) + 1) / (links.length + 1));
+}
+
+export function graph(model: Model): string {
+  const { nodes, edges, lanes, width, height } = layout(model);
+  const object = (x: number, y: number, w: number, h: number, className: string, content: string) =>
+    `<foreignObject x="${x}" y="${y}" width="${w}" height="${h}"><div xmlns="http://www.w3.org/1999/xhtml" class="${className}">${content}</div></foreignObject>`;
+  const port = (x: number, y: number) =>
+    `<rect class="node-port" x="${x - 3}" y="${y - 3}" width="6" height="6" rx="1"/>`;
+  const flows = (label: string, values: ReportText[]) =>
+    `<div><strong>${label}</strong>${
+      values.length
+        ? values
+            .slice(0, MAX_PREVIEW_FLOWS)
+            .map((value) => `<div class="network-flow">${localized(value)}</div>`)
+            .join('')
+        : '<span class="port-empty">—</span>'
+    }${
+      values.length > MAX_PREVIEW_FLOWS
+        ? `<div class="network-flow">+${values.length - MAX_PREVIEW_FLOWS}</div>`
+        : ''
+    }</div>`;
+
+  const links = edges
+    .map((edge, index) => {
+      const { source, target } = edge;
+      const x1 = source.x + NODE_WIDTH;
+      const x2 = target.x;
+      const y1 = portY(source, source.outgoing, edge);
+      const y2 = portY(target, target.incoming, edge);
+      const lane = lanes.get(edge);
+      const mid = (x1 + x2) / 2;
+      const route =
+        lane === undefined
+          ? `M ${x1} ${y1} C ${mid} ${y1} ${mid} ${y2} ${x2} ${y2}`
+          : `M ${x1} ${y1} H ${x1 + 14} V ${lane} H ${x2 - 14} V ${y2} H ${x2}`;
+      const quantity = [edge.amount, edge.unit]
+        .filter((value) => value !== undefined)
+        .map(escape)
+        .join(' ');
+      const label = [String(index + 1).padStart(2, '0'), quantity].filter(Boolean).join(' · ');
+      const name = localized(edge.label);
+      return `<a class="network-edge" href="#edge-${edge.id}" data-graph-link="edge-${edge.id}"><path class="edge-hit" d="${route}"/><path class="edge-path" d="${route}" marker-end="url(#network-arrow)"/>${object(mid - 44, (lane ?? (y1 + y2) / 2) - 26, 88, 24, 'network-edge-label', `<span class="network-visually-hidden">${name}</span><span aria-hidden="true">${label}</span>`)}</a>`;
     })
     .join('');
-  const preview = (items: ReportText[]) =>
-    items.length
-      ? items
-          .slice(0, 2)
-          .map((item) => `<div class="port-preview">${localized(item)}</div>`)
-          .join('')
-      : '<span class="port-empty">—</span>';
-  const nodes = model.nodes
-    .map((n) => {
-      const { x, y } = positions.get(n.id)!;
-      return `<a class="graph-node ${n.kind}" href="#node-${n.id}" data-graph-link="node-${n.id}"><rect class="node-body" x="${x}" y="${y}" width="230" height="188" rx="6"/><path class="node-title-bar" d="M ${x + 6} ${y} H ${x + 224} Q ${x + 230} ${y} ${x + 230} ${y + 6} V ${y + 42} H ${x} V ${y + 6} Q ${x} ${y} ${x + 6} ${y}"/><foreignObject x="${x + 10}" y="${y + 6}" width="210" height="32"><div xmlns="http://www.w3.org/1999/xhtml" class="node-label">${localized(n.label)}</div></foreignObject><foreignObject x="${x + 12}" y="${y + 54}" width="206" height="124"><div xmlns="http://www.w3.org/1999/xhtml" class="node-content"><span class="node-kind">${ui(n.kind === 'background' ? 'Background' : 'Foreground', n.kind === 'background' ? '背景过程' : '前景过程')}</span><div class="node-io"><div><strong>${ui('Input', '输入')}</strong>${preview(n.inputs)}</div><div><strong>${ui('Output', '输出')}</strong>${preview(n.outputs)}</div></div></div></foreignObject><rect class="node-port" x="${x - 4}" y="${y + 111}" width="8" height="8"/><rect class="node-port" x="${x + 226}" y="${y + 111}" width="8" height="8"/></a>`;
+
+  const cards = nodes
+    .map((node) => {
+      const { x, y, id, height: size } = node;
+      const background = node.kind === 'background';
+      const title = object(
+        x + 12,
+        y,
+        NODE_WIDTH - 24,
+        36,
+        'network-node-title',
+        localized(node.label),
+      );
+      const kind = background
+        ? ui('Background process', '背景过程')
+        : ui('Foreground process', '前景过程');
+      const content = `<div class="network-node-kind">${kind}</div><div class="network-node-flows">${flows(ui('Inputs', '输入流'), node.inputs)}${flows(ui('Outputs', '输出流'), node.outputs)}</div>`;
+      const ports = [
+        ...node.incoming.map((edge) => port(x, portY(node, node.incoming, edge))),
+        ...node.outgoing.map((edge) => port(x + NODE_WIDTH, portY(node, node.outgoing, edge))),
+      ].join('');
+      return `<a class="graph-node network-node ${background ? 'background' : 'foreground'}" href="#node-${id}" data-graph-link="node-${id}"><rect class="node-body" x="${x}" y="${y}" width="${NODE_WIDTH}" height="${size}" rx="6"/><path class="node-title-bar" d="M ${x + 6} ${y} H ${x + NODE_WIDTH - 6} Q ${x + NODE_WIDTH} ${y} ${x + NODE_WIDTH} ${y + 6} V ${y + 36} H ${x} V ${y + 6} Q ${x} ${y} ${x + 6} ${y}"/>${title}${object(x + 12, y + 39, NODE_WIDTH - 24, size - 43, 'network-node-content', content)}${ports}</a>`;
     })
     .join('');
+
+  const panel = `<div class="model-panel network-panel"><div class="model-panel-head"><span class="network-title">${ui('Process network', '过程网络')}</span><div class="network-controls" hidden><button type="button" data-zoom="out" data-label-en="Zoom out" data-label-zh="缩小">−</button><output class="network-zoom">100%</output><button type="button" data-zoom="in" data-label-en="Zoom in" data-label-zh="放大">+</button><button type="button" data-zoom="fit">${ui('Fit', '适应画布')}</button><button type="button" class="network-expand"><span class="network-open">${ui('Full screen', '全屏')}</span><span class="network-close" hidden>${ui('Exit full screen', '退出全屏')}</span></button></div></div><div class="network-workspace"><div class="graph-scroll network-viewport" tabindex="0" data-label-en="Process graph" data-label-zh="过程图"><svg id="model-svg" class="network-svg" role="group" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><defs><marker id="network-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#795887"/></marker></defs>${links}${cards}</svg></div><aside class="network-inspector" hidden data-label-en="Selected model details" data-label-zh="所选模型详情"></aside></div><p class="legend network-legend">${ui('Select a process or connection to view details. Drag the canvas to pan.', '选择过程或连接查看详情。拖动画布可平移。')}</p></div>`;
   const portList = (label: ReportText, items: ReportText[]) =>
     `<div class="io"><strong>${localized(label)}</strong>${items.length ? `<ul>${items.map((item) => `<li>${localized(item)}</li>`).join('')}</ul>` : '<span class="port-empty">—</span>'}</div>`;
-  return `<div class="model-panel"><div class="model-panel-head"><span class="model-caption">${ui('PROCESS NETWORK', '过程网络')}</span><div class="graph-controls"><label for="graph-zoom">${ui('Zoom', '缩放')}</label><input id="graph-zoom" type="range" min="50" max="180" value="100"><button id="graph-fit">${ui('Fit', '适应宽度')}</button></div></div><div class="graph-scroll"><svg id="model-svg" class="model-svg" viewBox="0 0 ${width} ${height}" role="group" data-label-en="Model connections" data-label-zh="模型连接"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5C246A"/></marker></defs>${edges}${nodes}</svg></div><p class="legend">${ui('Select a process or connection to read its details. Background processes stay aggregated.', '点击过程或连接查看详情，背景过程保持聚合。')}</p></div><div class="details-heading">${ui('Process details', '过程详情')}<span>${model.nodes.length}</span></div><div class="details-grid">${model.nodes.map((n, i) => `<article class="detail" id="node-${n.id}" tabindex="-1"><div class="detail-kicker"><span>${String(i + 1).padStart(2, '0')}</span>${ui(n.kind === 'background' ? 'Background' : 'Foreground', n.kind === 'background' ? '背景过程' : '前景过程')}</div><h3>${localized(n.label)}</h3><div class="detail-id">${n.id}</div>${n.details ? `<p>${localized(n.details)}</p>` : ''}<div class="detail-io">${portList({ en: 'Inputs', zh: '输入' }, n.inputs)}${portList({ en: 'Outputs', zh: '输出' }, n.outputs)}</div>${refs(n.sources)}</article>`).join('')}</div><div class="connection-list">${model.edges.map((e, i) => `<article class="detail connection" id="edge-${e.id}" tabindex="-1"><span class="connection-number">${String(i + 1).padStart(2, '0')}</span><div><h3>${localized(e.label)}</h3><div class="detail-id"><a href="#node-${e.from}">${e.from}</a> → <a href="#node-${e.to}">${e.to}</a></div>${e.details ? `<p>${localized(e.details)}</p>` : ''}</div>${e.amount === undefined && e.unit === undefined ? '' : `<p class="connection-amount">${escape(e.amount ?? '—')} ${escape(e.unit ?? '')}</p>`}</article>`).join('')}</div>`;
+  return (
+    panel +
+    `<div class="details-heading">${ui('Process details', '过程详情')}<span>${model.nodes.length}</span></div><div class="details-grid">${model.nodes.map((n, i) => `<article class="detail" id="node-${n.id}" tabindex="-1"><div class="detail-kicker"><span>${String(i + 1).padStart(2, '0')}</span>${ui(n.kind === 'background' ? 'Background' : 'Foreground', n.kind === 'background' ? '背景过程' : '前景过程')}</div><h3>${localized(n.label)}</h3><div class="detail-id">${n.id}</div>${n.details ? `<p>${localized(n.details)}</p>` : ''}<div class="detail-io">${portList({ en: 'Inputs', zh: '输入' }, n.inputs)}${portList({ en: 'Outputs', zh: '输出' }, n.outputs)}</div>${refs(n.sources)}</article>`).join('')}</div><div class="connection-list">${model.edges.map((e, i) => `<article class="detail connection" id="edge-${e.id}" tabindex="-1"><span class="connection-number">${String(i + 1).padStart(2, '0')}</span><div><h3>${localized(e.label)}</h3><div class="detail-id"><a href="#node-${e.from}">${e.from}</a> → <a href="#node-${e.to}">${e.to}</a></div>${e.details ? `<p>${localized(e.details)}</p>` : ''}</div>${e.amount === undefined && e.unit === undefined ? '' : `<p class="connection-amount">${escape(e.amount ?? '—')} ${escape(e.unit ?? '')}</p>`}</article>`).join('')}</div>`
+  );
 }

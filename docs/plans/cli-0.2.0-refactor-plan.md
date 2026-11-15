@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
-lastReviewedAt: 2026-11-13
-lastReviewedCommit: bd1de97b723620921cf76de06d2abb0b4bf44174
-lastReviewedNote: 'Reviewed Process annual projection evidence, independent reference inputs and native validation coverage; existing ownership, release and mutation safeguards remain unchanged.'
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: a67e3733ee4ecb60951abe02e79af426b7965f40
+lastReviewedNote: 'Reviewed the local report renderer implementation and validation boundaries.'
 ---
 
 # CLI 0.2.0 重构实施计划
@@ -281,4 +281,4 @@ Flow 参考属性的本地业务约束由同一纯校验器承载：内部 ID �
 
 ## 本地研究报告呈现
 
-`report render` 是独立 JSON 到 HTML 的原子呈现操作。Study Skill 负责组织报告内容和调用；报告内嵌 Platform 风格模型、单语言中英切换、表格交互和完整打印布局；默认中文，阅读和打印均不同时展示两种语言。验证覆盖输入结构与引用、文本转义及无联网、输出覆盖与输入保护、实际浏览器交互/PDF、安装包资产，以及不改动已有线上签名报告。完整 Agent 科学研究评估与四平台发布验收仍分别记录，不由呈现测试推定。
+`report render` 是独立 JSON 到 HTML 的原子呈现操作。Study Skill 负责组织报告内容和调用；报告内嵌品牌封面、主要结果、可探索的模型、输入提供的分析图表及打印布局。默认中文，阅读和打印均一次显示一种语言。验证覆盖输入结构与引用、文本转义及无联网、输出覆盖与输入保护、实际浏览器交互/PDF、安装包资产，以及不改动已有线上签名报告。完整 Agent 科学研究评估与四平台发布验收仍分别记录，不由呈现测试推定。

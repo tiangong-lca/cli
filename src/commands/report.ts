@@ -43,13 +43,17 @@ export function runReportCommand(args: string[], write: ReportPort): CommandIO {
           sources: '[{id,title,url?,note?}]',
           model:
             '{nodes:[{id,label,kind?,details?,inputs?,outputs?,sources?}],edges:[{id,from,to,label,amount?,unit?,details?}]}',
-          results: '[{label,value,unit,method?}]',
+          results: '[{label,value,unit,method?,summary?:boolean}]',
+          analysis: {
+            contributions: '[{title,unit,total?,items:[{label,value,nodeId?}]}]',
+            sensitivity: '[{title,unit,baseline,scenarios:[{label,value,description?}]}]',
+          },
           limitations: '[text]',
         },
         defaults:
-          'Only title is required. Text is escaped plain text; no HTML or Markdown execution. Untranslated text remains visible with its language label. No automatic links/providers or per-node contribution inference.',
+          'Only title is required. Text is escaped plain text. A single result appears in the overview unless summary is false; with multiple results, mark summary:true on the principal results. Analysis is optional and displays supplied values only.',
         output:
-          'Self-contained HTML with single-language Chinese/English switching, graph detail links, table filtering, and complete print layout. Print / Save as PDF uses the reader’s browser; this command writes HTML only.',
+          'Self-contained branded HTML with Chinese/English switching, an interactive model viewer, optional analysis charts, filtered tables, and a print layout. Print / Save as PDF uses the reader’s browser.',
         example: 'tiangong-lca report render --input report.json --output report.html --json',
         exampleInput: {
           title: { en: 'Product study', zh: '产品研究' },

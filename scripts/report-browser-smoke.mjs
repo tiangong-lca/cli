@@ -40,22 +40,47 @@ try {
   const page = await context.newPage();
   page.on('pageerror', (error) => failures.push(error.message));
   page.on('request', (request) => {
-    if (!request.url().startsWith('file:')) requests.push(request.url());
+    if (!/^(file|data):/u.test(request.url())) requests.push(request.url());
   });
   await page.goto(pathToFileURL(html).href);
   assert.equal(await page.locator('html').getAttribute('data-interactive'), 'ready');
   assert.equal(await page.locator('#model-svg .graph-node').count(), 3);
-  await page.locator('[data-graph-link="node-grid"]').click();
+  await page.locator('#model-svg [data-graph-link="node-grid"]').click();
   assert.match(await page.locator('#node-grid').getAttribute('class'), /selected/u);
   await page.locator('[data-graph-link="edge-power"]').click();
   assert.match(await page.locator('#edge-power').getAttribute('class'), /selected/u);
   assert.ok(!(await page.locator('#node-grid').getAttribute('class')).includes('selected'));
-  await page.locator('#graph-zoom').focus();
-  await page.locator('#graph-zoom').press('End');
-  await page.locator('#graph-zoom').dispatchEvent('input');
-  assert.equal(await page.locator('#model-svg').evaluate((el) => el.style.width), '180%');
-  await page.locator('#graph-fit').click();
-  assert.equal(await page.locator('#model-svg').evaluate((el) => el.style.width), '100%');
+  assert.equal(await page.locator('.network-inspector h3').innerText(), '电力');
+  assert.equal(
+    await page.locator('.network-inspector .detail-id [lang=en]').first().isVisible(),
+    false,
+  );
+  await page.locator('#contribution-1 [data-graph-link="node-material"]').click();
+  assert.equal(await page.locator('.network-inspector h3').innerText(), '材料准备');
+  assert.equal(await page.locator('#sensitivity-1 .analysis-row').count(), 2);
+  assert.equal(await page.locator('.result-summary .result-tile').count(), 1);
+  assert.equal(
+    await page
+      .locator('img')
+      .evaluateAll(
+        (images) =>
+          images.length === 2 && images.every((image) => image.complete && image.naturalWidth > 0),
+      ),
+    true,
+  );
+  await page.locator('.network-expand').click();
+  assert.equal(await page.locator('.network-dialog').isVisible(), true);
+  const firstWidth = await page
+    .locator('#model-svg')
+    .evaluate((el) => el.getBoundingClientRect().width);
+  await page.locator('[data-zoom="in"]').click();
+  assert.ok(
+    (await page.locator('#model-svg').evaluate((el) => el.getBoundingClientRect().width)) >
+      firstWidth,
+  );
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.network-dialog').isVisible(), false);
+  await page.locator('[data-zoom="fit"]').click();
   await page.screenshot({ path: path.join(directory, 'chinese.png'), fullPage: true });
   await page.locator('#report-language').selectOption('en');
   assert.equal(await page.locator('h1 [lang=zh]').isVisible(), false);
@@ -82,9 +107,9 @@ try {
       .locator('.node-title-bar')
       .first()
       .evaluate((el) => getComputedStyle(el).fill),
-    'rgb(92, 36, 106)',
+    'rgb(121, 88, 135)',
   );
-  assert.equal(await page.locator('.node-port').count(), 6);
+  assert.equal(await page.locator('.node-port').count(), 4);
   const rows = page.locator('#section-2 tbody tr');
   await page.locator('#section-2 input').fill('electricity');
   assert.equal(await rows.nth(1).isVisible(), false);
@@ -114,7 +139,7 @@ try {
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     true,
   );
-  await page.locator('#graph-fit').click();
+  await page.locator('[data-zoom="fit"]').click();
   assert.equal(
     await page.locator('.graph-scroll').evaluate((el) => el.scrollWidth <= el.clientWidth),
     true,

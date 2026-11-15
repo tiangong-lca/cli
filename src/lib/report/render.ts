@@ -2,12 +2,20 @@ import { createHash } from 'node:crypto';
 import type { ReportCell, ReportText, ResearchReport } from '../../application/report.js';
 import { REPORT_BROWSER } from './browser.js';
 import { REPORT_CSS } from './styles.js';
+import { reportBrand } from './brand.js';
+import { renderContributions, renderSensitivity } from './analysis.js';
 
 import { escape, localized, ui, refs } from './text.js';
 import { graph } from './graph.js';
 
 function table(columns: ReportText[], rows: ReportCell[][]): string {
   return `<div class="table-wrap" data-table><div class="table-controls"><label>${ui('Filter rows', '筛选表格')}<input type="search" data-label-en="Filter rows" data-label-zh="筛选表格"></label><span role="status">${rows.length} / ${rows.length}</span></div><table><thead><tr>${columns.map((c) => `<th scope="col">${localized(c)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td${typeof cell === 'number' ? ' class="numeric"' : ''}>${typeof cell === 'number' ? escape(cell) : localized(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+function resultsOverview(report: ResearchReport): string {
+  const overview = report.results.filter((item) => item.summary ?? report.results.length === 1);
+  if (!overview.length) return '';
+  return `<section class="result-summary" data-label-en="Key results" data-label-zh="主要结果">${overview.map((item) => `<article class="result-tile"><div class="result-label">${localized(item.label)}</div><div class="result-number">${escape(item.value)} <span>${escape(item.unit)}</span></div></article>`).join('')}</section>`;
 }
 /** A derived presentation of supplied facts, not an official signed Study export. */
 export function renderResearchReport(report: ResearchReport): string {
@@ -36,6 +44,18 @@ export function renderResearchReport(report: ResearchReport): string {
         report.results.map((r) => [r.label, r.value, r.unit, r.method ?? '—']),
       ),
     });
+  for (const [i, block] of (report.analysis?.contributions ?? []).entries())
+    sections.push({
+      id: `contribution-${i + 1}`,
+      title: block.title,
+      html: renderContributions(block),
+    });
+  for (const [i, block] of (report.analysis?.sensitivity ?? []).entries())
+    sections.push({
+      id: `sensitivity-${i + 1}`,
+      title: block.title,
+      html: renderSensitivity(block),
+    });
   if (report.limitations.length)
     sections.push({
       id: 'limitations',
@@ -49,13 +69,14 @@ export function renderResearchReport(report: ResearchReport): string {
       html: `<ol class="sources">${report.sources.map((s) => `<li id="source-${s.id}"><strong>[${s.id}] ${localized(s.title)}</strong>${s.note ? `<p>${localized(s.note)}</p>` : ''}${s.url ? `<a class="source-url" href="${escape(s.url)}" target="_blank" rel="noopener noreferrer">${escape(s.url)}</a>` : ''}</li>`).join('')}</ol>`,
     });
   const scriptHash = createHash('sha256').update(REPORT_BROWSER).digest('base64');
+  const brand = reportBrand();
   const title =
     typeof report.title === 'string'
       ? report.title
       : (report.title[report.language] ?? Object.values(report.title)[0]);
   return `<!doctype html>
-<html lang="${report.language === 'zh' ? 'zh' : 'en'}" data-language="${report.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-${scriptHash}'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; connect-src 'none'"><title>${escape(title)}</title><style>${REPORT_CSS}</style></head><body>
-<div class="toolbar"><span class="brand"><span class="brand-mark" aria-hidden="true">T</span>TIANGONG <span class="brand-divider">/</span> ${ui('Research report', '研究报告')}</span><label for="report-language">${ui('Language', '语言')}</label><select id="report-language">${[
+<html lang="${report.language === 'zh' ? 'zh' : 'en'}" data-language="${report.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; script-src 'sha256-${scriptHash}'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; connect-src 'none'"><title>${escape(title)}</title><style>${REPORT_CSS}</style></head><body>
+<div class="toolbar"><span class="brand"><img class="official-logo" src="${brand.logo}" alt="">TIANGONG LCA <span class="brand-divider">/</span> ${ui('Research report', '研究报告')}</span><label for="report-language">${ui('Language', '语言')}</label><select id="report-language">${[
     ['zh', '中文'],
     ['en', 'English'],
   ]
@@ -66,5 +87,5 @@ export function renderResearchReport(report: ResearchReport): string {
     .join(
       '',
     )}</select><button id="report-print" class="primary-button">${ui('Print / Save as PDF', '打印 / 导出 PDF')}</button></div>
-<div class="page"><header class="hero"><div class="eyebrow">${ui('LIFE CYCLE ASSESSMENT', '生命周期评价')}</div><h1>${localized(report.title)}</h1>${report.subtitle ? `<p class="subtitle">${localized(report.subtitle)}</p>` : ''}</header><div class="layout"><nav class="toc" data-label-en="Contents" data-label-zh="目录"><div class="toc-title">${ui('CONTENTS', '报告目录')}</div>${sections.map((s, i) => `<a href="#${s.id}">${String(i + 1).padStart(2, '0')} · ${localized(s.title)}</a>`).join('')}</nav><main>${sections.map((s, i) => `<section id="${s.id}" class="section"><div class="section-number">${String(i + 1).padStart(2, '0')}</div><h2>${localized(s.title)}</h2>${s.html}</section>`).join('')}<footer class="footer"><span class="footer-brand">TIANGONG</span>${ui('The HTML works offline. Printed copies include all detail cards and table rows in the selected language mode.', 'HTML 支持离线阅读。打印包含全部详情和表格行，沿用所选语言模式。')}</footer></main></div></div><script>${REPORT_BROWSER}</script></body></html>\n`;
+<div class="page"><header class="hero"><div class="cover-copy"><div class="eyebrow">${ui('LIFE CYCLE ASSESSMENT', '生命周期评价')}</div><h1>${localized(report.title)}</h1>${report.subtitle ? `<p class="subtitle">${localized(report.subtitle)}</p>` : ''}</div><img class="cover-art" src="${brand.cover}" alt=""></header>${resultsOverview(report)}${sections.length ? `<div class="layout"><nav class="toc" data-label-en="Contents" data-label-zh="目录"><div class="toc-title">${ui('CONTENTS', '报告目录')}</div>${sections.map((s, i) => `<a href="#${s.id}">${String(i + 1).padStart(2, '0')} · ${localized(s.title)}</a>`).join('')}</nav><main>${sections.map((s) => `<section id="${s.id}" class="section"><h2>${localized(s.title)}</h2>${s.html}</section>`).join('')}</main></div>` : ''}</div><script>${REPORT_BROWSER}</script></body></html>\n`;
 }
