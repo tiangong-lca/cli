@@ -39,8 +39,8 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-14
-lastReviewedCommit: 11d71916c1cf9332ed4beee023a5dca6ba0589c1
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: 4756dd3b59b1b7db53bd5c33d1e89ec38844e6ad
 lastReviewedNote: 'Reviewed Process annual projection evidence, independent reference inputs and native validation coverage; existing ownership, release and mutation safeguards remain unchanged.'
 related:
   - .docpact/config.yaml

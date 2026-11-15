@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-14
-lastReviewedCommit: 11d71916c1cf9332ed4beee023a5dca6ba0589c1
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: 4756dd3b59b1b7db53bd5c33d1e89ec38844e6ad
 lastReviewedNote: 'Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged.'
 related:
   - ../../AGENTS.md
@@ -96,6 +96,8 @@ Retired business roots and generic Dataset routes reject with exit 2, empty stdo
 `test/fixtures/retired-cli-modules.json` identifies removed workflow module stems. The package contract rejects their JavaScript, maps and declarations in the actual tarball. Removed workflow-only tests and fixtures are not current contracts. Tests for current validation, science, authorization and recovery stay with their actual owners; test coverage does not prove production reachability or documentation accuracy.
 
 Contract extraction must preserve actual SDK/schema/methodology/rule content. Current `dataset <type> contract` has no retired context-pack or file-writer workflow. Field validation reports missing annual evidence without filling quantities from reference amounts or default units, and never uses historical trace metadata to waive a blocker. Malformed values and multilingual paths remain diagnosable on the unchanged payload.
+
+Multilingual validation projects the SDK's `duplicate_language_entry` at the exact repeated entry. Exercise public validation, native create/save, package QA, and ordinary maintenance apply with a packed SDK. Maintenance checks pending desired content before dispatch and preserves historical before-images and recovery hashes. Model projection appends provenance to an existing same-language comment and preserves its prose.
 
 ## Mutation and scientific proof
 

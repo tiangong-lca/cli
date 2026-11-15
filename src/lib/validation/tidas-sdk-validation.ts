@@ -3,7 +3,10 @@ export type SafeParseIssue = {
   message?: string;
   path?: Array<string | number>;
   errors?: SafeParseIssue[][];
+  params?: Record<string, unknown>;
 };
+
+export const DUPLICATE_LANGUAGE_ENTRY = 'duplicate_language_entry';
 
 export type SafeParseResult =
   | {
@@ -61,6 +64,29 @@ function issueArray(value: unknown): SafeParseIssue[] {
   return Array.isArray(value) ? value.filter(isIssueLike) : [];
 }
 
+export function isDuplicateLanguageIssue(issue: SafeParseIssue): boolean {
+  return (
+    issue.code === DUPLICATE_LANGUAGE_ENTRY ||
+    (issue.code === 'custom' && issue.params?.validationCode === DUPLICATE_LANGUAGE_ENTRY)
+  );
+}
+
+function collectDuplicateLanguageIssues(
+  issues: SafeParseIssue[],
+  parent: Array<string | number> = [],
+  duplicates = new Map<string, SafeParseIssue>(),
+): Map<string, SafeParseIssue> {
+  for (const issue of issues) {
+    const path = [...parent, ...(issue.path ?? [])];
+    if (isDuplicateLanguageIssue(issue)) {
+      duplicates.set(JSON.stringify(path), { ...issue, path, code: DUPLICATE_LANGUAGE_ENTRY });
+    }
+    // The paths inside a Zod union are relative to its enclosing issue.
+    if (issue.errors) collectDuplicateLanguageIssues(issue.errors.flat(), path, duplicates);
+  }
+  return duplicates;
+}
+
 export function validationSucceeded(result: unknown): boolean {
   return isRecord(result) && result.success === true;
 }
@@ -71,12 +97,18 @@ export function validationIssues(result: unknown): SafeParseIssue[] {
   }
 
   const error = isRecord(result.error) ? result.error : null;
-  const errorIssues = issueArray(error?.issues);
-  if (errorIssues.length > 0) {
-    return errorIssues;
-  }
-
-  return issueArray(result.validationIssues);
+  const rawIssues = issueArray(error?.issues);
+  const issues = rawIssues.length > 0 ? rawIssues : issueArray(result.validationIssues);
+  const duplicates = collectDuplicateLanguageIssues(issues);
+  const otherIssues = issues.filter(
+    (issue) =>
+      !isDuplicateLanguageIssue(issue) &&
+      !(
+        issue.params?.jsonSchemaKeyword === 'uniqueItems' &&
+        duplicates.has(JSON.stringify([...(issue.path ?? []), '@xml:lang']))
+      ),
+  );
+  return [...otherIssues, ...duplicates.values()];
 }
 
 export function normalizeIssuePath(

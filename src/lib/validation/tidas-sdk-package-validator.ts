@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import {
+  DUPLICATE_LANGUAGE_ENTRY,
+  isDuplicateLanguageIssue,
   type SafeParseIssue,
   type SafeParseSchema,
   type SdkValidationFactory,
@@ -217,7 +219,7 @@ function createSchemaIssue(
 ): ValidationIssue {
   const location = toLocation(issue.path);
   return {
-    issue_code: 'schema_error',
+    issue_code: isDuplicateLanguageIssue(issue) ? DUPLICATE_LANGUAGE_ENTRY : 'schema_error',
     severity: 'error',
     category,
     file_path: filePath,
