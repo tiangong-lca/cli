@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: 67b7eef68ae3173f3d198aba692b9a2aaf0f2b84
-lastReviewedNote: 'CLI #506: reviewed the published SDK pin and CLI pack verification within the existing release setup.'
+lastReviewedCommit: 3218afff1081a0e97e7ab4be81e0720d0c1e5931
+lastReviewedNote: 'CLI #507 reviews 0.4.0 publication of exact Flow name admission and the frozen SDK 0.8.0 dependency.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

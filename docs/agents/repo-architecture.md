@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: ba06d3e375745e223a1f7143078bf0ee806afe64
-lastReviewedNote: 'Reviewed report input validation, bundled assets and the offline model viewer.'
+lastReviewedCommit: 3218afff1081a0e97e7ab4be81e0720d0c1e5931
+lastReviewedNote: 'CLI #507 reviews 0.4.0 publication of exact Flow name admission and the frozen SDK 0.8.0 dependency.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
