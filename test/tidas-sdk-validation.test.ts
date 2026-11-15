@@ -10,6 +10,21 @@ import {
   type SdkValidationFactory,
 } from '../src/lib/validation/tidas-sdk-validation.js';
 
+test('SDK issue projection keeps unlocated uniqueness diagnostics and expands a localized union finding', () => {
+  const unlocated = { code: 'custom', params: { jsonSchemaKeyword: 'uniqueItems' } };
+  const nested = {
+    code: 'custom',
+    path: [1, '@xml:lang'],
+    params: { validationCode: 'duplicate_language_entry' },
+  };
+  const union = { code: 'invalid_union', path: ['comments'], errors: [[nested]] };
+  assert.deepEqual(validationIssues({ error: { issues: [unlocated, union] } }), [
+    unlocated,
+    union,
+    { ...nested, code: 'duplicate_language_entry', path: ['comments', 1, '@xml:lang'] },
+  ]);
+});
+
 test('tidas sdk validation helpers keep schema success on the fast path', () => {
   let factoryCalls = 0;
   const result = validateSchemaWithDeepFallback(

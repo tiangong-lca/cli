@@ -357,6 +357,37 @@ test('write qualification runs real local rules and existing remote reference ad
   );
 });
 
+test('native dataset writer rejects SDK duplicate language findings before dispatch', async (t) => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'dataset-duplicate-language-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const duplicate = structuredClone(content);
+  Object.assign(duplicate.contactDataSet.contactInformation.dataSetInformation, {
+    'common:name': [
+      { '@xml:lang': 'en', '#text': 'First name' },
+      { '@xml:lang': 'en', '#text': 'Second name' },
+    ],
+  });
+  const finding = await datasetValidation('contact', duplicate, ['schema']);
+  assert.equal(finding.status, 'failed');
+  assert.ok(Array.isArray(finding.issues));
+  assert.ok(finding.issues.some((issue) => issue.code === 'duplicate_language_entry'));
+  const writer = datasetWriter(
+    env,
+    async (url) => {
+      if (isSupabaseAuthTokenUrl(url)) return makeSupabaseAuthResponse({ userId: actor });
+      assert.match(url, /\/auth\/v1\/user$/u, 'only identity reads may run');
+      return new Response(JSON.stringify({ id: actor }), {
+        headers: { 'content-type': 'application/json' },
+      });
+    },
+    directory,
+  );
+  await assert.rejects(
+    writer('contact', 'create', { ...request, content: duplicate }, false),
+    /failed or incomplete local checks/u,
+  );
+});
+
 test('existing model save and draft delete retain distinct service semantics and disclose preflight-only content checks', async (t) => {
   const deleted = fixture(t, before);
   const intent = { ...request, expectedContent: before };

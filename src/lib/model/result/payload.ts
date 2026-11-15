@@ -514,13 +514,24 @@ export function buildResultingProcessPayload(options: {
   processInformation.dataSetInformation = dataInfo;
   dataInfo['common:UUID'] = options.processId;
   dataInfo.name = copyJson(options.sourceModelNameInfo);
-  const generalComment = ensureList<JsonObject>(dataInfo['common:generalComment']).filter(isRecord);
-  generalComment.push(
-    ...multilangFromText(
-      `Local ${options.role} resulting process generated from lifecycle model ${options.sourceModelId}; exchanges are aggregated from included processes with internal linked flows cancelled.`,
-      `本地为生命周期模型 ${options.sourceModelId} 生成的 ${options.role} resulting process；其 exchanges 由包含过程聚合并抵消内部连接 flow 后得到。`,
-    ),
+  const generalComment = [...ensureList<unknown>(dataInfo['common:generalComment'])];
+  const provenance = multilangFromText(
+    `Local ${options.role} resulting process generated from lifecycle model ${options.sourceModelId}; exchanges are aggregated from included processes with internal linked flows cancelled.`,
+    `本地为生命周期模型 ${options.sourceModelId} 生成的 ${options.role} resulting process；其 exchanges 由包含过程聚合并抵消内部连接 flow 后得到。`,
   );
+  for (const entry of provenance) {
+    const original = generalComment.find(
+      (item) =>
+        isRecord(item) &&
+        item['@xml:lang'] === entry['@xml:lang'] &&
+        typeof item['#text'] === 'string',
+    );
+    if (isRecord(original)) {
+      original['#text'] = `${original['#text']}\n\n${entry['#text']}`;
+    } else {
+      generalComment.push(entry);
+    }
+  }
   dataInfo['common:generalComment'] = generalComment;
 
   const quantitativeReference = isRecord(processInformation.quantitativeReference)
