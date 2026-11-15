@@ -158,6 +158,24 @@ test('renderer keeps facts and complete details in one deterministic offline esc
   );
 });
 
+test('report offers filtering for long tables and keeps short tables uncluttered', () => {
+  const inventory = Array.from({ length: 11 }, (_, i) => [`Material ${i + 1}`]);
+  const html = renderResearchReport(
+    parseResearchReport({
+      title: 'Materials',
+      sections: [
+        { title: 'Summary', table: { columns: ['Material'], rows: inventory.slice(0, 10) } },
+        { title: 'Inventory', table: { columns: ['Material'], rows: inventory } },
+      ],
+    }),
+  );
+  const [summary, details] = html.split('<section id="section-2"');
+  assert.doesNotMatch(summary, /<input type="search"/u);
+  assert.match(details, /<input type="search"[^>]+data-label-en="Filter rows"/u);
+  assert.match(details, /<span role="status">11 \/ 11<\/span>/u);
+  assert.match(details, /Material 11/u);
+});
+
 test('overview uses explicit result selection and charts require supplied analysis', () => {
   const baseline = { label: 'Baseline result', value: 4, unit: 'kg', method: 'Method detail' };
   const alternate = { label: 'Other result', value: 7, unit: 'kg' };
