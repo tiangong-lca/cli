@@ -22,7 +22,7 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: a67e3733ee4ecb60951abe02e79af426b7965f40
+lastReviewedCommit: 4756dd3b59b1b7db53bd5c33d1e89ec38844e6ad
 lastReviewedNote: 'Reviewed signed Model connection guidance and bounded port/amount/coefficient diagnostics; existing calculation, runtime selection and delivery contracts remain unchanged.'
 related:
   - ../AGENTS.md
