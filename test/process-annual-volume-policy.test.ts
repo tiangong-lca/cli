@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
-import { ProcessSchema } from '@tiangong-lca/tidas-sdk';
+import * as tidasSdk from '@tiangong-lca/tidas-sdk';
 import { runDatasetValidate } from '../src/lib/dataset/validate.js';
 import { sha256Json } from '../src/lib/platform/canonical-json-hash.js';
 import { collectProcessRequiredFieldIssues } from '../src/lib/validation/process-required-fields.js';
@@ -10,6 +12,7 @@ import {
   summarizeProcessPayloadValidation,
 } from '../src/lib/validation/process-payload-validation.js';
 import { resolveTidasSdkPath } from './helpers/tidas-sdk-path.js';
+import { createTidasSdkPackageValidator } from '../src/lib/validation/tidas-sdk-package-validator.js';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -55,7 +58,7 @@ test('legacy deferred trace cannot waive an unknown annual-volume evidence gap',
 test('dataset validation separates schema success from authoring evidence failure on exact content', async () => {
   const payload = fixture();
   sources(payload).annualSupplyOrProductionVolume = [];
-  assert.equal(ProcessSchema.safeParse(structuredClone(payload)).success, true);
+  assert.equal(tidasSdk.ProcessSchema.safeParse(structuredClone(payload)).success, true);
   const before = JSON.stringify(payload);
   const report = await runDatasetValidate({
     inputPath: 'annual-volume-fixture',
@@ -113,13 +116,67 @@ test('duplicate language values remain a multilingual failure without losing the
   assert.equal(row.status, 'invalid');
 });
 
+test('dataset validation reports an attributed duplicate in a free-text field once', async () => {
+  const payload = fixture();
+  const entries = [
+    { '@xml:lang': 'en', '#text': 'First paragraph', '@source': 'one' },
+    { '@xml:lang': 'en', '#text': 'First paragraph', '@source': 'one' },
+  ];
+  sources(payload).dataCutOffAndCompletenessPrinciples = entries;
+  const before = structuredClone(payload);
+  const options = { inputPath: 'localized-fixture', rawInput: [payload], type: 'process' };
+  const row = (await runDatasetValidate(options)).rows[0]!;
+  const path =
+    'processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.dataCutOffAndCompletenessPrinciples.1.@xml:lang';
+  const duplicate = row.issues.find((issue) => issue.code === 'duplicate_language_entry');
+  assert.equal(row.status, 'invalid');
+  assert.equal(duplicate?.path, path);
+  assert.equal(
+    row.issues.filter((issue) => issue.path.startsWith(path.replace('.@xml:lang', ''))).length,
+    1,
+  );
+  assert.deepEqual(row.validation_layers?.multilingual.issues, [duplicate]);
+  assert.deepEqual(payload, before);
+
+  entries[1]!['@xml:lang'] = 'de';
+  const control = (await runDatasetValidate(options)).rows[0]!;
+  assert.equal(control.status, 'valid');
+});
+
+test('package QA exposes the SDK duplicate finding with its exact location', (t) => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-localized-package-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  mkdirSync(path.join(dir, 'processes'));
+  const payload = fixture();
+  sources(payload).dataCutOffAndCompletenessPrinciples = [
+    { '@xml:lang': 'en', '#text': 'First paragraph' },
+    { '@xml:lang': 'en', '#text': 'Second paragraph' },
+  ];
+  writeFileSync(path.join(dir, 'processes', 'localized.json'), JSON.stringify(payload));
+  const validator = createTidasSdkPackageValidator(
+    tidasSdk as unknown as Parameters<typeof createTidasSdkPackageValidator>[0],
+    '@tiangong-lca/tidas-sdk',
+  );
+  assert.ok(validator);
+  const report = validator.validatePackageDir(dir);
+  assert.equal(report.ok, false);
+  assert.deepEqual(
+    report.issues
+      .filter((issue) => issue.issue_code === 'duplicate_language_entry')
+      .map((issue) => issue.location),
+    [
+      'processDataSet/modellingAndValidation/dataSourcesTreatmentAndRepresentativeness/dataCutOffAndCompletenessPrinciples/1/@xml:lang',
+    ],
+  );
+});
+
 test('classification records are not mistaken for one multilingual annual-volume field', async () => {
   const payload = fixture();
   const info = record(record(record(payload.processDataSet).processInformation).dataSetInformation);
   const classification = record(record(info.classificationInformation)['common:classification']);
   const classes = classification['common:class'] as JsonRecord[];
   for (const entry of classes) entry['@xml:lang'] = 'en';
-  assert.equal(ProcessSchema.safeParse(structuredClone(payload)).success, true);
+  assert.equal(tidasSdk.ProcessSchema.safeParse(structuredClone(payload)).success, true);
   const report = await runDatasetValidate({
     inputPath: 'annual-volume-fixture',
     rawInput: [payload],

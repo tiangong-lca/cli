@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-11-14
-lastReviewedCommit: 11d71916c1cf9332ed4beee023a5dca6ba0589c1
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: a67e3733ee4ecb60951abe02e79af426b7965f40
 lastReviewedNote: 'Reviewed Process annual projection evidence, independent reference inputs and native validation coverage; existing ownership, release and mutation safeguards remain unchanged.'
 related:
   - AGENTS.md

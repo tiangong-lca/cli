@@ -1,6 +1,7 @@
 // data-api-relations: contacts, flowproperties, flows, lciamethods, lifecyclemodels, processes, sources, unitgroups
 import { CliError } from '../../shared/errors.js';
 import { assertFlowReferencePropertyWriteAdmission } from '../validation/flow-reference-properties.js';
+import { assertMaintenanceLocalizedTextAdmission } from './desired-payload.js';
 import type { FetchLike, ResponseLike } from '../transport/http.js';
 import {
   buildSnapshotCompleteness,
@@ -482,6 +483,7 @@ export async function saveDraftMaintenanceRow(options: {
   ruleVerification: boolean | null;
   audit: JsonObject;
 }): Promise<JsonObject> {
+  assertMaintenanceLocalizedTextAdmission(options.table, options.payload);
   if (options.table === 'flows') assertFlowReferencePropertyWriteAdmission(options.payload);
   return invokeMaintenanceRpc({
     context: options.context,

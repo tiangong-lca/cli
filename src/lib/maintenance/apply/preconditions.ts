@@ -15,6 +15,7 @@ import { sha256Json, sha256Text } from '../../platform/canonical-json-hash.js';
 import { maintenanceProjectedReferenceFingerprint } from '../plan.js';
 import { isSnapshotCompletenessCompatible } from '../pagination.js';
 import { type DatasetMaintenanceRemoteContext } from '../remote.js';
+import { assertMaintenanceLocalizedTextAdmission } from '../desired-payload.js';
 import {
   GLOBAL_INBOUND_PROOF_MAX_AGE_MS,
   SHA256_PATTERN,
@@ -404,8 +405,10 @@ export function assertApplyPreconditions(options: {
         exitCode: 1,
       });
     }
-    if (!alreadySucceeded && action.action === 'save_draft' && action.table === 'flows') {
-      assertFlowReferencePropertyWriteAdmission(loadDesiredPayload(options.planDir, action));
+    if (!alreadySucceeded && action.action === 'save_draft') {
+      const payload = loadDesiredPayload(options.planDir, action);
+      assertMaintenanceLocalizedTextAdmission(action.table, payload);
+      if (action.table === 'flows') assertFlowReferencePropertyWriteAdmission(payload);
     }
   }
   const projected = finalProjectedRows({

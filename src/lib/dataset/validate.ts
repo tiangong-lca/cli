@@ -221,9 +221,9 @@ function normalizeType(value: string | null | undefined): DatasetValidateType {
   );
 }
 
-function schemaForKind(
+export function schemaForKind(
   kind: DatasetKind,
-  schemas: Partial<Record<DatasetKind, SafeParseSchema>> | undefined,
+  schemas?: Partial<Record<DatasetKind, SafeParseSchema>>,
 ): { validator: string; schema: SafeParseSchema; createEntity: SdkValidationFactory | null } {
   if (schemas?.[kind]) {
     return {
@@ -310,18 +310,13 @@ function validateRow(
   );
   const requiredFieldIssues: DatasetValidateIssue[] = [];
   const contentIssues = collectDatasetContentIssues(row.payload, kind);
-  const { additional_multilingual_issues, ...evidence } = buildDatasetValidationLayers(
+  const evidence = buildDatasetValidationLayers(
     row.payload,
     outcome,
     requiredFieldIssues,
     contentIssues,
   );
-  if (
-    outcome.success &&
-    requiredFieldIssues.length === 0 &&
-    contentIssues.length === 0 &&
-    additional_multilingual_issues.length === 0
-  ) {
+  if (outcome.success && requiredFieldIssues.length === 0 && contentIssues.length === 0) {
     return {
       index: row.index,
       id: row.id,
@@ -343,7 +338,6 @@ function validateRow(
     })),
     ...requiredFieldIssues,
     ...contentIssues,
-    ...additional_multilingual_issues,
   ];
 
   return {

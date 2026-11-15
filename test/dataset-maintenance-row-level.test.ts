@@ -738,6 +738,85 @@ test('row-level maintenance plans update-first closure, resumes failure, and ver
   }
 });
 
+test('maintenance refuses repeated languages in pending desired content and can repair legacy rows', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-languages-'));
+  const remote = new FakeMaintenanceRemote('row-maintenance-languages');
+  seed(remote);
+  const files = buildScopeFiles({ root, remote });
+  const duplicate = [
+    { '@xml:lang': 'en', '#text': 'First paragraph' },
+    { '@xml:lang': 'en', '#text': 'Second paragraph' },
+  ];
+  const rowId = '22222222-2222-4222-8222-222222222222';
+  const stored = remote.rows.get('processes')!.find((row) => row.id === rowId)!;
+  const storedRoot = stored.json_ordered!.processDataSet as JsonObject;
+  const storedInfo = (storedRoot.processInformation as JsonObject).dataSetInformation as JsonObject;
+  storedInfo['common:generalComment'] = duplicate;
+  const before = structuredClone(stored.json_ordered);
+  const desired = processPayload({ id: rowId, version: '01.00.000' });
+  const desiredRoot = desired.processDataSet as JsonObject;
+  const desiredInfo = (desiredRoot.processInformation as JsonObject)
+    .dataSetInformation as JsonObject;
+  const settings = {
+    timeoutMs: 1000,
+    env: remote.env,
+    fetchImpl: remote.fetch,
+    now: new Date('2026-07-11T01:02:03.000Z'),
+  };
+  try {
+    for (const [suffix, comments] of [
+      ['duplicate', duplicate],
+      ['repaired', [{ '@xml:lang': 'en', '#text': 'First paragraph\n\nSecond paragraph' }]],
+    ] as const) {
+      desiredInfo['common:generalComment'] = comments;
+      writeFileSync(files.desiredPath, JSON.stringify(desired));
+      const outDir = path.join(root, suffix);
+      const plan = await runDatasetMaintenancePlan({
+        ...settings,
+        scopePath: files.scopePath,
+        operation: 'repair-references',
+        outDir,
+        pageSize: 2,
+      });
+      assert.equal(plan.status, 'ready');
+      const apply = runDatasetMaintenanceApply({
+        ...settings,
+        planPath: path.join(outDir, 'maintenance-plan.json'),
+        commit: true,
+        approvePlan: plan.plan_sha256,
+        confirm: remote.email,
+      });
+      if (suffix === 'duplicate') {
+        await assert.rejects(apply, {
+          code: 'DATASET_MAINTENANCE_DUPLICATE_LANGUAGE_ENTRY',
+          details: {
+            table: 'processes',
+            issues: [
+              {
+                code: 'duplicate_language_entry',
+                path: 'processDataSet.processInformation.dataSetInformation.common:generalComment.1.@xml:lang',
+                message: 'Language en already occurs at index 0 in this field',
+              },
+            ],
+          },
+        });
+        assert.deepEqual(remote.rpcOrder, []);
+        assert.deepEqual(stored.json_ordered, before);
+      } else {
+        assert.equal((await apply).status, 'completed');
+        assert.deepEqual(remote.rpcOrder, ['cmd_dataset_save_draft', 'cmd_dataset_delete']);
+        assert.deepEqual(
+          remote.rows.get('processes')!.find((row) => row.id === rowId)?.json_ordered,
+          desired,
+        );
+        assert.deepEqual(stored.json_ordered, before);
+      }
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('parallel flow delete apply is bounded, durable, globally fenced, and never replays success', async () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'tg-maintenance-parallel-delete-'));
   try {

@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - AGENTS.md
   - src/lib/**
-lastReviewedAt: 2026-11-13
-lastReviewedCommit: bd1de97b723620921cf76de06d2abb0b4bf44174
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: a67e3733ee4ecb60951abe02e79af426b7965f40
 lastReviewedNote: 'Reviewed Process annual projection evidence, independent reference inputs and native validation coverage; existing ownership, release and mutation safeguards remain unchanged.'
 ---
 

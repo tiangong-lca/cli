@@ -1,14 +1,10 @@
 import { sha256Json } from '../platform/canonical-json-hash.js';
-import { ANNUAL_SUPPLY_FIELD } from '../validation/process-required-fields.js';
 import {
+  isDuplicateLanguageIssue,
   normalizeIssuePath,
   type SafeParseIssue,
   type SchemaValidationOutcome,
 } from '../validation/tidas-sdk-validation.js';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 export type DatasetValidationIssue = { path: string; message: string; code: string };
 export type DatasetValidationLayer = {
@@ -28,10 +24,14 @@ function layer(passed: boolean, issues: DatasetValidationIssue[]): DatasetValida
 }
 
 function normalizedIssue(issue: SafeParseIssue, path = issue.path): DatasetValidationIssue {
+  const customCode = issue.params?.validationCode;
   return {
     path: normalizeIssuePath(path),
     message: issue.message ?? 'Validation failed',
-    code: issue.code ?? 'custom',
+    code:
+      issue.code === 'custom' && typeof customCode === 'string'
+        ? customCode
+        : (issue.code ?? 'custom'),
   };
 }
 
@@ -43,46 +43,18 @@ function sdkLanguageIssues(
   for (const issue of issues) {
     const path = [...parent, ...(issue.path ?? [])];
     const projected = normalizedIssue(issue, path);
-    if (projected.path.includes('@xml:lang') || projected.message.includes('@xml:lang')) {
+    const code = issue.params?.validationCode ?? issue.code;
+    if (
+      isDuplicateLanguageIssue(issue) ||
+      path.at(-1) === '@xml:lang' ||
+      (typeof code === 'string' && code.startsWith('localized_text_'))
+    ) {
       result.push(projected);
     }
     // SDK union branches report paths relative to the enclosing union issue.
     if (issue.errors) result.push(...sdkLanguageIssues(issue.errors.flat(), path));
   }
   return result;
-}
-
-function duplicateAnnualVolumeLanguages(
-  payload: Record<string, unknown>,
-): DatasetValidationIssue[] {
-  const root = isRecord(payload.processDataSet) ? payload.processDataSet : payload;
-  const modelling = isRecord(root.modellingAndValidation) ? root.modellingAndValidation : {};
-  const sources = isRecord(modelling.dataSourcesTreatmentAndRepresentativeness)
-    ? modelling.dataSourcesTreatmentAndRepresentativeness
-    : {};
-  const value = sources.annualSupplyOrProductionVolume;
-  const issues: DatasetValidationIssue[] = [];
-  if (Array.isArray(value)) {
-    const seen = new Set<string>();
-    value.forEach((entry: unknown, index) => {
-      if (
-        isRecord(entry) &&
-        typeof entry['@xml:lang'] === 'string' &&
-        typeof entry['#text'] === 'string'
-      ) {
-        const language = entry['@xml:lang'].trim().toLowerCase();
-        if (seen.has(language)) {
-          issues.push({
-            path: `${ANNUAL_SUPPLY_FIELD}.${index}.@xml:lang`,
-            code: 'duplicate_language_entry',
-            message: 'A localized field must contain at most one value for each language.',
-          });
-        }
-        seen.add(language);
-      }
-    });
-  }
-  return issues;
 }
 
 /** Preserve the SDK verdict; project its language diagnostics without redefining its schema. */
@@ -94,11 +66,16 @@ export function buildDatasetValidationLayers(
 ): {
   payload_sha256: string;
   validation_layers: DatasetValidationLayers;
-  additional_multilingual_issues: DatasetValidationIssue[];
 } {
   const schemaIssues = outcome.issues.map((issue) => normalizedIssue(issue));
-  const duplicates = duplicateAnnualVolumeLanguages(payload);
-  const languageIssues = [...sdkLanguageIssues(outcome.issues), ...duplicates];
+  const languageIssues = [
+    ...new Map(
+      sdkLanguageIssues(outcome.issues).map((issue) => [
+        JSON.stringify([issue.path, issue.code, issue.message]),
+        issue,
+      ]),
+    ).values(),
+  ];
   return {
     payload_sha256: sha256Json(payload),
     validation_layers: {
@@ -107,6 +84,5 @@ export function buildDatasetValidationLayers(
       content: layer(contentIssues.length === 0, contentIssues),
       multilingual: layer(languageIssues.length === 0, languageIssues),
     },
-    additional_multilingual_issues: duplicates,
   };
 }

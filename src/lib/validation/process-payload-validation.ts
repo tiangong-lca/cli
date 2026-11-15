@@ -103,7 +103,7 @@ export function validateProcessPayload(
     ...annual_volume.issues,
   ];
   const placeholderIssues = collectProcessPlaceholderIssues(payload);
-  const { additional_multilingual_issues, ...evidence } = buildDatasetValidationLayers(
+  const evidence = buildDatasetValidationLayers(
     payload,
     outcome,
     requiredFieldIssues,
@@ -114,8 +114,7 @@ export function validateProcessPayload(
     allocation_semantics.status === 'passed' &&
     outcome.success &&
     requiredFieldIssues.length === 0 &&
-    placeholderIssues.length === 0 &&
-    additional_multilingual_issues.length === 0
+    placeholderIssues.length === 0
   ) {
     return {
       ok: true,
@@ -137,7 +136,6 @@ export function validateProcessPayload(
     })),
     ...requiredFieldIssues,
     ...placeholderIssues,
-    ...additional_multilingual_issues,
   ];
 
   return {
