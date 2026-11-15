@@ -95,7 +95,7 @@ function portY(node: LayoutNode, links: LayoutEdge[], edge: LayoutEdge) {
   return node.y + 9 + (node.height - 18) * ((links.indexOf(edge) + 1) / (links.length + 1));
 }
 
-export function graph(model: Model): string {
+export function graph(model: Model, cite: (ids: string[]) => string): string {
   const { nodes, edges, lanes, width, height } = layout(model);
   const object = (x: number, y: number, w: number, h: number, className: string, content: string) =>
     `<foreignObject x="${x}" y="${y}" width="${w}" height="${h}"><div xmlns="http://www.w3.org/1999/xhtml" class="${className}">${content}</div></foreignObject>`;
@@ -133,7 +133,9 @@ export function graph(model: Model): string {
     .join('');
 
   const panel = `<div class="model-panel network-panel"><div class="model-panel-head"><span class="network-title">${ui('Process network', '过程网络')}</span><div class="network-controls" hidden><button type="button" data-zoom="out" data-label-en="Zoom out" data-label-zh="缩小">−</button><output class="network-zoom">100%</output><button type="button" data-zoom="in" data-label-en="Zoom in" data-label-zh="放大">+</button><button type="button" data-zoom="fit">${ui('Fit', '适应画布')}</button><button type="button" class="network-expand"><span class="network-open">${ui('Full screen', '全屏')}</span><span class="network-close" hidden>${ui('Exit full screen', '退出全屏')}</span></button></div></div><div class="network-workspace"><div class="graph-scroll network-viewport" tabindex="0" data-label-en="Process graph" data-label-zh="过程图"><svg id="model-svg" class="network-svg" role="group" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><defs><marker id="network-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#795887"/></marker></defs>${links}${cards}</svg></div><aside class="network-inspector" hidden data-label-en="Selected model details" data-label-zh="所选模型详情"></aside></div><p class="legend network-legend">${ui('Select a process or connection. Drag to pan.', '点击过程或连线查看，拖动画布可平移。')}</p></div>`;
-  const processes = nodes.map((node) => processDetail(node, node.incoming, node.outgoing)).join('');
+  const processes = nodes
+    .map((node) => processDetail(node, node.incoming, node.outgoing, cite))
+    .join('');
   const connections = edges
     .map((edge) => connectionDetail(edge, edge.source, edge.target))
     .join('');

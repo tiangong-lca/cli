@@ -13,7 +13,7 @@ whenToUpdate:
 checkPaths:
   - docs/interfaces/**
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: a67e3733ee4ecb60951abe02e79af426b7965f40
+lastReviewedCommit: 00a08f2db095b5f44a634eb55cc72256f263fb6d
 lastReviewedNote: 'Reviewed the local report presentation interface and its role alongside Study.'
 ---
 

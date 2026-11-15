@@ -108,6 +108,8 @@ test('renderer keeps facts and complete details in one deterministic offline esc
   assert.match(html, /id="node-grid"/u);
   assert.match(html, /id="edge-power"/u);
   assert.match(html, /href="#source-inventory"/u);
+  assert.match(html, /href="#source-inventory"><span aria-hidden="true">\[<\/span>2/u);
+  assert.doesNotMatch(html, /\[inventory\]/u);
   assert.match(html, /2\.4/u);
   assert.match(html, /@media print/u);
   assert.match(html, /tr\[hidden\]/u);
@@ -225,8 +227,8 @@ test('overview uses explicit result selection and charts require supplied analys
     ],
   });
   assert.match(output, /href="#node-grid" data-graph-link="node-grid">Supply/u);
-  assert.match(output, /-50\.0%/u);
-  assert.match(output, /\+25\.0%/u);
+  assert.match(output, /-50%/u);
+  assert.match(output, /\+25%/u);
   assert.match(output, /Δ \+2 kg/u);
   assert.match(output, /Changed input/u);
   assert.doesNotMatch(output, /(?:NaN|Infinity)%/u);

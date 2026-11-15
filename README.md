@@ -103,6 +103,8 @@ tiangong-lca calculation result --dir ./run-1 --kind lcia --json
 
 输入字段和预算见 [Model 计算契约](docs/interfaces/calculations.md#本地文件契约)。结果保存本次输入、数值轴、方法和数值诊断。某个 Flow 在所选 LCIA 方法中没有定义因子时，对该方法不产生贡献，这是正常的稀疏适用性，不作为因子缺口或分数不完整报告。方法文件损坏、输入缺失和结果读取不完整仍是错误。独立线上 Model 计算以实际服务能力为准，不因本地运行时发布而自动可用。
 
+`calculation result --kind contributions` 可导出过程贡献，`calculation compare` 可比较口径一致的基准与情景 Run。详见[本地计算接口](docs/interfaces/calculations.md)。
+
 研究报告以 JSON 为输入，生成可交互 HTML；中英文通过切换显示，PDF 使用浏览器打印导出：
 
 ```bash

@@ -50,9 +50,9 @@ tiangong-lca report render --input report.json --output report.html --json
 
 节点、连接和来源在各自集合内使用唯一 ID，只用于图内连接和页面锚点。ID 允许字母、数字、下划线和连字符，长度 1–80。`sources` 引用必须能在来源集合找到。检查这些结构是为了完整呈现，不是验证科学正确性。没有贡献数据时只展示已有结果，不从总影响推算节点贡献。
 
-- `analysis.contributions` 包含 `{title, unit, total?, items: [{label, value, nodeId?}]}`。提供非零 `total` 时按该值计算显示占比。`nodeId` 必须引用报告中的节点，可用于从图表定位过程。
-- `analysis.sensitivity` 包含 `{title, unit, baseline, scenarios: [{label, value, description?}]}`。每组使用同一指标和单位。图表展示与基准的差异；基准为零时展示绝对差值。请在情景描述中注明变化条件。
-- 每组至少提供一条数据。未提供的分析不会生成图表，渲染器仅依据输入计算展示用的比例和差值。
+- `analysis.contributions` 包含 `{title, unit, total?, items: [{label, value, nodeId?}], sources?}`。提供非零 `total` 时按该值计算显示占比。`nodeId` 必须引用报告中的节点，可用于从图表定位过程。
+- `analysis.sensitivity` 包含 `{title, unit, baseline, scenarios: [{label, value, description?}], sources?}`。每组使用同一指标和单位。图表展示与基准的差异；基准为零时展示绝对差值。请在情景描述中注明变化条件。
+- 每组至少提供一条数据。`sources` 引用报告的来源 ID。过程贡献可通过 `calculation result --kind contributions` 导出，情景结果可通过 `calculation compare` 导出。使用计算产物的过程实例把贡献对应到报告节点。未提供的分析不会生成图表，渲染器仅依据输入计算展示用的比例和差值。
 
 ```json
 {
@@ -101,7 +101,7 @@ tiangong-lca report render --input report.json --output report.html --json
 
 中英文作为同一内容的两套文本保存，阅读和打印均一次显示一种语言，不并排或上下重复展示。标题、正文、表格、模型标签和界面控件随语言选择切换。只有一种语言的内容保留原文并标注，渲染器不补写翻译。
 
-HTML 内嵌天工 Logo、固定封面配图、样式、交互代码和 SVG 模型。模型按过程拓扑布局，支持平移、缩放、适应画布和全屏。选中节点时，图旁的详情按参考交换、输入流、输出流显示。带交换项引用的连线可定位目标节点的表格行；点击表内已连接的流可高亮对应连线。只有过程引用的连线可查看连接本身。完整过程清单可单独展开，关闭 JavaScript 或打印时直接展示。报告正文表格可筛选，来源可通过锚点查阅。
+HTML 内嵌天工 Logo、固定封面配图、样式、交互代码和 SVG 模型。模型按过程拓扑布局，支持平移、缩放、适应画布和全屏。选中节点时，图旁的详情按参考交换、输入流、输出流显示。带交换项引用的连线可定位目标节点的表格行；点击表内已连接的流可高亮对应连线。只有过程引用的连线可查看连接本身。完整过程清单可单独展开，关闭 JavaScript 或打印时直接展示。报告正文表格可筛选，正文、过程及分析的引用统一用编号，点击跳转至来源标题与说明。
 
 “打印 / 导出 PDF”打开浏览器打印界面，用户选择保存为 PDF。打印沿用所选语言，隐藏操作控件，恢复所有被筛选隐藏的表格行，保留模型、完整详情和来源链接文字。CLI 本身只生成 HTML，无需安装浏览器或启动 PDF 服务；自动化 PDF 转换不属于此命令。
 

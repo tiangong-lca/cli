@@ -45,6 +45,11 @@ try {
   await page.goto(pathToFileURL(html).href);
   assert.equal(await page.locator('html').getAttribute('data-interactive'), 'ready');
   assert.equal(await page.locator('#model-svg .graph-node').count(), 3);
+  const citation = page.locator('.source-refs a[href="#source-inventory"]').first();
+  assert.equal(await citation.innerText(), '[2]');
+  await citation.click();
+  assert.match(page.url(), /#source-inventory$/u);
+  assert.ok(await page.locator('#source-inventory:target').isVisible());
   const inspector = page.locator('.network-inspector');
   const edge = page.locator('[data-graph-link="edge-power"]');
   await page.locator('#model-svg [data-graph-link="node-grid"]').click();

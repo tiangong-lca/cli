@@ -1,5 +1,5 @@
 import type { ReportEdge, ReportFlow, ReportNode } from '../../application/report.js';
-import { escape, localized, refs, ui } from './text.js';
+import { escape, localized, ui } from './text.js';
 
 function exchangeTable(
   heading: string,
@@ -35,6 +35,7 @@ export function processDetail(
   node: ReportNode,
   incoming: ReportEdge[],
   outgoing: ReportEdge[],
+  cite: (ids: string[]) => string,
 ): string {
   const connections = new Map<string, Set<ReportEdge>>();
   const connect = (port: 'from' | 'to', edges: ReportEdge[]) => {
@@ -54,7 +55,7 @@ export function processDetail(
   const output = node.outputs.filter((flow) => !isReference(flow));
   const referenceIn = node.inputs.filter(isReference);
   const referenceOut = node.outputs.filter(isReference);
-  return `<article class="detail process-detail" id="node-${node.id}" tabindex="-1"><header class="process-header"><div class="detail-kicker">${processKind(node)}</div><h3>${localized(node.label)}</h3>${node.details ? `<p>${localized(node.details)}</p>` : ''}</header>${exchangeTable(ui('Reference input', '参考输入'), referenceIn, connections, true)}${exchangeTable(ui('Reference output', '参考输出'), referenceOut, connections, true)}${exchangeTable(ui('Inputs', '输入流'), input, connections)}${exchangeTable(ui('Outputs', '输出流'), output, connections)}${refs(node.sources)}</article>`;
+  return `<article class="detail process-detail" id="node-${node.id}" tabindex="-1"><header class="process-header"><div class="detail-kicker">${processKind(node)}</div><h3>${localized(node.label)}</h3>${node.details ? `<p>${localized(node.details)}</p>` : ''}</header>${exchangeTable(ui('Reference input', '参考输入'), referenceIn, connections, true)}${exchangeTable(ui('Reference output', '参考输出'), referenceOut, connections, true)}${exchangeTable(ui('Inputs', '输入流'), input, connections)}${exchangeTable(ui('Outputs', '输出流'), output, connections)}${cite(node.sources)}</article>`;
 }
 
 export function connectionDetail(edge: ReportEdge, source: ReportNode, target: ReportNode): string {

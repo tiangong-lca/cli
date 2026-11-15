@@ -45,8 +45,8 @@ export function runReportCommand(args: string[], write: ReportPort): CommandIO {
             '{nodes:[{id,label,kind?,details?,inputs?,outputs?,sources?}],edges:[{id,from,to,label,amount?,unit?,details?,exchanges?:{from,to}}]}',
           results: '[{label,value,unit,method?,context?,summary?:boolean}]',
           analysis: {
-            contributions: '[{title,unit,total?,items:[{label,value,nodeId?}]}]',
-            sensitivity: '[{title,unit,baseline,scenarios:[{label,value,description?}]}]',
+            contributions: '[{title,unit,total?,items:[{label,value,nodeId?}],sources?}]',
+            sensitivity: '[{title,unit,baseline,scenarios:[{label,value,description?}],sources?}]',
           },
           limitations: '[text]',
         },

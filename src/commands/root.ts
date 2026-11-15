@@ -15,7 +15,7 @@ Usage:
 
 Implemented Commands:
   setup      model-calculation environment preparation
-  calculation get | result
+  calculation get | result | compare
   report     render (local JSON to interactive HTML; browser PDF printing)
   doctor     environment diagnostics
   auth       login | status | whoami | doctor-auth | logout | identity-receipt

@@ -38,12 +38,14 @@ export type ReportEdge = {
 };
 export type ReportContribution = {
   title: ReportText;
+  sources: string[];
   unit: string;
   total?: number;
   items: { label: ReportText; value: number; nodeId?: string }[];
 };
 export type ReportSensitivity = {
   title: ReportText;
+  sources: string[];
   unit: string;
   baseline: number;
   scenarios: { label: ReportText; value: number; description?: ReportText }[];
@@ -141,12 +143,16 @@ function exchangeIds(flows: ReportFlow[]): string[] {
   return flows.flatMap((flow) => (typeof flow === 'object' && 'id' in flow ? [flow.id] : []));
 }
 
-function parseAnalysis(value: unknown, nodeIds: Set<string>): ResearchReport['analysis'] {
+function parseAnalysis(
+  value: unknown,
+  nodeIds: Set<string>,
+  references: (value: unknown, at: string) => string[],
+): ResearchReport['analysis'] {
   if (value === undefined) return undefined;
   const analysis = object(value, 'analysis', ['contributions', 'sensitivity']);
   const contributions = list(analysis.contributions, 'analysis.contributions').map((value, i) => {
     const at = `analysis.contributions[${i}]`;
-    const block = object(value, at, ['title', 'unit', 'total', 'items']);
+    const block = object(value, at, ['title', 'unit', 'total', 'items', 'sources']);
     const items = list(block.items, `${at}.items`).map((value, j) => {
       const itemAt = `${at}.items[${j}]`;
       const item = object(value, itemAt, ['label', 'value', 'nodeId']);
@@ -162,6 +168,7 @@ function parseAnalysis(value: unknown, nodeIds: Set<string>): ResearchReport['an
     if (!items.length) invalid(`${at}.items`, 'at least one contribution');
     return {
       title: text(block.title, `${at}.title`),
+      sources: references(block.sources, `${at}.sources`),
       unit: string(block.unit, `${at}.unit`),
       total: block.total === undefined ? undefined : number(block.total, `${at}.total`),
       items,
@@ -169,7 +176,7 @@ function parseAnalysis(value: unknown, nodeIds: Set<string>): ResearchReport['an
   });
   const sensitivity = list(analysis.sensitivity, 'analysis.sensitivity').map((value, i) => {
     const at = `analysis.sensitivity[${i}]`;
-    const block = object(value, at, ['title', 'unit', 'baseline', 'scenarios']);
+    const block = object(value, at, ['title', 'unit', 'baseline', 'scenarios', 'sources']);
     const scenarios = list(block.scenarios, `${at}.scenarios`).map((value, j) => {
       const scenarioAt = `${at}.scenarios[${j}]`;
       const scenario = object(value, scenarioAt, ['label', 'value', 'description']);
@@ -182,6 +189,7 @@ function parseAnalysis(value: unknown, nodeIds: Set<string>): ResearchReport['an
     if (!scenarios.length) invalid(`${at}.scenarios`, 'at least one scenario');
     return {
       title: text(block.title, `${at}.title`),
+      sources: references(block.sources, `${at}.sources`),
       unit: string(block.unit, `${at}.unit`),
       baseline: number(block.baseline, `${at}.baseline`),
       scenarios,
@@ -366,7 +374,7 @@ export function parseResearchReport(input: unknown): ResearchReport {
     sections,
     model,
     results,
-    analysis: parseAnalysis(r.analysis, new Set(model?.nodes.map((node) => node.id))),
+    analysis: parseAnalysis(r.analysis, new Set(model?.nodes.map((node) => node.id)), references),
     sources,
     limitations: list(r.limitations, 'limitations').map((v) => text(v, 'limitations')),
   };

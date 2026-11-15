@@ -7,7 +7,7 @@ export function rootHelp(usage: string): CommandIO {
     command: 'tiangong-lca',
     commands: {
       setup: ['model-calculation'],
-      calculation: ['get', 'result'],
+      calculation: ['get', 'result', 'compare'],
       report: ['render'],
       doctor: ['local diagnostics', '--online selected Auth health'],
       auth: ['login', 'status', 'whoami', 'doctor-auth', 'logout', 'identity-receipt'],

@@ -5,7 +5,7 @@ import { REPORT_CSS } from './styles.js';
 import { reportBrand } from './brand.js';
 import { renderContributions, renderSensitivity } from './analysis.js';
 
-import { escape, localized, ui, refs } from './text.js';
+import { escape, localized, ui } from './text.js';
 import { graph } from './graph.js';
 
 function table(columns: ReportText[], rows: ReportCell[][]): string {
@@ -20,16 +20,21 @@ function resultsOverview(report: ResearchReport): string {
 }
 /** A derived presentation of supplied facts, not an official signed Study export. */
 export function renderResearchReport(report: ResearchReport): string {
+  const sourceNumbers = new Map(report.sources.map(({ id }, index) => [id, index + 1]));
+  const cite = (ids: string[]) =>
+    ids.length
+      ? `<p class="source-refs">${ui('Sources', '资料来源')} ${[...new Set(ids)].map((id) => `<a href="#source-${id}"><span aria-hidden="true">[</span>${sourceNumbers.get(id)}<span aria-hidden="true">]</span></a>`).join(' ')}</p>`
+      : '';
   const sections = report.sections.map((s, i) => ({
     id: `section-${i + 1}`,
     title: s.title,
-    html: `${s.body ? `<p class="prose">${localized(s.body)}</p>` : ''}${s.table ? table(s.table.columns, s.table.rows) : ''}${refs(s.sources)}`,
+    html: `${s.body ? `<p class="prose">${localized(s.body)}</p>` : ''}${s.table ? table(s.table.columns, s.table.rows) : ''}${cite(s.sources)}`,
   }));
   if (report.model)
     sections.push({
       id: 'model',
       title: { en: 'Model structure', zh: '模型结构' },
-      html: graph(report.model),
+      html: graph(report.model, cite),
     });
   if (report.results.length) {
     const hasContext = report.results.some((result) => result.context !== undefined);
@@ -58,13 +63,13 @@ export function renderResearchReport(report: ResearchReport): string {
     sections.push({
       id: `contribution-${i + 1}`,
       title: block.title,
-      html: renderContributions(block),
+      html: renderContributions(block) + cite(block.sources),
     });
   for (const [i, block] of (report.analysis?.sensitivity ?? []).entries())
     sections.push({
       id: `sensitivity-${i + 1}`,
       title: block.title,
-      html: renderSensitivity(block),
+      html: renderSensitivity(block) + cite(block.sources),
     });
   if (report.limitations.length)
     sections.push({
@@ -76,7 +81,7 @@ export function renderResearchReport(report: ResearchReport): string {
     sections.push({
       id: 'sources',
       title: { en: 'Sources and evidence', zh: '来源与依据' },
-      html: `<ol class="sources">${report.sources.map((s) => `<li id="source-${s.id}"><strong>[${s.id}] ${localized(s.title)}</strong>${s.note ? `<p>${localized(s.note)}</p>` : ''}${s.url ? `<a class="source-url" href="${escape(s.url)}" target="_blank" rel="noopener noreferrer">${escape(s.url)}</a>` : ''}</li>`).join('')}</ol>`,
+      html: `<ol class="sources">${report.sources.map((s) => `<li id="source-${s.id}"><strong>${localized(s.title)}</strong>${s.note ? `<p>${localized(s.note)}</p>` : ''}${s.url ? `<a class="source-url" href="${escape(s.url)}" target="_blank" rel="noopener noreferrer">${escape(s.url)}</a>` : ''}</li>`).join('')}</ol>`,
     });
   const scriptHash = createHash('sha256').update(REPORT_BROWSER).digest('base64');
   const brand = reportBrand();

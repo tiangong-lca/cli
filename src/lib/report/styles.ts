@@ -56,8 +56,10 @@ h3 { font-size: 16px; line-height: 1.5; font-weight: 600; }
 main { min-width: 0; }
 .section { border-bottom: 1px solid var(--line); padding: 0 0 32px; margin-bottom: 32px; scroll-margin-top: 90px; }
 .prose { margin-bottom: 18px; max-width: 84ch; font-size: 15px; line-height: 1.9; }
-.source-refs { font-size: 11px; display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
-.source-refs a { color: var(--muted); }
+.source-refs { color: var(--muted); font-size: 12px; margin-top: 12px; }
+:where(.source-refs) > .localized { display: inline; }
+.source-refs a { color: var(--accent); text-decoration: none; margin-inline-start: 4px; }
+.source-refs a:hover { text-decoration: underline; }
 .table-wrap { overflow: auto; margin-top: 20px; }
 .table-controls { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 14px; font-size: 11px; color: var(--muted); }
 .table-controls label { display: flex; align-items: center; gap: 10px; }
@@ -112,7 +114,8 @@ thead { display: table-header-group; }
 }
 .sources { padding-left: 20px; margin-bottom: 0; }
 .sources li { padding-left: 8px; margin-bottom: 22px; scroll-margin-top: 100px; }
-.sources li::marker { color: var(--accent); font-size: 11px; }
+.sources li::marker { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sources li:target { background: var(--accent-wash); }
 .sources strong { font-size: 13px; font-weight: 600; }
 .sources p { font-size: 12px; color: var(--muted); margin-top: 7px; }
 .source-url { font-size: 12px; }

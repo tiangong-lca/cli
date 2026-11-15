@@ -1,6 +1,13 @@
 import type { ReportContribution, ReportSensitivity } from '../../application/report.js';
 import { escape, localized, ui } from './text.js';
 
+const readable = new Intl.NumberFormat('en', { maximumSignificantDigits: 5, useGrouping: false });
+const percent = new Intl.NumberFormat('en', {
+  maximumSignificantDigits: 3,
+  minimumFractionDigits: 1,
+  useGrouping: false,
+});
+
 function magnitude(values: number[]): number {
   return values.reduce((max, value) => Math.max(max, Math.abs(value)), 0) || 1;
 }
@@ -12,7 +19,7 @@ function bar(value: number, signed: boolean): string {
 }
 
 function item(label: string, value: number, visual: string, auxiliary = ''): string {
-  return `<li class="analysis-row"><div class="analysis-label">${label}</div>${visual}<div class="analysis-value">${escape(value)}${auxiliary ? `<small>${auxiliary}</small>` : ''}</div></li>`;
+  return `<li class="analysis-row"><div class="analysis-label">${label}</div>${visual}<div class="analysis-value"><data value="${escape(value)}" title="${escape(value)}">${escape(readable.format(value))}</data>${auxiliary ? `<small>${auxiliary}</small>` : ''}</div></li>`;
 }
 
 export function renderContributions(block: ReportContribution): string {
@@ -26,7 +33,7 @@ export function renderContributions(block: ReportContribution): string {
       ? `<a href="#node-${nodeId}" data-graph-link="node-${nodeId}">${content}</a>`
       : content;
     const ratio = showShare ? (value / total) * 100 : NaN;
-    const share = Number.isFinite(ratio) ? `${ratio.toFixed(1)}%` : '';
+    const share = Number.isFinite(ratio) ? `${percent.format(ratio)}%` : '';
     return item(linked, value, bar(value / max, signed), share);
   });
   return `<div class="analysis-heading">${ui('Contribution', '贡献')}<span>${escape(block.unit)}</span></div><ul class="analysis-rows">${rows.join('')}</ul>${showShare ? `<p class="analysis-total">${ui('Total used for percentages', '占比计算基准')} <span>${escape(total)} ${escape(block.unit)}</span></p>` : ''}`;
@@ -43,7 +50,7 @@ export function renderSensitivity(block: ReportSensitivity): string {
     const ratio = block.baseline === 0 ? NaN : (delta / Math.abs(block.baseline)) * 100;
     const signedDelta = delta > 0 ? '+' : '';
     const change = Number.isFinite(ratio)
-      ? `${signedDelta}${ratio.toFixed(1)}%`
+      ? `${signedDelta}${percent.format(ratio)}%`
       : Number.isFinite(delta)
         ? `Δ ${signedDelta}${escape(Number(delta.toPrecision(12)))} ${escape(block.unit)}`
         : '';
