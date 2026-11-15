@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: ba06d3e375745e223a1f7143078bf0ee806afe64
-lastReviewedNote: 'Reviewed the installed report asset change against the existing release qualification.'
+lastReviewedCommit: 67b7eef68ae3173f3d198aba692b9a2aaf0f2b84
+lastReviewedNote: 'CLI #506: reviewed packed runtime qualification against the published exact SDK release.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

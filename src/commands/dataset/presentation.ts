@@ -3,7 +3,7 @@ import { contentDigest } from '../../application/dataset-content.js';
 
 export function validationSummary(report: JsonObject): JsonObject {
   const summary = { ...report };
-  for (const name of ['issues', 'checks', 'blockers'])
+  for (const name of ['issues', 'checks', 'blockers', 'coverage', 'dependencies'])
     if (Array.isArray(summary[name])) summary[name] = summary[name].slice(0, 5);
   if (isObject(report.validation_layers))
     summary.validation_layers = Object.fromEntries(
@@ -14,6 +14,8 @@ export function validationSummary(report: JsonObject): JsonObject {
     );
   if (isObject(report.references)) summary.references = validationSummary(report.references);
   if (isObject(report.local)) summary.local = validationSummary(report.local);
+  if (isObject(report.flow_reference_names))
+    summary.flow_reference_names = validationSummary(report.flow_reference_names);
   return summary;
 }
 export function artifactSummary(data: JsonObject): JsonObject {

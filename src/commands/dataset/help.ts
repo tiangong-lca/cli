@@ -87,7 +87,7 @@ export const requestShapes: Partial<Record<CanonicalDatasetAction, unknown>> = {
   validate: {
     content: 'canonical dataset JSON in --input',
     referenceDocuments:
-      'optional --reference-documents JSON object {documents: [...]} of exact Flow/FlowProperty/UnitGroup documents for Process annual evidence; not stored in content',
+      'optional --reference-documents JSON object {documents: [...]} of exact Flow documents to check every exchange name and FlowProperty/UnitGroup documents for annual evidence',
   },
   create: {
     id: 'UUID',
@@ -175,7 +175,10 @@ export const requestShapes: Partial<Record<CanonicalDatasetAction, unknown>> = {
   'build-resulting-process': {
     source_model: 'explicit model content or json_ordered_path',
     projection: 'explicit reference output/projection/allocation',
-    process_sources: 'exact Process JSON files/catalog; run_dirs forbidden',
+    process_sources:
+      'exact Process JSON files/catalog; allow_remote_lookup enables exact Process and Flow reads',
+    semantic_context:
+      '{flow_documents: [...]} of exact Flow documents for canonical exchange descriptions in local builds',
   },
 };
 function actionExample(type: DatasetType, action: CanonicalDatasetAction): string {

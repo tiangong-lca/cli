@@ -22,7 +22,11 @@ export function annualFixture(withUnit = true) {
     '@uri': `../${id}.xml`,
     'common:shortDescription': [{ '@xml:lang': 'en', '#text': name }],
   });
-  exchange.referenceToFlowDataSet = ref('flow data set', annualFlowId, 'Water');
+  exchange.referenceToFlowDataSet = ref(
+    'flow data set',
+    annualFlowId,
+    'Water; water treatment; works gate',
+  );
   const sources = record(
     record(root.modellingAndValidation).dataSourcesTreatmentAndRepresentativeness,
   );
@@ -38,6 +42,11 @@ export function annualFixture(withUnit = true) {
   const fr = record(flow.flowDataSet);
   const fi = record(fr.flowInformation);
   record(fi.dataSetInformation)['common:UUID'] = annualFlowId;
+  record(fi.dataSetInformation).name = {
+    baseName: { '@xml:lang': 'en', '#text': 'Water' },
+    treatmentStandardsRoutes: { '@xml:lang': 'en', '#text': 'water treatment' },
+    mixAndLocationTypes: { '@xml:lang': 'en', '#text': 'works gate' },
+  };
   record(record(fr.administrativeInformation).publicationAndOwnership)['common:dataSetVersion'] =
     annualVersion;
   fi.quantitativeReference = { referenceToReferenceFlowProperty: '0' };

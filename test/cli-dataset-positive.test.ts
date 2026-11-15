@@ -12,6 +12,7 @@ import { createBusinessBackend } from './helpers/cli-business-backend.js';
 import {
   businessActor,
   businessFixture,
+  businessProcessReferenceFlow,
   businessIdentity,
   businessEdit,
   wrappers,
@@ -49,7 +50,17 @@ for (const type of writableTypes) {
       );
       return { response, value: JSON.parse(response.stdout) };
     };
-    assert.equal((await datasetValidation(type, content, ['schema', 'business'])).status, 'passed');
+    assert.equal(
+      (
+        await datasetValidation(
+          type,
+          content,
+          ['schema', 'business'],
+          type === 'process' ? [businessProcessReferenceFlow()] : undefined,
+        )
+      ).status,
+      'passed',
+    );
     const preview = await invoke('create', { ...binding, content, requestId: `${type}-preview` }, [
       '--dry-run',
     ]);

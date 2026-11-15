@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: ba06d3e375745e223a1f7143078bf0ee806afe64
-lastReviewedNote: 'Reviewed native launcher and package validation guidance for offline report rendering.'
+lastReviewedCommit: 67b7eef68ae3173f3d198aba692b9a2aaf0f2b84
+lastReviewedNote: 'CLI #506: reviewed authenticated exact Flow evidence and pre-dispatch Process checks.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

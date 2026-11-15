@@ -1,9 +1,11 @@
+import { processFlowNameReport, suppliedFlowNameEvidence } from './process-flow-reference-names.js';
 import { analyzeProcessAnnualVolume } from './process-annual-projection.js';
 import {
   analyzeProcessPayloadSemantics,
   type ProcessSemanticContext,
 } from './process-semantic-validation.js';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
+import type { ExactFlowNameEvidence } from '@tiangong-lca/tidas-sdk';
 import {
   normalizeIssuePath,
   type SafeParseSchema,
@@ -34,6 +36,7 @@ export type ProcessPayloadValidationIssue = {
 export type ProcessPayloadValidationResult = {
   annual_volume?: ReturnType<typeof analyzeProcessAnnualVolume>;
   allocation_semantics?: ReturnType<typeof analyzeProcessPayloadSemantics>;
+  flow_reference_names: ReturnType<typeof processFlowNameReport>;
   payload_sha256?: string;
   validation_layers?: DatasetValidationLayers;
 } & (
@@ -88,8 +91,13 @@ export function validateProcessPayload(
   schema: SafeParseSchema = getProcessSchema(),
   createEntity: SdkValidationFactory | null = getProcessFactory(),
   context: ProcessSemanticContext = {},
+  flowNameEvidence: readonly ExactFlowNameEvidence[] = suppliedFlowNameEvidence([
+    ...(context.reference_documents ?? []),
+    ...(context.flow_documents ?? []),
+  ]),
 ): ProcessPayloadValidationResult {
   const allocation_semantics = analyzeProcessPayloadSemantics(payload, context);
+  const flow_reference_names = processFlowNameReport(payload, flowNameEvidence);
   const outcome = validateSchemaWithDeepFallback(schema, structuredClone(payload), createEntity);
   const annual_volume = analyzeProcessAnnualVolume(payload, context.reference_documents);
   const requiredFieldIssues = [
@@ -112,6 +120,7 @@ export function validateProcessPayload(
 
   if (
     allocation_semantics.status === 'passed' &&
+    flow_reference_names.status !== 'failed' &&
     outcome.success &&
     requiredFieldIssues.length === 0 &&
     placeholderIssues.length === 0
@@ -123,12 +132,14 @@ export function validateProcessPayload(
       issues: [],
       ...evidence,
       allocation_semantics,
+      flow_reference_names,
       annual_volume,
     };
   }
 
   const issues = [
     ...allocation_semantics.issues,
+    ...(flow_reference_names.status === 'failed' ? flow_reference_names.issues : []),
     ...outcome.issues.map((issue) => ({
       path: normalizeIssuePath(issue.path),
       message: issue.message ?? 'Validation failed',
@@ -145,6 +156,7 @@ export function validateProcessPayload(
     issues,
     ...evidence,
     allocation_semantics,
+    flow_reference_names,
     annual_volume,
   };
 }

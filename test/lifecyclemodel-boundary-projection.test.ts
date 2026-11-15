@@ -6,7 +6,10 @@ import path from 'node:path';
 import { runLifecyclemodelBuildResultingProcess } from '../src/lib/model/resulting-process.js';
 import { runDatasetValidate } from '../src/lib/dataset/validate.js';
 import { CliError, toErrorPayload } from '../src/shared/errors.js';
-import { processTransportFixture } from './helpers/process-allocation-fixture.js';
+import {
+  allocationFixture,
+  processTransportFixture,
+} from './helpers/process-allocation-fixture.js';
 
 type Json = Record<string, unknown>;
 const obj = (x: unknown) => x as Json;
@@ -61,7 +64,7 @@ function setup(supply = '2', demand = '5') {
   };
   return { processes, instances, reference: 1 as unknown, overrides: {} as Json };
 }
-async function run(fixture: ReturnType<typeof setup>) {
+async function run(fixture: ReturnType<typeof setup>, withFlowEvidence = true) {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'cli-boundary-projection-'));
   try {
     const files = fixture.processes.map((payload) => {
@@ -83,7 +86,15 @@ async function run(fixture: ReturnType<typeof setup>) {
         fixture.reference === undefined ? {} : { referenceToReferenceProcess: fixture.reference },
       technology: { processes: { processInstance: fixture.instances } },
     };
+    const { context } = allocationFixture();
+    const firstFlow = context.flow_documents[0];
+    const productFlow = structuredClone(firstFlow);
+    obj(obj(obj(productFlow.flowDataSet).flowInformation).dataSetInformation)['common:UUID'] =
+      PRODUCT;
     const request = {
+      ...(withFlowEvidence
+        ? { semantic_context: { flow_documents: [firstFlow, productFlow] } }
+        : {}),
       source_model: {
         json_ordered: {
           lifeCycleModelDataSet: {
@@ -148,6 +159,31 @@ function quantities(payload: Json) {
     item.meanAmount,
   ]);
 }
+test('Model generation composes all output references from exact evidence and reports missing documents', async () => {
+  const fixture = setup();
+  const built = await run(fixture);
+  assert.equal(built.result.exitCode, 0, built.result.stderr);
+  const exchanges = obj(obj(built.payload!.processDataSet).exchanges).exchange as Json[];
+  for (const exchange of exchanges) {
+    assert.deepEqual(obj(exchange.referenceToFlowDataSet)['common:shortDescription'], [
+      {
+        '@xml:lang': 'en',
+        '#text': 'Fixture reference product; Synthetic fixture; Global synthetic flow',
+      },
+    ]);
+  }
+  const unresolved = await run(fixture, false);
+  assert.deepEqual(unresolved.projection!.qualification, {
+    status: 'unresolved',
+    publish_ready: false,
+  });
+  assert.equal(
+    obj(obj(unresolved.projection!.validation).flow_reference_names).status,
+    'unresolved',
+  );
+  assert.deepEqual(quantities(unresolved.payload!), quantities(built.payload!));
+});
+
 test('result builder retains single-provider partial/excess residuals and cancels equal supply exactly once', async () => {
   for (const [supply, demand, direction, remaining] of [
     ['2', '5', 'Input', '3'],

@@ -1,3 +1,4 @@
+import type { ExactFlowNameEvidence } from '@tiangong-lca/tidas-sdk';
 import type { JsonObject } from '../application/dataset-types.js';
 import type { FetchLike } from '../lib/transport/http.js';
 import { annualProjectionRequired } from '../lib/validation/process-annual-projection.js';
@@ -12,6 +13,7 @@ export async function processAnnualEvidence(
   env: NodeJS.ProcessEnv,
   fetchImpl: FetchLike,
   supplied: JsonObject[] = [],
+  verifiedNameEvidence: readonly ExactFlowNameEvidence[] = [],
 ): Promise<JsonObject[]> {
   if (!annualProjectionRequired(content)) return supplied;
   const read = datasetReader(env, fetchImpl);
@@ -29,11 +31,11 @@ export async function processAnnualEvidence(
       );
     documents.push(page.records[0]!.content);
   }
-  if (
-    supplied.some(
-      (document) => !documents.some((remote) => sha256Json(remote) === sha256Json(document)),
-    )
-  )
+  const verified = new Set([
+    ...documents.map(sha256Json),
+    ...verifiedNameEvidence.map(({ document }) => sha256Json(document)),
+  ]);
+  if (supplied.some((document) => !verified.has(sha256Json(document))))
     throw new CommandInputError(
       'ANNUAL_REFERENCE_STALE',
       'Local annual evidence differs from current exact reference content. Refresh the reference documents.',

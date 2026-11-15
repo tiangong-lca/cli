@@ -73,6 +73,7 @@ export type LifecyclemodelResultingProcessReport = {
 };
 
 export type RunLifecyclemodelResultingProcessOptions = {
+  readFlowNamesFromRemote?: boolean;
   inputPath: string;
   outDir?: string | null;
   now?: Date;

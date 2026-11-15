@@ -1,4 +1,5 @@
 // data-api-relations: flows
+import type { ExactFlowNameEvidence } from '@tiangong-lca/tidas-sdk';
 import { CliError } from '../../shared/errors.js';
 import type { FetchLike } from '../transport/http.js';
 import { createSupabaseDataClient, runSupabaseArrayQuery } from '../transport/supabase-client.js';
@@ -29,6 +30,7 @@ export async function assertProcessAllocationWriteAdmission(
     fetchImpl: FetchLike;
     timeoutMs: number;
   },
+  currentFlowEvidence?: readonly ExactFlowNameEvidence[],
 ) {
   const exchanges = list(record(record(payload.processDataSet).exchanges).exchange).filter(
     isRecord,
@@ -59,16 +61,24 @@ export async function assertProcessAllocationWriteAdmission(
     transport.timeoutMs,
   );
   const documents: Json[] = [];
-  for (const { uuid, version } of refs.values()) {
-    const rows = await runSupabaseArrayQuery<Json>(
-      client
-        .from('flows')
-        .select('id,version,json_ordered')
-        .eq('id', uuid)
-        .eq('version', version)
-        .limit(2),
-      `${restBaseUrl}/flows`,
-    );
+  const currentByIdentity = new Map(
+    currentFlowEvidence?.map(({ uuid, version, document }) => [
+      JSON.stringify([uuid, version]),
+      document,
+    ]),
+  );
+  for (const [identity, { uuid, version }] of refs) {
+    const rows = currentFlowEvidence
+      ? [{ id: uuid, version, json_ordered: currentByIdentity.get(identity) }]
+      : await runSupabaseArrayQuery<Json>(
+          client
+            .from('flows')
+            .select('id,version,json_ordered')
+            .eq('id', uuid)
+            .eq('version', version)
+            .limit(2),
+          `${restBaseUrl}/flows`,
+        );
     if (
       rows.length !== 1 ||
       rows[0].id !== uuid ||

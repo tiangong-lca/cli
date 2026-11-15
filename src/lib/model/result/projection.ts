@@ -1,3 +1,10 @@
+import {
+  bindCurrentFlowNameEvidence,
+  flowNameReadContext,
+  populateGeneratedProcessFlowNames,
+  readExactFlowNameEvidence,
+  suppliedFlowNameEvidence,
+} from '../../validation/process-flow-reference-names.js';
 import { sha256Json } from '../../platform/canonical-json-hash.js';
 import { validateProcessPayload } from '../../validation/process-payload-validation.js';
 import {
@@ -24,6 +31,7 @@ export async function buildProjectionBundle(options: {
   sourceModelJson: JsonObject;
   modelPath: string | null;
   remoteLookup?: RemoteProcessLookupContext;
+  readFlowNamesFromRemote?: boolean;
 }): Promise<{
   bundle: JsonObject;
   report: JsonObject;
@@ -95,12 +103,27 @@ export async function buildProjectionBundle(options: {
     transformationEvidence,
   });
 
+  const suppliedFlowNames = suppliedFlowNameEvidence(
+    options.request.semantic_context?.flow_documents ?? [],
+  );
+  const flowNameEvidence =
+    options.readFlowNamesFromRemote && options.remoteLookup
+      ? bindCurrentFlowNameEvidence(
+          await readExactFlowNameEvidence(
+            [primaryPayload],
+            flowNameReadContext(options.remoteLookup.env, options.remoteLookup.fetchImpl),
+          ),
+          suppliedFlowNames,
+        )
+      : suppliedFlowNames;
+  populateGeneratedProcessFlowNames(primaryPayload, flowNameEvidence);
   transformationEvidence.candidate_sha256 = sha256Json(primaryPayload);
   const outputValidation = validateProcessPayload(
     primaryPayload,
     undefined,
     undefined,
     options.request.semantic_context,
+    flowNameEvidence,
   );
 
   const sourceModelSummary = {
@@ -114,16 +137,19 @@ export async function buildProjectionBundle(options: {
     resolved_process_summary: processResolution.resolutionSummary,
   };
 
+  const publishReady =
+    outputValidation.ok && outputValidation.flow_reference_names.status === 'passed';
   const report = {
     generated_at: nowIso(),
     validation: outputValidation,
     qualification: {
-      status: outputValidation.ok
+      status: publishReady
         ? 'qualified'
-        : outputValidation.allocation_semantics?.status === 'unresolved'
+        : outputValidation.allocation_semantics?.status === 'unresolved' ||
+            (outputValidation.ok && outputValidation.flow_reference_names.status === 'unresolved')
           ? 'unresolved'
           : 'failed',
-      publish_ready: outputValidation.ok,
+      publish_ready: publishReady,
     },
     allocation_transformation: transformationEvidence,
     status:

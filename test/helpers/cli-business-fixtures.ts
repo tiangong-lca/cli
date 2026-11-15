@@ -45,3 +45,18 @@ export function businessEdit(type: DatasetType, content: JsonObject, label = 'Ed
   };
   return edited;
 }
+
+/** A readable exact Flow used by the Process fixture's quantitative reference. */
+export function businessProcessReferenceFlow(): JsonObject {
+  const document = businessFixture('flow');
+  const root = document.flowDataSet as JsonObject;
+  const info = (root.flowInformation as JsonObject).dataSetInformation as JsonObject;
+  info['common:UUID'] = '22222222-2222-4222-8222-222222222222';
+  const name = info.name as JsonObject;
+  name.baseName = { '@xml:lang': 'en', '#text': 'Fixture reference product' };
+  name.treatmentStandardsRoutes = { '@xml:lang': 'en', '#text': 'Controlled manufacturing' };
+  name.mixAndLocationTypes = { '@xml:lang': 'en', '#text': 'GLO' };
+  const pub = (root.administrativeInformation as JsonObject).publicationAndOwnership as JsonObject;
+  pub['common:dataSetVersion'] = '01.00.000';
+  return document;
+}

@@ -1,3 +1,7 @@
+import {
+  assertProcessFlowNameWriteAdmission,
+  suppliedFlowNameEvidence,
+} from '../validation/process-flow-reference-names.js';
 import { assertProcessAllocationWriteAdmission } from '../validation/process-allocation-write-admission.js';
 import { semanticContextFromInput } from '../validation/process-semantic-validation.js';
 import { CliError } from '../../shared/errors.js';
@@ -182,6 +186,42 @@ export async function resolveDatasetCommandTransport(options: {
   });
 }
 
+async function assertProcessWriteAdmission(options: {
+  payload: JsonObject;
+  transport: DatasetCommandTransport;
+  extraData?: JsonObject;
+}) {
+  const context = semanticContextFromInput(options.extraData);
+  const {
+    functionsBaseUrl: apiBaseUrl,
+    publishableKey,
+    accessToken,
+    fetchImpl,
+    timeoutMs,
+  } = options.transport;
+  const currentFlowEvidence = await assertProcessFlowNameWriteAdmission(
+    [options.payload],
+    {
+      runtime: { apiBaseUrl, publishableKey, getAccessToken: async () => accessToken },
+      fetchImpl,
+      timeoutMs,
+    },
+    suppliedFlowNameEvidence(context.flow_documents ?? []),
+  );
+  await assertProcessAllocationWriteAdmission(
+    options.payload,
+    context,
+    {
+      apiBaseUrl,
+      publishableKey,
+      accessToken,
+      fetchImpl,
+      timeoutMs,
+    },
+    currentFlowEvidence,
+  );
+}
+
 export async function createDatasetRecord(options: {
   transport: DatasetCommandTransport;
   table: DatasetCommandTable;
@@ -190,17 +230,14 @@ export async function createDatasetRecord(options: {
   extraData?: JsonObject;
   beforeDispatch?: () => void | Promise<void>;
 }): Promise<JsonObject> {
+  const payload =
+    options.table === 'processes' ? structuredClone(options.payload) : options.payload;
   if (options.table === 'flows') assertFlowReferencePropertyWriteAdmission(options.payload);
-  if (options.table === 'processes')
-    await assertProcessAllocationWriteAdmission(
-      options.payload,
-      semanticContextFromInput(options.extraData),
-      { apiBaseUrl: options.transport.functionsBaseUrl, ...options.transport },
-    );
+  if (options.table === 'processes') await assertProcessWriteAdmission({ ...options, payload });
   const body: JsonObject = {
     table: options.table,
     id: options.id,
-    jsonOrdered: options.payload,
+    jsonOrdered: payload,
   };
   const modelId = readOptionalModelId(options.extraData, true);
   if (modelId !== undefined) {
@@ -238,18 +275,15 @@ export async function saveDraftDatasetRecord(options: {
   extraData?: JsonObject;
   beforeDispatch?: () => void | Promise<void>;
 }): Promise<JsonObject> {
+  const payload =
+    options.table === 'processes' ? structuredClone(options.payload) : options.payload;
   if (options.table === 'flows') assertFlowReferencePropertyWriteAdmission(options.payload);
-  if (options.table === 'processes')
-    await assertProcessAllocationWriteAdmission(
-      options.payload,
-      semanticContextFromInput(options.extraData),
-      { apiBaseUrl: options.transport.functionsBaseUrl, ...options.transport },
-    );
+  if (options.table === 'processes') await assertProcessWriteAdmission({ ...options, payload });
   const body: JsonObject = {
     table: options.table,
     id: options.id,
     version: options.version,
-    jsonOrdered: options.payload,
+    jsonOrdered: payload,
   };
   if (options.expectedJsonOrdered !== undefined) {
     body.expectedJsonOrdered = options.expectedJsonOrdered;
