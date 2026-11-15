@@ -96,11 +96,11 @@ tbody tr:hover { background: #faf8fb; }
 td.numeric { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; font-size: 16px; }
 thead { display: table-header-group; }
 .model-panel { border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-.model-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 16px; background: #fcfbfd; border-bottom: 1px solid var(--line); }
 .graph-scroll { overflow: auto; background-color: white; background-image: radial-gradient(#d9d4dd .7px, transparent .7px); background-size: 12px 12px; }
-.node-body { fill: white; stroke: #b7a8bf; stroke-width: 1.3; }
-.node-port { fill: white; stroke: #8c7995; stroke-width: 1; }
-.edge-path { stroke: #a093a7; stroke-width: 1.6; fill: none; stroke-linejoin: round; }
+.node-body { fill: #fff; stroke: var(--accent); stroke-width: 1; }
+.node-header, .network-arrow { fill: var(--accent); }
+.node-port { fill: white; stroke: var(--accent); stroke-width: 1; }
+.edge-path { stroke: var(--accent); stroke-width: 1; fill: none; stroke-linejoin: round; }
 .edge-hit { stroke: transparent; stroke-width: 18; fill: none; }
 .legend { font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); background: #fff; }
 .detail { overflow-wrap: anywhere; scroll-margin-top: 88px; }
@@ -164,7 +164,6 @@ thead { display: table-header-group; }
   .toc a { padding: 6px 10px; }
   .section { padding: 0 0 24px; }
   h2 { font-size: 22px; margin-bottom: 20px; }
-  .model-panel-head { flex-wrap: wrap; padding: 10px; gap: 8px; }
   .legend { padding: 10px; }
   .table-controls label { display: block; }
   .table-controls label > .localized { flex-shrink: 0; white-space: nowrap; }
@@ -231,17 +230,16 @@ thead { display: table-header-group; }
   .result-number { font-size: 20pt; }
   .result-tile { padding: 12px 0; }
 }
-.network-panel { border-color: #d8d0da; --workspace-height: clamp(440px, 63vh, 575px); }
-.network-title { font-size: 12px; font-weight: 600; color: var(--accent); }
-.network-controls { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.network-panel { --workspace-height: clamp(440px, 74vh, 660px); }
+.network-canvas { position: relative; min-width: 0; }
+.network-controls { position: absolute; bottom: 12px; right: 13px; z-index: 1; display: flex; align-items: center; gap: 7px; }
 .network-panel [hidden] { display: none; }
 .network-legend { display: none; }
 [data-network-ready] .network-legend { display: block; }
-.network-controls button { padding: 3px 8px; font-size: 11px; }
-.network-controls output { padding: 0 2px; color: var(--muted); text-align: center; min-width: 36px; font-variant-numeric: tabular-nums; font-size: 10px; }
-.network-expand { color: var(--accent); }
+.network-controls :is(button, output) { padding: 3px 8px; color: #fff; background: var(--accent); border: 1px solid var(--accent); border-radius: 4px; text-align: center; min-height: 27px; font-size: 11px; }
+.network-controls button:hover { background: #734584; }
+.network-controls output { min-width: 36px; font-variant-numeric: tabular-nums; }
 .network-workspace { display: grid; grid-template-columns: minmax(0, 1fr); }
-.network-panel[data-network-ready] .network-workspace { grid-template-columns: minmax(0, 46fr) minmax(0, 54fr); }
 .network-viewport {
   display: flex;
   flex-direction: column;
@@ -251,36 +249,40 @@ thead { display: table-header-group; }
   overflow: auto;
   cursor: grab;
   touch-action: pan-x pan-y;
-  background: #fdfcfe radial-gradient(#e6dee8 .7px, transparent .7px) 0 0 / 14px 14px;
+  background: #fff radial-gradient(#e4dee7 .65px, transparent .65px) 0 0 / 10px 10px;
   scrollbar-width: thin;
 }
 .network-dragging { cursor: grabbing; user-select: none; }
 .network-svg { display: block; flex: none; margin-inline: auto; }
 .network-svg a { text-decoration: none; cursor: pointer; }
-.network-node-content { display: flex; flex-direction: column; justify-content: center; height: 100%; line-height: 1.18; }
-.network-node-kind { color: #695e70; font-size: 11px; margin-bottom: 4px; }
-.network-node-title { color: var(--ink); font-weight: 600; font-size: 15px; overflow: hidden; }
-.network-node-title .localized { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.22; overflow-wrap: anywhere; }
-.network-node.foreground .node-body { fill: var(--accent-wash); stroke: #876093; }
-.network-node.network-related .node-body { fill: var(--accent-wash); stroke: var(--accent); }
-.network-node:hover .node-body, .network-node.network-active .node-body, .network-node:focus-visible .node-body { fill: #f1e6f3; stroke: var(--accent); stroke-width: 2.5; }
-.network-edge:hover .edge-path, .network-edge.network-active .edge-path, .network-edge:focus-visible .edge-path { stroke: var(--accent); stroke-width: 3; }
+.network-node-title { color: #fff; font-size: 14px; line-height: 26px; }
+.network-node-title, .network-port-label, :is(.network-node-title, .network-port-label) .localized { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.network-node-directions { display: flex; justify-content: space-between; padding: 0 10px; }
+.network-node-directions > span { padding: 0 10px; border: 1px solid #ddd8e0; border-radius: 4px; background: #fff; color: #37303a; font-size: 12px; line-height: 18px; }
+.network-port-label { color: var(--muted); font-size: 13px; line-height: 18px; }
+.network-port-label.right { text-align: right; color: var(--accent); }
+.network-reference { color: var(--accent); font-size: 21px; line-height: 22px; }
+.network-node.network-related .node-body { fill: #faf6fc; }
+.network-node:hover .node-body, .network-node.network-active .node-body, .network-node:focus-visible .node-body { stroke-width: 2; }
+.network-edge:hover .edge-path, .network-edge.network-active .edge-path, .network-edge:focus-visible .edge-path { stroke-width: 2.4; }
 .network-node .node-port { pointer-events: none; }
 .network-edge-label { width: 100%; height: 100%; }
 .network-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.network-inspector { min-width: 0; max-height: var(--workspace-height); overflow: auto; border-inline-start: 1px solid var(--line); background: #fff; padding: 17px clamp(12px,2vw,24px); }
+.network-inspector { min-width: 0; max-height: var(--workspace-height); overflow: auto; border-top: 1px solid var(--line); background: #fff; padding: 17px clamp(12px,2vw,24px); }
 .network-inspector .process-detail + .connection { border-top: 1px solid var(--line); margin-top: 13px; padding-top: 9px; }
 .network-inspector :where(.connection-route a) .localized { display: inline; }
 .network-legend { padding: 8px 14px; }
 .network-dialog { padding: 0; border: 0; background: transparent; width: calc(100vw - 28px); max-width: none; max-height: none; }
 .network-dialog::backdrop { background: rgba(38, 22, 44, .52); }
 .network-dialog .network-panel { width: 100%; }
-.network-dialog .network-panel .network-workspace { grid-template-columns: minmax(0, 52fr) minmax(0, 48fr); }
+.network-dialog .network-panel .network-workspace { grid-template-columns: minmax(0, 72fr) minmax(0, 28fr); }
+.network-dialog .network-inspector { border-top: 0; border-inline-start: 1px solid var(--line); }
 .network-dialog .network-viewport, .network-dialog .network-inspector { height: calc(100dvh - 125px); max-height: none; }
 @media (max-width: 720px) {
-  .network-panel[data-network-ready] .network-workspace, .network-dialog .network-panel .network-workspace { grid-template-columns: minmax(0, 1fr); }
+  .network-dialog .network-panel .network-workspace { grid-template-columns: minmax(0, 1fr); }
   .network-viewport { height: 300px; }
-  .network-inspector { border-inline-start: 0; border-top: 1px solid var(--line); max-height: none; }
+  .network-inspector { max-height: none; }
+  .network-dialog .network-inspector { border-inline-start: 0; border-top: 1px solid var(--line); }
   .network-dialog .network-viewport { height: 42dvh; min-height: 140px; }
   .network-dialog .network-inspector { height: auto; max-height: 37dvh; }
 }

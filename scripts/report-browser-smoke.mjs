@@ -14,6 +14,7 @@ mkdirSync(directory, { recursive: false });
 const html = path.join(directory, 'report.html');
 const input = path.join(directory, 'report-input.json');
 const fixture = JSON.parse(readFileSync(path.join(root, 'assets/report/example.json'), 'utf8'));
+fixture.model.referenceNodeId = 'assembly';
 const inventory = fixture.sections[1].table;
 inventory.rows.push(...Array.from({ length: 9 }, (_, i) => [`Test item ${i + 1}`, i, 'kg']));
 writeFileSync(input, JSON.stringify(fixture));
@@ -126,7 +127,19 @@ try {
       .evaluateAll((items) => items.every((el) => getComputedStyle(el).display === 'none')),
     true,
   );
-  assert.equal(await page.locator('.node-port').count(), 4);
+  assert.equal(await page.locator('.node-port').count(), 5);
+  assert.equal(await page.locator('.node-header').count(), 3);
+  assert.equal(
+    await page.locator('[data-graph-link="node-assembly"] .network-reference').count(),
+    1,
+  );
+  const anchor = async (id) => {
+    const port = page.locator('#model-svg [data-graph-link="node-' + id + '"] .node-port').first();
+    return `${Number(await port.getAttribute('x')) + 4} ${Number(await port.getAttribute('y')) + 4}`;
+  };
+  const route = await edge.locator('.edge-path').getAttribute('d');
+  assert.ok(route.startsWith(`M ${await anchor('grid')} `));
+  assert.ok(route.endsWith(`L ${await anchor('material')}`));
   const rows = page.locator('#section-2 tbody tr');
   await page.locator('#section-2 input').fill('electricity');
   assert.equal(await rows.nth(1).isVisible(), false);

@@ -284,8 +284,36 @@ test('model rendering keeps cycles and all supplied inputs without assuming inpu
   );
   const diagram = html.match(/<svg id="model-svg"[\s\S]+?<\/svg>/u)![0];
   assert.equal((diagram.match(/class="network-edge"/gu) ?? []).length, 3);
-  assert.doesNotMatch(diagram, /Material 6|NaN/u);
+  assert.match(diagram, /Material 6/u);
+  assert.doesNotMatch(diagram, /NaN/u);
   assert.match(html, /<td colspan="3">Material 6<\/td>/u);
+});
+
+test('adjacent process connections use separate bends and terminate at the matching rows', () => {
+  const html = renderResearchReport(
+    parseResearchReport({
+      title: 'Two suppliers',
+      model: {
+        nodes: [
+          { id: 'upper', label: 'Upper' },
+          { id: 'lower', label: 'Lower' },
+          { id: 'receiver', label: 'Receiver' },
+        ],
+        edges: [
+          { id: 'upper-edge', from: 'upper', to: 'receiver', label: 'Upper flow' },
+          { id: 'lower-edge', from: 'lower', to: 'receiver', label: 'Lower flow' },
+        ],
+      },
+    }),
+  );
+  const paths = [...html.matchAll(/class="edge-path" d="([^"]+)"/gu)].map((match) => match[1]);
+  assert.equal(paths.length, 2);
+  const bends = paths.map((d) => d.match(/Q ([\d.]+) [\d.]+/u)?.[1]);
+  assert.ok(bends.every(Boolean));
+  assert.notEqual(bends[0], bends[1]);
+  const arrivals = paths.map((d) => d.match(/L ([\d.]+) ([\d.]+)$/u)?.slice(1));
+  assert.equal(arrivals[0]?.[0], arrivals[1]?.[0]);
+  assert.notEqual(arrivals[0]?.[1], arrivals[1]?.[1]);
 });
 
 test('structured exchanges render independent quantities and explicit links, including reversed directions', () => {
@@ -304,6 +332,10 @@ test('structured exchanges render independent quantities and explicit links, inc
   };
   const report = (model: unknown) => parseResearchReport({ title: 'Disposal', model });
   const html = renderResearchReport(report({ nodes, edges: [edge, { ...edge, id: 'second' }] }));
+  const reference = renderResearchReport(report({ nodes, referenceNodeId: 'provider' }));
+  assert.match(reference, /class="network-reference"/u);
+  assert.match(reference, /data-default-process="node-provider"/u);
+  assert.throws(() => report({ nodes, referenceNodeId: 'missing' }), /model\.referenceNodeId/u);
   assert.match(html, /Reference input/u);
   assert.match(html, /data-from-exchange="pivot" data-to-exchange="waste"/u);
   assert.match(html, /data-exchange-id="waste"[^<]*<th[^>]*>Waste<ul class="exchange-links">/u);

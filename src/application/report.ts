@@ -63,7 +63,7 @@ export type ResearchReport = {
   subtitle?: ReportText;
   language: 'en' | 'zh';
   sections: ReportSection[];
-  model?: { nodes: ReportNode[]; edges: ReportEdge[] };
+  model?: { nodes: ReportNode[]; edges: ReportEdge[]; referenceNodeId?: string };
   results: ReportResult[];
   analysis?: { contributions: ReportContribution[]; sensitivity: ReportSensitivity[] };
   interpretation?: { body: ReportText; sources: string[] };
@@ -282,7 +282,7 @@ export function parseResearchReport(input: unknown): ResearchReport {
   });
   let model: ResearchReport['model'];
   if (r.model !== undefined) {
-    const m = object(r.model, 'model', ['nodes', 'edges']);
+    const m = object(r.model, 'model', ['nodes', 'edges', 'referenceNodeId']);
     const nodes = list(m.nodes, 'model.nodes').map((value, i): ReportNode => {
       const at = `model.nodes[${i}]`;
       const n = object(value, at, [
@@ -318,6 +318,10 @@ export function parseResearchReport(input: unknown): ResearchReport {
     const exchangesByNode = new Map(
       nodes.map((node) => [node.id, new Set(exchangeIds([...node.inputs, ...node.outputs]))]),
     );
+    const referenceNodeId =
+      m.referenceNodeId === undefined ? undefined : id(m.referenceNodeId, 'model.referenceNodeId');
+    if (referenceNodeId !== undefined && !exchangesByNode.has(referenceNodeId))
+      invalid('model.referenceNodeId', 'an existing node ID');
     const edges = list(m.edges, 'model.edges').map((value, i): ReportEdge => {
       const at = `model.edges[${i}]`;
       const e = object(value, at, [
@@ -361,7 +365,7 @@ export function parseResearchReport(input: unknown): ResearchReport {
       edges.map((e) => e.id),
       'model.edges',
     );
-    model = { nodes, edges };
+    model = { nodes, edges, referenceNodeId };
   }
   const results = list(r.results, 'results').map((value, i) => {
     const at = `results[${i}]`;
