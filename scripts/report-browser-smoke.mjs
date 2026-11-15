@@ -59,6 +59,22 @@ try {
   const edge = page.locator('[data-graph-link="edge-power"]');
   await page.locator('#model-svg [data-graph-link="node-grid"]').click();
   assert.equal(await inspector.locator('h3').innerText(), '电力供应');
+  const viewerLayout = () =>
+    page.locator('.network-workspace').evaluate((workspace) => {
+      const canvas = workspace.querySelector('.network-canvas').getBoundingClientRect();
+      const details = workspace.querySelector('.network-inspector').getBoundingClientRect();
+      return details.left >= canvas.right && details.top === canvas.top
+        ? 'side'
+        : details.top >= canvas.bottom && details.left === canvas.left
+          ? 'stacked'
+          : 'overlapping';
+    });
+  assert.equal(await viewerLayout(), 'side');
+  const headerFill = (id) =>
+    page
+      .locator(`#model-svg [href="#node-${id}"] .node-header`)
+      .evaluate((header) => getComputedStyle(header).fill);
+  assert.notEqual(await headerFill('grid'), await headerFill('material'));
   const sourceRow = inspector.locator('[data-exchange-id="power-out"]');
   await sourceRow.getByRole('link', { name: '电力' }).press('Enter');
   assert.equal(await inspector.locator('.process-header h3').innerText(), '电力供应');
@@ -95,6 +111,7 @@ try {
   });
   await page.locator('.network-expand').click();
   assert.equal(await page.locator('.network-dialog').isVisible(), true);
+  assert.equal(await viewerLayout(), 'side');
   const firstWidth = await page
     .locator('#model-svg')
     .evaluate((el) => el.getBoundingClientRect().width);
@@ -167,6 +184,7 @@ try {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: path.join(directory, 'desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await viewerLayout(), 'stacked');
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     true,
@@ -192,6 +210,7 @@ try {
     offline: true,
     checks: [
       'bidirectional exchange selection and separate connection amount',
+      'distinct background process styling and responsive inspector layout',
       'collapsible complete process inventory',
       'zoom',
       'language switching',

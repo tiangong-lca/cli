@@ -252,7 +252,7 @@ export function graph(model: Model, cite: (ids: string[]) => string): string {
         })
         .join('');
       const title = `<path class="node-header" d="M ${x} ${y + 26} V ${y + 5} Q ${x} ${y} ${x + 5} ${y} H ${x + NODE_WIDTH - 5} Q ${x + NODE_WIDTH} ${y} ${x + NODE_WIDTH} ${y + 5} V ${y + 26} Z"/>${object(x + 6, y, NODE_WIDTH - 12, 26, 'network-node-title', label)}`;
-      return `<a class="graph-node network-node" href="#node-${id}" data-graph-link="node-${id}"><rect class="node-body" x="${x}" y="${y}" width="${NODE_WIDTH}" height="${size}" rx="5"/>${title}${directions}${ports}${reference}</a>`;
+      return `<a class="graph-node network-node" data-process-kind="${node.kind}" href="#node-${id}" data-graph-link="node-${id}"><rect class="node-body" x="${x}" y="${y}" width="${NODE_WIDTH}" height="${size}" rx="5"/>${title}${directions}${ports}${reference}</a>`;
     })
     .join('');
 

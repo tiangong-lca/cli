@@ -26,7 +26,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: 0cb4e8570aeebc3d1ddc9c17ee6811164a9bf592
+lastReviewedCommit: 5d40620caeaa0b6c07f0545e3c321921c1d7d32c
 lastReviewedNote: 'Reviewed the installed report asset change against the existing release qualification.'
 related:
   - ../AGENTS.md
