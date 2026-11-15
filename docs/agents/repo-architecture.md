@@ -31,7 +31,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: 00a08f2db095b5f44a634eb55cc72256f263fb6d
+lastReviewedCommit: 1cb36c9e1b1825428f31db6cb379488743518567
 lastReviewedNote: 'Reviewed report input validation, bundled assets and the offline model viewer.'
 related:
   - ../../AGENTS.md

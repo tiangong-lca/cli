@@ -39,7 +39,8 @@ tiangong-lca report render --input report.json --output report.html --json
 | `results` | `{label, value, unit, method?, context?, summary?}` 数组。`context` 说明该结果的参考量或其他核算口径。只有一项结果时默认在首页展示，可用 `summary: false` 隐藏；有多项结果时，首页展示标记 `summary: true` 的项。简报数值最多显示四位有效数字，明细表保留输入数值和计算方法。 |
 | `analysis` | 可选的 `{contributions?, sensitivity?}`，分别提供已取得的贡献和情景结果。 |
 | `sources` | `{id, title, url?, note?}` 数组，记录来源或本地资料位置说明；链接只允许无凭据的绝对 HTTP(S) URL。 |
-| `limitations` | 文本数组，用于结果解释、假设影响、适用范围和未解决的问题。 |
+| `interpretation` | 可选的 `{body, sources?}`。使用正文解释主要结果的形成原因、对情景变化的响应及其对研究目标的意义。排在计算结果与分析图表之后。 |
+| `limitations` | 文本数组，用于记录假设影响、适用范围和未解决的问题。 |
 
 节点为 `{id, label, kind?, details?, inputs?, outputs?, sources?}`。`kind` 为 `foreground` 或 `background`，默认前景。背景节点表示已选定的聚合过程。`inputs` 和 `outputs` 可包含两种条目：
 

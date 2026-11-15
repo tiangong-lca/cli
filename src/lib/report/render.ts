@@ -71,10 +71,17 @@ export function renderResearchReport(report: ResearchReport): string {
       title: block.title,
       html: renderSensitivity(block) + cite(block.sources),
     });
+  const interpretation = report.interpretation;
+  if (interpretation)
+    sections.push({
+      id: 'interpretation',
+      title: { en: 'Results interpretation', zh: '结果解读' },
+      html: `<p class="prose">${localized(interpretation.body)}</p>${cite(interpretation.sources)}`,
+    });
   if (report.limitations.length)
     sections.push({
       id: 'limitations',
-      title: { en: 'Interpretation and limitations', zh: '解释与局限' },
+      title: { en: 'Study limitations', zh: '研究局限' },
       html: `<ul class="limitations">${report.limitations.map((v) => `<li>${localized(v)}</li>`).join('')}</ul>`,
     });
   if (report.sources.length)

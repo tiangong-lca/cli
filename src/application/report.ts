@@ -66,6 +66,7 @@ export type ResearchReport = {
   model?: { nodes: ReportNode[]; edges: ReportEdge[] };
   results: ReportResult[];
   analysis?: { contributions: ReportContribution[]; sensitivity: ReportSensitivity[] };
+  interpretation?: { body: ReportText; sources: string[] };
   sources: { id: string; title: ReportText; url?: string; note?: ReportText }[];
   limitations: ReportText[];
 };
@@ -208,6 +209,7 @@ export function parseResearchReport(input: unknown): ResearchReport {
     'model',
     'results',
     'analysis',
+    'interpretation',
     'sources',
     'limitations',
   ]);
@@ -246,6 +248,14 @@ export function parseResearchReport(input: unknown): ResearchReport {
       if (!sourceIds.has(key)) invalid(at, 'a declared source ID');
       return key;
     });
+  let interpretation: ResearchReport['interpretation'];
+  if (r.interpretation !== undefined) {
+    const value = object(r.interpretation, 'interpretation', ['body', 'sources']);
+    interpretation = {
+      body: text(value.body, 'interpretation.body'),
+      sources: references(value.sources, 'interpretation.sources'),
+    };
+  }
   const sections = list(r.sections, 'sections').map((value, i) => {
     const at = `sections[${i}]`;
     const s = object(value, at, ['title', 'body', 'sources', 'table']);
@@ -375,6 +385,7 @@ export function parseResearchReport(input: unknown): ResearchReport {
     model,
     results,
     analysis: parseAnalysis(r.analysis, new Set(model?.nodes.map((node) => node.id)), references),
+    interpretation,
     sources,
     limitations: list(r.limitations, 'limitations').map((v) => text(v, 'limitations')),
   };

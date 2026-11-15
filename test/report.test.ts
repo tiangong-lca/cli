@@ -463,3 +463,25 @@ test('help and invalid arguments never invoke the renderer; arbitrary render fai
   assert.equal(failure.exitCode, 1);
   assert.equal(JSON.parse(failure.stdout).error.code, 'REPORT_RENDER_FAILED');
 });
+
+test('result interpretation follows supplied analysis and precedes limitations', () => {
+  const html = renderResearchReport(
+    parseResearchReport({
+      ...example,
+      interpretation: {
+        body: { zh: '运输是试算结果的主要来源。', en: 'Freight dominates the trial result.' },
+        sources: ['inventory'],
+      },
+    }),
+  );
+  const match = html.match(/<section id="interpretation"[^>]*>(.*?)<\/section>/u);
+  assert.ok(match);
+  assert.match(match[1], /运输是试算结果的主要来源。/u);
+  assert.match(match[1], /href="#source-inventory"/u);
+  assert.ok(html.indexOf('<section id="sensitivity-1"') < match.index!);
+  assert.ok(match.index! < html.indexOf('<section id="limitations"'));
+  assert.throws(
+    () => parseResearchReport({ title: 'Report', interpretation: { body: '  ' } }),
+    /interpretation.body/u,
+  );
+});

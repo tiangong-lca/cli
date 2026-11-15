@@ -14,7 +14,7 @@ checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: a67e3733ee4ecb60951abe02e79af426b7965f40
+lastReviewedCommit: 1cb36c9e1b1825428f31db6cb379488743518567
 lastReviewedNote: 'Reviewed the local report renderer implementation and validation boundaries.'
 ---
 

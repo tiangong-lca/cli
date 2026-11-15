@@ -48,6 +48,7 @@ export function runReportCommand(args: string[], write: ReportPort): CommandIO {
             contributions: '[{title,unit,total?,items:[{label,value,nodeId?}],sources?}]',
             sensitivity: '[{title,unit,baseline,scenarios:[{label,value,description?}],sources?}]',
           },
+          interpretation: '{body,sources?} (displayed after results and analysis)',
           limitations: '[text]',
         },
         modelExchange:
