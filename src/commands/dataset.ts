@@ -1,3 +1,4 @@
+import { ProcessFlowNameAdmissionError } from '../lib/validation/process-flow-reference-names.js';
 import {
   type DatasetAction,
   type CanonicalDatasetAction,
@@ -509,7 +510,7 @@ export async function runDatasetCommand(
           )
             throw new CommandInputError(
               'ANNUAL_REFERENCE_INPUT_INVALID',
-              'Process business validation accepts --reference-documents as an object with a documents array of exact reference datasets.',
+              'Process business validation accepts --reference-documents as {documents: [...]} of exact Flow, FlowProperty and UnitGroup datasets.',
             );
           referenceDocuments = supplied as JsonObject[];
         }
@@ -726,6 +727,11 @@ export async function runDatasetCommand(
     value.outcome = failure.category === 'input' ? 'invalid_input' : failure.category;
     value.summary = failure.message;
     value.error = { category: failure.category, code: failure.code, message: failure.message };
+    if (error instanceof ProcessFlowNameAdmissionError) {
+      value.summary = error.message;
+      value.error.message = error.message;
+      value.data.validation = { flow_reference_names: validationSummary(error.report) };
+    }
     value.nextActions.push({
       description: 'Inspect the command contract.',
       command: `tiangong-lca dataset ${type} --help --json`,

@@ -1,3 +1,4 @@
+import { assertProcessFlowNameWriteAdmission } from '../validation/process-flow-reference-names.js';
 // data-api-relations: lifecyclemodels
 import { CliError } from '../../shared/errors.js';
 import type { FetchLike } from '../transport/http.js';
@@ -480,6 +481,20 @@ async function invokeSaveLifecyclemodelBundle(options: {
     timeoutMs: options.timeoutMs,
   });
   const accessToken = await runtime.getAccessToken();
+  const candidates = options.plan.processMutations.flatMap((mutation) => {
+    if (mutation.op === 'delete') return [];
+    if (!isRecord(mutation.jsonOrdered))
+      throw new CliError(
+        'Each Process create or update in a Model bundle needs a complete jsonOrdered candidate.',
+        { code: 'LIFECYCLEMODEL_PROCESS_MUTATIONS_INVALID', exitCode: 2 },
+      );
+    return [mutation.jsonOrdered];
+  });
+  await assertProcessFlowNameWriteAdmission(candidates, {
+    runtime: { ...runtime, getAccessToken: async () => accessToken },
+    fetchImpl: options.fetchImpl,
+    timeoutMs: options.timeoutMs,
+  });
   const url = `${deriveSupabaseFunctionsBaseUrl(runtime.apiBaseUrl)}/save_lifecycle_model_bundle`;
   const response = await options.fetchImpl(url, {
     method: 'POST',

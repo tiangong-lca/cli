@@ -44,8 +44,15 @@ export function allocationFixture(direction = 'Input', type = 'Product flow') {
     ],
   };
   const flowName = nested(nested(nested(flowRoot.flowInformation).dataSetInformation).name);
+  flowName.baseName = { '@xml:lang': 'en', '#text': 'Fixture reference product' };
   flowName.treatmentStandardsRoutes = { '@xml:lang': 'en', '#text': 'Synthetic fixture' };
   flowName.mixAndLocationTypes = { '@xml:lang': 'en', '#text': 'Global synthetic flow' };
+  for (const item of [inventory, target]) {
+    nested(item.referenceToFlowDataSet)['common:shortDescription'] = {
+      '@xml:lang': 'en',
+      '#text': 'Fixture reference product; Synthetic fixture; Global synthetic flow',
+    };
+  }
   nested(nested(flowRoot.administrativeInformation).publicationAndOwnership)[
     'common:referenceToOwnershipOfDataSet'
   ] = {

@@ -94,6 +94,7 @@ export function datasetOperations(
         writeFileSync(input, JSON.stringify(normalized));
         const report = await runLifecyclemodelBuildResultingProcess({
           inputPath: input,
+          readFlowNamesFromRemote: sources.allow_remote_lookup === true,
           outDir: directory,
           env,
           fetchImpl,

@@ -1,3 +1,4 @@
+import { assertProcessFlowNameWriteAdmission } from '../validation/process-flow-reference-names.js';
 // data-api-relations: contacts, flowproperties, flows, lciamethods, lifecyclemodels, processes, sources, unitgroups
 import { CliError } from '../../shared/errors.js';
 import { assertFlowReferencePropertyWriteAdmission } from '../validation/flow-reference-properties.js';
@@ -483,8 +484,22 @@ export async function saveDraftMaintenanceRow(options: {
   ruleVerification: boolean | null;
   audit: JsonObject;
 }): Promise<JsonObject> {
-  assertMaintenanceLocalizedTextAdmission(options.table, options.payload);
+  const payload =
+    options.table === 'processes' ? structuredClone(options.payload) : options.payload;
+  assertMaintenanceLocalizedTextAdmission(options.table, payload);
   if (options.table === 'flows') assertFlowReferencePropertyWriteAdmission(options.payload);
+  if (options.table === 'processes') {
+    const context = options.context;
+    await assertProcessFlowNameWriteAdmission([payload], {
+      runtime: {
+        apiBaseUrl: context.rest_base_url,
+        publishableKey: context.publishable_key,
+        getAccessToken: async () => context.access_token,
+      },
+      fetchImpl: context.fetch_impl,
+      timeoutMs: context.timeout_ms,
+    });
+  }
   return invokeMaintenanceRpc({
     context: options.context,
     rpc: 'cmd_dataset_save_draft',
@@ -492,7 +507,7 @@ export async function saveDraftMaintenanceRow(options: {
       p_table: options.table,
       p_id: options.id,
       p_version: options.version,
-      p_json_ordered: options.payload,
+      p_json_ordered: payload,
       p_model_id: options.modelId,
       p_rule_verification: options.ruleVerification,
       p_audit: options.audit,

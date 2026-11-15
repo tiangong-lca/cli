@@ -11,6 +11,7 @@ import {
   businessReviewer,
   businessOutsider,
   businessFixture,
+  businessProcessReferenceFlow,
   businessIdentity,
   businessEdit,
   writableTypes,
@@ -524,6 +525,7 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
         process_version: '00.00.001',
       },
       process_sources: { process_json_files: [processFile] },
+      semantic_context: { flow_documents: [businessProcessReferenceFlow()] },
     };
     await invoke([
       'dataset',

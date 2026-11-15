@@ -79,6 +79,8 @@ export async function runLifecyclemodelBuildResultingProcess(
     ? path.resolve(options.outDir)
     : defaultOutDir(requestPath, modelIdentity.id, options.now);
   const projection = await buildProjectionBundle({
+    readFlowNamesFromRemote:
+      options.readFlowNamesFromRemote ?? normalizedRequest.process_sources.allow_remote_lookup,
     request: normalizedRequest,
     sourceModelJson: sourceModel.sourceModelJson,
     modelPath: sourceModel.modelPath,

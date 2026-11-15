@@ -15,8 +15,8 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: ba06d3e375745e223a1f7143078bf0ee806afe64
-lastReviewedNote: 'Reviewed documentation scope for the local report input and browser presentation.'
+lastReviewedCommit: 67b7eef68ae3173f3d198aba692b9a2aaf0f2b84
+lastReviewedNote: 'CLI #506: reviewed exact-version Flow name coverage in Dataset and Model generation, final write admission and the published SDK pin.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

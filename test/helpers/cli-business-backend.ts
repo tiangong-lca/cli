@@ -11,6 +11,7 @@ import {
   businessOutsider,
   businessIdentity,
   businessFixture,
+  businessProcessReferenceFlow,
   writableTypes,
 } from './cli-business-fixtures.js';
 
@@ -72,6 +73,8 @@ export function createBusinessBackend() {
     }
   };
   for (const type of writableTypes) walk(businessFixture(type));
+  const referenceFlow = businessProcessReferenceFlow();
+  const referenceFlowIdentity = businessIdentity('flow', referenceFlow);
   const seed = (table: string, content: JsonObject, owner = businessActor, state = 0) => {
     const identity = businessIdentity(tables[table]!, content);
     rows.set(key(table, identity.id, identity.version), {
@@ -149,6 +152,21 @@ export function createBusinessBackend() {
           (!version || r.version === version) &&
           (r.user_id === actor || actor === businessReviewer),
       );
+      if (table === 'flows' && select === 'id,version,json_ordered') {
+        const visible = selected as Row[];
+        const evidence = visible.map((row) => ({
+          id: row.id,
+          version: row.version,
+          json_ordered: row.json,
+        }));
+        if (
+          id === referenceFlowIdentity.id &&
+          version === referenceFlowIdentity.version &&
+          !evidence.length
+        )
+          evidence.push({ ...referenceFlowIdentity, json_ordered: referenceFlow });
+        return json(evidence, 200, evidence.length);
+      }
       if (select === 'id,version') {
         const known = [...refs.entries()]
           .filter(

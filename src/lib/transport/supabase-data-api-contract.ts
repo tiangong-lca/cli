@@ -38,6 +38,7 @@ export const DATA_API_RELATION_CONSUMERS = {
   flows: [
     'src/adapters/dataset-read.ts',
     'src/lib/validation/process-allocation-write-admission.ts',
+    'src/lib/validation/process-flow-reference-names.ts',
     'src/lib/dataset/remote-verify.ts',
     'src/lib/maintenance/remote.ts',
     'src/lib/maintenance/clear-account.ts',

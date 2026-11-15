@@ -78,6 +78,7 @@ export const commandErrorCategories: ReadonlyMap<string, CommandErrorCategory> =
     LIFECYCLEMODEL_ALLOCATION_QUANTITY_BASIS_CONFLICT: 'conflict',
     LIFECYCLEMODEL_ALLOCATION_TRANSFORMATION_UNSUPPORTED: 'capability_unsupported',
     LIFECYCLEMODEL_PROJECTION_MODE_UNSUPPORTED: 'capability_unsupported',
+    PROCESS_FLOW_NAME_ADMISSION_BLOCKED: 'precondition',
     OAUTH_ACCESS_TOKEN_REQUIRED: 'authentication',
     OAUTH_AUTHORIZATION_CODE_INVALID: 'authentication',
     OAUTH_AUTHORIZATION_DENIED: 'authentication',

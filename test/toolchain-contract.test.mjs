@@ -167,7 +167,7 @@ test('pnpm build permissions and release-age exceptions are exact and versioned'
     exceptions.filter(
       (entry) =>
         !/^(?:oxlint|@oxlint\/binding-[a-z0-9-]+)@1\.80\.0$/u.test(entry) &&
-        entry !== '@tiangong-lca/tidas-sdk@0.7.0',
+        entry !== '@tiangong-lca/tidas-sdk@0.8.0',
     ),
     [],
     `minimum-release-age exceptions must stay exact and versioned:\n${formatJson(exceptions)}`,
@@ -563,10 +563,10 @@ test('Oxlint is the only JavaScript and TypeScript linter and uses type-aware TS
   );
 });
 
-test('the Node 24-compatible graph pins the released TIDAS 0.7.0 runtime', () => {
+test('the Node 24-compatible graph pins the released TIDAS 0.8.0 runtime', () => {
   const sdkRange = PACKAGE_JSON.dependencies?.['@tiangong-lca/tidas-sdk'];
-  assert.equal(sdkRange, '0.7.0');
-  assert.equal(compareVersions(firstVersion(sdkRange), [0, 7, 0]), 0);
+  assert.equal(sdkRange, '0.8.0');
+  assert.equal(compareVersions(firstVersion(sdkRange), [0, 8, 0]), 0);
   assert.equal(PACKAGE_JSON.dependencies?.['@supabase/supabase-js'], '^2.112.4');
   assert.equal(PACKAGE_JSON.devDependencies?.['@types/node'], '^24.13.3');
   assert.equal(PACKAGE_JSON.devDependencies?.['lint-staged'], '^17.4.1');

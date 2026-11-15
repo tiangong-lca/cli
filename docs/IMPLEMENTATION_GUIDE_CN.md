@@ -102,3 +102,9 @@ Review 适配已有业务语义：一个起始对象、服务端默认关联、�
 核心帮助分别提供可读文本和 `--help --json` 机器契约，动作参数、默认值与限制按实际解析能力声明。写入错误只在已有服务契约证明未生效时记为明确拒绝；其余不确定结果继续禁止重放。拒绝结果仅保留安全错误码与类别，不复制远端原始文本。
 
 本地报告通过 `report render` 读取轻量报告 JSON；application 校验展示结构，lib/report 使用内置品牌资产、显式交换项连线和可选分析字段生成转义 HTML/SVG，adapter 独立写文件。Skill 提供正文、双语、实际模型投影和结果，渲染器不读取线上数据、不计算、不维护研究状态。浏览器交互和打印验证见[验证指南](agents/repo-validation.md)。
+
+### Process exchange 引用描述
+
+`dataset process validate --checks schema` 检查结构。需要离线核对每条 exchange 的名称时，使用 `--checks schema,business --reference-documents flows.json`，文件内容为 `{"documents":[...]}`，每个 Flow 使用引用指向的 UUID 和版本。选择 `--checks references` 会读取当前账户可见的精确 Flow。 `flow_reference_names` 会报告每条 exchange 的覆盖状态和诊断路径。缺少精确文档时应补充证据。名称不一致时根据报告修正候选描述后重新验证。
+
+新生成的 resulting Process 使用 SDK 从精确 Flow 文档组装描述。本地生成请求可在 `semantic_context.flow_documents` 提供文档，也可通过 `process_sources.allow_remote_lookup` 指定远端来源。缺少文档的本地结果有待验证，且保存门禁会重新读取当前精确 Flow。旧数据可通过可审查的内容修改来修正。

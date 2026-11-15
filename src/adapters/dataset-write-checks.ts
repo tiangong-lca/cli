@@ -1,5 +1,10 @@
+import {
+  assertProcessFlowNameWriteAdmission,
+  distinctReferenceDocuments,
+  flowNameReadContext,
+} from '../lib/validation/process-flow-reference-names.js';
 import { processAnnualEvidence } from './process-annual-evidence.js';
-import type { DatasetType, JsonObject } from '../application/dataset-types.js';
+import { isObject, type DatasetType, type JsonObject } from '../application/dataset-types.js';
 import { datasetValidation } from './dataset-local.js';
 import { checkDatasetReferences } from './dataset-references.js';
 import { CommandInputError } from '../shared/command-result.js';
@@ -12,7 +17,19 @@ export async function qualifyDatasetWrite(
   fetchImpl: FetchLike,
 ) {
   const evidence =
-    type === 'process' ? await processAnnualEvidence(content, env, fetchImpl) : undefined;
+    type === 'process'
+      ? distinctReferenceDocuments([
+          ...(await processAnnualEvidence(content, env, fetchImpl)),
+          ...(
+            await assertProcessFlowNameWriteAdmission(
+              [content],
+              flowNameReadContext(env, fetchImpl),
+            )
+          )
+            .map(({ document }) => document)
+            .filter(isObject),
+        ])
+      : undefined;
   const validation = await datasetValidation(type, content, ['schema', 'business'], evidence);
   if (validation.status !== 'passed')
     throw new CommandInputError(

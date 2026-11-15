@@ -45,6 +45,7 @@ export type DatasetValidateRowReport = {
   validation_layers?: DatasetValidationLayers;
   annual_volume?: ReturnType<typeof validateProcessPayload>['annual_volume'];
   allocation_semantics?: ReturnType<typeof validateProcessPayload>['allocation_semantics'];
+  flow_reference_names?: ReturnType<typeof validateProcessPayload>['flow_reference_names'];
 };
 
 export type DatasetValidateReport = {

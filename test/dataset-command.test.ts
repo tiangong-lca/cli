@@ -1,3 +1,4 @@
+import { businessProcessReferenceFlow, businessIdentity } from './helpers/cli-business-fixtures.js';
 import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 import { processTransportFixture } from './helpers/process-allocation-fixture.js';
 import assert from 'node:assert/strict';
@@ -38,6 +39,22 @@ function makeResponse(options: {
   };
 }
 
+function processFlowEvidence() {
+  const document = businessProcessReferenceFlow();
+  const flow = document.flowDataSet as Record<string, unknown>;
+  const info = (flow.flowInformation as Record<string, unknown>).dataSetInformation as Record<
+    string,
+    unknown
+  >;
+  info.name = { baseName: { '@xml:lang': 'en', '#text': 'Fixture reference product' } };
+  return new Response(
+    JSON.stringify([{ ...businessIdentity('flow', document), json_ordered: document }]),
+    {
+      headers: { 'content-type': 'application/json' },
+    },
+  );
+}
+
 function withSupabaseAuthBootstrap(fetchImpl: FetchLike): FetchLike {
   return async (url, init) => {
     if (isSupabaseAuthTokenUrl(String(url))) {
@@ -65,12 +82,17 @@ test('dataset command helper derives functions base URLs from supported API base
 
 test('dataset command helper posts create and save-draft payloads with normalized field names', async () => {
   const observed: Array<{ url: string; method: string; body?: string }> = [];
+  const flowReads: string[] = [];
   const transport = await resolveDatasetCommandTransport({
     env: buildSupabaseTestEnv({
       TIANGONG_LCA_API_BASE_URL: 'https://example.supabase.co/rest/v1',
       TIANGONG_LCA_ACCESS_TOKEN: 'key',
     }),
     fetchImpl: withSupabaseAuthBootstrap(async (url, init) => {
+      if (new URL(url).pathname.endsWith('/flows')) {
+        flowReads.push(url);
+        return processFlowEvidence();
+      }
       observed.push({
         url: String(url),
         method: String(init?.method ?? 'GET'),
@@ -109,6 +131,7 @@ test('dataset command helper posts create and save-draft payloads with normalize
     },
   });
 
+  assert.equal(flowReads.length, 1);
   assert.deepEqual(
     observed.map((entry) => entry.method),
     ['POST', 'POST'],
@@ -226,6 +249,7 @@ test('dataset command helper carries an optional complete before image and omits
       TIANGONG_LCA_ACCESS_TOKEN: 'key',
     }),
     fetchImpl: withSupabaseAuthBootstrap(async (url, init) => {
+      if (new URL(url).pathname.endsWith('/flows')) return processFlowEvidence();
       observed.push({
         url: String(url),
         body: typeof init?.body === 'string' ? init.body : undefined,
@@ -262,7 +286,7 @@ test('dataset command helper carries an optional complete before image and omits
   assert.deepEqual(guarded.jsonOrdered, payload);
 });
 
-test('Process creation forwards its exact source Model version without extra lookups', async () => {
+test('Process creation preserves its exact source Model version and reads only the referenced Flow', async () => {
   const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
   await createDatasetRecord({
     transport: {
@@ -271,6 +295,7 @@ test('Process creation forwards its exact source Model version without extra loo
       accessToken: 'token',
       timeoutMs: 1000,
       fetchImpl: async (url, init) => {
+        if (new URL(url).pathname.endsWith('/flows')) return processFlowEvidence();
         requests.push({ url: String(url), body: JSON.parse(String(init?.body)) });
         return makeResponse({ ok: true, status: 200, body: '{"ok":true,"data":{}}' });
       },
