@@ -465,13 +465,20 @@ export async function buildSolvedResultGroup(options: {
   );
   const primary = products.find((item) => item.type === 'primary');
   if (!primary) fail('The calculated group is missing a primary result.');
-  record(info.dataSetInformation).referenceToResultingProcess = {
-    '@type': 'process data set',
-    '@refObjectId': primary.id,
-    '@version': primary.version,
-    '@uri': '../processes/' + primary.id + '.xml',
-    'common:shortDescription': options.modelName.baseName,
-  };
+  record(info.dataSetInformation).referenceToResultingProcess = [
+    primary,
+    ...products.filter((item) => item.type === 'secondary'),
+  ].map(({ id, version, json_ordered }) => {
+    const processInfo = record(processDatasetRoot(json_ordered).processInformation);
+    const name = record(record(processInfo.dataSetInformation).name);
+    return {
+      '@type': 'process data set',
+      '@refObjectId': id,
+      '@version': version,
+      '@uri': '../processes/' + id + '.xml',
+      'common:shortDescription': name.baseName,
+    };
+  });
   if (new Set(products.map((item) => item.id + '@' + item.version)).size !== products.length)
     fail('Calculated group members have conflicting identities.');
   return {

@@ -14,7 +14,7 @@ checkPaths:
   - AGENTS.md
   - src/lib/**
 lastReviewedAt: 2026-11-17
-lastReviewedCommit: a709481f4b78eeb2ea0380ea3c8cb1e71085d751
+lastReviewedCommit: 07bf5f82b7d9f443aaf747309dd569aac5fca44e
 lastReviewedNote: 'CLI #505 reviews Model declaration projection in local Process candidates and its validation. Command and release boundaries retain their existing contracts.'
 ---
 

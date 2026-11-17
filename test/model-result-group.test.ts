@@ -9,6 +9,8 @@ import type { FetchLike } from '../src/lib/transport/http.js';
 import { buildSupabaseTestEnv } from './helpers/supabase-auth.js';
 import { createDatasetPorts } from '../src/adapters/dataset.js';
 import { runDatasetCommand } from '../src/commands/dataset.js';
+import { datasetReader } from '../src/adapters/dataset-read.js';
+import { processTransportFixture } from './helpers/process-allocation-fixture.js';
 
 const modelId = '00000000-0000-4000-8000-000000000002';
 const actorId = '00000000-0000-4000-8000-000000000008';
@@ -36,6 +38,7 @@ const contents = {
           processInstance: [
             {
               '@dataSetInternalID': '0',
+              '@multiplicationFactor': '1',
               referenceToProcess: {
                 '@refObjectId': '00000000-0000-4000-8000-000000000005',
                 '@version': version,
@@ -49,6 +52,7 @@ const contents = {
             },
             {
               '@dataSetInternalID': '1',
+              '@multiplicationFactor': '1',
               referenceToProcess: {
                 '@refObjectId': '00000000-0000-4000-8000-000000000006',
                 '@version': version,
@@ -145,6 +149,81 @@ test('public Result Group command maps observed, verified, drifted and unknown r
     assert.equal(result.status, expected);
     if (outcome !== 'verified') assert.match(result.nextActions[0].command, /result-group --input/);
   }
+});
+
+test('public save prepares real local candidates and reports incomplete evidence without dispatching', async (t) => {
+  const { input } = fixture(t);
+  const source = processTransportFixture();
+  const sourceFile = path.join(path.dirname(input), 'source.json');
+  writeFileSync(sourceFile, JSON.stringify(source));
+  const sourceModel = structuredClone(contents);
+  sourceModel.lifeCycleModelDataSet.lifeCycleModelInformation.technology.processes.processInstance =
+    [
+      {
+        '@dataSetInternalID': '0',
+        '@multiplicationFactor': '1',
+        referenceToProcess: {
+          '@refObjectId': '11111111-1111-4111-8111-111111111111',
+          '@version': version,
+        },
+      },
+    ];
+  Object.assign(sourceModel.lifeCycleModelDataSet.lifeCycleModelInformation, {
+    quantitativeReference: { referenceToReferenceProcess: 0 },
+  });
+  writeFileSync(
+    input,
+    JSON.stringify({
+      ...target,
+      ...binding,
+      action: 'save',
+      baseline: null,
+      generation: {
+        source_model: { json_ordered: sourceModel },
+        process_sources: { process_json_files: ['source.json'], allow_remote_lookup: false },
+      },
+    }),
+  );
+  const fetch: FetchLike = async (url, init) => {
+    if (new URL(url).pathname === '/auth/v1/user') {
+      return Response.json({ id: actorId, email: 'fixture@example.test', role: 'authenticated' });
+    }
+    const body = JSON.parse(String(init?.body));
+    assert.equal(body.action, 'inspect');
+    return observe(null);
+  };
+  const reply = await runDatasetCommand(
+    ['model', 'result-group', '--input', input, '--json'],
+    createDatasetPorts(env, fetch),
+  );
+  const value = JSON.parse(reply.stdout || reply.stderr);
+  assert.equal(value.data?.status, 'draft_validation_failed', JSON.stringify(value.error));
+  assert.equal(value.data.validation[0].validation.flow_reference_names.status, 'unresolved');
+});
+
+test('Process reads preserve actual Model columns and distinguish null from unavailable', async () => {
+  const source = processTransportFixture();
+  const rows = [
+    { id: primaryId, version, json: source, model_id: modelId, model_version: '02.00.000' },
+    { id: secondaryId, version, json: source, model_id: null, model_version: null },
+    { id: actorId, version, json: source, model_id: '', model_version: '' },
+  ];
+  const reader = datasetReader(env, async (url) => {
+    if (new URL(url).pathname === '/auth/v1/user') {
+      return Response.json({ id: actorId, email: 'fixture@example.test', role: 'authenticated' });
+    }
+    assert.match(new URL(url).searchParams.get('select')!, /model_id,model_version/);
+    return Response.json(rows, { headers: { 'content-range': '0-2/3' } });
+  });
+  const page = await reader('process', { offset: 0, limit: 10 });
+  assert.deepEqual(
+    page.records.map(({ model_id, model_version }) => [model_id, model_version]),
+    [
+      [modelId, '02.00.000'],
+      [null, null],
+      [undefined, undefined],
+    ],
+  );
 });
 
 test('result group inspects complete exact links and refuses drift, missing members or mismatched identity', async (t) => {
