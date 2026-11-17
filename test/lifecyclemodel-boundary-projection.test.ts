@@ -73,7 +73,11 @@ function setup(supply = '2', demand = '5') {
     targetAmount: undefined as number | undefined,
   };
 }
-async function run(fixture: ReturnType<typeof setup>, withFlowEvidence = true) {
+async function run(
+  fixture: ReturnType<typeof setup>,
+  withFlowEvidence = true,
+  existing?: { members: Json[]; processes: Json[] },
+) {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'cli-boundary-projection-'));
   try {
     const files = fixture.processes.map((payload) => {
@@ -129,6 +133,7 @@ async function run(fixture: ReturnType<typeof setup>, withFlowEvidence = true) {
     try {
       const report = await runLifecyclemodelBuildResultingProcess({
         inputPath: input,
+        existing,
         outDir: path.join(dir, 'out'),
         env: {},
         fetchImpl: async () => {
@@ -159,7 +164,7 @@ async function run(fixture: ReturnType<typeof setup>, withFlowEvidence = true) {
       outDir: path.join(dir, 'validated'),
     });
     const validation = { exitCode: validationReport.counts.invalid > 0 ? 1 : 0 };
-    return { result, payload, projection, validation, report };
+    return { result, payload, projection, validation, report, bundle };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -498,6 +503,38 @@ test('all-subproducts applies a complete allocation vector and rejects an invali
   const missing = await run(fixture);
   assert.equal(missing.result.exitCode, 2, missing.result.stderr);
   assert.match(missing.result.stderr, /allocation/i);
+});
+
+test('all-subproducts keeps independent saved result versions and fails on ambiguous prior membership', async () => {
+  const fixture = setup();
+  fixture.projectionMode = 'all-subproducts';
+  const initial = await run(fixture);
+  assert.equal(initial.result.exitCode, 0, initial.result.stderr);
+  const candidates = initial.bundle!.projected_processes as Json[];
+  const members = candidates.map(({ id, role, finalId }) => ({
+    id,
+    version: '02.00.000',
+    type: role,
+    finalId,
+  }));
+  const processes = candidates.map(({ id, json_ordered }) => ({
+    id,
+    version: '02.00.000',
+    json_ordered,
+  }));
+  const retained = await run(fixture, true, { members, processes });
+  assert.equal(retained.result.exitCode, 0, retained.result.stderr);
+  assert.deepEqual(
+    (retained.bundle!.projected_processes as Json[]).map(({ id, version }) => [id, version]),
+    members.map(({ id, version }) => [id, version]),
+  );
+  const missing = await run(fixture, true, { members, processes: [] });
+  assert.match(missing.result.stderr, /no verified stored payload/);
+  const duplicate = await run(fixture, true, { members: [...members, members[0]], processes });
+  assert.match(duplicate.result.stderr, /More than one stored result/);
+  fixture.targetAmount = 0;
+  const invalid = await run(fixture);
+  assert.match(invalid.result.stderr, /TARGET_AMOUNT_INVALID/);
 });
 
 test('default and supported override serialize untouched schema-valid output; unsupported enum and annual gaps remain separately unqualified', async () => {
