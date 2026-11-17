@@ -12,9 +12,9 @@ whenToUpdate:
   - when the documented scope or behavior changes
 checkPaths:
   - docs/interfaces/**
-lastReviewedAt: 2026-11-15
-lastReviewedCommit: 5d40620caeaa0b6c07f0545e3c321921c1d7d32c
-lastReviewedNote: 'Reviewed the local report presentation interface and its role alongside Study.'
+lastReviewedAt: 2026-11-17
+lastReviewedCommit: a709481f4b78eeb2ea0380ea3c8cb1e71085d751
+lastReviewedNote: 'CLI #505 reviews Model declaration projection in local Process candidates and its validation. Command and release boundaries retain their existing contracts.'
 ---
 
 # CLI 目标接口设计

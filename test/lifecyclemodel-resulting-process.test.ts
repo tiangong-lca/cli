@@ -2609,7 +2609,7 @@ test('buildProjectionBundle can fall back to process.env and global fetch for re
   }
 });
 
-test('all-subproducts fails before source lookup, network calls or artifact output', async () => {
+test('all-subproducts with a missing Model does not look up dependencies or emit artifacts', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-lm-unsupported-'));
   const inputPath = path.join(dir, 'request.json');
   const outDir = path.join(dir, 'out');
@@ -2629,7 +2629,7 @@ test('all-subproducts fails before source lookup, network calls or artifact outp
           throw new Error('must not fetch');
         },
       }),
-      { code: 'LIFECYCLEMODEL_PROJECTION_MODE_UNSUPPORTED', exitCode: 2 },
+      { code: 'INPUT_NOT_FOUND' },
     );
     assert.equal(calls, 0);
     assert.equal(existsSync(outDir), false);

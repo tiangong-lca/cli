@@ -574,6 +574,29 @@ export async function runDatasetCommand(
         } as DatasetOperation);
         if (value.data.status === 'partial' || value.data.status === 'completed_with_findings')
           value.status = 'partial';
+        if (action === 'result-group') {
+          const status = value.data.status;
+          if (status === 'unknown') value.status = 'unknown';
+          if (status === 'committed_readback_unverified') value.status = 'partial';
+          if (status === 'draft_validation_failed') value.status = 'partial';
+          value.outcome = String(status);
+          value.summary =
+            status === 'verified'
+              ? 'Model and complete result group verified after saving.'
+              : status === 'committed_readback_unverified'
+                ? 'The original save committed, but the current group does not match its receipt.'
+                : status === 'unknown'
+                  ? 'The original save has not been confirmed.'
+                  : status === 'draft_validation_failed'
+                    ? 'Result group draft validation failed before any write.'
+                    : 'Model result group observed without writing.';
+          if (typeof value.data.recoveryFile === 'string') {
+            value.nextActions.push({
+              description: 'Read the original operation receipt using the saved recovery input.',
+              command: `tiangong-lca dataset model result-group --input ${JSON.stringify(value.data.recoveryFile)} --json`,
+            });
+          }
+        }
         if (
           action === 'build-resulting-process' &&
           object(value.data.qualification, 'qualification').status !== 'qualified'

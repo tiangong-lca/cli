@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-17
-lastReviewedCommit: 7797e532b81120f4be2a516c5c0a4f8c8b545ec4
-lastReviewedNote: 'CLI #513 reviews version 0.5.0 preparation with the frozen dependency graph and existing release gates.'
+lastReviewedCommit: 323ef59eb281773e390828426ddf533f702f6db9
+lastReviewedNote: 'CLI #513 reviews version 0.4.1 preparation after the Model result-group source merge.'
 ---
 
 # TianGong LCA CLI
@@ -40,6 +40,7 @@ tiangong-lca --help --json
 | Dataset 查询与内容处理 | 八种对象按能力表提供类型入口；包含契约、精确读取、分页、引用清单、校验及可编辑对象的本地处理。 |
 | Dataset 写入与 Review | 适配现有业务服务：创建与保存分离、草稿删除、关联审核提交、当前审核查询、草稿意见及审核决定。服务边界见下文。 |
 | Model 结果生成 | `build-resulting-process` 为主命令，`aggregate` 为同实现别名；显式输入生成候选，不自动写入。 |
+| Model 结果组 | `result-group` 在支持的服务上读取、计算并保存完整结果组，也可查询原保存操作。 |
 | 专项与运行支撑 | 普通维护、Study、Release、runtime/PCR、分类维护与文件包工具保留各自契约。 |
 
 ## 安装与开始

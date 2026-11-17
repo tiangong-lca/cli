@@ -28,6 +28,7 @@ export type LifecyclemodelResultingProcessRequest = {
     mode: ProjectionMode;
     process_id: string | null;
     process_version: string | null;
+    target_amount?: number;
     metadata_overrides: JsonObject;
     attach_graph_snapshot: boolean;
     attach_graph_snapshot_uri: string | null;
@@ -51,7 +52,7 @@ export type LifecyclemodelResultingProcessReport = {
   request_path: string;
   out_dir: string;
   status: string;
-  qualification?: { status: string; publish_ready: boolean };
+  qualification?: { status: string; publish_ready: boolean; draft_ready?: boolean };
   projected_process_count: number;
   relation_count: number;
   source_model: {
@@ -73,6 +74,7 @@ export type LifecyclemodelResultingProcessReport = {
 };
 
 export type RunLifecyclemodelResultingProcessOptions = {
+  existing?: { members: JsonObject[]; processes: JsonObject[] };
   readFlowNamesFromRemote?: boolean;
   inputPath: string;
   outDir?: string | null;

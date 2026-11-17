@@ -63,6 +63,7 @@ export const flags: Record<CanonicalDatasetAction, string[]> = {
   prepare: ['input'],
   calculate: ['file', 'engine', 'static-cache', 'output-dir', 'timeout-ms'],
   'build-resulting-process': ['input'],
+  'result-group': ['input'],
   create: ['input', 'dry-run'],
   save: ['input', 'dry-run'],
   delete: ['input', 'dry-run'],
@@ -180,6 +181,16 @@ export const requestShapes: Partial<Record<CanonicalDatasetAction, unknown>> = {
     semantic_context:
       '{flow_documents: [...]} of exact Flow documents for canonical exchange descriptions in local builds',
   },
+  'result-group': {
+    action: 'inspect | save | recover',
+    modelId: 'exact Model UUID',
+    version: 'exact Model version',
+    save: {
+      baseline: 'path to an inspect artifact for editing, or null for creation',
+      generation: 'build-resulting-process request with the edited Model and exact source inputs',
+    },
+    recover: 'Pass the original recovery input file returned by save.',
+  },
 };
 function actionExample(type: DatasetType, action: CanonicalDatasetAction): string {
   const command = `tiangong-lca dataset ${type} ${action}`;
@@ -245,7 +256,9 @@ export function help(type: DatasetType, action?: CanonicalDatasetAction) {
       ],
     },
     effects:
-      'Reads and local processing do not save, review or publish datasets. Mutations are explicit.',
+      action === 'result-group'
+        ? 'Inspect and recover are read-only. Save computes and persists one exact Model and its complete result group using the guarded service.'
+        : 'Reads and local processing do not save, review or publish datasets. Mutations are explicit.',
     defaults:
       action === 'validate'
         ? { checks: type === 'lciamethod' ? ['schema'] : ['schema', 'business'] }

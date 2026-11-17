@@ -73,16 +73,7 @@ export function normalizeStringArray(value: unknown, fieldName: string): string[
 
 export function normalizeProjectionMode(value: unknown): ProjectionMode {
   const mode = firstNonEmpty(value) ?? 'primary-only';
-  if (mode === 'all-subproducts') {
-    throw new CliError(
-      'all-subproducts is not supported yet. Use primary-only only when a single primary result meets your request.',
-      {
-        code: 'LIFECYCLEMODEL_PROJECTION_MODE_UNSUPPORTED',
-        exitCode: 2,
-      },
-    );
-  }
-  if (mode === 'primary-only') {
+  if (mode === 'primary-only' || mode === 'all-subproducts') {
     return mode;
   }
 
@@ -139,6 +130,15 @@ export function normalizeLifecyclemodelResultingProcessRequest(
   const projectionRaw = isRecord(input.projection) ? input.projection : {};
   const processSourcesRaw = isRecord(input.process_sources) ? input.process_sources : {};
   const publishRaw = isRecord(input.publish) ? input.publish : {};
+  const target = projectionRaw.target_amount;
+  if (
+    target !== undefined &&
+    (typeof target !== 'number' || !Number.isFinite(target) || target <= 0)
+  )
+    throw new CliError('projection.target_amount must be finite and positive.', {
+      code: 'LIFECYCLEMODEL_TARGET_AMOUNT_INVALID',
+      exitCode: 2,
+    });
 
   const normalized: LifecyclemodelResultingProcessRequest = {
     semantic_context: semanticContextFromInput(input),
@@ -155,6 +155,7 @@ export function normalizeLifecyclemodelResultingProcessRequest(
       mode: normalizeProjectionMode(projectionRaw.mode),
       process_id: firstNonEmpty(projectionRaw.process_id),
       process_version: firstNonEmpty(projectionRaw.process_version),
+      ...(target !== undefined ? { target_amount: target } : {}),
       metadata_overrides: normalizeMetadataOverrides(projectionRaw.metadata_overrides),
       attach_graph_snapshot: toBoolean(projectionRaw.attach_graph_snapshot, false),
       attach_graph_snapshot_uri: resolveInputPath(baseDir, projectionRaw.attach_graph_snapshot_uri),

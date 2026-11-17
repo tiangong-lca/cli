@@ -24,6 +24,7 @@ import {
   multilangFromText,
 } from './base.js';
 import { toFiniteNumber, normalizeNumericOutput } from './base.js';
+import { applyModelDeclarations } from './metadata.js';
 
 export function referenceToResultingProcess(model: JsonObject): {
   id: string | null;
@@ -115,32 +116,36 @@ export function cloneExchangeWithAmount(
   return cloned;
 }
 
-export function buildResultingProcessPayload(options: {
+type ResultIdentity = {
+  sourceModel?: JsonObject;
   sourceModelId: string;
   sourceModelVersion: string;
   sourceModelName: string;
   sourceModelNameInfo: JsonObject;
   processId: string;
   processVersion: string;
-  role: 'primary';
+  role: 'primary' | 'secondary' | 'allocated';
   projectionSignature: string;
   processInstances: ProcessInstance[];
   edges: Edge[];
-  processRecords: Record<string, ProcessRecord>;
-  referenceProcessInstanceId: string | null;
   metadataOverrides: JsonObject;
   attachGraphSnapshotUri: string | null;
-  semanticContext?: ProcessSemanticContext;
-  transformationEvidence?: JsonObject;
-}): JsonObject {
+};
+
+export function buildResultingProcessPayload(
+  options: ResultIdentity & {
+    processRecords: Record<string, ProcessRecord>;
+    referenceProcessInstanceId: string | null;
+    semanticContext?: ProcessSemanticContext;
+    transformationEvidence?: JsonObject;
+  },
+): JsonObject {
   const chosenInstance = chooseReferenceInstance(
     options.processInstances,
     options.referenceProcessInstanceId,
   );
   const chosenKey = `${chosenInstance.process_id}@${chosenInstance.process_version}`;
   const finalRecord = options.processRecords[chosenKey];
-  const finalProcess = copyJson(finalRecord.raw);
-  const finalDataset = processDatasetRoot(finalProcess);
   const totals = new Map<string, AllocationGroup>();
   const sourceTargets = new Map<string, AllocationGroup>();
   const instancesWithAllocation = new Set<string>();
@@ -504,6 +509,23 @@ export function buildResultingProcessPayload(options: {
     );
   }
 
+  return materializeResultProcess(
+    finalRecord.raw,
+    exchangeItems,
+    referenceExchangeInternalId,
+    options,
+  );
+}
+
+export function materializeResultProcess(
+  source: JsonObject,
+  exchangeItems: JsonObject[],
+  referenceExchangeInternalId: string,
+  options: ResultIdentity,
+): JsonObject {
+  const finalProcess = copyJson(source);
+  const finalDataset = processDatasetRoot(finalProcess);
+  if (options.sourceModel) applyModelDeclarations(options.sourceModel, finalDataset);
   const processInformation = isRecord(finalDataset.processInformation)
     ? (finalDataset.processInformation as JsonObject)
     : {};
@@ -515,10 +537,16 @@ export function buildResultingProcessPayload(options: {
   dataInfo['common:UUID'] = options.processId;
   dataInfo.name = copyJson(options.sourceModelNameInfo);
   const generalComment = [...ensureList<unknown>(dataInfo['common:generalComment'])];
-  const provenance = multilangFromText(
-    `Local ${options.role} resulting process generated from lifecycle model ${options.sourceModelId}; exchanges are aggregated from included processes with internal linked flows cancelled.`,
-    `本地为生命周期模型 ${options.sourceModelId} 生成的 ${options.role} resulting process；其 exchanges 由包含过程聚合并抵消内部连接 flow 后得到。`,
-  );
+  const provenance =
+    options.role === 'primary'
+      ? multilangFromText(
+          `Local ${options.role} resulting process generated from lifecycle model ${options.sourceModelId}; exchanges are aggregated from included processes with internal linked flows cancelled.`,
+          `本地为生命周期模型 ${options.sourceModelId} 生成的 ${options.role} resulting process；其 exchanges 由包含过程聚合并抵消内部连接 flow 后得到。`,
+        )
+      : multilangFromText(
+          `Local ${options.role} process generated from lifecycle model ${options.sourceModelId}.`,
+          `为生命周期模型 ${options.sourceModelId} 生成的 ${options.role} 过程。`,
+        );
   for (const entry of provenance) {
     const original = generalComment.find(
       (item) =>

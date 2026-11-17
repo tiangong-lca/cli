@@ -17,6 +17,10 @@ import type { FetchLike } from '../lib/transport/http.js';
 import { normalizeSupabaseProcessPayload } from '../lib/transport/supabase-rest.js';
 import { CliError } from '../shared/errors.js';
 
+function exactLinkValue(value: unknown): value is string | null {
+  return value === null || (typeof value === 'string' && value.length > 0);
+}
+
 export function datasetReader(env: NodeJS.ProcessEnv, fetchImpl: FetchLike) {
   return async (type: DatasetType, input: DatasetQuery): Promise<DatasetPage> => {
     const runtime = createSupabaseDataRuntime({
@@ -28,7 +32,7 @@ export function datasetReader(env: NodeJS.ProcessEnv, fetchImpl: FetchLike) {
     let query = client
       .from(datasetTables[type])
       .select(
-        `id,version,user_id,state_code,modified_at,json${type === 'model' ? ',json_tg' : ''}`,
+        `id,version,user_id,state_code,modified_at,json${type === 'model' ? ',json_tg' : type === 'process' ? ',model_id,model_version' : ''}`,
         { count: 'exact' },
       );
     if (input.id) query = query.eq('id', input.id);
@@ -80,6 +84,10 @@ export function datasetReader(env: NodeJS.ProcessEnv, fetchImpl: FetchLike) {
         owner: typeof row.user_id === 'string' ? row.user_id : null,
         content,
         ...(type === 'model' && isObject(row.json_tg) ? { modelGraph: row.json_tg } : {}),
+        ...(type === 'process' && exactLinkValue(row.model_id) ? { model_id: row.model_id } : {}),
+        ...(type === 'process' && exactLinkValue(row.model_version)
+          ? { model_version: row.model_version }
+          : {}),
       };
     });
     return { records, total: response.count, environment: new URL(restBaseUrl).origin };

@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-17
-lastReviewedCommit: 7797e532b81120f4be2a516c5c0a4f8c8b545ec4
-lastReviewedNote: 'CLI #513 reviews version 0.5.0 preparation with the frozen dependency graph and existing release gates.'
+lastReviewedCommit: 323ef59eb281773e390828426ddf533f702f6db9
+lastReviewedNote: 'CLI #513 reviews version 0.4.1 preparation after the Model result-group source merge.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -72,6 +72,10 @@ The complete installed-package scenario has a five-minute aggregate test budget 
 Test operation decisions through application ports and public command behavior. Keep precise parser, hash, scientific and recovery unit tests where they establish invariants. The private-journal regression binds legacy request/target key algorithms and exact receipt shapes; canonical-object and newline-bound artifact hashes are verified separately. Removing an unreachable workflow also removes only its exclusive IO tests, retaining its current algorithm assertions.
 
 Root option tests verify leading `--json`, malformed/repeated separators and unchanged child argv. Core help/results and retained specialized protocols are tested according to the root discovery matrix, without wrapping child stdout. Existing giant protocol fixture suites are decomposed by responsibility as their assertions change; file moves do not justify weaker assertions or lower coverage.
+
+## Model calculation artifact
+
+`assets/model-result-kernel/manifest.json` pins the Platform source commit, the installed matrix dependency and the bundle digest. Use the exact Platform checkout and its frozen install. From that checkout run `pnpm dlx esbuild@0.28.2 src/services/lifeCycleModels/matrixCalculation/matrixWorker.ts --bundle --platform=node --format=esm --target=node24 --outfile=/tmp/model-result-kernel.mjs`. Compare the source digests and SHA-256 of the output with the manifest before accepting it. A kernel change needs matching Platform source evidence, a downstream digest update and actual installed CLI calculation coverage.
 
 ## Validation matrix
 
