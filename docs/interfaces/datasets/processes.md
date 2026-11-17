@@ -29,6 +29,8 @@ language: zh-CN
 
 共同操作遵循 [Dataset](README.md) 和[数据处理](processing.md)。交换项不建立独立远程保存入口：调用方直接编辑本地候选内容或应用通用补丁，再使用完整内容与前置修订保存 Process。
 
+`get` 的对象摘要和 `list` 的各条记录包含服务返回的 `model_id`、`model_version`。字段为 null 表示实际存储的空值，字段缺失表示服务未提供可用值。关联列只表达持久化关系，结果角色和当前成员范围由关联 Model 的精确版本决定。
+
 `statistics` 接收与列表一致的范围过滤和 `--group-by` 维度；只支持命令契约声明的分组。输入范围或扫描不完整时返回部分结果，不将统计覆盖率解释为数据质量或生产任务完成率。
 
 支持 `--owner`、`--state`、`--scope visible|current-user` 和 `--group-by state,classification`；默认范围为当前权限可见的全部状态，默认按状态分组。结构化选择也可通过 `--input` 提供 `scope`、`owner`、`stateCodes`、`groupBy`、`maxRows`，与命令行范围参数互斥。`current-user` 在线核验账号，不能同时选择其他所有者。

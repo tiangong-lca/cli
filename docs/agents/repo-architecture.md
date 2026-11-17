@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-15
-lastReviewedCommit: 3218afff1081a0e97e7ab4be81e0720d0c1e5931
-lastReviewedNote: 'CLI #507 reviews 0.4.0 publication of exact Flow name admission and the frozen SDK 0.8.0 dependency.'
+lastReviewedAt: 2026-11-17
+lastReviewedCommit: debad8911d2ca6d7e2008cf123237fab19c6ad86
+lastReviewedNote: 'CLI #505 reviews Model declaration projection in local Process candidates and its validation. Command and release boundaries retain their existing contracts.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml

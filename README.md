@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - README.md
   - src/commands/**
-lastReviewedAt: 2026-11-15
-lastReviewedCommit: 3218afff1081a0e97e7ab4be81e0720d0c1e5931
+lastReviewedAt: 2026-11-17
+lastReviewedCommit: a709481f4b78eeb2ea0380ea3c8cb1e71085d751
 lastReviewedNote: 'CLI #507 reviews 0.4.0 publication of exact Flow name admission and the frozen SDK 0.8.0 dependency.'
 ---
 
@@ -40,6 +40,7 @@ tiangong-lca --help --json
 | Dataset 查询与内容处理 | 八种对象按能力表提供类型入口；包含契约、精确读取、分页、引用清单、校验及可编辑对象的本地处理。 |
 | Dataset 写入与 Review | 适配现有业务服务：创建与保存分离、草稿删除、关联审核提交、当前审核查询、草稿意见及审核决定。服务边界见下文。 |
 | Model 结果生成 | `build-resulting-process` 为主命令，`aggregate` 为同实现别名；显式输入生成候选，不自动写入。 |
+| Model 结果组 | `result-group` 在支持的服务上读取、计算并保存完整结果组，也可查询原保存操作。 |
 | 专项与运行支撑 | 普通维护、Study、Release、runtime/PCR、分类维护与文件包工具保留各自契约。 |
 
 ## 安装与开始

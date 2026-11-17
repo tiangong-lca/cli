@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-11-15"
-lastReviewedCommit: "3218afff1081a0e97e7ab4be81e0720d0c1e5931"
-lastReviewedNote: 'CLI #507 reviews 0.4.0 publication of exact Flow name admission and the frozen SDK 0.8.0 dependency.'
+lastReviewedAt: "2026-11-17"
+lastReviewedCommit: "debad8911d2ca6d7e2008cf123237fab19c6ad86"
+lastReviewedNote: 'CLI #505 reviews Model declaration projection in local Process candidates and its validation. Command and release boundaries retain their existing contracts.'
 
 catalog:
   repos:
@@ -77,6 +77,7 @@ ownership:
           - assets/runtime/**
           - assets/study-contract/**
           - assets/study-renderer/**
+          - assets/model-result-kernel/**
       ownerRepo: cli
     - id: remote-session-and-adapters
       paths:
@@ -158,6 +159,7 @@ coverage:
     - assets/runtime/**
     - assets/study-contract/**
     - assets/study-renderer/**
+    - assets/model-result-kernel/**
     - test/**
     - examples/**
     - scripts/**
@@ -498,6 +500,8 @@ rules:
     scope: repo
     repo: cli
     triggers:
+      - path: assets/model-result-kernel/**
+        kind: platform-model-calculation-artifact
       - path: src/lib/**
         kind: capability-runtime
       - path: examples/**
