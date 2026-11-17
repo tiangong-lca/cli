@@ -15,7 +15,7 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-17
-lastReviewedCommit: b1efd3c4fd2a6b90732b586dce3d40031469d1e5
+lastReviewedCommit: debad8911d2ca6d7e2008cf123237fab19c6ad86
 lastReviewedNote: 'CLI #505 reviews Model declaration projection in local Process candidates and its validation. Command and release boundaries retain their existing contracts.'
 related:
   - ../AGENTS.md

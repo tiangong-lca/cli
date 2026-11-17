@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import fs, { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { runLifecyclemodelBuildResultingProcess } from '../src/lib/model/resulting-process.js';
@@ -460,6 +461,9 @@ test('all-subproducts solves independent source-unit results and preserves the m
   const fixture = setup();
   fixture.projectionMode = 'all-subproducts';
   fixture.targetAmount = 10;
+  const upstream = obj(fixture.processes[0].processDataSet);
+  const exchange = (obj(upstream.exchanges).exchange as Json[])[0];
+  delete obj(exchange.referenceToFlowDataSet)['common:shortDescription'];
   const built = await run(fixture);
   assert.equal(built.result.exitCode, 0, built.result.stderr);
   assert.equal(built.projection!.expected_member_count, 2);
@@ -530,6 +534,7 @@ test('all-subproducts keeps independent saved result versions and fails on ambig
   );
   const authored = structuredClone(processes);
   const processRoot = obj(obj(authored[0].json_ordered).processDataSet);
+  delete obj(obj(processRoot.processInformation).dataSetInformation).classificationInformation;
   const modelling = obj(processRoot.modellingAndValidation);
   obj(modelling.dataSourcesTreatmentAndRepresentativeness).annualSupplyOrProductionVolume = {
     '@xml:lang': 'en',
@@ -547,6 +552,34 @@ test('all-subproducts keeps independent saved result versions and fails on ambig
   fixture.targetAmount = 0;
   const invalid = await run(fixture);
   assert.match(invalid.result.stderr, /TARGET_AMOUNT_INVALID/);
+});
+
+test('all-subproducts fails before generation if its pinned calculation artifact is corrupt or missing', async (t) => {
+  const fixture = setup();
+  fixture.projectionMode = 'all-subproducts';
+  const original = fs.readFileSync;
+  let corrupt = true;
+  const mock = t.mock.method(fs, 'readFileSync', (...args: Parameters<typeof fs.readFileSync>) => {
+    const [file] = args;
+    if (!String(file).includes('/assets/model-result-kernel/index.mjs')) {
+      return original(...args);
+    }
+    if (corrupt) return Buffer.from('invalid kernel artifact');
+    throw new Error('calculation artifact unavailable');
+  });
+  syncBuiltinESMExports();
+  try {
+    const tampered = await run(fixture);
+    assert.equal(tampered.result.exitCode, 2);
+    assert.match(tampered.result.stderr, /failed integrity verification/);
+    corrupt = false;
+    const absent = await run(fixture);
+    assert.equal(absent.result.exitCode, 1);
+    assert.match(absent.result.stderr, /artifact unavailable/);
+  } finally {
+    mock.mock.restore();
+    syncBuiltinESMExports();
+  }
 });
 
 test('default and supported override serialize untouched schema-valid output; unsupported enum and annual gaps remain separately unqualified', async () => {
