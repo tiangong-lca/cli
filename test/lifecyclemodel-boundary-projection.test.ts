@@ -463,6 +463,43 @@ test('all-subproducts solves independent source-unit results and preserves the m
   assert.deepEqual(quantities(built.payload!), [[PRODUCT, 'Output', '10']]);
 });
 
+test('all-subproducts applies a complete allocation vector and rejects an invalid declared split', async () => {
+  const fixture = setup();
+  fixture.projectionMode = 'all-subproducts';
+  fixture.reference = 0;
+  fixture.targetAmount = 100;
+  const source = component('55555555-5555-4555-8555-555555555555', [
+    [FLOW, 'Output', '100'],
+    [PRODUCT, 'Output', '20'],
+    [FLOW, 'Input', '100'],
+  ]);
+  fixture.processes = [source];
+  fixture.instances = [fixture.instances[0]];
+  delete fixture.instances[0].connections;
+  const exchanges = obj(obj(source.processDataSet).exchanges).exchange as Json[];
+  exchanges[1].quantitativeReference = false;
+  exchanges[2].quantitativeReference = false;
+  exchanges[2].allocations = {
+    allocation: [
+      { '@internalReferenceToCoProduct': '1', '@allocatedFraction': '80' },
+      { '@internalReferenceToCoProduct': '2', '@allocatedFraction': '20' },
+    ],
+  };
+  const built = await run(fixture);
+  assert.equal(built.result.exitCode, 0, built.result.stderr);
+  assert.equal(built.projection!.expected_member_count, 4);
+  assert.ok(
+    quantities(built.payload!).some(
+      ([flow, direction, amount]) => flow === FLOW && direction === 'Input' && amount === '80',
+    ),
+  );
+
+  (obj(exchanges[2].allocations).allocation as Json[]).pop();
+  const missing = await run(fixture);
+  assert.equal(missing.result.exitCode, 2, missing.result.stderr);
+  assert.match(missing.result.stderr, /allocation/i);
+});
+
 test('default and supported override serialize untouched schema-valid output; unsupported enum and annual gaps remain separately unqualified', async () => {
   for (const override of [undefined, 'Unit process, single operation', 'unsupported']) {
     const fixture = setup();
