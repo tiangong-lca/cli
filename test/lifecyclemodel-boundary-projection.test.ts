@@ -62,7 +62,14 @@ function setup(supply = '2', demand = '5') {
       downstreamProcess: { '@id': '1', '@flowUUID': FLOW, '@version': VERSION },
     },
   };
-  return { processes, instances, reference: 1 as unknown, overrides: {} as Json };
+  return {
+    processes,
+    instances,
+    reference: 1 as unknown,
+    overrides: {} as Json,
+    modelDeclarations: {} as Json,
+    modelComment: undefined as unknown,
+  };
 }
 async function run(fixture: ReturnType<typeof setup>, withFlowEvidence = true) {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'cli-boundary-projection-'));
@@ -81,6 +88,7 @@ async function run(fixture: ReturnType<typeof setup>, withFlowEvidence = true) {
         name: obj(
           obj(obj(fixture.processes[0].processDataSet).processInformation).dataSetInformation,
         ).name,
+        'common:generalComment': fixture.modelComment,
       },
       quantitativeReference:
         fixture.reference === undefined ? {} : { referenceToReferenceProcess: fixture.reference },
@@ -101,6 +109,7 @@ async function run(fixture: ReturnType<typeof setup>, withFlowEvidence = true) {
             '@id': '77777777-7777-4777-8777-777777777777',
             '@version': VERSION,
             lifeCycleModelInformation: info,
+            ...fixture.modelDeclarations,
           },
         },
       },
@@ -331,6 +340,113 @@ test('multipliers require explicit finite nonnegative values; genuine zero remai
   overflow.instances[0]['@multiplicationFactor'] = '1e308';
   assert.match((await run(overflow)).result.stderr, /Scaled exchange amount is not finite/);
 });
+test('authored Model declarations reach the qualified candidate without changing inventory or source references', async () => {
+  const fixture = setup('5');
+  const input = processTransportFixture();
+  const sourceInformation = obj(input.processDataSet);
+  const sourceAdmin = obj(sourceInformation.administrativeInformation);
+  const owner = structuredClone(
+    obj(sourceAdmin.publicationAndOwnership)['common:referenceToOwnershipOfDataSet'],
+  ) as Json;
+  owner['@refObjectId'] = '99999999-9999-4999-8999-999999999999';
+  const localized = [
+    { '@xml:lang': 'en', '#text': 'Whole-system declaration' },
+    { '@xml:lang': 'zh', '#text': '全系统声明' },
+  ];
+  const source = obj(fixture.processes[1].processDataSet);
+  const treatment = (payload: Json) =>
+    obj(obj(payload.modellingAndValidation).dataSourcesTreatmentAndRepresentativeness);
+  treatment(source).useAdviceForDataSet = [{ '@xml:lang': 'en', '#text': 'Component use only' }];
+  obj(obj(source.administrativeInformation).publicationAndOwnership)['common:accessRestrictions'] =
+    [{ '@xml:lang': 'en', '#text': 'Component access only' }];
+  const baseline = await run(fixture);
+  fixture.modelComment = localized;
+  const sourceGoal = obj(sourceAdmin['common:commissionerAndGoal']);
+  const modelGoal = {
+    'common:referenceToCommissioner': sourceGoal['common:referenceToCommissioner'],
+    'common:intendedApplications': localized,
+  };
+  const modelRights = {
+    'common:referenceToOwnershipOfDataSet': owner,
+    'common:copyright': 'true',
+    'common:licenseType': 'Other',
+    'common:accessRestrictions': localized,
+  };
+  fixture.modelDeclarations = {
+    modellingAndValidation: {
+      dataSourcesTreatmentEtc: { useAdviceForDataSet: localized },
+    },
+    administrativeInformation: {
+      'common:commissionerAndGoal': modelGoal,
+      publicationAndOwnership: modelRights,
+    },
+  };
+  const result = await run(fixture);
+  assert.equal(result.validation!.exitCode, 0);
+  assert.deepEqual(result.projection!.qualification, { status: 'qualified', publish_ready: true });
+  const projected = obj(result.payload!.processDataSet);
+  const original = obj(baseline.payload!.processDataSet);
+  assert.deepEqual(projected.exchanges, original.exchanges);
+  const { 'common:generalComment': comment, ...resultIdentity } = obj(
+    obj(projected.processInformation).dataSetInformation,
+  );
+  const { 'common:generalComment': sourceComment, ...baselineIdentity } = obj(
+    obj(original.processInformation).dataSetInformation,
+  );
+  assert.deepEqual(resultIdentity, baselineIdentity);
+  assert.notDeepEqual(comment, sourceComment);
+  assert.deepEqual(
+    (comment as Json[]).map((entry) => [
+      entry['@xml:lang'],
+      String(entry['#text']).split('\n\n')[0],
+    ]),
+    [
+      ['en', 'Whole-system declaration'],
+      ['zh', '全系统声明'],
+    ],
+  );
+  assert.match(String((comment as Json[])[0]['#text']), /generated from lifecycle model/);
+  const projectedAdmin = obj(projected.administrativeInformation);
+  assert.deepEqual(projectedAdmin['common:commissionerAndGoal'], modelGoal);
+  const publication = obj(projectedAdmin.publicationAndOwnership);
+  for (const [field, value] of Object.entries(modelRights)) {
+    assert.deepEqual(publication[field], value);
+  }
+  assert.equal(publication['common:dataSetVersion'], VERSION);
+  assert.deepEqual(treatment(projected), {
+    ...treatment(original),
+    useAdviceForDataSet: localized,
+  });
+
+  modelRights['common:accessRestrictions'] = [];
+  obj(
+    obj(fixture.modelDeclarations.modellingAndValidation).dataSourcesTreatmentEtc,
+  ).useAdviceForDataSet = [];
+  const cleared = await run(fixture);
+  assert.equal(cleared.validation!.exitCode, 0);
+  const clearedRoot = obj(cleared.payload!.processDataSet);
+  assert.equal(treatment(clearedRoot).useAdviceForDataSet, undefined);
+  assert.equal(
+    obj(obj(clearedRoot.administrativeInformation).publicationAndOwnership)[
+      'common:accessRestrictions'
+    ],
+    undefined,
+  );
+
+  obj(obj(fixture.modelDeclarations.administrativeInformation).publicationAndOwnership)[
+    'common:licenseType'
+  ] = undefined;
+  const incomplete = await run(fixture);
+  assert.equal(obj(incomplete.projection!.qualification).publish_ready, false);
+  assert.equal(
+    obj(
+      obj(obj(incomplete.payload!.processDataSet).administrativeInformation)
+        .publicationAndOwnership,
+    )['common:licenseType'],
+    undefined,
+  );
+});
+
 test('default and supported override serialize untouched schema-valid output; unsupported enum and annual gaps remain separately unqualified', async () => {
   for (const override of [undefined, 'Unit process, single operation', 'unsupported']) {
     const fixture = setup();

@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - AGENTS.md
   - src/lib/**
-lastReviewedAt: 2026-11-15
-lastReviewedCommit: 5d40620caeaa0b6c07f0545e3c321921c1d7d32c
-lastReviewedNote: 'Reviewed the separation of local report presentation and hosted Study runtime contracts.'
+lastReviewedAt: 2026-11-17
+lastReviewedCommit: 7797e532b81120f4be2a516c5c0a4f8c8b545ec4
+lastReviewedNote: 'CLI #505 reviews Model declaration projection in local Process candidates and its validation. Command and release boundaries retain their existing contracts.'
 ---
 
 # Existing runtime safeguards

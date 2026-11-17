@@ -85,6 +85,7 @@ export async function buildProjectionBundle(options: {
 
   const transformationEvidence: JsonObject = {};
   const primaryPayload = buildResultingProcessPayload({
+    sourceModel: root,
     sourceModelId: modelIdentity.id,
     sourceModelVersion: modelIdentity.version,
     sourceModelName: modelIdentity.name,

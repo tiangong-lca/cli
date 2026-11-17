@@ -24,6 +24,7 @@ import {
   multilangFromText,
 } from './base.js';
 import { toFiniteNumber, normalizeNumericOutput } from './base.js';
+import { applyModelDeclarations } from './metadata.js';
 
 export function referenceToResultingProcess(model: JsonObject): {
   id: string | null;
@@ -116,6 +117,7 @@ export function cloneExchangeWithAmount(
 }
 
 export function buildResultingProcessPayload(options: {
+  sourceModel?: JsonObject;
   sourceModelId: string;
   sourceModelVersion: string;
   sourceModelName: string;
@@ -141,6 +143,7 @@ export function buildResultingProcessPayload(options: {
   const finalRecord = options.processRecords[chosenKey];
   const finalProcess = copyJson(finalRecord.raw);
   const finalDataset = processDatasetRoot(finalProcess);
+  if (options.sourceModel) applyModelDeclarations(options.sourceModel, finalDataset);
   const totals = new Map<string, AllocationGroup>();
   const sourceTargets = new Map<string, AllocationGroup>();
   const instancesWithAllocation = new Set<string>();
