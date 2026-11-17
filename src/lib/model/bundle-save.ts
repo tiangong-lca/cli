@@ -222,7 +222,7 @@ function deriveXflowEdges(payload: JsonObject): JsonObject[] {
   return edges;
 }
 
-export function deriveLifecyclemodelJsonTg(payload: JsonObject): JsonObject {
+export function deriveLifecyclemodelJsonTg(payload: JsonObject) {
   return {
     xflow: {
       nodes: deriveXflowNodes(payload),

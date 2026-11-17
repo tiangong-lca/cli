@@ -26,6 +26,7 @@ language: zh-CN
 | `calculate` | 线上精确版本默认提交线上计算任务，本地文件默认本地执行；不修改模型或自动创建 Study。 |
 | `graph` | 从明确模型内容生成图结构和连接发现。 |
 | `build-resulting-process`（别名 `aggregate`） | 根据明确模型、Process 内容、投影及分配配置生成结果 Process 候选和来源关系。 |
+| `result-group` | 读取精确 Model 草稿与结果组，保存完整候选，查询原保存回执并核对当前组。 |
 
 共同契约见 [Dataset](README.md) 和[数据处理](processing.md)。本版不提供模型删除、递归规划、自动选过程或自动发布结果的命令。
 
@@ -45,7 +46,13 @@ language: zh-CN
 
 本地候选优先使用 Model 的系统说明、用途限制、预期应用和权利声明。系统说明保留多语言内容，并附上生成来源。旧输入缺少说明、用途或应用时沿用参考过程对应值。Model 声明任一权利字段时，结果使用同一组 Model 权利字段，缺少的必填项由数据校验指出。旧输入没有任何 Model 权利声明时沿用参考过程字段。用途限制和访问限制可用空列表清除。过程引用和候选身份仍由生成操作确定。
 
-聚合是确定性的内容处理，不运行研究任务，不启动远程 LCIA 作业，不自动保存或发布生成内容。结果 Process 经独立校验后由 `dataset process create` 或 `save` 持久化。
+聚合输出是本地候选。`primary-only` 表示单主结果；`all-subproducts` 使用与 Platform 同源的计算核心，生成主结果、独立产品结果和适用的分配过程。可用 `projection.target_amount` 指定正数目标量。未指定时，用参考过程参考量乘以 Model 中该实例的倍率。各其他产品使用其来源参考量独立求解。
+
+## 保存与恢复完整结果组
+
+`dataset model result-group --input request.json --json` 使用精确 `modelId` 和 `version`。已有草稿先用 `action: inspect` 和 `--output baseline.json` 保存读取依据。编辑后用 `action: save`，在 `baseline` 指向该文件，在 `generation` 提供生成请求和编辑后的 Model。创建新 Model 时使用 `baseline: null`。保存绑定 `expectedActor` 和 `expectedEnvironment`，这两个字段来自检查输出或当前身份确认。
+
+完整保存会计算、验证并提交整组，再用回执核对当前快照。CLI 在派发前保留原操作的恢复输入。断线时会查询该操作，后续核查可使用报告给出的原恢复输入。结果 `verified` 证明回执和当前组一致，`committed_readback_unverified` 只确认原提交，`unknown` 表示原提交尚未确认。编辑依据变化时拒绝当前保存；重新检查后按用户编辑意图处理变化。
 
 ## 计算
 

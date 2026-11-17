@@ -14,7 +14,7 @@ checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
 lastReviewedAt: 2026-11-17
-lastReviewedCommit: 7797e532b81120f4be2a516c5c0a4f8c8b545ec4
+lastReviewedCommit: f3e74bbfeb6cfe26f5ab141e46ff139859d4dc6e
 lastReviewedNote: 'CLI #505 reviews Model declaration projection in local Process candidates and its validation. Command and release boundaries retain their existing contracts.'
 ---
 
@@ -47,6 +47,8 @@ lastReviewedNote: 'CLI #505 reviews Model declaration projection in local Proces
 本计划的终点是可供评审的 CLI 0.2.0 候选版本。代码集成、正式发布和 workspace 集成遵循对应的交付流程，具体执行状态记录在 Issue/PR 中。
 
 ## Model 计算后续实施
+
+Model 完整结果组维护由 [CLI #464](https://github.com/tiangong-lca/cli/issues/464) 协调。源码已提供 `all-subproducts` 和 `result-group`，后者依赖服务器的整组读取、事务保存和回执。实际往返与兼容资格按对应 Issue 验收。
 
 [Study 总体设计](../interfaces/study.md)和 [Model 计算设计](../interfaces/calculations.md)定义独立于 0.2.0 已有业务迁移的后续范围，不追加到本次迁移完成条件。Study 扩展为目标、资料、前景建模、背景选择及计算分析的完整研究流程，独立 Model 计算仍无需调用方预建 Study。这里记录源码核查结果和待交付项，不代表服务启用或新的科学验证。
 

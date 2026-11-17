@@ -4,20 +4,32 @@ import { stageModelProcesses } from './model-process-inputs.js';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { object, type DatasetPorts } from '../application/dataset-types.js';
+import { object, type DatasetPorts, type JsonObject } from '../application/dataset-types.js';
 import { CommandInputError } from '../shared/command-result.js';
 import { runLifecyclemodelGraph } from '../lib/model/graph.js';
 import { runLifecyclemodelBuildResultingProcess } from '../lib/model/resulting-process.js';
 import { uploadSourceAttachments } from './source-attachments.js';
 import { processResults } from './process-results.js';
 import { processStatistics } from './process-statistics.js';
+import { runModelResultGroup } from './model-result-group.js';
+import type { RunLifecyclemodelResultingProcessOptions } from '../lib/model/result/base.js';
 import type { FetchLike } from '../lib/transport/http.js';
 
 export function datasetOperations(
   env: NodeJS.ProcessEnv,
   fetchImpl: FetchLike,
 ): DatasetPorts['operations'] {
-  return async ({ type, action, request, inputPath }) => {
+  const run = async (
+    { type, action, request, inputPath }: Parameters<DatasetPorts['operations']>[0],
+    existing?: RunLifecyclemodelResultingProcessOptions['existing'],
+  ): Promise<JsonObject> => {
+    if (type === 'model' && action === 'result-group')
+      return runModelResultGroup(request, inputPath, env, fetchImpl, (generation, existing) =>
+        run(
+          { type: 'model', action: 'build-resulting-process', request: generation, inputPath },
+          existing,
+        ),
+      );
     if (type === 'source' && action === 'upload-attachments')
       return uploadSourceAttachments(request, inputPath, env, fetchImpl);
     if (type === 'process' && action === 'statistics')
@@ -93,6 +105,7 @@ export function datasetOperations(
         };
         writeFileSync(input, JSON.stringify(normalized));
         const report = await runLifecyclemodelBuildResultingProcess({
+          existing,
           inputPath: input,
           readFlowNamesFromRemote: sources.allow_remote_lookup === true,
           outDir: directory,
@@ -117,4 +130,5 @@ export function datasetOperations(
       rmSync(directory, { recursive: true, force: true });
     }
   };
+  return run;
 }

@@ -69,6 +69,8 @@ function setup(supply = '2', demand = '5') {
     overrides: {} as Json,
     modelDeclarations: {} as Json,
     modelComment: undefined as unknown,
+    projectionMode: 'primary-only',
+    targetAmount: undefined as number | undefined,
   };
 }
 async function run(fixture: ReturnType<typeof setup>, withFlowEvidence = true) {
@@ -114,6 +116,8 @@ async function run(fixture: ReturnType<typeof setup>, withFlowEvidence = true) {
         },
       },
       projection: {
+        mode: fixture.projectionMode,
+        target_amount: fixture.targetAmount,
         process_id: '88888888-8888-4888-8888-888888888888',
         metadata_overrides: fixture.overrides,
       },
@@ -445,6 +449,18 @@ test('authored Model declarations reach the qualified candidate without changing
     )['common:licenseType'],
     undefined,
   );
+});
+
+test('all-subproducts solves independent source-unit results and preserves the main target', async () => {
+  const fixture = setup();
+  fixture.projectionMode = 'all-subproducts';
+  fixture.targetAmount = 10;
+  const built = await run(fixture);
+  assert.equal(built.result.exitCode, 0, built.result.stderr);
+  assert.equal(built.projection!.expected_member_count, 2);
+  assert.equal(built.projection!.emitted_member_count, 2);
+  assert.deepEqual(built.projection!.missing_members, []);
+  assert.deepEqual(quantities(built.payload!), [[PRODUCT, 'Output', '10']]);
 });
 
 test('default and supported override serialize untouched schema-valid output; unsupported enum and annual gaps remain separately unqualified', async () => {

@@ -19,6 +19,7 @@ import {
   modelIdentifier,
 } from './base.js';
 import { normalizeProjectionMode } from './request.js';
+import { buildSolvedResultGroup } from './solved-group.js';
 import { extractProcessInstances, extractEdges, resolveProcessRecords } from './sources.js';
 import {
   referenceToResultingProcess,
@@ -27,6 +28,7 @@ import {
 } from './payload.js';
 
 export async function buildProjectionBundle(options: {
+  existing?: { members: JsonObject[]; processes: JsonObject[] };
   request: LifecyclemodelResultingProcessRequest;
   sourceModelJson: JsonObject;
   modelPath: string | null;
@@ -75,7 +77,9 @@ export async function buildProjectionBundle(options: {
   const primaryProcessId =
     options.request.projection.process_id ??
     referenceProcess.id ??
-    `${modelIdentity.id}-resulting-process`;
+    (options.request.projection.mode === 'all-subproducts'
+      ? modelIdentity.id
+      : `${modelIdentity.id}-resulting-process`);
   const primaryProcessVersion =
     options.request.projection.process_version ?? referenceProcess.version ?? modelIdentity.version;
   const notes = [
@@ -84,25 +88,52 @@ export async function buildProjectionBundle(options: {
   ];
 
   const transformationEvidence: JsonObject = {};
-  const primaryPayload = buildResultingProcessPayload({
-    sourceModel: root,
-    sourceModelId: modelIdentity.id,
-    sourceModelVersion: modelIdentity.version,
-    sourceModelName: modelIdentity.name,
-    sourceModelNameInfo,
-    processId: primaryProcessId,
-    processVersion: primaryProcessVersion,
-    role: 'primary',
-    projectionSignature,
-    processInstances,
-    edges,
-    processRecords: processResolution.records,
-    referenceProcessInstanceId: referenceProcessInstance,
-    metadataOverrides: options.request.projection.metadata_overrides,
-    attachGraphSnapshotUri: options.request.projection.attach_graph_snapshot_uri,
-    semanticContext: options.request.semantic_context,
-    transformationEvidence,
-  });
+  const solved =
+    options.request.projection.mode === 'all-subproducts'
+      ? await buildSolvedResultGroup({
+          model: root,
+          identity: modelIdentity,
+          modelName: sourceModelNameInfo,
+          referenceInstance: referenceProcessInstance,
+          primary: { id: primaryProcessId, version: primaryProcessVersion },
+          instances: processInstances,
+          edges,
+          records: processResolution.records,
+          signature: projectionSignature,
+          metadataOverrides: options.request.projection.metadata_overrides,
+          targetAmount: options.request.projection.target_amount,
+          existing: options.existing,
+        })
+      : undefined;
+  const primaryPayload = solved
+    ? undefined
+    : buildResultingProcessPayload({
+        sourceModel: root,
+        sourceModelId: modelIdentity.id,
+        sourceModelVersion: modelIdentity.version,
+        sourceModelName: modelIdentity.name,
+        sourceModelNameInfo,
+        processId: primaryProcessId,
+        processVersion: primaryProcessVersion,
+        role: 'primary',
+        projectionSignature,
+        processInstances,
+        edges,
+        processRecords: processResolution.records,
+        referenceProcessInstanceId: referenceProcessInstance,
+        metadataOverrides: options.request.projection.metadata_overrides,
+        attachGraphSnapshotUri: options.request.projection.attach_graph_snapshot_uri,
+        semanticContext: options.request.semantic_context,
+        transformationEvidence,
+      });
+  const products = solved?.products ?? [
+    {
+      type: 'primary' as const,
+      id: primaryProcessId,
+      version: primaryProcessVersion,
+      json_ordered: primaryPayload!,
+    },
+  ];
 
   const suppliedFlowNames = suppliedFlowNameEvidence(
     options.request.semantic_context?.flow_documents ?? [],
@@ -111,21 +142,28 @@ export async function buildProjectionBundle(options: {
     options.readFlowNamesFromRemote && options.remoteLookup
       ? bindCurrentFlowNameEvidence(
           await readExactFlowNameEvidence(
-            [primaryPayload],
+            products.map((product) => product.json_ordered),
             flowNameReadContext(options.remoteLookup.env, options.remoteLookup.fetchImpl),
           ),
           suppliedFlowNames,
         )
       : suppliedFlowNames;
-  populateGeneratedProcessFlowNames(primaryPayload, flowNameEvidence);
-  transformationEvidence.candidate_sha256 = sha256Json(primaryPayload);
-  const outputValidation = validateProcessPayload(
-    primaryPayload,
-    undefined,
-    undefined,
-    options.request.semantic_context,
-    flowNameEvidence,
-  );
+  const validations = products.map((product) => {
+    populateGeneratedProcessFlowNames(product.json_ordered, flowNameEvidence);
+    return {
+      id: product.id,
+      version: product.version,
+      validation: validateProcessPayload(
+        product.json_ordered,
+        undefined,
+        undefined,
+        options.request.semantic_context,
+        flowNameEvidence,
+      ),
+    };
+  });
+  if (primaryPayload) transformationEvidence.candidate_sha256 = sha256Json(primaryPayload);
+  const outputValidation = validations[0]!.validation;
 
   const sourceModelSummary = {
     id: modelIdentity.id,
@@ -138,16 +176,29 @@ export async function buildProjectionBundle(options: {
     resolved_process_summary: processResolution.resolutionSummary,
   };
 
-  const publishReady =
-    outputValidation.ok && outputValidation.flow_reference_names.status === 'passed';
+  const publishReady = validations.every(
+    ({ validation }) => validation.ok && validation.flow_reference_names.status === 'passed',
+  );
   const report = {
     generated_at: nowIso(),
     validation: outputValidation,
+    ...(solved
+      ? {
+          member_validation: validations,
+          calculation_kernel: solved.kernelCommit,
+          expected_member_count: products.length,
+          emitted_member_count: products.length,
+          missing_members: [],
+        }
+      : {}),
     qualification: {
       status: publishReady
         ? 'qualified'
-        : outputValidation.allocation_semantics?.status === 'unresolved' ||
-            (outputValidation.ok && outputValidation.flow_reference_names.status === 'unresolved')
+        : validations.every(
+              ({ validation }) =>
+                (validation.ok && validation.flow_reference_names.status !== 'failed') ||
+                validation.allocation_semantics?.status === 'unresolved',
+            )
           ? 'unresolved'
           : 'failed',
       publish_ready: publishReady,
@@ -171,35 +222,39 @@ export async function buildProjectionBundle(options: {
     projection_signature: projectionSignature,
     attach_graph_snapshot_uri: options.request.projection.attach_graph_snapshot_uri,
     resolved_process_summary: processResolution.resolutionSummary,
-    projected_process_count: 1,
+    projected_process_count: products.length,
     notes,
   };
 
   const bundle = {
     source_model: sourceModelSummary,
-    projected_processes: [
-      {
-        role: 'primary',
-        id: primaryProcessId,
-        version: primaryProcessVersion,
-        name: modelIdentity.name,
-        json_ordered: primaryPayload,
-        metadata: primaryPayload.projectionMetadata,
-        semantic_context: options.request.semantic_context,
-        allocation_transformation: transformationEvidence,
-      },
-    ],
-    relations: [
-      {
-        lifecyclemodel_id: modelIdentity.id,
-        lifecyclemodel_version: modelIdentity.version,
-        resulting_process_id: primaryProcessId,
-        resulting_process_version: primaryProcessVersion,
-        projection_role: 'primary',
-        projection_signature: projectionSignature,
-        is_primary: true,
-      },
-    ],
+    ...(solved
+      ? {
+          model_candidate: { ...options.sourceModelJson, lifeCycleModelDataSet: solved.model },
+          editor_model: options.sourceModelJson,
+          reference_quantity: solved.referenceQuantity,
+        }
+      : {}),
+    projected_processes: products.map((product) => ({
+      role: product.type,
+      id: product.id,
+      version: product.version,
+      name: modelIdentity.name,
+      json_ordered: product.json_ordered,
+      metadata: product.json_ordered.projectionMetadata,
+      ...('finalId' in product ? { finalId: product.finalId } : {}),
+      semantic_context: options.request.semantic_context,
+      allocation_transformation: transformationEvidence,
+    })),
+    relations: products.map((product) => ({
+      lifecyclemodel_id: modelIdentity.id,
+      lifecyclemodel_version: modelIdentity.version,
+      resulting_process_id: product.id,
+      resulting_process_version: product.version,
+      projection_role: product.type,
+      projection_signature: projectionSignature,
+      is_primary: product.type === 'primary',
+    })),
     report,
     projection: {
       mode: options.request.projection.mode,

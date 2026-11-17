@@ -79,6 +79,7 @@ export async function runLifecyclemodelBuildResultingProcess(
     ? path.resolve(options.outDir)
     : defaultOutDir(requestPath, modelIdentity.id, options.now);
   const projection = await buildProjectionBundle({
+    existing: options.existing,
     readFlowNamesFromRemote:
       options.readFlowNamesFromRemote ?? normalizedRequest.process_sources.allow_remote_lookup,
     request: normalizedRequest,
@@ -119,8 +120,8 @@ export async function runLifecyclemodelBuildResultingProcess(
     out_dir: outDir,
     status: String(projection.report.status),
     qualification: projection.report.qualification as { status: string; publish_ready: boolean },
-    projected_process_count: 1,
-    relation_count: 1,
+    projected_process_count: Number(projection.report.projected_process_count),
+    relation_count: Number(projection.report.projected_process_count),
     source_model: {
       id: projection.sourceModelSummary.id,
       version: projection.sourceModelSummary.version,
