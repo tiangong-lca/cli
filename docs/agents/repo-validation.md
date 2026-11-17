@@ -32,7 +32,7 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-17
-lastReviewedCommit: 128cf4968fbb18553f80ca63f7ca0d774431ed6a
+lastReviewedCommit: b1efd3c4fd2a6b90732b586dce3d40031469d1e5
 lastReviewedNote: 'CLI #505 reviews Model declaration projection in local Process candidates and its validation. Command and release boundaries retain their existing contracts.'
 related:
   - ../../AGENTS.md

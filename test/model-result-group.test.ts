@@ -325,6 +325,9 @@ test('uncertain save is recovered once using its original operation and no write
       : committed(body.operationId),
   );
   assert.equal(recovered.status, 'committed_readback_unverified');
+  const stillUnknown = await run(recovery, () => ok({ status: 'unknown' }));
+  assert.equal(stillUnknown.status, 'unknown');
+  assert.equal(stillUnknown.recoveryFile, undefined);
   const lostRead = await run(recovery, (body) =>
     body.action === 'inspect' ? Response.json({}, { status: 502 }) : committed(body.operationId),
   );

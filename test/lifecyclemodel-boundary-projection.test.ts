@@ -528,6 +528,18 @@ test('all-subproducts keeps independent saved result versions and fails on ambig
     (retained.bundle!.projected_processes as Json[]).map(({ id, version }) => [id, version]),
     members.map(({ id, version }) => [id, version]),
   );
+  const authored = structuredClone(processes);
+  const processRoot = obj(obj(authored[0].json_ordered).processDataSet);
+  const modelling = obj(processRoot.modellingAndValidation);
+  obj(modelling.dataSourcesTreatmentAndRepresentativeness).annualSupplyOrProductionVolume = {
+    '@xml:lang': 'en',
+    '#text': '10 Fixture reference product',
+  };
+  const edited = await run(fixture, true, { members, processes: authored });
+  assert.equal(edited.result.exitCode, 0, edited.result.stderr);
+  assert.equal(obj(edited.projection!.qualification).draft_ready, true);
+  assert.equal(obj(edited.projection!.qualification).publish_ready, false);
+
   const missing = await run(fixture, true, { members, processes: [] });
   assert.match(missing.result.stderr, /no verified stored payload/);
   const duplicate = await run(fixture, true, { members: [...members, members[0]], processes });
