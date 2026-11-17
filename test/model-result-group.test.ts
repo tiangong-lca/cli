@@ -290,6 +290,7 @@ test('result group keeps the original revision and exact member mutations on upd
   assert.equal(graph.nodes[0]?.x, 321);
   assert.equal((graph.nodes[0]?.data as JsonObject).scalingFactor, 5);
   assert.deepEqual(graph.edges[0]?.source, { cell: 'existing-graph-node' });
+  assert.deepEqual(graph.edges[0]?.target, { cell: '1' });
   const mutations = plan.processMutations as JsonObject[];
   assert.deepEqual(
     mutations.map((mutation) => [mutation.op, mutation.id]),
@@ -343,6 +344,22 @@ test('uncertain save is recovered once using its original operation and no write
     },
   );
   assert.equal(found.status, 'verified');
+  const advanced = await run(
+    { ...binding, action: 'save', generation: {}, baseline: null },
+    (body) => {
+      if (body.action === 'save') return committed(body.operationId);
+      return dispatch.at(-2)?.action === 'save'
+        ? observe({ ...snapshot, revision: 'b'.repeat(64) })
+        : observe(null);
+    },
+  );
+  assert.equal(advanced.status, 'committed_readback_unverified');
+  assert.deepEqual(JSON.parse(readFileSync(String(advanced.recoveryFile), 'utf8')), {
+    action: 'recover',
+    ...target,
+    ...binding,
+    operationId: dispatch.at(-2)?.operationId,
+  });
 });
 
 test('invalid or refused result-group requests do not generate or replay mutations', async (t) => {
@@ -412,6 +429,22 @@ test('invalid or refused result-group requests do not generate or replay mutatio
       ...target,
       qualification: { status: 'failed', draft_ready: false },
       validation: [{ id: primaryId, issues: ['missing data'] }],
+    },
+  );
+  assert.deepEqual(
+    await run(
+      { ...save, baseline: null },
+      (body) => {
+        assert.equal(body.action, 'inspect');
+        return observe(null);
+      },
+      async () => ({ qualification: { status: 'failed', draft_ready: false } }),
+    ),
+    {
+      status: 'draft_validation_failed',
+      ...target,
+      qualification: { status: 'failed', draft_ready: false },
+      validation: undefined,
     },
   );
   await assert.rejects(

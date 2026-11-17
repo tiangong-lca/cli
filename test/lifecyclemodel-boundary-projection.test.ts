@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs, { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
-import { syncBuiltinESMExports } from 'node:module';
+import { registerHooks, syncBuiltinESMExports } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { runLifecyclemodelBuildResultingProcess } from '../src/lib/model/resulting-process.js';
+import { buildSolvedResultGroup } from '../src/lib/model/result/solved-group.js';
+import { extractProcessInstances, parseProcessRecord } from '../src/lib/model/result/sources.js';
 import { runDatasetValidate } from '../src/lib/dataset/validate.js';
 import { CliError, toErrorPayload } from '../src/shared/errors.js';
 import {
@@ -472,6 +474,70 @@ test('all-subproducts solves independent source-unit results and preserves the m
   assert.deepEqual(quantities(built.payload!), [[PRODUCT, 'Output', '10']]);
 });
 
+test('all-subproducts accepts legacy downstream references and rejects invalid exact Process exchanges', async () => {
+  const fixture = setup();
+  fixture.projectionMode = 'all-subproducts';
+  obj(obj(fixture.instances[0].connections).outputExchange).downstreamProcess = {
+    '@refObjectId': '1',
+  };
+  const legacy = await run(fixture);
+  assert.equal(legacy.result.exitCode, 0, legacy.result.stderr);
+  assert.deepEqual(quantities(legacy.payload!), [[PRODUCT, 'Output', '1']]);
+
+  const upstream = obj(fixture.processes[0].processDataSet);
+  const exchange = (obj(upstream.exchanges).exchange as Json[])[0];
+  exchange.exchangeDirection = 'invalid';
+  const direction = await run(fixture);
+  assert.match(direction.result.stderr, /Invalid direction in exact Process/);
+
+  exchange.exchangeDirection = 'Output';
+  exchange.resultingAmount = 'invalid';
+  const amount = await run(fixture);
+  assert.equal(amount.result.exitCode, 2);
+  assert.match(amount.result.stderr, /Model calculation failed/);
+});
+
+test('solved groups refuse a missing selection or an inexact Process source', async () => {
+  const fixture = setup();
+  const model = {
+    lifeCycleModelInformation: {
+      technology: { processes: { processInstance: fixture.instances } },
+    },
+  };
+  const sources = fixture.processes.map((raw) =>
+    parseProcessRecord(raw, { sourceLabel: 'test Process', sourcePath: null }),
+  );
+  const records = Object.fromEntries(
+    sources.map((source) => [source.processUuid + '@' + source.version, source]),
+  );
+  const options = {
+    model,
+    identity: { id: '77777777-7777-4777-8777-777777777777', version: VERSION, name: 'Test Model' },
+    modelName: {},
+    referenceInstance: '1',
+    primary: { id: '88888888-8888-4888-8888-888888888888', version: VERSION },
+    instances: extractProcessInstances(model),
+    edges: [],
+    records,
+    signature: 'test',
+    metadataOverrides: {},
+  };
+  await assert.rejects(
+    buildSolvedResultGroup({ ...options, referenceInstance: null }),
+    /Select an exact reference instance/,
+  );
+  await assert.rejects(
+    buildSolvedResultGroup({ ...options, records: {} }),
+    /exact Process source is unavailable/,
+  );
+  const reference = sources[1];
+  records[reference.processUuid + '@' + reference.version] = {
+    ...reference,
+    version: '02.00.000',
+  };
+  await assert.rejects(buildSolvedResultGroup(options), /exact Process source is unavailable/);
+});
+
 test('all-subproducts applies a complete allocation vector and rejects an invalid declared split', async () => {
   const fixture = setup();
   fixture.projectionMode = 'all-subproducts';
@@ -549,9 +615,58 @@ test('all-subproducts keeps independent saved result versions and fails on ambig
   assert.match(missing.result.stderr, /no verified stored payload/);
   const duplicate = await run(fixture, true, { members: [...members, members[0]], processes });
   assert.match(duplicate.result.stderr, /More than one stored result/);
+  const collision = await run(fixture, true, {
+    members: [members[0], { ...members[1], id: members[0].id }],
+    processes,
+  });
+  assert.match(collision.result.stderr, /conflicting identities/);
   fixture.targetAmount = 0;
   const invalid = await run(fixture);
   assert.match(invalid.result.stderr, /TARGET_AMOUNT_INVALID/);
+});
+
+test('all-subproducts refuses an unloadable solver or a reply that omits its primary or pivot', async () => {
+  const fixture = setup();
+  fixture.projectionMode = 'all-subproducts';
+  let moduleSource = 'throw new Error("fixture kernel import failed");';
+  const hooks = registerHooks({
+    resolve(specifier, context, nextResolve) {
+      if (specifier.endsWith('/assets/model-result-kernel/index.mjs')) {
+        return nextResolve('data:text/javascript,' + encodeURIComponent(moduleSource), context);
+      }
+      return nextResolve(specifier, context);
+    },
+  });
+  try {
+    const unloaded = await run(fixture);
+    assert.match(unloaded.result.stderr, /fixture kernel import failed/);
+    const result = {
+      groups: [] as Json[],
+      productSystem: { refInstanceIndex: '1', instances: [] },
+    };
+    const useResult = () => {
+      moduleSource =
+        'export function runMatrixCalculation() { return ' +
+        JSON.stringify({ ok: true, result }) +
+        '; } export default { __esModule: true, runMatrixCalculation };';
+    };
+    useResult();
+    const missingPrimary = await run(fixture);
+    assert.match(missingPrimary.result.stderr, /missing a primary result/);
+    result.groups.push({
+      type: 'primary',
+      root: { instanceIndex: '1' },
+      pivotFlowId: PRODUCT,
+      pivotDirection: 'OUTPUT',
+      exchanges: [],
+      refProcesses: [],
+    });
+    useResult();
+    const missingPivot = await run(fixture);
+    assert.match(missingPivot.result.stderr, /no quantitative reference/);
+  } finally {
+    hooks.deregister();
+  }
 });
 
 test('all-subproducts fails before generation if its pinned calculation artifact is corrupt or missing', async (t) => {

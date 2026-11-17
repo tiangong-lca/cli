@@ -274,11 +274,11 @@ export async function runModelResultGroup(
     );
     if (previous) {
       node.id = previous.id;
+      nodeIds.set(index, node.id);
       for (const field of ['x', 'y', 'width', 'height', 'angle', 'position', 'size']) {
         if (Object.hasOwn(previous, field)) node[field] = previous[field];
       }
     }
-    nodeIds.set(index, node.id);
     const isReference = index === quantity.instanceId;
     const originalAmount = Number(quantity.originalAmount);
     const targetAmount = Number(quantity.targetAmount);
