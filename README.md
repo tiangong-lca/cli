@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-17
-lastReviewedCommit: a709481f4b78eeb2ea0380ea3c8cb1e71085d751
-lastReviewedNote: 'CLI #507 reviews 0.4.0 publication of exact Flow name admission and the frozen SDK 0.8.0 dependency.'
+lastReviewedCommit: 323ef59eb281773e390828426ddf533f702f6db9
+lastReviewedNote: 'CLI #513 reviews version 0.4.1 preparation after the Model result-group source merge.'
 ---
 
 # TianGong LCA CLI
