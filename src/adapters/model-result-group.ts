@@ -226,8 +226,14 @@ export async function runModelResultGroup(
     current ?? undefined,
   );
   const qualification = object(artifacts.qualification, 'generation qualification');
-  if (qualification.status !== 'qualified' || qualification.publish_ready !== true)
-    invalid('Resolve candidate validation or missing exact evidence before saving the group.');
+  if (qualification.draft_ready !== true) {
+    return {
+      status: 'draft_validation_failed',
+      ...target,
+      qualification,
+      validation: object(artifacts.projection ?? {}, 'generation report').member_validation,
+    };
+  }
   const bundle = object(artifacts.bundle, 'generated result group');
   const source = object(bundle.source_model, 'generated source Model');
   if (source.id !== modelId || source.version !== version)
@@ -357,5 +363,5 @@ export async function runModelResultGroup(
       reply = {};
     }
   }
-  return outcome(reply, operationId, recoveryFile);
+  return { ...(await outcome(reply, operationId, recoveryFile)), qualification };
 }

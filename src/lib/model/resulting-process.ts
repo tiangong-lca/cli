@@ -119,7 +119,8 @@ export async function runLifecyclemodelBuildResultingProcess(
     request_path: requestPath,
     out_dir: outDir,
     status: String(projection.report.status),
-    qualification: projection.report.qualification as { status: string; publish_ready: boolean },
+    qualification: projection.report
+      .qualification as LifecyclemodelResultingProcessReport['qualification'],
     projected_process_count: Number(projection.report.projected_process_count),
     relation_count: Number(projection.report.projected_process_count),
     source_model: {

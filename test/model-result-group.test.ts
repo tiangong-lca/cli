@@ -76,7 +76,7 @@ const snapshot = {
   },
 };
 const qualified = {
-  qualification: { status: 'qualified', publish_ready: true },
+  qualification: { status: 'qualified', publish_ready: true, draft_ready: true },
   bundle: {
     source_model: { id: modelId, version },
     model_candidate: contents,
@@ -133,6 +133,7 @@ test('public Result Group command maps observed, verified, drifted and unknown r
   for (const [outcome, expected] of [
     ['verified', 'completed'],
     ['committed_readback_unverified', 'partial'],
+    ['draft_validation_failed', 'partial'],
     ['unknown', 'unknown'],
   ]) {
     ports.operations = async () => ({
@@ -312,21 +313,24 @@ test('invalid or refused result-group requests do not generate or replay mutatio
     ),
     /changed after inspection/,
   );
-  await assert.rejects(
-    run(
+  assert.deepEqual(
+    await run(
       { ...save, baseline: null },
-      () => observe(null),
-      async () => ({ qualification: { status: 'failed' } }),
+      (body) => {
+        assert.equal(body.action, 'inspect');
+        return observe(null);
+      },
+      async () => ({
+        qualification: { status: 'failed', draft_ready: false },
+        projection: { member_validation: [{ id: primaryId, issues: ['missing data'] }] },
+      }),
     ),
-    /candidate validation/,
-  );
-  await assert.rejects(
-    run(
-      { ...save, baseline: null },
-      () => observe(null),
-      async () => ({ qualification: { status: 'qualified', publish_ready: false } }),
-    ),
-    /candidate validation/,
+    {
+      status: 'draft_validation_failed',
+      ...target,
+      qualification: { status: 'failed', draft_ready: false },
+      validation: [{ id: primaryId, issues: ['missing data'] }],
+    },
   );
   await assert.rejects(
     run(

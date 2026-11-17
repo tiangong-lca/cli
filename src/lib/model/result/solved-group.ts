@@ -175,11 +175,17 @@ function stripScientificClaims(payload: JsonObject, retained?: JsonObject) {
   delete info.mathematicalRelations;
   delete root.LCIAResults;
   const validation = record(root.modellingAndValidation);
-  validation.validation = retained
-    ? (record(processDatasetRoot(retained).modellingAndValidation).validation ?? {
-        review: { '@type': 'Not reviewed' },
-      })
-    : { review: { '@type': 'Not reviewed' } };
+  const oldValidation = retained
+    ? record(record(processDatasetRoot(retained).modellingAndValidation).validation)
+    : {};
+  const reviews = ensureList(oldValidation.review).filter(isRecord);
+  validation.validation = {
+    ...oldValidation,
+    review:
+      reviews.length > 0
+        ? reviews.map((review) => ({ '@type': 'Not reviewed', ...review }))
+        : { '@type': 'Not reviewed' },
+  };
   const compliance = record(validation.complianceDeclarations);
   for (const item of ensureList(compliance.compliance).filter(isRecord)) {
     for (const key of [
@@ -335,6 +341,17 @@ export async function buildSolvedResultGroup(options: {
         attachGraphSnapshotUri: null,
       },
     );
+    const sourceInfo = record(
+      record(processDatasetRoot(sourceFor(instance).raw).processInformation).dataSetInformation,
+    );
+    const resultInfo = record(
+      record(processDatasetRoot(json_ordered).processInformation).dataSetInformation,
+    );
+    const modelInfo = record(record(options.model.lifeCycleModelInformation).dataSetInformation);
+    resultInfo.classificationInformation =
+      modelInfo.classificationInformation ??
+      resultInfo.classificationInformation ??
+      sourceInfo.classificationInformation;
     stripScientificClaims(json_ordered, isRecord(retained) ? retained : undefined);
     return { type, id, version, finalId, json_ordered };
   };

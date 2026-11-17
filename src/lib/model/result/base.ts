@@ -52,7 +52,7 @@ export type LifecyclemodelResultingProcessReport = {
   request_path: string;
   out_dir: string;
   status: string;
-  qualification?: { status: string; publish_ready: boolean };
+  qualification?: { status: string; publish_ready: boolean; draft_ready?: boolean };
   projected_process_count: number;
   relation_count: number;
   source_model: {

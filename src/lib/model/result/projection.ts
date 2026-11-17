@@ -179,6 +179,24 @@ export async function buildProjectionBundle(options: {
   const publishReady = validations.every(
     ({ validation }) => validation.ok && validation.flow_reference_names.status === 'passed',
   );
+  const draftReady = solved
+    ? validations.every(({ validation }) => {
+        const layers = validation.validation_layers;
+        return (
+          layers?.schema.status === 'passed' &&
+          layers.content.status === 'passed' &&
+          layers.authoring_evidence.issues.every(({ code }) =>
+            [
+              'annual_supply_or_production_volume_not_annualized',
+              'annual_volume_basis_unsupported',
+              'annual_volume_basis_missing',
+            ].includes(code),
+          ) &&
+          validation.flow_reference_names.status === 'passed' &&
+          validation.allocation_semantics?.status === 'passed'
+        );
+      })
+    : undefined;
   const report = {
     generated_at: nowIso(),
     validation: outputValidation,
@@ -202,6 +220,7 @@ export async function buildProjectionBundle(options: {
           ? 'unresolved'
           : 'failed',
       publish_ready: publishReady,
+      ...(draftReady !== undefined ? { draft_ready: draftReady } : {}),
     },
     allocation_transformation: transformationEvidence,
     status:

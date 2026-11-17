@@ -578,6 +578,7 @@ export async function runDatasetCommand(
           const status = value.data.status;
           if (status === 'unknown') value.status = 'unknown';
           if (status === 'committed_readback_unverified') value.status = 'partial';
+          if (status === 'draft_validation_failed') value.status = 'partial';
           value.outcome = String(status);
           value.summary =
             status === 'verified'
@@ -586,7 +587,9 @@ export async function runDatasetCommand(
                 ? 'The original save committed, but the current group does not match its receipt.'
                 : status === 'unknown'
                   ? 'The original save has not been confirmed.'
-                  : 'Model result group observed without writing.';
+                  : status === 'draft_validation_failed'
+                    ? 'Result group draft validation failed before any write.'
+                    : 'Model result group observed without writing.';
           if (typeof value.data.recoveryFile === 'string') {
             value.nextActions.push({
               description: 'Read the original operation receipt using the saved recovery input.',
