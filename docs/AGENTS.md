@@ -15,8 +15,8 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-18
-lastReviewedCommit: e84bae4ca3e79f59628a71977fa09822ce17ef3c
-lastReviewedNote: 'CLI #524 documents role-scoped opinions and exact dataset-version lookup.'
+lastReviewedCommit: cd09761b2c39b75e51c3c2cb8fee4fe07e9e0464
+lastReviewedNote: 'CLI #530: verified the 0.4.4 version bump, review opinions release scope, frozen dependency graph and trusted publication contract.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
