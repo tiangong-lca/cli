@@ -187,7 +187,9 @@ export function actionsFor(type: DatasetType): DatasetAction[] {
 
 export type ReviewRead = (input: {
   id?: string;
-  role?: 'submitter' | 'reviewer';
+  role?: 'submitter' | 'reviewer' | 'review-admin';
+  target?: import('./review-opinions.js').ReviewTarget;
+  opinions?: boolean;
   state?: number;
   limit: number;
   offset: number;

@@ -15,7 +15,7 @@ checkPaths:
   - src/commands/**
 lastReviewedAt: 2026-11-18
 lastReviewedCommit: cc8309b27eb8d59094da588dc975d3280374fcb2
-lastReviewedNote: 'CLI #526: reviewed the 0.4.3 package version bump, frozen dependency graph and trusted publication contract.'
+lastReviewedNote: 'CLI #524 adds read-only review opinions and exact dataset-version lookup through the existing review RPCs.'
 ---
 
 # TianGong LCA CLI
@@ -136,6 +136,8 @@ tiangong-lca auth identity-receipt --expected-project-ref <project-ref> --expect
 可编辑对象的 `create` 不覆盖已有版本，`save` 不创建缺失对象；写入请求显式绑定账号、环境和请求身份。普通草稿保存使用服务端内容比较，Model 使用现有事务接口；Model 保存与草稿删除的内容比较仅发生在 CLI 前检，结果明确披露此限制。服务契约可证明的拒绝保留安全错误码、类别及原拒绝结果；相同请求不会重新派发。其余派发后未知结果保留原请求，禁止自动重放。
 
 Review 本次适配已有业务语义：`submit` 只接受一个起始对象，`includeRelated` 默认且仅支持 `true`；关联范围由服务端业务规则决定。`resubmit` 引用已驳回审核及同一精确对象，返回实际受理结果，不宣称后端建立了轮次关系。`get/list` 查询当前记录，`materials` 获取当前可读对象；它们不是历史审核包快照。
+
+用 `review opinions --id <review-id> --json` 读取可见意见。也可以用 `--type process --data-id <uuid> --data-version 01.00.000` 按精确数据版本查各次送审。结果保留提交校验和、意见状态和可复算的 JSON 摘要。作者读取已退回的 Process 意见，获授权的评审成员读取自己的意见，评审管理员读取可见评审下的全部意见。
 
 送审响应丢失后，用原输入再次运行同一命令。CLI 只读找回该请求对应的审核 ID。查不到唯一结果时，状态保持 `unknown`。
 

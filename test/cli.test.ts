@@ -285,6 +285,7 @@ test('executeCli discovers Review separately from QA and rejects obsolete QA ali
     'resubmit',
     'get',
     'list',
+    'opinions',
     'materials',
     'comment',
     'decide',

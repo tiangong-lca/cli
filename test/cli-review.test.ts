@@ -50,6 +50,7 @@ test('Review discovery describes partial reads and service requirements without 
       'resubmit',
       'get',
       'list',
+      'opinions',
       'materials',
       'comment',
       'decide',

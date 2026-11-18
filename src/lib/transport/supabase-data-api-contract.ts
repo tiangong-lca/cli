@@ -78,6 +78,10 @@ type RpcTarget = {
 };
 
 export const DATA_API_RPC_TARGETS = {
+  qry_review_get_comment_items: {
+    targetSchema: 'api',
+    signature: 'api.qry_review_get_comment_items(p_review_id uuid, p_scope text)',
+  },
   qry_review_get_items: {
     targetSchema: 'api',
     signature:
