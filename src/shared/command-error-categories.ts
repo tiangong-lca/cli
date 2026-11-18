@@ -3,6 +3,7 @@ export type CommandErrorCategory =
   | 'conflict'
   | 'capability_unsupported'
   | 'authentication'
+  | 'authorization'
   | 'precondition'
   | 'service'
   | 'not_found_or_not_visible'

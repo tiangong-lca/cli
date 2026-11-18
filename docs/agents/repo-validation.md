@@ -133,6 +133,8 @@ Write qualification distinguishes contract-backed no-effect refusals from unconf
 
 Review refusal fixtures use the service's actual root ownership, approved dataset, and reviewer assignment codes. A reviewer decision can return HTTP 200 with a failed item bound to the requested review. Test that item's rejection and recovery through a fresh CLI process. Reference access or ownership checks can fail after earlier reference writes, so their receipts remain `unknown`.
 
+The installed Review fixture verifies that the exact OAuth route refusal retains HTTP 403, code 42501 and its fixed reason for submit and read. A fresh CLI process can read the same recorded refusal without sending another submission. Source tests also exercise expired credentials, generic and malformed responses, network failure and 5xx. Only allowlisted fixed reasons may enter output or the mutation journal.
+
 ## Actual service and installed qualification
 
 The installed business lane runs outside the source checkout and covers five-type writes/readbacks, Review, Model generation/alias followed by independent Process create, Source transfer followed by separate save, completed-result reuse and recovery in fresh processes. Its protocol backend establishes administrator stages separately and does not represent deployed transaction or permission proof.

@@ -190,6 +190,54 @@ test('Review adapter uses the existing API read capability with online actor and
     await assert.rejects(bad({ id, limit: 1, offset: 0 }), /Review read/);
   }
 });
+test('Review distinguishes expired credentials, generic route errors, invalid bodies and network failure', async () => {
+  const env = buildSupabaseTestEnv({ TIANGONG_LCA_AUTH_MODE: 'access-token' });
+  const routeMessage = 'OAuth client is not authorized for this API route';
+  for (const [status, body, code, category, message] of [
+    [403, { code: '42501', message: routeMessage }, '42501', 'authorization', routeMessage],
+    [
+      401,
+      { code: 'PGRST301', message: 'JWT expired' },
+      'PGRST301',
+      'authentication',
+      'JWT expired',
+    ],
+    [403, { code: '42501' }, '42501', 'service', 'Review read failed at the service.'],
+    [
+      500,
+      { code: 'XX000', message: 'hidden-secret' },
+      'XX000',
+      'service',
+      'Review read failed at the service.',
+    ],
+    [502, 'hidden-secret', undefined, 'service', 'Review read failed at the service.'],
+    [0, undefined, undefined, 'service', 'Review read failed before receiving an HTTP response.'],
+  ] as const) {
+    const reader = reviewReader(env, async (url) => {
+      if (isSupabaseAuthTokenUrl(url)) return makeSupabaseAuthResponse({ userId: actor });
+      if (!status) throw new Error('hidden-secret');
+      return new Response(typeof body === 'string' ? body : JSON.stringify(body), { status });
+    });
+    const reply = await run(['get', '--id', id], reader);
+    assert.equal(reply.exitCode, 1);
+    assert.deepEqual(parsed(reply).error, {
+      code: 'REVIEW_READ_FAILED',
+      category,
+      message,
+      ...(status ? { httpStatus: status } : {}),
+      ...(code ? { serviceCode: code } : {}),
+    });
+    assert.doesNotMatch(reply.stdout, /hidden-secret/u);
+  }
+  const denied = reviewReader(env, async (url) =>
+    isSupabaseAuthTokenUrl(url)
+      ? makeSupabaseAuthResponse({ userId: actor })
+      : new Response(JSON.stringify({ code: '42501', message: routeMessage }), { status: 403 }),
+  );
+  const human = await runReviewCommand(['list', '--role', 'submitter'], denied);
+  assert.match(human.stdout, /HTTP 403 \(42501\)/u);
+  assert.equal(human.stdout.split(routeMessage).length, 2);
+});
 test('shared errors distinguish input, conflict, authentication, precondition and service without raw secrets', () => {
   for (const [error, category, exit] of [
     [new CommandInputError('VALUE_REQUIRED', 'id required'), 'input', 2],

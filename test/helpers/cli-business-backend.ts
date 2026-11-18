@@ -46,7 +46,7 @@ export function createBusinessBackend() {
   const decisions = new Map<string, string>();
   const calls: Array<{ path: string; method: string; body: JsonObject; actor: string }> = [];
   const loseReplies = new Set<string>();
-  const rejectReplies = new Map<string, { code: string; status: number }>();
+  const rejectReplies = new Map<string, { code: string; status: number; message?: string }>();
   const files = new Map<string, string>();
   const key = (table: string, id: string, version: string) => `${table}:${id}:${version}`;
   const json = (body: unknown, status = 200, count?: number) =>
@@ -122,7 +122,12 @@ export function createBusinessBackend() {
     const refusal = rejectReplies.get(url.pathname.split('/').at(-1)!);
     if (refusal)
       return json(
-        { ok: false, code: refusal.code, message: 'Bearer hidden-secret' },
+        {
+          ok: false,
+          code: refusal.code,
+          message: refusal.message ?? 'Bearer hidden-secret',
+          details: 'Bearer hidden-secret',
+        },
         refusal.status,
       );
     if (url.pathname === '/rest/v1/rpc/qry_review_get_items') {

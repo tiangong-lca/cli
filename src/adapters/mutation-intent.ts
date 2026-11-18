@@ -1,5 +1,5 @@
 import { contentDigest } from '../application/dataset-content.js';
-import { object } from '../application/dataset-types.js';
+import { isObject, object } from '../application/dataset-types.js';
 import type { ReviewMutationIntent } from '../application/review-write.js';
 import { CommandInputError, type CommandResult } from '../shared/command-result.js';
 import { withMutationJournal } from './private-mutation-journal.js';
@@ -18,11 +18,14 @@ export async function runMutationIntent(
     async (store) => {
       const journal = store.path;
       const unknown = () => {
+        const response = options.value.data.serviceResponse;
         options.value.status = 'unknown';
         options.value.error = {
           category: 'service',
           code: 'WRITE_OUTCOME_UNKNOWN',
           message: 'The original mutation outcome could not be established. Do not replay.',
+          ...(isObject(response) &&
+            typeof response.httpStatus === 'number' && { httpStatus: response.httpStatus }),
         };
         options.value.outcome = 'write_outcome_unknown';
         options.value.summary =

@@ -672,26 +672,53 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
       ...binding('definitive-submit'),
       targets: [{ type: 'source', ...sourceIdentity }],
     };
+    const routeMessage = 'OAuth client is not authorized for this API route';
     backend.rejectReplies.set('app_dataset_submit_review', {
       status: 403,
-      code: 'ROOT_DATASET_NOT_OWNED',
+      code: '42501',
+      message: routeMessage,
     });
     const rejectedReview = await review('submit', refusedSubmit, businessActor, 1);
     assert.equal(rejectedReview.outcome, 'service_rejected');
-    assert.equal((rejectedReview.error as Json).code, 'ROOT_DATASET_NOT_OWNED');
-    assert.equal((rejectedReview.error as Json).category, 'authentication');
+    assert.deepEqual(rejectedReview.error, {
+      code: '42501',
+      category: 'authorization',
+      message: routeMessage,
+      httpStatus: 403,
+    });
+    assert.deepEqual((rejectedReview.data as Json).receipt, {
+      ok: false,
+      code: '42501',
+      message: routeMessage,
+      httpStatus: 403,
+    });
+    assert.doesNotMatch(JSON.stringify(rejectedReview), /hidden-secret/u);
     const postedReview = backend.calls.filter((call) =>
       call.path.endsWith('/app_dataset_submit_review'),
     ).length;
     backend.rejectReplies.delete('app_dataset_submit_review');
-    assert.equal(
-      (await review('submit', refusedSubmit, businessActor, 1)).outcome,
-      'service_rejected',
-    );
+    const originalReview = await review('submit', refusedSubmit, businessActor, 1);
+    assert.equal(originalReview.outcome, 'service_rejected');
+    assert.deepEqual(originalReview.error, rejectedReview.error);
     assert.equal(
       backend.calls.filter((call) => call.path.endsWith('/app_dataset_submit_review')).length,
       postedReview,
     );
+    backend.rejectReplies.set('qry_review_get_items', {
+      status: 403,
+      code: '42501',
+      message: routeMessage,
+    });
+    const rejectedList = await invoke(['review', 'list', '--role', 'submitter'], businessActor, 1);
+    assert.deepEqual(rejectedList.error, {
+      code: 'REVIEW_READ_FAILED',
+      serviceCode: '42501',
+      httpStatus: 403,
+      category: 'authorization',
+      message: routeMessage,
+    });
+    assert.doesNotMatch(JSON.stringify(rejectedList), /hidden-secret/u);
+    backend.rejectReplies.delete('qry_review_get_items');
 
     // Fresh native processes share the same private durable journal, never an in-memory cache.
     const content = businessFixture('contact'),

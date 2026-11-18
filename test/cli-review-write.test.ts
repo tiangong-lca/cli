@@ -39,6 +39,7 @@ function setup(
   t: TestContext,
   options: {
     payload?: unknown;
+    rawBody?: string;
     httpStatus?: number;
     transportFailure?: boolean;
     breakJournal?: boolean;
@@ -66,13 +67,14 @@ function setup(
         mkdirSync(journal);
       }
       return new Response(
-        JSON.stringify(
-          options.payload === undefined
-            ? url.endsWith('/app_review_batch_decision')
-              ? { ok: true, results: [{ reviewId, ok: true }] }
-              : { ok: true, data: { reviewId } }
-            : options.payload,
-        ),
+        options.rawBody ??
+          JSON.stringify(
+            options.payload === undefined
+              ? url.endsWith('/app_review_batch_decision')
+                ? { ok: true, results: [{ reviewId, ok: true }] }
+                : { ok: true, data: { reviewId } }
+              : options.payload,
+          ),
         { status: options.httpStatus ?? 200, headers: { 'content-type': 'application/json' } },
       );
     }
@@ -467,6 +469,44 @@ test('Review does not infer refusal from codes outside their service path or sta
     assert.equal((await f.writer('submit', submit, false)).status, 'unknown', code);
     assert.equal(f.calls.length, 1);
   }
+});
+
+test('Review submission retains observed HTTP failures without changing replay eligibility', async (t) => {
+  const routeMessage = 'OAuth client is not authorized for this API route';
+  for (const [httpStatus, payload] of [
+    [503, { ok: false, code: '42501', message: routeMessage, details: 'hidden-secret' }],
+    [200, { ok: true, data: { reviewId: 'invalid', credentials: 'hidden-secret' } }],
+  ] as const) {
+    const f = setup(t, { httpStatus, payload });
+    const response = await f.writer('submit', submit, false);
+    assert.equal(response.status, 'unknown');
+    assert.equal(response.error?.httpStatus, httpStatus);
+    assert.doesNotMatch(JSON.stringify(response), /hidden-secret/u);
+    assert.equal((await f.writer('submit', submit, false)).status, 'unknown');
+    assert.equal(f.calls.length, 1);
+  }
+  const malformed = setup(t, { httpStatus: 502, rawBody: 'hidden-secret' });
+  const unknown = await malformed.writer('submit', submit, false);
+  assert.equal(unknown.outcome, 'write_outcome_unknown');
+  assert.equal(unknown.error?.httpStatus, 502);
+  assert.doesNotMatch(JSON.stringify(unknown), /hidden-secret/u);
+});
+
+test('Review submit prints the exact recorded route refusal and HTTP status', async (t) => {
+  const message = 'OAuth client is not authorized for this API route';
+  const f = setup(t, { httpStatus: 403, payload: { ok: false, code: '42501', message } });
+  const input = path.join(f.directory, 'request.json');
+  writeFileSync(input, JSON.stringify(submit));
+  const response = await runReviewCommand(
+    ['submit', '--input', input],
+    async () => ({ records: [], total: 0, environment: 'test', actor }),
+    { mutate: f.writer, materials: async () => ({}) },
+  );
+  assert.equal(response.exitCode, 1);
+  assert.match(response.stdout, /HTTP 403 \(42501\)/u);
+  assert.ok(response.stdout.includes(message));
+  assert.equal((await f.writer('submit', submit, false)).error?.category, 'authorization');
+  assert.equal(f.calls.length, 1);
 });
 
 test('missing Review and target materials use the same absence category and runtime exit code', async (t) => {

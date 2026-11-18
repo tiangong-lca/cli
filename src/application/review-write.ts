@@ -3,6 +3,7 @@ import {
   serviceRejection,
   type ServiceRejectionRules,
 } from './service-rejection.js';
+import { isReviewOAuthRouteDenial, reviewServiceDiagnostic } from './review-service-diagnostic.js';
 import {
   datasetTables,
   editableTypes,
@@ -266,6 +267,7 @@ export async function executeReviewWrite(
     preflight,
     dispatch: async () => {
       const { ok, payload, status } = await ports.dispatch(action, body);
+      value.data.serviceResponse = reviewServiceDiagnostic(payload, status);
       if (!isObject(payload) || typeof payload.ok !== 'boolean')
         throw new Error('invalid acknowledgement');
       if (!ok && payload.ok !== false) throw new Error('contradictory acknowledgement');
@@ -285,7 +287,27 @@ export async function executeReviewWrite(
         const rejection = serviceRejection(selected, status, reviewRefusals[action]);
         if (!rejection) throw new Error('Unproven rejection acknowledgement');
         applyServiceRejection(value, rejection);
+        const { message, httpStatus } = reviewServiceDiagnostic(selected, status);
+        value.error = {
+          ...(httpStatus && { httpStatus }),
+          code: rejection.code,
+          category: isReviewOAuthRouteDenial(message) ? 'authorization' : rejection.category,
+          message: message ?? value.summary,
+        };
+        value.data.receipt = {
+          ok: false,
+          code: rejection.code,
+          ...(httpStatus && { httpStatus }),
+          ...(message && { message }),
+        };
       } else {
+        if (submitting) {
+          const data = object(payload.data, 'submission data');
+          const reviewId = text(data.reviewId, 'returned reviewId');
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(reviewId))
+            throw new Error('invalid review acknowledgement identity');
+          value.data.reviewId = reviewId;
+        }
         value.data.receipt = payload;
         value.status = submitting ? 'accepted' : 'completed';
         value.outcome = submitting
@@ -298,14 +320,8 @@ export async function executeReviewWrite(
           : action === 'comment'
             ? 'Reviewer draft saved; this can replace the current draft and does not record a decision.'
             : 'Reviewer decision recorded; this is not a claim of overall review completion.';
-        if (submitting) {
-          const data = object(payload.data, 'submission data');
-          const reviewId = text(data.reviewId, 'returned reviewId');
-          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(reviewId))
-            throw new Error('invalid review acknowledgement identity');
-          value.data.reviewId = reviewId;
-        }
       }
+      delete value.data.serviceResponse;
       return value;
     },
   });
