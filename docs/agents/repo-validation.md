@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-18
-lastReviewedCommit: cd9a7f55bc46be97372f347484e81090dc10a6db
-lastReviewedNote: 'CLI #521 reviews version 0.4.2 preparation for the installed Review error diagnostics.'
+lastReviewedCommit: cc8309b27eb8d59094da588dc975d3280374fcb2
+lastReviewedNote: 'CLI #526: reviewed the 0.4.3 package version bump, frozen dependency graph and trusted publication contract.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml

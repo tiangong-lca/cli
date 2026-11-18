@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-18
-lastReviewedCommit: 567dda9aebb03b8c2b909b979ef4f186a7aab3db
-lastReviewedNote: 'CLI #373: reviewed exact author submission receipt recovery, read-only replay and command validation.'
+lastReviewedCommit: cc8309b27eb8d59094da588dc975d3280374fcb2
+lastReviewedNote: 'CLI #526: reviewed the 0.4.3 package version bump, frozen dependency graph and trusted publication contract.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
