@@ -12,6 +12,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { runMutationIntent } from '../src/adapters/mutation-intent.js';
 import { reviewWriter } from '../src/adapters/review-write.js';
 import { reviewMaterials } from '../src/adapters/review-materials.js';
 import { runReviewCommand } from '../src/commands/review.js';
@@ -48,15 +49,25 @@ function setup(
     targetType?: string;
     targetVersion?: string;
     reviewMissing?: boolean;
+    recoveryResponse?: () => Response;
   } = {},
 ) {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'review-write-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  const calls: Array<{ url: string; body: JsonObject }> = [];
+  const calls: Array<{ url: string; body: JsonObject; operationKey: string | null }> = [];
+  const lookups: Array<{ url: URL; method: string | undefined }> = [];
   const fetchImpl = async (url: string, init?: RequestInit) => {
     if (isSupabaseAuthTokenUrl(url)) return makeSupabaseAuthResponse({ userId: actor });
+    if (url.includes('/rpc/qry_review_submit_receipt')) {
+      lookups.push({ url: new URL(url), method: init?.method });
+      return options.recoveryResponse?.() ?? Response.json(null);
+    }
     if (url.includes('/functions/v1/')) {
-      calls.push({ url, body: JSON.parse(String(init?.body)) });
+      calls.push({
+        url,
+        body: JSON.parse(String(init?.body)),
+        operationKey: new Headers(init?.headers).get('X-Review-Operation-Key'),
+      });
       if (options.transportFailure) throw new Error('Bearer hidden-secret');
       if (options.breakJournal) {
         const journal = path.join(
@@ -101,7 +112,7 @@ function setup(
       headers: { 'content-type': 'application/json', 'content-range': `0-0/${rows.length}` },
     });
   };
-  return { directory, calls, fetchImpl, writer: reviewWriter(env, fetchImpl, directory) };
+  return { directory, calls, lookups, fetchImpl, writer: reviewWriter(env, fetchImpl, directory) };
 }
 
 test('existing submission binds actor, defaults related data and journals one accepted application', async (t) => {
@@ -535,4 +546,77 @@ test('Review journal update failure preserves observed refusal but not an unreco
     await assert.rejects(f.writer('submit', submit, false), /private regular/u);
     assert.equal(f.calls.length, 1);
   }
+});
+
+test('an unacknowledged submit looks up the same bound review ID without any second write', async (t) => {
+  const f = setup(t, { transportFailure: true, recoveryResponse: () => Response.json(reviewId) });
+  assert.equal((await f.writer('submit', submit, false)).status, 'unknown');
+  assert.equal(f.lookups.length, 0);
+  assert.match(f.calls[0]?.operationKey ?? '', /^[0-9a-f]{64}$/u);
+  const freshProcess = reviewWriter(env, f.fetchImpl, f.directory);
+  const recovered = await freshProcess('submit', submit, false);
+  assert.equal(recovered.status, 'accepted');
+  assert.equal(recovered.outcome, 'review_submission_recovered');
+  assert.equal(recovered.data.reviewId, reviewId);
+  assert.equal(recovered.data.receipt, undefined);
+  assert.deepEqual(
+    f.lookups.map(({ url, method }) => [method, Object.fromEntries(url.searchParams)]),
+    [
+      [
+        'GET',
+        {
+          p_operation_key: f.calls[0]!.operationKey,
+          p_target_table: 'contacts',
+          p_target_id: id,
+          p_target_version: version,
+        },
+      ],
+    ],
+  );
+  assert.equal(f.calls.length, 1);
+});
+
+test('receipt absence, invalid data and an unavailable lookup preserve the original unknown result', async (t) => {
+  for (const recoveryResponse of [
+    () => Response.json(null),
+    () => Response.json('invalid-id'),
+    () => new Response('invalid JSON'),
+    () => new Response(null, { status: 404 }),
+  ]) {
+    const f = setup(t, { transportFailure: true, recoveryResponse });
+    assert.equal((await f.writer('submit', submit, false)).status, 'unknown');
+    assert.equal((await f.writer('submit', submit, false)).status, 'unknown');
+    assert.equal(f.calls.length, 1);
+    assert.equal(f.lookups.length, 1);
+  }
+});
+
+test('a failing recovery port leaves the dispatched journal unchanged', async (t) => {
+  const { directory } = setup(t);
+  const options = {
+    directory,
+    requestId: 'receipt-unavailable',
+    target: id,
+    binding: { actor, id, version },
+    preflight: async () => {},
+    dispatch: async () => {
+      throw new Error('lost submission response');
+    },
+    recover: async () => {
+      throw new Error('receipt lookup failed');
+    },
+  };
+  const first = await runMutationIntent({ ...options, value: result('review submit') });
+  assert.equal(first.status, 'unknown');
+  const journal = String((first.data.recovery as JsonObject).journal);
+  const before = readFileSync(journal, 'utf8');
+  const second = await runMutationIntent({
+    ...options,
+    value: result('review submit'),
+    dispatch: async () => {
+      assert.fail('recovery may not dispatch');
+    },
+  });
+  assert.equal(second.status, 'unknown');
+  assert.equal(readFileSync(journal, 'utf8'), before);
 });

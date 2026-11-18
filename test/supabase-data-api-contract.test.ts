@@ -70,9 +70,11 @@ test('data api manifest freezes the exact database contract and complete CLI inv
     'sources',
     'unitgroups',
   ]);
-  // Ordinary maintenance RPCs and the participant Review read RPC.
-  assert.equal(Object.keys(DATA_API_RPC_TARGETS).length, 6);
-  assert.equal(Object.keys(DATA_API_RPC_REPLAY_CLASSIFICATION).length, 6);
+  assert.equal(Object.keys(DATA_API_RPC_TARGETS).length, 7);
+  assert.deepEqual(DATA_API_RPC_REPLAY_CLASSIFICATION.qry_review_submit_receipt, {
+    operation: 'read',
+    authRefreshReplay: 'never',
+  });
   assert.deepEqual(
     Object.keys(DATA_API_RPC_REPLAY_CLASSIFICATION).sort(),
     Object.keys(DATA_API_RPC_TARGETS).sort(),

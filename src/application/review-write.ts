@@ -43,13 +43,16 @@ const reviewRefusals: Record<ReviewMutationAction, ServiceRejectionRules> = {
   },
 };
 
+type ReviewSubmissionTarget = { table: string; id: string; version: string };
+
 export type ReviewMutationIntent = {
   binding: JsonObject;
   requestId: string;
   target: string;
   value: CommandResult;
   preflight(): Promise<void>;
-  dispatch(): Promise<CommandResult>;
+  dispatch(operationKey: string): Promise<CommandResult>;
+  recover?(operationKey: string): Promise<string | null>;
 };
 export type ReviewWritePorts = {
   identity(): Promise<{ environment: string; actor: { userId: string } }>;
@@ -59,7 +62,9 @@ export type ReviewWritePorts = {
   dispatch(
     action: ReviewMutationAction,
     body: JsonObject,
+    operationKey?: string,
   ): Promise<{ ok: boolean; payload: unknown; status?: number }>;
+  recoverSubmission(target: ReviewSubmissionTarget, operationKey: string): Promise<string | null>;
   executeIntent(options: ReviewMutationIntent): Promise<CommandResult>;
 };
 
@@ -229,15 +234,16 @@ export async function executeReviewWrite(
     }
   };
   const endpoint = ports.endpoint(action);
-  const body = submitting
-    ? { table: datasetTables[type!], id, version }
-    : action === 'comment'
+  const submission = target ? { table: datasetTables[type!], id, version: version! } : undefined;
+  const body =
+    submission ??
+    (action === 'comment'
       ? { reviewId: id, json: request.json }
       : {
           reviewIds: [id],
           decision: request.decision,
           ...(request.reason === undefined ? {} : { reason: request.reason }),
-        };
+        });
   value.data.request = {
     endpoint,
     bodyDigest: contentDigest(body),
@@ -265,8 +271,13 @@ export async function executeReviewWrite(
     target: `${environment}:${submitting ? `${type}:${id}:${version}` : id}`,
     value,
     preflight,
-    dispatch: async () => {
-      const { ok, payload, status } = await ports.dispatch(action, body);
+    ...(submission ? { recover: (key: string) => ports.recoverSubmission(submission, key) } : {}),
+    dispatch: async (key) => {
+      const { ok, payload, status } = await ports.dispatch(
+        action,
+        body,
+        submission ? key : undefined,
+      );
       value.data.serviceResponse = reviewServiceDiagnostic(payload, status);
       if (!isObject(payload) || typeof payload.ok !== 'boolean')
         throw new Error('invalid acknowledgement');

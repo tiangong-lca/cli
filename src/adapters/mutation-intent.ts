@@ -53,6 +53,22 @@ export async function runMutationIntent(
             summary: `Original result returned without dispatch: ${original.summary}`,
           };
         }
+        try {
+          const reviewId = await options.recover?.(binding);
+          if (reviewId) {
+            const value = options.value;
+            value.status = 'accepted';
+            value.outcome = 'review_submission_recovered';
+            value.summary =
+              'Original submission confirmed. Review ID recovered without another submission.';
+            value.data.reviewId = reviewId;
+            value.data.recovery = { requestId: options.requestId, journal, replayAllowed: false };
+            (value.completeness.notChecked as string[]).push('original_submission_receipt');
+            return value;
+          }
+        } catch {
+          return unknown();
+        }
         return unknown();
       }
       await options.preflight();
@@ -61,7 +77,7 @@ export async function runMutationIntent(
         false,
       );
       try {
-        const completed = await options.dispatch();
+        const completed = await options.dispatch(binding);
         try {
           store.write(
             {
