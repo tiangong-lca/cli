@@ -133,6 +133,8 @@ Write qualification distinguishes contract-backed no-effect refusals from unconf
 
 Review refusal fixtures use the service's actual root ownership, approved dataset, and reviewer assignment codes. A reviewer decision can return HTTP 200 with a failed item bound to the requested review. Test that item's rejection and recovery through a fresh CLI process. Reference access or ownership checks can fail after earlier reference writes, so their receipts remain `unknown`.
 
+Exercise a committed submission with its response dropped in an isolated stack. A fresh CLI process with the original input must recover the exact review ID through the read-only receipt query. Verify one submit attempt and one database submit audit. If the lookup cannot establish a unique ID, report `unknown`.
+
 The installed Review fixture verifies that the exact OAuth route refusal retains HTTP 403, code 42501 and its fixed reason for submit and read. A fresh CLI process can read the same recorded refusal without sending another submission. Source tests also exercise expired credentials, generic and malformed responses, network failure and 5xx. Only allowlisted fixed reasons may enter output or the mutation journal.
 
 ## Actual service and installed qualification

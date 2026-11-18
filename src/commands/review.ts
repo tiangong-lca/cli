@@ -128,7 +128,7 @@ export async function runReviewCommand(
       effects:
         'Submit/resubmit create or reuse the actual review; comment saves a reviewer draft; decide records the current assigned reviewer decision. --dry-run checks readable preconditions without effects, not server final admission.',
       recovery:
-        'Requests are bound locally before dispatch; unknown results are never automatically replayed.',
+        'After an unknown submit or resubmit result, use the original input again to look up its Review ID without repeating the write. Missing evidence remains unknown.',
     };
     if (!action || action.startsWith('--') || flags.help)
       return {

@@ -83,6 +83,11 @@ export const DATA_API_RPC_TARGETS = {
     signature:
       'api.qry_review_get_items(p_review_ids uuid[], p_data_id uuid, p_data_version text, p_state_codes integer[])',
   },
+  qry_review_submit_receipt: {
+    targetSchema: 'api',
+    signature:
+      'api.qry_review_submit_receipt(p_operation_key text, p_target_table text, p_target_id uuid, p_target_version text)',
+  },
   cmd_dataset_delete: {
     targetSchema: 'api',
     signature: 'api.cmd_dataset_delete(p_table text, p_id uuid, p_version text, p_audit jsonb)',

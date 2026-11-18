@@ -4,7 +4,10 @@ import { executeReviewWrite, type ReviewMutationAction } from '../application/re
 import { type JsonObject } from '../application/dataset-types.js';
 import { resolveDatasetCommandTransport } from '../lib/dataset/command.js';
 import { fetchCurrentUser } from '../lib/auth/auth-identity-receipt.js';
-import { buildSupabaseAuthHeaders } from '../lib/transport/supabase-client.js';
+import {
+  buildSupabaseAuthHeaders,
+  createSupabaseDataClient,
+} from '../lib/transport/supabase-client.js';
 import type { FetchLike } from '../lib/transport/http.js';
 import { datasetReader } from './dataset-read.js';
 import { reviewReader } from './review-read.js';
@@ -41,12 +44,39 @@ export function reviewWriter(
       readDataset: datasetReader(env, fetchImpl),
       endpoint: (action) => endpoints[action],
       executeIntent: (options) => runMutationIntent({ directory, ...options }),
-      dispatch: async (intent, body) => {
+      recoverSubmission: async ({ table, id, version }, operationKey) => {
+        const { client } = createSupabaseDataClient(
+          {
+            apiBaseUrl: transport.functionsBaseUrl,
+            publishableKey: transport.publishableKey,
+            getAccessToken: async () => transport.accessToken,
+          },
+          fetchImpl,
+          10_000,
+        );
+        const { data: receipt, error } = await client.schema('api').rpc(
+          'qry_review_submit_receipt',
+          {
+            p_operation_key: operationKey,
+            p_target_table: table,
+            p_target_id: id,
+            p_target_version: version,
+          },
+          { get: true },
+        );
+        if (error) return null;
+        return typeof receipt === 'string' &&
+          /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/iu.test(receipt)
+          ? receipt
+          : null;
+      },
+      dispatch: async (intent, body, operationKey) => {
         const response = await fetchImpl(`${transport.functionsBaseUrl}/${endpoints[intent]}`, {
           method: 'POST',
           headers: {
             ...buildSupabaseAuthHeaders(transport.publishableKey, transport.accessToken),
             'Content-Type': 'application/json',
+            ...(operationKey ? { 'X-Review-Operation-Key': operationKey } : {}),
           },
           body: JSON.stringify(body),
           signal: AbortSignal.timeout(10_000),

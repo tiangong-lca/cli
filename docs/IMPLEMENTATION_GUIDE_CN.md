@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-11-18
-lastReviewedCommit: cd9a7f55bc46be97372f347484e81090dc10a6db
-lastReviewedNote: 'CLI #521 reviews version 0.4.2 preparation for the installed Review error diagnostics.'
+lastReviewedCommit: 567dda9aebb03b8c2b909b979ef4f186a7aab3db
+lastReviewedNote: 'CLI #373: reviewed exact author submission receipt recovery, read-only replay and command validation.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

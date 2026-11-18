@@ -93,9 +93,10 @@ test('Review use case keeps reviewer draft and decision effects distinct through
       records: [{ id: reviewId, state_code: 0 }],
     }),
     endpoint: (action) => `test-service-${action}`,
+    recoverSubmission: async () => null,
     executeIntent: async (options) => {
       await options.preflight();
-      return options.dispatch();
+      return options.dispatch('operation-key');
     },
     dispatch: async (action, body) => {
       calls.push({ action, body });
