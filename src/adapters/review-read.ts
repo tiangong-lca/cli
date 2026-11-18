@@ -90,6 +90,15 @@ export function reviewReader(env: NodeJS.ProcessEnv, fetchImpl: FetchLike) {
       invalidResponse(response.status);
     const records: JsonObject[] = [];
     for (const row of response.data) {
+      if (input.opinions && !Object.hasOwn(row, 'opinion_scope')) {
+        throw new ReviewReadServiceError({
+          code: 'REVIEW_OPINIONS_UNAVAILABLE',
+          category: 'service',
+          message:
+            'This service does not provide the role-scoped review opinion contract. Update the database before using review opinions.',
+          httpStatus: response.status,
+        });
+      }
       const facts = input.target || input.opinions ? opinionReview(row) : null;
       if (
         input.target &&

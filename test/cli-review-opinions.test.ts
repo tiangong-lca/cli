@@ -194,7 +194,7 @@ test('invalid selectors fail before transport', async () => {
 });
 test('data protocol errors cannot become empty or cross-role opinion successes', async () => {
   assert.equal(
-    (await fixture([{ ...item, opinion_scope: undefined }]).run(['opinions', '--id', id])).exit,
+    (await fixture([{ ...item, opinion_scope: null }]).run(['opinions', '--id', id])).exit,
     1,
   );
   for (const bad of [
@@ -261,4 +261,12 @@ test('an author client denied the opinion RPC receives a structured authorizatio
   assert.equal(exit, 1);
   assert.equal(result.error.category, 'authorization');
   assert.equal(result.error.serviceCode, '42501');
+});
+
+test('a previous database contract reports the rollout dependency before reading any comments', async () => {
+  const f = fixture([{ id, state_code: -1, json: {} }]);
+  const { exit, result } = await f.run(['opinions', '--id', id]);
+  assert.equal(exit, 1);
+  assert.equal(result.error.code, 'REVIEW_OPINIONS_UNAVAILABLE');
+  assert.equal(f.calls.length, 1);
 });
