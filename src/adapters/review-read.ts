@@ -6,7 +6,11 @@ import { createSupabaseDataRuntime } from '../lib/auth/supabase-session.js';
 import { fetchCurrentUser } from '../lib/auth/auth-identity-receipt.js';
 import type { FetchLike } from '../lib/transport/http.js';
 import { isObject } from '../application/dataset-types.js';
-import { CliError } from '../shared/errors.js';
+import {
+  isReviewOAuthRouteDenial,
+  ReviewReadServiceError,
+  reviewServiceDiagnostic,
+} from '../application/review-service-diagnostic.js';
 
 export function reviewReader(env: NodeJS.ProcessEnv, fetchImpl: FetchLike) {
   return async (input: {
@@ -44,16 +48,34 @@ export function reviewReader(env: NodeJS.ProcessEnv, fetchImpl: FetchLike) {
     if (input.role === 'reviewer')
       query = query.contains('reviewer_id', JSON.stringify([actor.userId]));
     const response = await query.order('id').range(input.offset, input.offset + input.limit - 1);
+    if (response.error) {
+      const { message, ...diagnostic } = reviewServiceDiagnostic(response.error, response.status);
+      throw new ReviewReadServiceError({
+        code: 'REVIEW_READ_FAILED',
+        ...diagnostic,
+        category: isReviewOAuthRouteDenial(message)
+          ? 'authorization'
+          : response.status === 401
+            ? 'authentication'
+            : 'service',
+        message:
+          message ??
+          (response.status === 0
+            ? 'Review read failed before receiving an HTTP response.'
+            : 'Review read failed at the service.'),
+      });
+    }
     if (
-      response.error ||
       !Array.isArray(response.data) ||
       response.data.some(
         (row) => !isObject(row) || typeof row.id !== 'string' || (input.id && row.id !== input.id),
       )
     )
-      throw new CliError('Review read failed or returned invalid identities.', {
-        code: 'REVIEW_READ_FAILED',
-        exitCode: 1,
+      throw new ReviewReadServiceError({
+        code: 'REVIEW_READ_INVALID_RESPONSE',
+        category: 'service',
+        message: 'Review read returned an invalid response.',
+        httpStatus: response.status,
       });
     return { records: response.data, total: response.count, environment, actor: actor.userId };
   };

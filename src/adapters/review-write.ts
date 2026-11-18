@@ -51,10 +51,16 @@ export function reviewWriter(
           body: JSON.stringify(body),
           signal: AbortSignal.timeout(10_000),
         });
+        let payload: unknown = null;
+        try {
+          payload = JSON.parse(await response.text()) as unknown;
+        } catch {
+          // An unreadable acknowledgement still has an observed HTTP status.
+        }
         return {
           status: response.status,
           ok: response.ok,
-          payload: JSON.parse(await response.text()) as unknown,
+          payload,
         };
       },
     });

@@ -24,8 +24,8 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-17
-lastReviewedCommit: 323ef59eb281773e390828426ddf533f702f6db9
+lastReviewedAt: 2026-11-18
+lastReviewedCommit: 37e0deed8a665ad8f784203b0e97a77ae8dbbd00
 lastReviewedNote: 'CLI #513 reviews version 0.4.1 preparation after the Model result-group source merge.'
 related:
   - ../AGENTS.md

@@ -34,6 +34,11 @@ export function attachReplyTemplate(
 
 export function renderResult(value: CommandResult, json: boolean, exitCode: number): CommandIO {
   const lines = [value.summary];
+  if (value.error && value.error.httpStatus !== undefined) {
+    const { code, httpStatus, message, serviceCode } = value.error;
+    lines.push(`HTTP ${httpStatus} (${serviceCode ?? code})`);
+    if (message !== value.summary) lines.push(message);
+  }
   if (value.data.subject) lines.push(JSON.stringify(value.data.subject));
   for (const artifact of value.artifacts) lines.push(`${artifact.purpose}: ${artifact.path}`);
   for (const warning of value.warnings) lines.push(warning.message);

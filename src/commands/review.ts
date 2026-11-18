@@ -19,6 +19,7 @@ import { text, type JsonObject } from '../application/dataset-types.js';
 import { queryCursor, nextCursor } from '../application/dataset-discovery.js';
 import { shellArgument } from '../shared/command-continuation.js';
 import type { ReviewRead } from '../application/dataset-types.js';
+import { ReviewReadServiceError } from '../application/review-service-diagnostic.js';
 
 const actions = ['submit', 'resubmit', 'get', 'list', 'materials', 'comment', 'decide', 'withdraw'];
 export async function runReviewCommand(
@@ -318,14 +319,18 @@ export async function runReviewCommand(
   } catch (error) {
     value.status = 'failed';
     value.outcome = 'operation_failed';
-    const failure = commandFailure(error, 'REVIEW_OPERATION_FAILED');
+    const failure =
+      error instanceof ReviewReadServiceError
+        ? { ...error.diagnostic, exitCode: 1 }
+        : commandFailure(error, 'REVIEW_OPERATION_FAILED');
+    const { exitCode, ...diagnostic } = failure;
     value.summary = failure.message;
-    value.error = { category: failure.category, code: failure.code, message: failure.message };
+    value.error = diagnostic;
     value.nextActions.push({
       description: 'Inspect supported Review capabilities.',
       command: 'tiangong-lca review --help --json',
     });
     attachReplyTemplate(value, 'command-failed');
-    return renderResult(value, json, failure.exitCode);
+    return renderResult(value, json, exitCode);
   }
 }
