@@ -21,7 +21,20 @@ import { shellArgument } from '../shared/command-continuation.js';
 import type { ReviewRead } from '../application/dataset-types.js';
 import { ReviewReadServiceError } from '../application/review-service-diagnostic.js';
 
-const actions = ['submit', 'resubmit', 'get', 'list', 'materials', 'comment', 'decide', 'withdraw'];
+import { exactReviewTarget, reviewUuid } from '../application/review-opinions.js';
+
+const targetFlags = ['type', 'data-id', 'data-version'];
+const actions = [
+  'submit',
+  'resubmit',
+  'get',
+  'list',
+  'opinions',
+  'materials',
+  'comment',
+  'decide',
+  'withdraw',
+];
 export async function runReviewCommand(
   args: string[],
   read: ReviewRead,
@@ -49,10 +62,12 @@ export async function runReviewCommand(
         : action === 'get'
           ? ['id', 'output', 'force']
           : action === 'list'
-            ? ['role', 'state', 'limit', 'cursor', 'output', 'force']
-            : action === 'materials'
-              ? ['id', 'round', 'output', 'force']
-              : ['input', 'dry-run', 'output', 'force']),
+            ? ['role', 'state', ...targetFlags, 'limit', 'cursor', 'output', 'force']
+            : action === 'opinions'
+              ? ['id', ...targetFlags, 'limit', 'cursor', 'output', 'force']
+              : action === 'materials'
+                ? ['id', 'round', 'output', 'force']
+                : ['input', 'dry-run', 'output', 'force']),
     ];
     try {
       const parsed = parseArgs({
@@ -84,7 +99,7 @@ export async function runReviewCommand(
       command: `review${actions.includes(action!) ? ` ${action}` : ''}`,
       actions,
       options: allowed,
-      defaults: action === 'list' ? { limit: 20 } : {},
+      defaults: action === 'list' || action === 'opinions' ? { limit: 20 } : {},
       errors: {
         0: 'completed or accepted',
         1: 'business failure, incomplete or unknown result',
@@ -92,6 +107,7 @@ export async function runReviewCommand(
       },
       examples: [
         'tiangong-lca review list --role submitter --json',
+        'tiangong-lca review opinions --type process --data-id 00000000-0000-4000-8000-000000000001 --data-version 01.00.000 --json',
         'tiangong-lca review submit --input submission.json --dry-run --json',
       ],
       implementedActions: actions.filter((name) => name !== 'withdraw'),
@@ -121,7 +137,9 @@ export async function runReviewCommand(
           'requestId, expectedActor, expectedEnvironment, reviewId, expectedState, json (reviewer draft)',
         decide:
           'requestId, expectedActor, expectedEnvironment, reviewId, expectedState, decision:approve|reject, reason (reject only; max 1000 characters). Process/Model approve requires an existing review draft.',
-        list: '--role submitter|reviewer [--state <integer>] [--limit 1..100] [--cursor <opaque>]',
+        opinions:
+          '--id <review UUID> or --type <dataset type> --data-id <UUID> --data-version <00.00.000>; returns visible opinions grouped by review with submission and opinion digests.',
+        list: '[--role submitter|reviewer|review-admin] [--type TYPE --data-id UUID --data-version 00.00.000] [--state <integer>] [--limit 1..100] [--cursor <opaque>]',
         get: '--id <review UUID>',
         materials: '--id <review UUID> [--output <file>]',
       },
@@ -138,7 +156,7 @@ export async function runReviewCommand(
       };
     if (flags.force && !flags.output)
       throw new CommandInputError('OUTPUT_REQUIRED', '--force requires --output.');
-    if (!['get', 'list'].includes(action)) {
+    if (!['get', 'list', 'opinions'].includes(action)) {
       if (action === 'withdraw')
         throw new CommandInputError(
           'CAPABILITY_UNSUPPORTED',
@@ -233,11 +251,31 @@ export async function runReviewCommand(
         ['failed', 'unknown', 'partial'].includes(value.status) ? 1 : 0,
       );
     }
-    const id = action === 'get' ? text(flags.id, '--id') : undefined;
-    const role = action === 'list' ? text(flags.role, '--role') : undefined;
-    if (role && !['submitter', 'reviewer'].includes(role))
-      throw new CommandInputError('ROLE_INVALID', '--role must be submitter or reviewer.');
-    const limit = action === 'get' ? 1 : flags.limit === undefined ? 20 : Number(flags.limit);
+    const target = targetFlags.some((name) => flags[name] !== undefined)
+      ? exactReviewTarget(flags.type, flags['data-id'], flags['data-version'])
+      : undefined;
+    const id =
+      action === 'get' || flags.id !== undefined ? text(flags.id, '--id').toLowerCase() : undefined;
+    if (
+      action === 'opinions' &&
+      (Boolean(id) === Boolean(target) ||
+        (id && !reviewUuid.test(id)) ||
+        (id && (flags.limit !== undefined || flags.cursor !== undefined)))
+    )
+      throw new CommandInputError(
+        'IDENTITY_INVALID',
+        'Select one review UUID or one exact dataset target. Pagination applies to target lookups.',
+      );
+    const role =
+      action === 'list' && (!target || flags.role !== undefined)
+        ? text(flags.role, '--role')
+        : undefined;
+    if (role && !['submitter', 'reviewer', 'review-admin'].includes(role))
+      throw new CommandInputError(
+        'ROLE_INVALID',
+        '--role must be submitter, reviewer or review-admin.',
+      );
+    const limit = id ? 1 : flags.limit === undefined ? 20 : Number(flags.limit);
     const state = flags.state === undefined ? undefined : Number(flags.state);
     if (
       !Number.isInteger(limit) ||
@@ -252,11 +290,20 @@ export async function runReviewCommand(
     const binding = {
       action,
       ...(role ? { role } : {}),
+      ...(target ? { target } : {}),
       ...(state === undefined ? {} : { state }),
       limit,
     };
     const offset = queryCursor(flags.cursor as string | undefined, binding);
-    const page = await read({ id, role: role as 'submitter', state, limit, offset });
+    const page = await read({
+      id,
+      role: role as Parameters<ReviewRead>[0]['role'],
+      target,
+      opinions: action === 'opinions',
+      state,
+      limit,
+      offset,
+    });
     value.context = {
       environment: page.environment,
       actor: { id: page.actor, source: 'online' },
@@ -273,7 +320,7 @@ export async function runReviewCommand(
         message: value.summary,
       };
     } else {
-      value.outcome = 'review_records_read';
+      value.outcome = action === 'opinions' ? 'review_opinions_read' : 'review_records_read';
       value.summary = `${page.records.length} visible current review record(s) read.`;
     }
     value.data = id ? { review: page.records[0] ?? null } : { items: page.records };
@@ -292,7 +339,7 @@ export async function runReviewCommand(
     if (value.completeness.nextCursor)
       value.nextActions.push({
         description: 'Read the next visible review page.',
-        command: `tiangong-lca review list --role ${role} --limit ${limit}${state === undefined ? '' : ` --state ${state}`} --cursor ${shellArgument(String(value.completeness.nextCursor))} --json`,
+        command: `tiangong-lca review ${action}${role ? ` --role ${role}` : ''}${target ? ` --type ${target.type} --data-id ${target.id} --data-version ${target.version}` : ''} --limit ${limit}${state === undefined ? '' : ` --state ${state}`} --cursor ${shellArgument(String(value.completeness.nextCursor))} --json`,
       });
     if (flags.output) {
       try {

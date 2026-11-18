@@ -17,7 +17,7 @@ export function rootHelp(usage: string): CommandIO {
         maintenance: ['plan', 'apply', 'verify', 'clear-account'],
         'import-lca': ['convert'],
       },
-      review: ['submit', 'resubmit', 'get', 'list', 'materials', 'comment', 'decide'],
+      review: ['submit', 'resubmit', 'get', 'list', 'opinions', 'materials', 'comment', 'decide'],
       study: 'Existing versioned Study protocol; inspect study --help',
       release: 'Existing release command protocol; inspect release --help',
     },

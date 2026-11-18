@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
-lastReviewedAt: 2026-11-17
-lastReviewedCommit: a709481f4b78eeb2ea0380ea3c8cb1e71085d751
-lastReviewedNote: 'CLI #505 reviews Model declaration projection in local Process candidates and its validation. Command and release boundaries retain their existing contracts.'
+lastReviewedAt: 2026-11-18
+lastReviewedCommit: e84bae4ca3e79f59628a71977fa09822ce17ef3c
+lastReviewedNote: 'CLI #524 adds read-only review opinions and exact dataset-version lookup through the existing review RPCs.'
 ---
 
 # CLI 0.2.0 重构实施计划

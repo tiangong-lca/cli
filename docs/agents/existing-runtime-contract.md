@@ -14,8 +14,8 @@ checkPaths:
   - AGENTS.md
   - src/lib/**
 lastReviewedAt: 2026-11-18
-lastReviewedCommit: 567dda9aebb03b8c2b909b979ef4f186a7aab3db
-lastReviewedNote: 'CLI #373: reviewed exact author submission receipt recovery, read-only replay and command validation.'
+lastReviewedCommit: e84bae4ca3e79f59628a71977fa09822ce17ef3c
+lastReviewedNote: 'CLI #524 adds read-only review opinions and exact dataset-version lookup through the existing review RPCs.'
 ---
 
 # Existing runtime safeguards

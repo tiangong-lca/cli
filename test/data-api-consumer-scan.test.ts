@@ -38,8 +38,9 @@ test('consumer-zero scan inventories every active relation and api RPC without r
     'sources',
     'unitgroups',
   ]);
-  assert.equal(report.inventory.rpc_names.length, 7);
+  assert.equal(report.inventory.rpc_names.length, 8);
   assert.ok(report.inventory.rpc_names.includes('qry_review_submit_receipt'));
+  assert.ok(report.inventory.rpc_names.includes('qry_review_get_comment_items'));
   for (const name of [
     'cmd_dataset_alias_execution_preflight_v2_guarded',
     'cmd_dataset_alias_execution_gate_v2_guarded',
