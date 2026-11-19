@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-19
-lastReviewedCommit: 4ae247ac0d2528c549ced71915873e01957e6120
-lastReviewedNote: 'CLI #533. Reviewed the exact development dependency patch and frozen graph against installed package, coverage and release qualification.'
+lastReviewedCommit: 313382ce4273370e7113f093b9fb36d9bf0c8758
+lastReviewedNote: 'CLI #532 and #533. Reviewed all six pnpm/setup invocations and the exact Action contract on the qualified brace-expansion 5.0.13 development graph. The existing manifest selection, frozen install, installed consumers and publisher are preserved.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

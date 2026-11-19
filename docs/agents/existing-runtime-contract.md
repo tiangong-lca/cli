@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - AGENTS.md
   - src/lib/**
-lastReviewedAt: 2026-11-18
-lastReviewedCommit: e84bae4ca3e79f59628a71977fa09822ce17ef3c
-lastReviewedNote: 'CLI #524 adds read-only review opinions and exact dataset-version lookup through the existing review RPCs.'
+lastReviewedAt: 2026-11-19
+lastReviewedCommit: 313382ce4273370e7113f093b9fb36d9bf0c8758
+lastReviewedNote: 'CLI #532 and #533. Reviewed all six pnpm/setup invocations and the exact Action contract on the qualified brace-expansion 5.0.13 development graph. The existing manifest selection, frozen install, installed consumers and publisher are preserved.'
 ---
 
 # Existing runtime safeguards
@@ -55,7 +55,7 @@ Read-side exact-reference verification follows `docs/agents/exact-reference-inte
 - The canonical minimum validation command is `pnpm lint`. Type-aware Oxlint is the only linter; the retired ESLint and TypeScript Compiler API lint paths must not return.
 - The authoritative full gate is `pnpm prepush:gate`; it includes `pnpm test:package`, the exact 100% coverage proof, and the coverage assertion. The local pre-push hook runs it after docpact for source pushes; only a complete, verified branch-deletion-only stdin stream skips both gates as documented in the validation guide.
 - Release tagging is guarded in `.github/workflows/tag-release-from-merge.yml` so only the upstream repository can execute the merge-tag flow. Its detector runs under exact Node 24.19.0; it calls the reusable four-platform `.github/workflows/quality-gate.yml` only for a CLI release, every job asserts exact runtime platform/architecture, and `cli-v<version>` tag creation depends on all four. `.github/workflows/publish.yml` publishes from that tag and also supports `workflow_dispatch` for existing-tag recovery/backfill.
-- CLI package releases must go through a version-bump PR merged to upstream `main`; routine publication must not originate from a local workstation. The release-prep PR updates `package.json`; the sole root `pnpm-lock.yaml` remains frozen and unchanged unless an explicitly reviewed dependency change requires pnpm regeneration. Issue #230's only graph exception is exact dev-only `sigstore@5.0.0`; published runtime dependencies stay unchanged. Merge creates `cli-v<version>`, and GitHub Actions uses pinned `pnpm/setup` v3.1.1 plus native pnpm OIDC/provenance publication through Trusted Publishing.
+- CLI package releases must go through a version-bump PR merged to upstream `main`; routine publication must not originate from a local workstation. The release-prep PR updates `package.json`; the sole root `pnpm-lock.yaml` remains frozen and unchanged unless an explicitly reviewed dependency change requires pnpm regeneration. Issue #230's only graph exception is exact dev-only `sigstore@5.0.0`; published runtime dependencies stay unchanged. Merge creates `cli-v<version>`, and GitHub Actions uses pinned `pnpm/setup` v3.1.2 plus native pnpm OIDC/provenance publication through Trusted Publishing.
 - Managed Node host context uses the explicit manifest protocol and one-use inherited IPC receiver. It retains the original trusted manifest and validates actual host/cache/cwd/executable state; task/env/ordinary argv values and cache receipts cannot replace its trust anchor. Host/application inputs are snapshotted before installation, cancellation ends new handshake admission, and leases remain until child/output closure. Product task/account authorization remains separate.
 - Coverage for `src/**/*.ts` is expected to stay at `100%` statements, branches, functions, and lines
 
