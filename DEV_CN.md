@@ -22,9 +22,9 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-11-18
-lastReviewedCommit: cd09761b2c39b75e51c3c2cb8fee4fe07e9e0464
-lastReviewedNote: 'CLI #530: verified the 0.4.4 version bump, review opinions release scope, frozen dependency graph and trusted publication contract.'
+lastReviewedAt: 2026-11-19
+lastReviewedCommit: 2cc7948fe860f1c6143bcb106893cf71ce1fe1c4
+lastReviewedNote: 'CLI #533. Reviewed maintainer and implementation guidance against the patched development graph and canonical installed-consumer validation.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
