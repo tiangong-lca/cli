@@ -14,8 +14,8 @@ checkPaths:
   - AGENTS.md
   - src/lib/**
 lastReviewedAt: 2026-11-19
-lastReviewedCommit: 1760ebf120e42a29aebd14bc6f7f1b2e85aa7e6e
-lastReviewedNote: 'CLI #532: reviewed pnpm/setup 3.1.2 across six workflow invocations, manifest-selected pnpm11.24.0 and explicit Node24.19.0/cache/install inputs. Package graph, public runtime, exact coverage and installed-consumer gates, release detection and publication authority remain unchanged.'
+lastReviewedCommit: 313382ce4273370e7113f093b9fb36d9bf0c8758
+lastReviewedNote: 'CLI #532 and #533. Reviewed all six pnpm/setup invocations and the exact Action contract on the qualified brace-expansion 5.0.13 development graph. The existing manifest selection, frozen install, installed consumers and publisher are preserved.'
 ---
 
 # Existing runtime safeguards

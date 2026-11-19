@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-19
-lastReviewedCommit: 2cc7948fe860f1c6143bcb106893cf71ce1fe1c4
-lastReviewedNote: 'CLI #533. Reviewed maintainer and implementation guidance against the patched development graph and canonical installed-consumer validation.'
+lastReviewedCommit: 313382ce4273370e7113f093b9fb36d9bf0c8758
+lastReviewedNote: 'CLI #532 and #533. Reviewed all six pnpm/setup invocations and the exact Action contract on the qualified brace-expansion 5.0.13 development graph. The existing manifest selection, frozen install, installed consumers and publisher are preserved.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
