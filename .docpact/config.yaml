@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-11-18"
-lastReviewedCommit: cd09761b2c39b75e51c3c2cb8fee4fe07e9e0464
-lastReviewedNote: 'CLI #530: verified the 0.4.4 version bump, review opinions release scope, frozen dependency graph and trusted publication contract.'
+lastReviewedAt: '2026-11-19'
+lastReviewedCommit: '1760ebf120e42a29aebd14bc6f7f1b2e85aa7e6e'
+lastReviewedNote: 'CLI #532: reviewed pnpm/setup 3.1.2 across six workflow invocations, manifest-selected pnpm11.24.0 and explicit Node24.19.0/cache/install inputs. Package graph, public runtime, exact coverage and installed-consumer gates, release detection and publication authority remain unchanged.'
 
 catalog:
   repos:

@@ -24,9 +24,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-18
-lastReviewedCommit: cd09761b2c39b75e51c3c2cb8fee4fe07e9e0464
-lastReviewedNote: 'CLI #530: verified the 0.4.4 version bump, review opinions release scope, frozen dependency graph and trusted publication contract.'
+lastReviewedAt: 2026-11-19
+lastReviewedCommit: 1760ebf120e42a29aebd14bc6f7f1b2e85aa7e6e
+lastReviewedNote: 'CLI #532: reviewed pnpm/setup 3.1.2 across six workflow invocations, manifest-selected pnpm11.24.0 and explicit Node24.19.0/cache/install inputs. Package graph, public runtime, exact coverage and installed-consumer gates, release detection and publication authority remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
@@ -74,7 +74,7 @@ Leave the environment name unset unless the workflow is explicitly updated to us
 
 - `publish.yml` validates that the Git tag matches the package version before upload and supports `workflow_dispatch` only for pnpm-era tags whose tagged commit contains the root `pnpm-lock.yaml`. A pre-pnpm `cli-v*` tag fails fast; historical-tag replay has no legacy npm fallback.
 - `tag-release-from-merge.yml` detects a CLI version change under exact Node 24.19.0 before expensive validation, invokes the reusable four-platform `quality-gate.yml`, and permits its tag job only after every exact platform/architecture assertion and matrix gate succeeds. It then reruns the Ubuntu Docpact/release gates before creating the tag. If the expected tag already points at the current merge commit, the tag step is idempotent; if it points elsewhere, the workflow fails.
-- every Node workflow uses immutable `pnpm/setup` v3.1.1 with Node 24.19.0, cache enabled, and `pnpm install --frozen-lockfile`; the publish job receives `id-token: write` and invokes native pnpm provenance publication
+- every Node workflow uses immutable `pnpm/setup` v3.1.2 with Node 24.19.0, cache enabled, and `pnpm install --frozen-lockfile`; the publish job receives `id-token: write` and invokes native pnpm provenance publication
 - The release-prep PR should ordinarily update only the intended package version and must not churn `pnpm-lock.yaml` when the graph is unchanged. Issue #230 is an explicit reviewed exception: exact dev-only `sigstore@5.0.0` regenerates the sole lock for cryptographic verification while published runtime dependencies remain unchanged.
 - Local workstations may run `pnpm --filter @tiangong-lca/cli --fail-if-no-match pack --dry-run` for package validation, but routine npm publication belongs to GitHub Actions Trusted Publishing after the upstream `main` merge.
 - `pnpm test:package` must prove the tarball contains only the declared runtime surface and that a clean package-manager-neutral consumer can install and execute it without repository workspace state or leaked TypeScript/Oxlint/test tooling.
