@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-19
-lastReviewedCommit: 313382ce4273370e7113f093b9fb36d9bf0c8758
-lastReviewedNote: 'CLI #532 and #533. Reviewed all six pnpm/setup invocations and the exact Action contract on the qualified brace-expansion 5.0.13 development graph. The existing manifest selection, frozen install, installed consumers and publisher are preserved.'
+lastReviewedCommit: 11d3745a4d0dbd482cb77df233114945a07cd541
+lastReviewedNote: 'CLI #535 reviewed the six development tool updates against the Node 24 frozen graph, Sigstore verifier API, offline browser fixture, packaging boundary and existing four-platform release gates.'
 related:
   - AGENTS.md
   - .docpact/config.yaml
