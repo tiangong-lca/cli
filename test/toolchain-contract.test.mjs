@@ -172,7 +172,7 @@ test('pnpm build permissions and release-age exceptions are exact and versioned'
     [],
     `minimum-release-age exceptions must stay exact and versioned:\n${formatJson(exceptions)}`,
   );
-  assert.match(workspaceText, /overrides:\n  brace-expansion: 5\.0\.9\n  ws: 8\.21\.3/u);
+  assert.match(workspaceText, /overrides:\n  brace-expansion: 5\.0\.13\n  ws: 8\.21\.3/u);
 });
 
 test('all manifests and both recursive pnpm trees contain only direct TypeScript 7', () => {

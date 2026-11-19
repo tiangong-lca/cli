@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-19
-lastReviewedCommit: 1760ebf120e42a29aebd14bc6f7f1b2e85aa7e6e
-lastReviewedNote: 'CLI #532: reviewed the unchanged Chinese maintainer and implementation guidance for the pnpm/setup workflow qualification; runtime selection, public command behavior, installed-consumer and exact coverage gates remain unchanged.'
+lastReviewedCommit: 2cc7948fe860f1c6143bcb106893cf71ce1fe1c4
+lastReviewedNote: 'CLI #533. Reviewed maintainer and implementation guidance against the patched development graph and canonical installed-consumer validation.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

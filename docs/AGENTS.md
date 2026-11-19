@@ -15,8 +15,8 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-19
-lastReviewedCommit: 1760ebf120e42a29aebd14bc6f7f1b2e85aa7e6e
-lastReviewedNote: 'CLI #532: reviewed pnpm/setup 3.1.2 across six workflow invocations, manifest-selected pnpm11.24.0 and explicit Node24.19.0/cache/install inputs. Package graph, public runtime, exact coverage and installed-consumer gates, release detection and publication authority remain unchanged.'
+lastReviewedCommit: 2cc7948fe860f1c6143bcb106893cf71ce1fe1c4
+lastReviewedNote: 'CLI #533. Reviewed maintainer and implementation guidance against the patched development graph and canonical installed-consumer validation.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

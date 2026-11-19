@@ -40,8 +40,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-19
-lastReviewedCommit: 1760ebf120e42a29aebd14bc6f7f1b2e85aa7e6e
-lastReviewedNote: 'CLI #532: reviewed pnpm/setup 3.1.2 across six workflow invocations, manifest-selected pnpm11.24.0 and explicit Node24.19.0/cache/install inputs. Package graph, public runtime, exact coverage and installed-consumer gates, release detection and publication authority remain unchanged.'
+lastReviewedCommit: 4ae247ac0d2528c549ced71915873e01957e6120
+lastReviewedNote: 'CLI #533. Reviewed the exact development dependency patch and frozen graph against installed package, coverage and release qualification.'
 related:
   - .docpact/config.yaml
   - docs/agents/repo-validation.md
