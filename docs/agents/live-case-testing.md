@@ -15,9 +15,9 @@ checkPaths:
   - test/live-oauth-harness.test.ts
   - package.json
   - test/toolchain-contract.test.mjs
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
-lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
+lastReviewedAt: 2026-11-19
+lastReviewedCommit: 11d3745a4d0dbd482cb77df233114945a07cd541
+lastReviewedNote: 'CLI #535 reviewed the six development tool updates against the Node 24 frozen graph, Sigstore verifier API, offline browser fixture, packaging boundary and existing four-platform release gates.'
 related:
   - repo-validation.md
   - repo-architecture.md
@@ -26,7 +26,7 @@ related:
 
 # Private OAuth live cases
 
-This driver is maintainer tooling for an explicitly authorized account. The public CLI continues to accept only OAuth login or the existing explicit headless token configuration. It has no password CLI surface. `playwright@1.62.1` is a pinned development dependency compatible with the repository's Node 24 baseline; neither Playwright nor `scripts/live/` ships in the runtime package.
+This driver is maintainer tooling for an explicitly authorized account. The public CLI continues to accept only OAuth login or the existing explicit headless token configuration. It has no password CLI surface. `playwright@1.65.0` is a pinned development dependency compatible with the repository's Node 24 baseline; neither Playwright nor `scripts/live/` ships in the runtime package.
 
 ## Preparation
 
