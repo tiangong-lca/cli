@@ -38,8 +38,8 @@ importers:
         specifier: 1.65.0
         version: 1.65.0
       prettier:
-        specifier: 3.9.10
-        version: 3.9.10
+        specifier: 3.10.0
+        version: 3.10.0
       sigstore:
         specifier: 5.0.1
         version: 5.0.1(supports-color@7.2.0)
@@ -858,8 +858,8 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
-  prettier@3.9.10:
-    resolution: {integrity: sha512-skGHTH1Yb9QvaTC4hWnRTzEYtCpApF0UMBPz+t/0ZPzP8ihefo/btKd+QA7pUE0fEwA1SbS/NmhyEcstdXOIdA==}
+  prettier@3.10.0:
+    resolution: {integrity: sha512-mBi4765LgjO1PFjlEs7pUeK0nb1bw71c+N4/ItfeUWNdY5cV2pRKaFpbbFRYmDJMO+5ZwzGxHRqHxFZna7iv5w==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -1564,7 +1564,7 @@ snapshots:
 
   minimatch@10.2.6:
     dependencies:
-      brace-expansion: 5.0.9
+      brace-expansion: 5.0.13
 
   minipass-collect@2.0.1:
     dependencies:
@@ -1665,7 +1665,7 @@ snapshots:
     dependencies:
       playwright-core: 1.65.0
 
-  prettier@3.9.10: {}
+  prettier@3.10.0: {}
 
   proc-log@7.0.0: {}
 

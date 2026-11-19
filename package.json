@@ -100,7 +100,7 @@
     "oxlint": "^1.80.0",
     "oxlint-tsgolint": "^7.0.2001",
     "playwright": "1.65.0",
-    "prettier": "3.9.10",
+    "prettier": "3.10.0",
     "sigstore": "5.0.1",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"

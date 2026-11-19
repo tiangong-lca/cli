@@ -26,7 +26,7 @@ related:
 
 # Private OAuth live cases
 
-This driver is maintainer tooling for an explicitly authorized account. The public CLI continues to accept only OAuth login or the existing explicit headless token configuration. It has no password CLI surface. `playwright@1.62.1` is a pinned development dependency compatible with the repository's Node 24 baseline; neither Playwright nor `scripts/live/` ships in the runtime package.
+This driver is maintainer tooling for an explicitly authorized account. The public CLI continues to accept only OAuth login or the existing explicit headless token configuration. It has no password CLI surface. `playwright@1.65.0` is a pinned development dependency compatible with the repository's Node 24 baseline; neither Playwright nor `scripts/live/` ships in the runtime package.
 
 ## Preparation
 

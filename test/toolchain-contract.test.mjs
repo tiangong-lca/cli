@@ -487,7 +487,7 @@ test('release tags are blocked by the reusable four-platform gate and have execu
     PACKAGE_JSON.scripts?.['release:verify-published'],
     'node ./scripts/ci/verify-published-release.cjs',
   );
-  assert.equal(PACKAGE_JSON.devDependencies?.sigstore, '5.0.0');
+  assert.equal(PACKAGE_JSON.devDependencies?.sigstore, '5.0.1');
   assert.equal(PACKAGE_JSON.dependencies?.sigstore, undefined);
   assert.match(
     releaseRunbook,
@@ -570,7 +570,7 @@ test('the Node 24-compatible graph pins the released TIDAS 0.8.0 runtime', () =>
   assert.equal(PACKAGE_JSON.dependencies?.['@supabase/supabase-js'], '^2.112.4');
   assert.equal(PACKAGE_JSON.devDependencies?.['@types/node'], '^24.13.3');
   assert.equal(PACKAGE_JSON.devDependencies?.['lint-staged'], '^17.4.1');
-  assert.equal(PACKAGE_JSON.devDependencies?.prettier, '3.9.6');
+  assert.equal(PACKAGE_JSON.devDependencies?.prettier, '3.10.0');
   assert.equal(PACKAGE_JSON.devDependencies?.tsx, '^4.23.13');
 
   const publishedDependencies = DEPENDENCY_SECTIONS.filter(
