@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { withBatchRunLock } from '../locks/run-lock.js';
-import { contentHash, hashRuntimeFile, runtimeError } from './files.js';
+import { contentHash, createRuntimeWalkHasher, hashRuntimeFile, runtimeError } from './files.js';
 import { assertTrustedManifest, componentKey } from './manifest.js';
 import { assertRuntimeHost, inspectRuntimeHost } from './host.js';
 import {
@@ -52,6 +52,7 @@ export function verifyRuntimeComponent(
   component: RuntimeComponent,
   platform: string,
 ): void {
+  const hashFile = createRuntimeWalkHasher();
   const expected = new Map(component.files.map((file) => [file.path, file]));
   let count = 0;
   const walk = (relative: string): void => {
@@ -68,7 +69,7 @@ export function verifyRuntimeComponent(
         const expectedFile = expected.get(file);
         if (!expectedFile)
           runtimeError('RUNTIME_COMPONENT_EXTRA', 'Component contains an unregistered file.');
-        const actual = hashRuntimeFile(target, file);
+        const actual = hashFile(target, file);
         if (
           actual.bytes !== expectedFile.bytes ||
           actual.sha256 !== expectedFile.sha256 ||

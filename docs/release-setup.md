@@ -24,9 +24,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-19
-lastReviewedCommit: 11d3745a4d0dbd482cb77df233114945a07cd541
-lastReviewedNote: 'CLI #535 reviewed the six development tool updates against the Node 24 frozen graph, Sigstore verifier API, offline browser fixture, packaging boundary and existing four-platform release gates.'
+lastReviewedAt: 2026-11-20
+lastReviewedCommit: e3e5320df2e906de4b9e56c5b1e1b7f14850c196
+lastReviewedNote: 'CLI #543 reviewed private buffer reuse within a synchronous component inventory, fresh per-file digest and identity checks, and the existing package, coverage and release gates.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
