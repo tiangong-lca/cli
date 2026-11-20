@@ -26,8 +26,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-20
-lastReviewedCommit: e3e5320df2e906de4b9e56c5b1e1b7f14850c196
-lastReviewedNote: 'CLI #543 reviewed private buffer reuse within a synchronous component inventory, fresh per-file digest and identity checks, and the existing package, coverage and release gates.'
+lastReviewedCommit: 929d2f38595dbb261fa9cc4321dd3e4da7544977
+lastReviewedNote: 'CLI #545 reviewed the 0.4.5 version-only release, the preserved dependency graph and the existing package, four-platform, provenance and integration requirements.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
