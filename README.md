@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - README.md
   - src/commands/**
-lastReviewedAt: 2026-11-19
-lastReviewedCommit: 11d3745a4d0dbd482cb77df233114945a07cd541
-lastReviewedNote: 'CLI #535 reviewed the six development tool updates against the Node 24 frozen graph, Sigstore verifier API, offline browser fixture, packaging boundary and existing four-platform release gates.'
+lastReviewedAt: 2026-11-20
+lastReviewedCommit: 929d2f38595dbb261fa9cc4321dd3e4da7544977
+lastReviewedNote: 'CLI #545 reviewed the 0.4.5 version-only release, the preserved dependency graph and the existing package, four-platform, provenance and integration requirements.'
 ---
 
 # TianGong LCA CLI
