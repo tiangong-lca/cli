@@ -14,8 +14,8 @@ checkPaths:
   - docs/**
   - AGENTS.md
   - .docpact/config.yaml
-lastReviewedAt: 2026-11-20
-lastReviewedCommit: 929d2f38595dbb261fa9cc4321dd3e4da7544977
+lastReviewedAt: 2026-11-24
+lastReviewedCommit: 093565f156f7c289341adbeff7538e1c29b7a8eb
 lastReviewedNote: 'CLI #545 reviewed the 0.4.5 version-only release, the preserved dependency graph and the existing package, four-platform, provenance and integration requirements.'
 related:
   - ../AGENTS.md

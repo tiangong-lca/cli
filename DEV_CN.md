@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - scripts/**
   - .github/workflows/**
-lastReviewedAt: 2026-11-20
-lastReviewedCommit: 929d2f38595dbb261fa9cc4321dd3e4da7544977
+lastReviewedAt: 2026-11-24
+lastReviewedCommit: 45d02e676898e8d914de45a26ab7c74a2cea2351
 lastReviewedNote: 'CLI #545 reviewed the 0.4.5 version-only release, the preserved dependency graph and the existing package, four-platform, provenance and integration requirements.'
 related:
   - AGENTS.md
