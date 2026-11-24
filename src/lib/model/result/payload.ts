@@ -555,7 +555,10 @@ export function materializeResultProcess(
         typeof item['#text'] === 'string',
     );
     if (isRecord(original)) {
-      original['#text'] = `${original['#text']}\n\n${entry['#text']}`;
+      const entryText = String(entry['#text']);
+      if (!String(original['#text']).includes(entryText)) {
+        original['#text'] = `${original['#text']}\n\n${entryText}`;
+      }
     } else {
       generalComment.push(entry);
     }
@@ -591,8 +594,15 @@ export function materializeResultProcess(
     : {};
   administrative.publicationAndOwnership = publication;
   publication['common:dataSetVersion'] = options.processVersion;
+  const existingUri = firstNonEmpty(publication['common:permanentDataSetURI']);
+  const canonicalUri = `https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=${options.processId}&version=${options.processVersion}`;
   publication['common:permanentDataSetURI'] =
-    `https://local.tiangong.invalid/processes/${options.processId}?version=${options.processVersion}`;
+    existingUri &&
+    !existingUri.includes('local.tiangong.invalid') &&
+    existingUri.includes(options.processId) &&
+    (!existingUri.includes('version=') || existingUri.includes(`version=${options.processVersion}`))
+      ? existingUri
+      : canonicalUri;
 
   const modellingAndValidation = isRecord(finalDataset.modellingAndValidation)
     ? (finalDataset.modellingAndValidation as JsonObject)

@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - AGENTS.md
   - src/lib/**
-lastReviewedAt: 2026-11-20
-lastReviewedCommit: e3e5320df2e906de4b9e56c5b1e1b7f14850c196
-lastReviewedNote: 'CLI #543 reviewed private buffer reuse within a synchronous component inventory, fresh per-file digest and identity checks, and the existing package, coverage and release gates.'
+lastReviewedAt: 2026-11-24
+lastReviewedCommit: c00326806dd1a187cba4c008614002920623d2a6
+lastReviewedNote: 'CLI #505 follow-up reviews canonical resulting-process URI normalization, deduplicated generalComment provenance, and Model classification/external-documentation projection; existing command, generatedFromLifecycleModel provenance, and release contracts remain unchanged.'
 ---
 
 # Existing runtime safeguards

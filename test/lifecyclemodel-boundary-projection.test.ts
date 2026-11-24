@@ -71,6 +71,7 @@ function setup(supply = '2', demand = '5') {
     reference: 1 as unknown,
     overrides: {} as Json,
     modelDeclarations: {} as Json,
+    modelDataInfo: {} as Json,
     modelComment: undefined as unknown,
     projectionMode: 'primary-only',
     targetAmount: undefined as number | undefined,
@@ -98,6 +99,7 @@ async function run(
           obj(obj(fixture.processes[0].processDataSet).processInformation).dataSetInformation,
         ).name,
         'common:generalComment': fixture.modelComment,
+        ...fixture.modelDataInfo,
       },
       quantitativeReference:
         fixture.reference === undefined ? {} : { referenceToReferenceProcess: fixture.reference },
@@ -425,10 +427,39 @@ test('authored Model declarations reach the qualified candidate without changing
     assert.deepEqual(publication[field], value);
   }
   assert.equal(publication['common:dataSetVersion'], VERSION);
+  assert.equal(
+    publication['common:permanentDataSetURI'],
+    `https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=88888888-8888-4888-8888-888888888888&version=${VERSION}`,
+  );
   assert.deepEqual(treatment(projected), {
     ...treatment(original),
     useAdviceForDataSet: localized,
   });
+
+  const modelClassification = {
+    'common:classification': {
+      'common:class': { '@level': '0', '@classId': 'C', '#text': 'Manufacturing' },
+    },
+  };
+  const modelExternalDoc = {
+    '@type': 'source data set',
+    '@refObjectId': 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    '@version': VERSION,
+    '@uri': '../sources/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.xml',
+    'common:shortDescription': [{ '@xml:lang': 'en', '#text': 'Whole-system model report' }],
+  };
+  fixture.modelDataInfo = {
+    classificationInformation: modelClassification,
+    referenceToExternalDocumentation: modelExternalDoc,
+  };
+  const withModelInfo = await run(fixture);
+  assert.equal(withModelInfo.result.exitCode, 0, withModelInfo.result.stderr);
+  const projectedInfo = obj(
+    obj(obj(withModelInfo.payload!.processDataSet).processInformation).dataSetInformation,
+  );
+  assert.deepEqual(projectedInfo.classificationInformation, modelClassification);
+  assert.deepEqual(projectedInfo.referenceToExternalDocumentation, modelExternalDoc);
+  fixture.modelDataInfo = {};
 
   modelRights['common:accessRestrictions'] = [];
   obj(
@@ -598,9 +629,60 @@ test('all-subproducts keeps independent saved result versions and fails on ambig
     (retained.bundle!.projected_processes as Json[]).map(({ id, version }) => [id, version]),
     members.map(({ id, version }) => [id, version]),
   );
+  const retainedRoot = obj(retained.payload!.processDataSet);
+  const retainedComments = obj(obj(retainedRoot.processInformation).dataSetInformation)[
+    'common:generalComment'
+  ] as Json[];
+  const enRetainedComment = String(
+    retainedComments.find((entry) => entry['@xml:lang'] === 'en')?.['#text'] ?? '',
+  );
+  assert.equal(enRetainedComment.split('generated from lifecycle model').length - 1, 1);
+  assert.equal(
+    obj(obj(retainedRoot.administrativeInformation).publicationAndOwnership)[
+      'common:permanentDataSetURI'
+    ],
+    'https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=88888888-8888-4888-8888-888888888888&version=02.00.000',
+  );
+  const retainedSameVersion = await run(fixture, true, {
+    members,
+    processes: (retained.bundle!.projected_processes as Json[]).map(
+      ({ id, version, json_ordered }) => ({
+        id,
+        version,
+        json_ordered,
+      }),
+    ),
+  });
+  assert.equal(retainedSameVersion.result.exitCode, 0, retainedSameVersion.result.stderr);
+  assert.equal(
+    obj(
+      obj(obj(retainedSameVersion.payload!.processDataSet).administrativeInformation)
+        .publicationAndOwnership,
+    )['common:permanentDataSetURI'],
+    'https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=88888888-8888-4888-8888-888888888888&version=02.00.000',
+  );
+  const customUriProcesses = structuredClone(processes);
+  obj(
+    obj(obj(obj(customUriProcesses[0].json_ordered).processDataSet).administrativeInformation)
+      .publicationAndOwnership,
+  )['common:permanentDataSetURI'] =
+    'https://data.tiangong.earth/processes/88888888-8888-4888-8888-888888888888.xml';
+  const preservedCustomUri = await run(fixture, true, { members, processes: customUriProcesses });
+  assert.equal(preservedCustomUri.result.exitCode, 0, preservedCustomUri.result.stderr);
+  assert.equal(
+    obj(
+      obj(obj(preservedCustomUri.payload!.processDataSet).administrativeInformation)
+        .publicationAndOwnership,
+    )['common:permanentDataSetURI'],
+    'https://data.tiangong.earth/processes/88888888-8888-4888-8888-888888888888.xml',
+  );
   const authored = structuredClone(processes);
   const processRoot = obj(obj(authored[0].json_ordered).processDataSet);
   delete obj(obj(processRoot.processInformation).dataSetInformation).classificationInformation;
+  obj(obj(processRoot.administrativeInformation).publicationAndOwnership)[
+    'common:permanentDataSetURI'
+  ] =
+    'https://local.tiangong.invalid/processes/88888888-8888-4888-8888-888888888888?version=02.00.000';
   const modelling = obj(processRoot.modellingAndValidation);
   obj(modelling.dataSourcesTreatmentAndRepresentativeness).annualSupplyOrProductionVolume = {
     '@xml:lang': 'en',
@@ -610,6 +692,12 @@ test('all-subproducts keeps independent saved result versions and fails on ambig
   assert.equal(edited.result.exitCode, 0, edited.result.stderr);
   assert.equal(obj(edited.projection!.qualification).draft_ready, true);
   assert.equal(obj(edited.projection!.qualification).publish_ready, false);
+  assert.equal(
+    obj(obj(obj(edited.payload!.processDataSet).administrativeInformation).publicationAndOwnership)[
+      'common:permanentDataSetURI'
+    ],
+    'https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=88888888-8888-4888-8888-888888888888&version=02.00.000',
+  );
 
   const missing = await run(fixture, true, { members, processes: [] });
   assert.match(missing.result.stderr, /no verified stored payload/);

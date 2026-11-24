@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
-lastReviewedAt: 2026-11-18
-lastReviewedCommit: e84bae4ca3e79f59628a71977fa09822ce17ef3c
-lastReviewedNote: 'CLI #524 adds read-only review opinions and exact dataset-version lookup through the existing review RPCs.'
+lastReviewedAt: 2026-11-24
+lastReviewedCommit: c00326806dd1a187cba4c008614002920623d2a6
+lastReviewedNote: 'CLI #505 follow-up reviews canonical resulting-process URI normalization, deduplicated generalComment provenance, and Model classification/external-documentation projection; existing command, generatedFromLifecycleModel provenance, and release contracts remain unchanged.'
 ---
 
 # CLI 0.2.0 重构实施计划

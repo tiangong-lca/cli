@@ -44,7 +44,7 @@ language: zh-CN
 
 `build-resulting-process` 的输入包括完整模型、精确过程内容、参考输出、投影范围和适用分配配置。结果包含聚合后的候选数据、模型与过程内容绑定、算法及规则版本、诊断和未解决条件。支持范围之外的循环、分配或计算条件必须拒绝或标记未完成，不能默默简化。
 
-本地候选优先使用 Model 的系统说明、用途限制、预期应用和权利声明。系统说明保留多语言内容，并附上生成来源。旧输入缺少说明、用途或应用时沿用参考过程对应值。Model 声明任一权利字段时，结果使用同一组 Model 权利字段，缺少的必填项由数据校验指出。旧输入没有任何 Model 权利声明时沿用参考过程字段。用途限制和访问限制可用空列表清除。过程引用和候选身份仍由生成操作确定。
+本地候选优先使用 Model 的系统说明、分类（`classificationInformation`）、外部文档引用（`referenceToExternalDocumentation`）、用途限制、预期应用和权利声明。系统说明保留多语言内容，并去重附上生成来源（重复重算不累积追加）。`common:permanentDataSetURI` 保留既有同过程的有效非占位 URI，缺省、来源为其他过程、版本已变更或遇到历史 `local.tiangong.invalid` 占位地址时生成标准地址 `https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=<id>&version=<version>`。旧输入缺少说明、用途或应用时沿用参考过程对应值。Model 声明任一权利字段时，结果使用同一组 Model 权利字段，缺少的必填项由数据校验指出。旧输入没有任何 Model 权利声明时沿用参考过程字段。用途限制和访问限制可用空列表清除。过程引用和候选身份仍由生成操作确定。
 
 聚合输出是本地候选。`primary-only` 表示单主结果；`all-subproducts` 使用与 Platform 同源的计算核心，生成主结果、独立产品结果和适用的分配过程。可用 `projection.target_amount` 指定正数目标量。未指定时，用参考过程参考量乘以 Model 中该实例的倍率。各其他产品使用其来源参考量独立求解。
 

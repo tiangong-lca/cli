@@ -25,9 +25,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-20
-lastReviewedCommit: 929d2f38595dbb261fa9cc4321dd3e4da7544977
-lastReviewedNote: 'CLI #545 reviewed the 0.4.5 version-only release, the preserved dependency graph and the existing package, four-platform, provenance and integration requirements.'
+lastReviewedAt: 2026-11-24
+lastReviewedCommit: c00326806dd1a187cba4c008614002920623d2a6
+lastReviewedNote: 'CLI #505 follow-up reviews canonical resulting-process URI normalization, deduplicated generalComment provenance, and Model classification/external-documentation projection; existing command, generatedFromLifecycleModel provenance, and release contracts remain unchanged.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
