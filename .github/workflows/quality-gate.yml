@@ -3,6 +3,15 @@ name: quality-gate
 on:
   workflow_call:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .npmrc
+      - .nvmrc
+      - .github/workflows/quality-gate.yml
   pull_request:
     branches: [main]
     paths:
