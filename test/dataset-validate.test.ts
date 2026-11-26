@@ -1,3 +1,4 @@
+import { flowReferenceFixture } from './helpers/flow-reference-fixture.js';
 import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -8,7 +9,7 @@ import {
   __testInternals,
   runDatasetValidate,
   type RunDatasetValidateOptions,
-} from '../src/lib/dataset-validate.js';
+} from '../src/lib/dataset/validate.js';
 import {
   datasetIdentity,
   datasetRoot,
@@ -18,7 +19,7 @@ import {
   readDatasetRowsInput,
   trimToken,
   unwrapDatasetPayload,
-} from '../src/lib/dataset-local.js';
+} from '../src/lib/dataset/local.js';
 
 function writeJsonl(filePath: string, rows: unknown[]): void {
   writeFileSync(filePath, `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`, 'utf8');
@@ -114,7 +115,7 @@ test('runDatasetValidate validates local rows and writes split artifacts', async
     {
       id: 'flow-ok',
       version: '01.01.000',
-      json_ordered: { flowDataSet: {} },
+      json_ordered: flowReferenceFixture(),
     },
   ]);
 
@@ -180,7 +181,9 @@ test('runDatasetValidate supports mixed support rows with --type auto', async ()
         unitGroupDataSet: {
           unitGroupInformation: {
             dataSetInformation: { 'common:UUID': 'unitgroup-1' },
+            quantitativeReference: { referenceToReferenceUnit: '1' },
           },
+          units: { unit: { '@dataSetInternalID': '1', name: 'reference unit', meanValue: '1' } },
           administrativeInformation: {
             publicationAndOwnership: { 'common:dataSetVersion': '00.00.001' },
           },
@@ -296,7 +299,10 @@ test('runDatasetValidate blocks import traces and source-gap sentinels for non-p
         id: 'flow-import-gap',
         json_ordered: {
           flowDataSet: {
+            flowProperties: flowReferenceFixture().flowDataSet.flowProperties,
             flowInformation: {
+              quantitativeReference:
+                flowReferenceFixture().flowDataSet.flowInformation.quantitativeReference,
               dataSetInformation: {
                 name: {
                   baseName: { '@xml:lang': 'en', '#text': 'carbon dioxide' },

@@ -1,5 +1,8 @@
+import { assertInstalledReport } from './helpers/report-installed.ts';
+import { assertInstalledBusiness } from './helpers/cli-business-installed.ts';
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { createServer } from 'node:http';
 import {
   cpSync,
   existsSync,
@@ -74,7 +77,7 @@ const EXPECTED_AUTH_IDENTITY_RUNTIME_EXPORTS = Object.freeze([
 const PACKAGE_MANAGER = 'pnpm@11.24.0';
 const PACKAGE_MANAGER_VERSION = PACKAGE_MANAGER.slice('pnpm@'.length);
 const NODE_VERSION = '24.19.0';
-const PNPM_SETUP_ACTION = '84cb39b217b10273981911c288cd62326dc7c6d2';
+const PNPM_SETUP_ACTION = '731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1';
 
 const PACKAGE_LOCKFILE_NAMES = new Set([
   'bun.lock',
@@ -164,12 +167,12 @@ test('pnpm build permissions and release-age exceptions are exact and versioned'
     exceptions.filter(
       (entry) =>
         !/^(?:oxlint|@oxlint\/binding-[a-z0-9-]+)@1\.80\.0$/u.test(entry) &&
-        entry !== '@tiangong-lca/tidas-sdk@0.5.1',
+        entry !== '@tiangong-lca/tidas-sdk@0.9.0',
     ),
     [],
     `minimum-release-age exceptions must stay exact and versioned:\n${formatJson(exceptions)}`,
   );
-  assert.match(workspaceText, /overrides:\n  brace-expansion: 5\.0\.9\n  ws: 8\.21\.3/u);
+  assert.match(workspaceText, /overrides:\n  brace-expansion: 5\.0\.13\n  ws: 8\.21\.3/u);
 });
 
 test('all manifests and both recursive pnpm trees contain only direct TypeScript 7', () => {
@@ -291,7 +294,7 @@ test('active automation uses pnpm commands and a current pnpm setup action', () 
   assert.deepEqual(
     setupActions.filter(({ version }) => version !== PNPM_SETUP_ACTION),
     [],
-    `pnpm/setup must use the reviewed immutable v2.0.2 revision:\n${formatJson(setupActions)}`,
+    `pnpm/setup must use the reviewed immutable v3.2.0 revision:\n${formatJson(setupActions)}`,
   );
 
   const launcherGuidanceFindings = [];
@@ -356,7 +359,7 @@ test('active maintainer documentation exposes only pnpm package-management comma
     join(REPOSITORY_ROOT, 'docs', 'IMPLEMENTATION_GUIDE_CN.md'),
     'utf8',
   );
-  assert.match(implementationGuide, /^\| 命令组 \| 必需 env \|\n\| --- \| --- \|$/mu);
+  assert.match(implementationGuide, /^\| 命令组\s+\| 必需 env\s+\|\n\| -+ \| -+ \|$/mu);
   assert.doesNotMatch(implementationGuide, /\| 命令组 \| 必需 env \| \|/u);
 });
 
@@ -484,7 +487,7 @@ test('release tags are blocked by the reusable four-platform gate and have execu
     PACKAGE_JSON.scripts?.['release:verify-published'],
     'node ./scripts/ci/verify-published-release.cjs',
   );
-  assert.equal(PACKAGE_JSON.devDependencies?.sigstore, '5.0.0');
+  assert.equal(PACKAGE_JSON.devDependencies?.sigstore, '5.0.1');
   assert.equal(PACKAGE_JSON.dependencies?.sigstore, undefined);
   assert.match(
     releaseRunbook,
@@ -560,14 +563,14 @@ test('Oxlint is the only JavaScript and TypeScript linter and uses type-aware TS
   );
 });
 
-test('the latest Node 24-compatible graph pins the released TIDAS 0.5.1 runtime', () => {
+test('the Node 24-compatible graph pins the released TIDAS 0.9.0 runtime', () => {
   const sdkRange = PACKAGE_JSON.dependencies?.['@tiangong-lca/tidas-sdk'];
-  assert.equal(sdkRange, '0.5.1');
-  assert.equal(compareVersions(firstVersion(sdkRange), [0, 5, 1]), 0);
+  assert.equal(sdkRange, '0.9.0');
+  assert.equal(compareVersions(firstVersion(sdkRange), [0, 9, 0]), 0);
   assert.equal(PACKAGE_JSON.dependencies?.['@supabase/supabase-js'], '^2.112.4');
   assert.equal(PACKAGE_JSON.devDependencies?.['@types/node'], '^24.13.3');
   assert.equal(PACKAGE_JSON.devDependencies?.['lint-staged'], '^17.4.1');
-  assert.equal(PACKAGE_JSON.devDependencies?.prettier, '3.9.6');
+  assert.equal(PACKAGE_JSON.devDependencies?.prettier, '3.10.0');
   assert.equal(PACKAGE_JSON.devDependencies?.tsx, '^4.23.13');
 
   const publishedDependencies = DEPENDENCY_SECTIONS.filter(
@@ -623,6 +626,7 @@ test('the exact 100% source-coverage gate remains in the pnpm pre-push path', ()
   const coverageCommand = PACKAGE_JSON.scripts?.['test:coverage'] ?? '';
   const coverageAssertCommand = PACKAGE_JSON.scripts?.['test:coverage:assert-full'] ?? '';
   const packageContractCommand = PACKAGE_JSON.scripts?.['test:package'] ?? '';
+  const entrypointsCommand = PACKAGE_JSON.scripts?.['test:entrypoints'] ?? '';
   const prepushCommand = PACKAGE_JSON.scripts?.['prepush:gate'] ?? '';
   const coverageAssertionSource = readFileSync(
     join(REPOSITORY_ROOT, 'scripts', 'assert-full-coverage.ts'),
@@ -632,9 +636,14 @@ test('the exact 100% source-coverage gate remains in the pnpm pre-push path', ()
   assert.match(coverageCommand, /scripts\/run-test-coverage\.cjs/u);
   assert.match(coverageAssertCommand, /assert-full-coverage\.js/u);
   assert.match(packageContractCommand, /test\/toolchain-contract\.test\.mjs/u);
+  assert.equal(
+    entrypointsCommand,
+    'pnpm build && node --import tsx --test test/bin.test.ts test/main.test.ts test/cli-process-annual-projection.test.ts',
+  );
   assert.equal(PACKAGE_JSON.scripts?.['peers:check'], 'pnpm peers check');
   assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+peers:check(?:\s|&&|$)/u);
   assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+test:package(?:\s|&&|$)/u);
+  assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+test:entrypoints(?:\s|&&|$)/u);
   assert.match(prepushCommand, /(?:^|&&)\s*pnpm(?:\s+run)?\s+test:coverage(?:\s|&&|$)/u);
   assert.match(
     prepushCommand,
@@ -651,8 +660,13 @@ const maybePackTest = process.env.TIANGONG_LCA_COVERAGE === '1' ? test.skip : te
 
 maybePackTest(
   'a clean pnpm tarball preserves bin plus typed ESM public subpaths without runtime build tools',
-  { timeout: 180_000 },
-  () => {
+  // The full installed workflow launches many native processes on every host.
+  { timeout: 300_000 },
+  async () => {
+    const startedAt = Date.now();
+    const stage = (name) => {
+      process.stderr.write(`[package-contract] ${name} after ${Date.now() - startedAt}ms\n`);
+    };
     const fixtureRoot = mkdtempSync(join(tmpdir(), 'tiangong-cli-pack-contract-'));
 
     try {
@@ -662,13 +676,16 @@ maybePackTest(
       mkdirSync(cleanRepository);
       mkdirSync(packRoot);
       mkdirSync(consumerRoot);
+      stage('copy source');
       copyCleanPackageSource(cleanRepository);
+      stage('install build dependencies');
 
       execFileSync(
         'pnpm',
         ['install', '--frozen-lockfile', '--ignore-scripts'],
         commandOptions(cleanRepository),
       );
+      stage('build and pack');
       const packOutput = execFileSync(
         'pnpm',
         ['pack', '--json', '--pack-destination', packRoot],
@@ -699,6 +716,7 @@ maybePackTest(
         )}\n`,
         { encoding: 'utf8', flag: 'wx' },
       );
+      stage('install production tarball');
       execFileSync(
         'pnpm',
         ['install', '--ignore-scripts', '--no-frozen-lockfile', '--no-lockfile'],
@@ -724,16 +742,26 @@ maybePackTest(
         '.bin',
         process.platform === 'win32' ? 'tiangong-lca.cmd' : 'tiangong-lca',
       );
+      stage('verify installed launchers and bootstrap');
       assertRootBinBehavior(installedBinPath, consumerRoot, installedManifest.version);
       assertProductionBootstrap(installedBinPath, consumerRoot);
       assertModuleHostBehavior(consumerRoot, cleanRepository, installedManifest.version);
+      rmSync(cleanRepository, { recursive: true, force: true });
+      stage('verify installed Study recovery');
+      await assertInstalledStudyRecovery(installedPackageRoot, consumerRoot);
+      stage('verify installed business operations');
+      await assertInstalledBusiness(installedPackageRoot, consumerRoot);
+      stage('verify installed report');
+      assertInstalledReport(installedPackageRoot, consumerRoot);
 
+      stage('verify production dependency tree');
       const consumerTree = pnpmList(consumerRoot, 'typescript');
       assert.deepEqual(
         collectDependencyVersions(consumerTree, 'typescript'),
         [],
         'the packed CLI must not bring TypeScript into a production consumer tree',
       );
+      stage('complete');
     } finally {
       rmSync(fixtureRoot, { recursive: true, force: true });
     }
@@ -756,6 +784,9 @@ function assertRootBinBehavior(binPath, cwd, expectedVersion) {
   assert.match(authHelp.stdout, /read-only/u);
   assert.equal(authHelp.stderr, '');
   assert.equal(explicitHelp.stderr, '');
+  const manifest = runBin(binPath, ['--help', '--json'], cwd);
+  assertSuccessfulExit(manifest);
+  assert.ok(JSON.parse(manifest.stdout).commands.dataset.model.includes('build-resulting-process'));
 
   const version = runBin(binPath, ['--version'], cwd);
   assertSuccessfulExit(version);
@@ -792,6 +823,558 @@ function assertRootBinBehavior(binPath, cwd, expectedVersion) {
       message: 'Unknown root option: --definitely-unknown',
     },
   });
+}
+
+/** Installed/new-process protocol proof against owned synthetic HTTP, not real Auth/DB qualification. */
+async function assertInstalledStudyRecovery(packageRoot, cwd) {
+  const actor = '11111111-1111-4111-8111-111111111111';
+  const client = '33333333-3333-4333-8333-333333333333';
+  const token = `eyJhbGciOiJub25lIn0.${Buffer.from(JSON.stringify({ sub: actor, client_id: client })).toString('base64url')}.synthetic-signature`;
+  const requests = [];
+  let committed;
+  let drop = true;
+  const methodComponent = JSON.parse(
+    readFileSync(
+      join(packageRoot, 'assets/study-renderer/v3/package/methodProtocol.fixture.json'),
+      'utf8',
+    ),
+  );
+  let authRequests = 0;
+  let dropMethodReport = false;
+  let archiveState = { status: 'active', revision: 7 };
+  const server = createServer(async (request, response) => {
+    const send = (body) => {
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(body));
+    };
+    if (request.url === '/auth/v1/user') {
+      authRequests++;
+      send({ id: actor, email: 'installed-fixture@example.test', role: 'authenticated' });
+      return;
+    }
+    let body = '';
+    for await (const chunk of request) body += chunk;
+    const value = JSON.parse(body);
+    const envelope = (data) => ({
+      schemaVersion: value.schemaVersion,
+      requestId: value.requestId,
+      ok: true,
+      data,
+    });
+    if (value.operation === 'capability.read') {
+      send(
+        envelope({
+          type: 'capabilities',
+          contractVersion:
+            value.schemaVersion === 'lca.study-api.v6'
+              ? '6.0.0'
+              : value.schemaVersion === 'lca.study-api.v5'
+                ? '5.0.0'
+                : value.schemaVersion === 'lca.study-api.v4'
+                  ? '4.0.0'
+                  : value.schemaVersion === 'lca.study-api.v3'
+                    ? '3.0.0'
+                    : '2.0.0',
+          runtimeEnabled: true,
+          operations:
+            value.schemaVersion === 'lca.study-api.v6'
+              ? ['capability.read', 'comment.append', 'report.create', 'report.save']
+              : ['lca.study-api.v4', 'lca.study-api.v5'].includes(value.schemaVersion)
+                ? ['capability.read', 'comment.append']
+                : value.schemaVersion === 'lca.study-api.v3'
+                  ? ['capability.read']
+                  : ['capability.read', 'study.create', 'study.archive'],
+          ...(value.schemaVersion === 'lca.study-api.v6'
+            ? {
+                methodProfiles: [],
+                reportTemplates: ['lca.study-method-report.v1'],
+                finalizationProfiles: [],
+                reviewClasses: [],
+                disclosurePolicies: [],
+                limits: {
+                  maxEvidenceRefs: 128,
+                  maxSelectedFactorRecords: 8192,
+                  maxFactsBytes: 4194304,
+                  maxProjectionBytes: 2000000,
+                },
+              }
+            : value.schemaVersion === 'lca.study-api.v5'
+              ? {
+                  analysisProfiles: [],
+                  reportTemplates: [],
+                  finalizationProfiles: [],
+                  reviewClasses: [],
+                  disclosurePolicies: [],
+                }
+              : value.schemaVersion === 'lca.study-api.v4'
+                ? { finalizationProfiles: [], reviewClasses: [], disclosurePolicies: [] }
+                : value.schemaVersion === 'lca.study-api.v3'
+                  ? { analysisProfiles: [], reportTemplates: [] }
+                  : { profiles: [] }),
+        }),
+      );
+      return;
+    }
+    requests.push(value);
+    if (value.operation === 'report.create' || value.operation === 'report.save') {
+      if (dropMethodReport) {
+        dropMethodReport = false;
+        response.destroy();
+        return;
+      }
+      const contentHash = methodComponent.view.report.contentHash;
+      send(
+        envelope({
+          type: 'reportRevision',
+          value: {
+            reportRevisionId: methodComponent.view.report.reportRevisionId,
+            studyId: methodComponent.view.report.studyId,
+            parentReportRevisionId: null,
+            authorId: actor,
+            revision: value.operation === 'report.create' ? 1 : value.target.expectedRevision + 1,
+            status: 'draft',
+            contentHash,
+            runIds: methodComponent.stored.runIds,
+            methodAssessmentIds: methodComponent.stored.methodAssessmentIds,
+            factsRefs: methodComponent.stored.factsRefs,
+            contentRef: {
+              type: 'reportContent',
+              id: '10000000-0000-4000-8000-000000000082',
+              contentHash,
+              digestScope: 'artifact_bytes_sha256',
+              byteSize: 1,
+              mediaType: 'application/json',
+              schemaVersion: 'lca.study-method-report-content.v1',
+            },
+            templateId: 'lca.study-method-report.v1',
+            finalization: {
+              status: 'not_finalized',
+              profileId: 'lca.study-report-unreviewed.v1',
+              reviewRequirement: 'none',
+              finalizedAt: null,
+              reviewIds: [],
+            },
+            validitySnapshot: {
+              status: 'current',
+              checkedAt: '2026-11-04T00:00:00Z',
+              reasonCodes: [],
+            },
+          },
+        }),
+      );
+      return;
+    }
+    if (value.operation === 'study.archive') {
+      send(
+        envelope({
+          type: 'study',
+          value: {
+            studyId: value.target.id,
+            scope: { kind: 'user', id: actor },
+            title: 'Installed archive fixture',
+            currentRevisionId: null,
+            ...archiveState,
+          },
+        }),
+      );
+      return;
+    }
+    if (value.operation === 'comment.append') {
+      send(
+        envelope({
+          type: 'comment',
+          value: {
+            studyId: 'installed-study',
+            reportRevisionId: value.reportRevisionId,
+            reportContentHash: value.expectedContentHash,
+            commentId: 'installed-comment',
+            actorId: actor,
+            clientId: client,
+            text: value.text,
+            createdAt: '2026-11-04T00:00:00Z',
+          },
+        }),
+      );
+      return;
+    }
+    committed ??= {
+      type: 'study',
+      value: {
+        studyId: 'installed-study',
+        revision: 1,
+        scope: { kind: 'user', id: actor },
+        title: value.title,
+        status: 'active',
+        currentRevisionId: null,
+      },
+    };
+    if (drop) {
+      drop = false;
+      response.destroy();
+      return;
+    }
+    send(envelope(committed));
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === 'object');
+    const environment = {
+      ...runtimeEnvironment(),
+      TIANGONG_LCA_API_BASE_URL: `http://127.0.0.1:${address.port}`,
+      TIANGONG_LCA_AUTH_MODE: 'access-token',
+      TIANGONG_LCA_ACCESS_TOKEN: token,
+      TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: 'fixture-public-key',
+      TIANGONG_LCA_DISABLE_SESSION_CACHE: '1',
+    };
+    const input = join(cwd, 'study-request.json');
+    writeFileSync(
+      input,
+      JSON.stringify({ title: 'Installed synthetic proof', scope: { kind: 'personal' } }),
+    );
+    const invoke = (args, namespace = 'study') =>
+      new Promise((resolve, reject) => {
+        const child = spawn(
+          process.execPath,
+          [join(packageRoot, 'bin/tiangong-lca.js'), namespace, ...args],
+          { cwd, env: environment, shell: false, stdio: ['ignore', 'pipe', 'pipe'] },
+        );
+        const timer = setTimeout(() => child.kill(), 15_000);
+        let stdout = '',
+          stderr = '';
+        child.stdout.on('data', (chunk) => {
+          stdout += chunk;
+        });
+        child.stderr.on('data', (chunk) => {
+          stderr += chunk;
+        });
+        child.once('error', (error) => {
+          clearTimeout(timer);
+          reject(error);
+        });
+        child.once('close', (code) => {
+          clearTimeout(timer);
+          resolve({ code, stdout, stderr });
+        });
+      });
+    const diagnosed = await invoke(['doctor-auth', '--json'], 'auth');
+    assert.equal(diagnosed.code, 0, diagnosed.stderr);
+    const localIdentity = JSON.parse(diagnosed.stdout).data.receipt;
+    assert.equal(localIdentity.schemaVersion, 'tiangong.cli-loopback-auth-doctor.v1');
+    assert.equal(localIdentity.live.origin, environment.TIANGONG_LCA_API_BASE_URL);
+    assert.equal(localIdentity.live.actorId, actor);
+    assert.equal(localIdentity.live.clientId, client);
+    const first = await invoke([
+      'create',
+      '--input',
+      input,
+      '--state-dir',
+      join(cwd, 'retained-study-state'),
+      '--json',
+    ]);
+    assert.equal(first.code, 1, first.stderr);
+    const failure = JSON.parse(first.stderr).error;
+    assert.equal(failure.code, 'STUDY_TRANSPORT_UNKNOWN');
+    const intent = failure.details.intentFile;
+    assert.ok(!readFileSync(intent, 'utf8').includes(token));
+    const recovered = await invoke(['request', 'recover', '--intent-file', intent, '--json']);
+    assert.equal(recovered.code, 0, recovered.stderr);
+    assert.equal(JSON.parse(recovered.stdout).data.value.studyId, 'installed-study');
+    assert.equal(requests.length, 2);
+    assert.deepEqual(requests[0], requests[1]);
+    for (const [status, revision] of [
+      ['active', 7],
+      ['active', 8],
+      ['archived', 7],
+      ['archived', 10],
+    ]) {
+      archiveState = { status, revision };
+      writeFileSync(
+        input,
+        JSON.stringify({
+          requestId: `installed-archive-${status}-${revision}`,
+          idempotencyKey: `archive-${status}-${revision}`,
+          target: { type: 'study', id: 'installed-study', expectedRevision: 7 },
+        }),
+      );
+      const count = requests.filter((r) => r.operation === 'study.archive').length;
+      const invalid = await invoke([
+        'archive',
+        '--input',
+        input,
+        '--state-dir',
+        join(cwd, 'retained-archive-state'),
+        '--json',
+      ]);
+      assert.equal(invalid.code, 1, invalid.stdout);
+      const failure = JSON.parse(invalid.stderr).error;
+      assert.equal(failure.code, 'STUDY_RESPONSE_SELECTION');
+      const file = failure.details.intentFile,
+        original = readFileSync(file);
+      assert.equal(requests.filter((r) => r.operation === 'study.archive').length, count + 1);
+      const rejected = await invoke(['request', 'recover', '--intent-file', file, '--json']);
+      assert.equal(rejected.code, 1, rejected.stdout);
+      assert.equal(JSON.parse(rejected.stderr).error.code, 'STUDY_RESPONSE_SELECTION');
+      assert.deepEqual(readFileSync(file), original);
+      archiveState = { status: 'archived', revision: 8 };
+      const accepted = await invoke(['request', 'recover', '--intent-file', file, '--json']);
+      assert.equal(accepted.code, 0, accepted.stderr);
+      assert.equal(JSON.parse(accepted.stdout).data.value.revision, 8);
+      assert.equal(JSON.parse(accepted.stdout).data.value.status, 'archived');
+      assert.deepEqual(readFileSync(file), original);
+      const archiveRequests = requests.filter((r) => r.operation === 'study.archive').slice(count);
+      assert.equal(archiveRequests.length, 3);
+      assert.deepEqual(archiveRequests[0], archiveRequests[1]);
+      assert.deepEqual(archiveRequests[0], archiveRequests[2]);
+    }
+
+    const reporting = await invoke(['capabilities', '--api-version', '3', '--json']);
+    assert.equal(reporting.code, 0, reporting.stderr);
+    assert.equal(JSON.parse(reporting.stdout).apiSchema, 'lca.study-api.v3');
+    const reviewCapabilities = await invoke(['capabilities', '--api-version', '4', '--json']);
+    assert.equal(reviewCapabilities.code, 0, reviewCapabilities.stderr);
+    writeFileSync(
+      input,
+      JSON.stringify({
+        reportRevisionId: 'installed-report',
+        expectedContentHash: 'a'.repeat(64),
+        text: 'An annotation is not review approval.',
+      }),
+    );
+    const annotated = await invoke([
+      'comment',
+      'append',
+      '--input',
+      input,
+      '--state-dir',
+      join(cwd, 'retained-v4-state'),
+      '--json',
+    ]);
+    assert.equal(annotated.code, 0, annotated.stderr);
+    const annotation = JSON.parse(annotated.stdout);
+    assert.equal(annotation.apiSchema, 'lca.study-api.v4');
+    const recoveredAnnotation = await invoke([
+      'request',
+      'recover',
+      '--intent-file',
+      annotation.intentFile,
+      '--json',
+    ]);
+    assert.equal(recoveredAnnotation.code, 0, recoveredAnnotation.stderr);
+    assert.deepEqual(
+      requests.filter((r) => r.operation === 'comment.append')[0],
+      requests.filter((r) => r.operation === 'comment.append')[1],
+    );
+    const advancedCaps = await invoke(['capabilities', '--api-version', '5', '--json']);
+    assert.equal(advancedCaps.code, 0, advancedCaps.stderr);
+    assert.equal(JSON.parse(advancedCaps.stdout).apiSchema, 'lca.study-api.v5');
+    const advanced = await invoke([
+      'comment',
+      'append',
+      '--api-version',
+      '5',
+      '--input',
+      input,
+      '--state-dir',
+      join(cwd, 'retained-v5-state'),
+      '--json',
+    ]);
+    assert.equal(advanced.code, 0, advanced.stderr);
+    const advancedComment = JSON.parse(advanced.stdout);
+    assert.equal(advancedComment.apiSchema, 'lca.study-api.v5');
+    assert.ok(advancedComment.intentFile.split(/[\\/]/u).includes('v5'));
+    const advancedRecover = await invoke([
+      'request',
+      'recover',
+      '--intent-file',
+      advancedComment.intentFile,
+      '--json',
+    ]);
+    assert.equal(advancedRecover.code, 0, advancedRecover.stderr);
+    assert.deepEqual(
+      requests.filter((r) => r.schemaVersion === 'lca.study-api.v5')[0],
+      requests.filter((r) => r.schemaVersion === 'lca.study-api.v5')[1],
+    );
+
+    const methodCaps = await invoke(['capabilities', '--api-version', '6', '--json']);
+    assert.equal(methodCaps.code, 0, methodCaps.stderr);
+    assert.equal(JSON.parse(methodCaps.stdout).apiSchema, 'lca.study-api.v6');
+    const method = await invoke([
+      'comment',
+      'append',
+      '--api-version',
+      '6',
+      '--input',
+      input,
+      '--state-dir',
+      join(cwd, 'retained-v6-state'),
+      '--json',
+    ]);
+    assert.equal(method.code, 0, method.stderr);
+    const methodComment = JSON.parse(method.stdout);
+    assert.ok(methodComment.intentFile.split(/[\\/]/u).includes('v6'));
+    const methodBytes = readFileSync(methodComment.intentFile);
+    const methodRecovered = await invoke([
+      'request',
+      'recover',
+      '--intent-file',
+      methodComment.intentFile,
+      '--json',
+    ]);
+    assert.equal(methodRecovered.code, 0, methodRecovered.stderr);
+    assert.deepEqual(readFileSync(methodComment.intentFile), methodBytes);
+    assert.deepEqual(
+      requests.filter((r) => r.schemaVersion === 'lca.study-api.v6')[0],
+      requests.filter((r) => r.schemaVersion === 'lca.study-api.v6')[1],
+    );
+    for (const kind of ['request', 'response']) {
+      const schema = await invoke(['schema', kind, '--api-version', '6', '--json']);
+      assert.equal(schema.code, 0, schema.stderr);
+      assert.deepEqual(
+        JSON.parse(schema.stdout),
+        JSON.parse(
+          readFileSync(join(packageRoot, `assets/study-contract/v6/${kind}.schema.json`), 'utf8'),
+        ),
+      );
+    }
+
+    const methodDraft = () => ({
+      ...structuredClone(methodComponent.stored.content),
+      sections: [
+        {
+          sectionId: 'unicode-section',
+          title: 'Valid section',
+          paragraphs: ['Valid paragraph 🧪'],
+          claimIds: [],
+        },
+      ],
+    });
+    const methodReportInput = (verb, content) =>
+      verb === 'create'
+        ? {
+            studyId: methodComponent.stored.studyId,
+            parentReportRevisionId: null,
+            runIds: methodComponent.stored.runIds,
+            methodAssessmentIds: methodComponent.stored.methodAssessmentIds,
+            templateId: 'lca.study-method-report.v1',
+            content,
+          }
+        : {
+            target: {
+              type: 'reportRevision',
+              id: methodComponent.view.report.reportRevisionId,
+              expectedRevision: 7,
+            },
+            content,
+          };
+    for (const verb of ['create', 'save']) {
+      for (const field of ['title', 'paragraph', 'unit'])
+        for (const scalar of ['\ud800', '\udc00']) {
+          const content = methodDraft();
+          if (field === 'title') content.title = scalar;
+          else if (field === 'paragraph') content.sections[0].paragraphs = [scalar];
+          else content.claims[0].unit = scalar;
+          writeFileSync(input, JSON.stringify(methodReportInput(verb, content)));
+          const state = join(cwd, `unpublished-${verb}-${field}-${scalar.charCodeAt(0)}`),
+            beforeAuth = authRequests,
+            beforeDomain = requests.length;
+          const rejected = await invoke([
+            'report',
+            verb,
+            '--api-version',
+            '6',
+            '--input',
+            input,
+            '--state-dir',
+            state,
+            '--json',
+          ]);
+          assert.equal(rejected.code, 1, rejected.stdout);
+          assert.equal(JSON.parse(rejected.stderr).error.code, 'INVALID_REQUEST');
+          assert.equal(authRequests, beforeAuth);
+          assert.equal(requests.length, beforeDomain);
+          assert.equal(existsSync(state), false);
+        }
+      const content = methodDraft();
+      content.title = '🧪'.repeat(256);
+      content.claims[0].unit = 'kg 🧪';
+      writeFileSync(input, JSON.stringify(methodReportInput(verb, content)));
+      dropMethodReport = true;
+      const unknown = await invoke([
+        'report',
+        verb,
+        '--api-version',
+        '6',
+        '--input',
+        input,
+        '--state-dir',
+        join(cwd, `retained-unicode-${verb}`),
+        '--json',
+      ]);
+      assert.equal(unknown.code, 1, unknown.stdout);
+      const failure = JSON.parse(unknown.stderr).error;
+      assert.equal(failure.code, 'STUDY_TRANSPORT_UNKNOWN');
+      const file = failure.details.intentFile,
+        bytes = readFileSync(file);
+      assert.deepEqual(JSON.parse(bytes).request.content, content);
+      const recovered = await invoke(['request', 'recover', '--intent-file', file, '--json']);
+      assert.equal(recovered.code, 0, recovered.stderr);
+      assert.deepEqual(readFileSync(file), bytes);
+      const writes = requests.filter((r) => r.operation === `report.${verb}`);
+      assert.equal(writes.length, 2);
+      assert.deepEqual(writes[0], writes[1]);
+    }
+
+    for (const finalized of [false, true, 'method']) {
+      // Fixture generation is test-only; the installed verifier below has no source/compiler import.
+      const generator = spawnSync(
+        process.execPath,
+        [
+          '--import',
+          'tsx',
+          '--input-type=module',
+          '--eval',
+          `import { signedExportFixture, signedMethodExportFixture, exportEnvironment } from ${JSON.stringify(new URL('./helpers/study-export-fixture.ts', import.meta.url).href)}; const f=await ${finalized === 'method' ? 'signedMethodExportFixture()' : `signedExportFixture(undefined,${finalized ? '{reviewed:true}' : 'undefined'})`}; process.stdout.write(JSON.stringify({bundleBase64:f.bytes.toString('base64'),anchors:f.anchors,expected:f.expected,env:exportEnvironment()}));`,
+        ],
+        {
+          cwd: REPOSITORY_ROOT,
+          env: runtimeEnvironment(),
+          encoding: 'utf8',
+          maxBuffer: 8 * 1024 * 1024,
+        },
+      );
+      assert.equal(generator.status, 0, generator.stderr);
+      const detached = JSON.parse(generator.stdout);
+      writeFileSync(join(cwd, 'bundle.json'), Buffer.from(detached.bundleBase64, 'base64'));
+      for (const name of ['anchors', 'expected'])
+        writeFileSync(join(cwd, `${name}.json`), JSON.stringify(detached[name]));
+      const verified = await invoke([
+        'export',
+        'verify',
+        ...(finalized === 'method' ? ['--api-version', '6'] : []),
+        '--bundle',
+        join(cwd, 'bundle.json'),
+        '--anchors',
+        join(cwd, 'anchors.json'),
+        '--expected',
+        join(cwd, 'expected.json'),
+        '--json',
+      ]);
+      assert.equal(verified.code, 0, verified.stderr);
+      assert.equal(JSON.parse(verified.stdout).rendererMatched, true);
+      assert.equal(JSON.parse(verified.stdout).currentAccess, 'not-checked-offline');
+      if (finalized)
+        assert.equal(
+          JSON.parse(verified.stdout).historicalFinalization.finalizationId,
+          'finalization-fixture',
+        );
+    }
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
 }
 
 function assertModuleHostBehavior(consumerRoot, compilerRoot, expectedVersion) {
@@ -858,7 +1441,9 @@ function assertModuleHostBehavior(consumerRoot, compilerRoot, expectedVersion) {
   });
   writeFileSync(
     deepAuthHostPath,
-    [`await import('${PACKAGE_JSON.name}/dist/src/lib/auth-identity-receipt.js');`, ''].join('\n'),
+    [`await import('${PACKAGE_JSON.name}/dist/src/lib/auth/auth-identity-receipt.js');`, ''].join(
+      '\n',
+    ),
     { encoding: 'utf8', flag: 'wx' },
   );
   writeFileSync(
@@ -999,6 +1584,21 @@ function assertPackedFiles(fileMetadata) {
       /(?:^|\/)(?:package-lock\.json|pnpm-lock\.ya?ml)$/u.test(path),
   );
 
+  assert.deepEqual(
+    packedFiles.filter((file) => /^dist\/src\/lib\/[^/]+\.(?:js|d\.ts)(?:\.map)?$/u.test(file)),
+    [],
+    'Internal helpers must ship under their capability owner, without flat compatibility copies',
+  );
+  const retired = readJson(join(REPOSITORY_ROOT, 'test/fixtures/retired-cli-modules.json'));
+  const retiredFiles = packedFiles.filter((file) =>
+    retired.some((stem) => file.startsWith(`${stem}.`)),
+  );
+  assert.deepEqual(
+    retiredFiles,
+    [],
+    'Retired workflow implementations must not ship in the package',
+  );
+
   assert.ok(packedFiles.includes('bin/tiangong-lca.js'), 'the packed CLI bin is missing');
   assert.ok(packedFiles.includes('dist/src/main.js'), 'the packed runtime entry is missing');
   assert.ok(
@@ -1017,6 +1617,39 @@ function assertPackedFiles(fileMetadata) {
     'assets/runtime/runtime-manifest.schema.json',
     'assets/runtime/runtime-command-result.schema.json',
     'assets/runtime/runtime-bootstrap-lock.schema.json',
+    'assets/study-contract/v2/index.mjs',
+    'assets/study-contract/v2/index.d.ts',
+    'assets/study-contract/v2/manifest.json',
+    'assets/study-contract/v2/LICENSE.zod',
+    'assets/study-contract/v3/index.mjs',
+    'assets/study-contract/v3/index.d.ts',
+    'assets/study-contract/v3/manifest.json',
+    'assets/study-contract/v3/LICENSE.zod',
+    'assets/study-contract/v4/index.mjs',
+    'assets/study-contract/v4/index.d.ts',
+    'assets/study-contract/v4/manifest.json',
+    'assets/study-contract/v4/LICENSE.zod',
+    'assets/study-contract/v4/LICENSE.renderer',
+    'assets/study-contract/v6/index.mjs',
+    'assets/study-contract/v6/index.d.ts',
+    'assets/study-contract/v6/manifest.json',
+    'assets/study-contract/v6/request.schema.json',
+    'assets/study-contract/v6/response.schema.json',
+    'assets/study-renderer/v3/study-report-renderer-3.0.0.tgz',
+    'assets/study-renderer/v3/package/manifest.json',
+    'assets/study-renderer/v3/package/index.js',
+    'assets/study-renderer/v3/package/methodProtocol.mjs',
+    'assets/study-contract/v5/index.mjs',
+    'assets/study-contract/v5/index.d.ts',
+    'assets/study-contract/v5/manifest.json',
+    'assets/study-contract/v5/LICENSE.renderer',
+    'assets/study-renderer/v2/study-report-renderer-2.0.0.tgz',
+    'assets/study-renderer/v2/package/manifest.json',
+    'assets/study-renderer/v2/package/index.js',
+    'assets/study-renderer/v1/study-report-renderer-1.0.0.tgz',
+    'assets/study-renderer/v1/package/manifest.json',
+    'assets/study-renderer/v1/package/index.js',
+    'assets/study-renderer/v1/package/LICENSE',
   ])
     assert.ok(packedFiles.includes(file), 'the packed runtime contract is missing: ' + file);
   assert.deepEqual(
@@ -1050,11 +1683,35 @@ function copyCleanPackageSource(destination) {
 }
 
 function assertProductionBootstrap(binPath, cwd) {
+  const sampleHelp = runBin(binPath, ['dataset', 'process', 'get', '--help', '--json'], cwd);
+  assertSuccessfulExit(sampleHelp);
+  assert.ok(JSON.parse(sampleHelp.stdout).implementedActions.includes('get'));
+  assert.ok(JSON.parse(sampleHelp.stdout).implementedActions.includes('validate'));
+  const sampleInput = join(cwd, 'foundation-invalid-process.json');
+  writeFileSync(sampleInput, JSON.stringify({ processDataSet: {} }));
+  const sample = runBin(
+    binPath,
+    ['dataset', 'process', 'validate', '--input', sampleInput, '--json'],
+    cwd,
+  );
+  assert.equal(sample.status, 1, sample.stderr || sample.stdout);
+  const sampleResult = JSON.parse(sample.stdout);
+  assert.equal(sampleResult.operation, 'dataset process validate');
+  assert.equal(sampleResult.status, 'completed');
+  assert.ok(existsSync(sampleResult.replyTemplate));
+  assert.match(readFileSync(sampleResult.replyTemplate, 'utf8'), /校验/);
+
   const sessionFile = join(cwd, 'private-session', 'session.json');
   const env = { TIANGONG_LCA_SESSION_FILE: sessionFile };
   const doctor = runBin(binPath, ['doctor', '--json'], cwd, env);
   assertSuccessfulExit(doctor);
-  const checks = JSON.parse(doctor.stdout).checks;
+  assert.ok(existsSync(JSON.parse(doctor.stdout).replyTemplate));
+  for (const command of ['doctor', 'auth']) {
+    const help = runBin(binPath, [command, '--help', '--json'], cwd, env);
+    assertSuccessfulExit(help);
+    assert.equal(JSON.parse(help.stdout).command, command);
+  }
+  const checks = JSON.parse(doctor.stdout).data.configuration.checks;
   for (const key of [
     'TIANGONG_LCA_API_BASE_URL',
     'TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY',
@@ -1066,7 +1723,7 @@ function assertProductionBootstrap(binPath, cwd) {
     const result = runBin(binPath, ['auth', command, '--json'], cwd, env);
     assert.ifError(result.error);
     assert.equal(result.status, 1, result.stderr || result.stdout);
-    assert.equal(JSON.parse(result.stdout).status, 'login-required');
+    assert.equal(JSON.parse(result.stdout).data.receipt.status, 'login-required');
     assert.equal(result.stderr, '');
   }
   assert.equal(existsSync(sessionFile), false, 'readiness checks must not create a session');

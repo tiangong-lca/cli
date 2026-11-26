@@ -11,13 +11,13 @@ whenToUse:
 whenToUpdate:
   - when PCR release compatibility, cache ownership, task pins or execution selection change
 checkPaths:
-  - src/lib/pcr-snapshot-*.ts
+  - src/lib/pcr/**
   - src/cli.ts
   - src/main.ts
   - test/pcr-snapshot.test.ts
 lastReviewedAt: 2026-10-05
-lastReviewedCommit: 4fcbcebf2d18a08f201556db63e7faa7657ffac7
-lastReviewedNote: 'Reviewed CLI #401 final frozen implementation, independent fixes, strict metadata and audited0.3.1 content with0.4.1 reader; existing tasks remain pinned without discovery.'
+lastReviewedCommit: '4e378dbdda386a544dfed1acc16474ed89efa45f'
+lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
 related:
   - runtime-distribution-contract.md
   - repo-architecture.md

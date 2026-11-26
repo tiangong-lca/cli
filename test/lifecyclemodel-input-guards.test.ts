@@ -4,7 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { executeCli } from '../src/cli.js';
-import { processTransportFixture } from './helpers/process-allocation-fixture.js';
+import { parseProcessRecord } from '../src/lib/model/result/sources.js';
+import {
+  allocationFixture,
+  processTransportFixture,
+} from './helpers/process-allocation-fixture.js';
 
 type Json = Record<string, unknown>;
 const obj = (value: unknown) => value as Json;
@@ -13,6 +17,14 @@ const FLOW = '22222222-2222-4222-8222-222222222222';
 const PRODUCT = '44444444-4444-4444-8444-444444444444';
 const SUPPLIER = '55555555-5555-4555-8555-555555555555';
 const CONSUMER = '66666666-6666-4666-8666-666666666666';
+
+const offlineDependencies = {
+  env: {},
+  dotEnvStatus: { loaded: false, path: path.join(os.tmpdir(), '.env'), count: 0 },
+  fetchImpl: async () => {
+    throw new Error('offline fixture cannot fetch');
+  },
+};
 
 function component(id: string, amounts: Array<[string, string, string]>) {
   const payload = processTransportFixture();
@@ -82,7 +94,28 @@ async function run(fixture: ReturnType<typeof setup>) {
       writeFileSync(file, JSON.stringify(payload));
       return file;
     });
+    const sourceFlow = allocationFixture().context.flow_documents[0];
+    const refs = fixture.sources.flatMap(({ payload }) =>
+      (obj(obj(payload.processDataSet).exchanges).exchange as Json[]).map((row) =>
+        obj(row.referenceToFlowDataSet),
+      ),
+    );
+    const versions = new Map(
+      refs.map((ref) => [JSON.stringify([ref['@refObjectId'], ref['@version']]), ref]),
+    );
+    const flowDocuments = [...versions.values()].map((ref) => {
+      const copy = structuredClone(sourceFlow);
+      obj(obj(obj(copy.flowDataSet).flowInformation).dataSetInformation)['common:UUID'] =
+        ref['@refObjectId'];
+      obj(obj(obj(copy.flowDataSet).administrativeInformation).publicationAndOwnership)[
+        'common:dataSetVersion'
+      ] = ref['@version'];
+      return copy;
+    });
+    const references = path.join(dir, 'references.json');
+    writeFileSync(references, JSON.stringify({ documents: flowDocuments }));
     const request = {
+      semantic_context: { flow_documents: flowDocuments },
       source_model: {
         json_ordered: {
           lifeCycleModelDataSet: {
@@ -106,46 +139,27 @@ async function run(fixture: ReturnType<typeof setup>) {
     const out = path.join(dir, 'out');
     writeFileSync(input, JSON.stringify(request));
     const result = await executeCli(
-      ['lifecyclemodel', 'build-resulting-process', '--input', input, '--out-dir', out, '--json'],
-      {
-        env: {},
-        dotEnvStatus: { loaded: false, path: '/private/tmp/.env', count: 0 },
-        fetchImpl: async () => {
-          throw new Error('offline fixture cannot fetch');
-        },
-      },
+      ['dataset', 'model', 'build-resulting-process', '--input', input, '--output', out, '--json'],
+      offlineDependencies,
     );
     if (result.exitCode !== 0) return { result, outputWritten: existsSync(out) };
-    const report = JSON.parse(result.stdout) as Json;
-    const outputFiles = obj(report.files);
-    const bundle = JSON.parse(
-      readFileSync(String(outputFiles.process_projection_bundle), 'utf8'),
-    ) as Json;
-    const payload = obj((bundle.projected_processes as Json[])[0].json_ordered);
-    const projection = JSON.parse(
-      readFileSync(String(outputFiles.projection_report), 'utf8'),
-    ) as Json;
+    const output = JSON.parse(readFileSync(out, 'utf8'));
+    const payload = obj(output.bundle.projected_processes[0].json_ordered);
+    const projection = obj(output.projection);
     const outputFile = path.join(dir, 'projected.json');
     writeFileSync(outputFile, JSON.stringify(payload));
     const validation = await executeCli(
       [
         'dataset',
-        'validate',
-        '--type',
         'process',
+        'validate',
         '--input',
         outputFile,
-        '--out-dir',
-        path.join(dir, 'validated'),
+        '--reference-documents',
+        references,
         '--json',
       ],
-      {
-        env: {},
-        dotEnvStatus: { loaded: false, path: '/private/tmp/.env', count: 0 },
-        fetchImpl: async () => {
-          throw new Error('offline fixture cannot fetch');
-        },
-      },
+      offlineDependencies,
     );
     return { result, outputWritten: true, payload, projection, validation };
   } finally {
@@ -155,7 +169,8 @@ async function run(fixture: ReturnType<typeof setup>) {
 
 function rejected(built: Awaited<ReturnType<typeof run>>, reason: RegExp) {
   assert.notEqual(built.result.exitCode, 0, 'unsafe source must not produce qualified artifacts');
-  assert.match(built.result.stderr, reason);
+  const { error } = JSON.parse(built.result.stdout);
+  assert.match(`${error.code} ${error.message}`, reason);
   assert.equal(
     built.outputWritten,
     false,
@@ -164,8 +179,8 @@ function rejected(built: Awaited<ReturnType<typeof run>>, reason: RegExp) {
 }
 
 function qualified(built: Awaited<ReturnType<typeof run>>) {
-  assert.equal(built.result.exitCode, 0, built.result.stderr);
-  assert.equal(built.validation!.exitCode, 0, built.validation!.stderr);
+  assert.equal(built.result.exitCode, 0, built.result.stdout + built.result.stderr);
+  assert.equal(built.validation!.exitCode, 0, built.validation!.stdout + built.validation!.stderr);
   assert.deepEqual(built.projection!.qualification, { status: 'qualified', publish_ready: true });
   return (obj(obj(built.payload!.processDataSet).exchanges).exchange as Json[]).map((item) => [
     obj(item.referenceToFlowDataSet)['@refObjectId'],
@@ -325,4 +340,59 @@ test('unused mathematical model metadata does not change fixed exchange amounts'
     [FLOW, 'Input', '3'],
     [PRODUCT, 'Output', '1'],
   ]);
+});
+
+test('rejects a reference amount mismatch hidden by floating point rounding', async () => {
+  const fixture = setup();
+  const row = (obj(sourceRoot(fixture).exchanges).exchange as Json[])[0];
+  row.meanAmount = '9007199254740992';
+  row.resultingAmount = '9007199254740993';
+  rejected(await run(fixture), /LIFECYCLEMODEL_QUANTITY_BASIS_CONFLICT/);
+});
+
+test('typed Process validation reports the exact conflicting exchange and both original amounts', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'cli-process-amount-conflict-'));
+  try {
+    const process = component(SUPPLIER, [[FLOW, 'Output', '0.306']]);
+    const first = (obj(obj(process.processDataSet).exchanges).exchange as Json[])[0];
+    first.resultingAmount = '306.0';
+    const input = path.join(dir, 'process.json');
+    writeFileSync(input, JSON.stringify(process));
+    const response = await executeCli(
+      ['dataset', 'process', 'validate', '--input', input, '--json'],
+      offlineDependencies,
+    );
+    const envelope = JSON.parse(response.stdout);
+    assert.equal(envelope.outcome, 'validation_failed');
+    const issue = envelope.data.validation.issues.find(
+      (item: Json) => item.code === 'process_exchange_amount_conflict',
+    );
+    assert.equal(issue.path, 'processDataSet.exchanges.exchange.0.resultingAmount');
+    assert.match(issue.message, /306\.0/);
+    assert.match(issue.message, /0\.306/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('direct local builder checks the referenced identity before accepting a Process', () => {
+  const payload = component(SUPPLIER, [[FLOW, 'Output', '2']]);
+  const expectedIdentity = { processId: CONSUMER, version: VERSION };
+  const options = { sourceLabel: 'fixture', sourcePath: 'input.json', expectedIdentity };
+  assert.throws(
+    () => parseProcessRecord(payload, options),
+    /identity mismatch.+observed.+01.00.000/,
+  );
+  const publication = obj(
+    obj(obj(payload.processDataSet).administrativeInformation).publicationAndOwnership,
+  );
+  delete publication['common:dataSetVersion'];
+  assert.throws(
+    () =>
+      parseProcessRecord(payload, {
+        ...options,
+        expectedIdentity: { processId: SUPPLIER, version: VERSION },
+      }),
+    /identity mismatch.+missing/,
+  );
 });

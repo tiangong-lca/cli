@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { ResponseLike } from '../../src/lib/http.js';
+import type { ResponseLike } from '../../src/lib/transport/http.js';
 
 export type SupabaseTestSessionOptions = {
   accessToken?: string;

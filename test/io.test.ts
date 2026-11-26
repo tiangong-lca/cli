@@ -4,10 +4,10 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { loadDistModule } from './helpers/load-dist-module.js';
-import { readJsonInput, stringifyJson } from '../src/lib/io.js';
+import { readJsonInput, stringifyJson } from '../src/lib/platform/io.js';
 
-async function loadDistIoModule(): Promise<typeof import('../src/lib/io.js')> {
-  return loadDistModule('src/lib/io.js');
+async function loadDistIoModule(): Promise<typeof import('../src/lib/platform/io.js')> {
+  return loadDistModule('src/lib/platform/io.js');
 }
 
 test('readJsonInput reads valid json files', () => {

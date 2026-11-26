@@ -4,9 +4,12 @@ import { createServer } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { CliError, toErrorPayload } from '../src/lib/errors.js';
-import type { FetchLike, ResponseLike } from '../src/lib/http.js';
-import { createSupabaseFetch, type SupabaseRestRuntime } from '../src/lib/supabase-client.js';
+import { CliError, toErrorPayload } from '../src/shared/errors.js';
+import type { FetchLike, ResponseLike } from '../src/lib/transport/http.js';
+import {
+  createSupabaseFetch,
+  type SupabaseRestRuntime,
+} from '../src/lib/transport/supabase-client.js';
 import {
   __testInternals,
   createSupabaseDataRuntime,
@@ -14,7 +17,7 @@ import {
   loginWithSupabaseOAuth,
   logoutSupabaseUserSession,
   resolveSupabaseUserSession,
-} from '../src/lib/supabase-session.js';
+} from '../src/lib/auth/supabase-session.js';
 import { loadDistModule } from './helpers/load-dist-module.js';
 
 const CLIENT_ID = '123e4567-e89b-42d3-a456-426614174000';
@@ -175,8 +178,8 @@ test('auth status inspects only bound local metadata and never exposes credentia
       }).sessionState,
       'memory-only',
     );
-    const dist = await loadDistModule<typeof import('../src/lib/supabase-session.js')>(
-      'src/lib/supabase-session.js',
+    const dist = await loadDistModule<typeof import('../src/lib/auth/supabase-session.js')>(
+      'src/lib/auth/supabase-session.js',
     );
     assert.equal(
       dist.inspectSupabaseAuthStatus({
@@ -669,8 +672,8 @@ test('terminal OAuth refresh retires its persisted token across independent sess
       expectCliCode('SUPABASE_OAUTH_LOGIN_REQUIRED'),
     );
     assert.equal(existsSync(sessionFile), false);
-    const independent = await loadDistModule<typeof import('../src/lib/supabase-session.js')>(
-      'src/lib/supabase-session.js',
+    const independent = await loadDistModule<typeof import('../src/lib/auth/supabase-session.js')>(
+      'src/lib/auth/supabase-session.js',
     );
     independent.__testInternals.SESSION_MEMORY_CACHE.clear();
     await assert.rejects(
@@ -780,8 +783,8 @@ test('rotated refresh survives failed UserInfo without bypassing identity verifi
       'refresh-required',
     );
     __testInternals.SESSION_MEMORY_CACHE.clear();
-    const independent = await loadDistModule<typeof import('../src/lib/supabase-session.js')>(
-      'src/lib/supabase-session.js',
+    const independent = await loadDistModule<typeof import('../src/lib/auth/supabase-session.js')>(
+      'src/lib/auth/supabase-session.js',
     );
     independent.__testInternals.SESSION_MEMORY_CACHE.clear();
     const recovered = await independent.resolveSupabaseUserSession({
@@ -952,8 +955,8 @@ test('OAuth data runtime refreshes a fresh rejected read once and never replays 
 });
 
 test('concurrent independent getters share one successful expired-session refresh', async () => {
-  const independent = await loadDistModule<typeof import('../src/lib/supabase-session.js')>(
-    'src/lib/supabase-session.js',
+  const independent = await loadDistModule<typeof import('../src/lib/auth/supabase-session.js')>(
+    'src/lib/auth/supabase-session.js',
   );
   __testInternals.SESSION_MEMORY_CACHE.clear();
   independent.__testInternals.SESSION_MEMORY_CACHE.clear();
@@ -1138,8 +1141,8 @@ test('profile success after an out-of-band session change cannot publish obsolet
 });
 
 test('prewarmed independent clients honor disk retirement before reuse or forced refresh', async () => {
-  const independent = await loadDistModule<typeof import('../src/lib/supabase-session.js')>(
-    'src/lib/supabase-session.js',
+  const independent = await loadDistModule<typeof import('../src/lib/auth/supabase-session.js')>(
+    'src/lib/auth/supabase-session.js',
   );
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-oauth-prewarmed-'));
   const sessionFile = path.join(dir, 'session.json');
@@ -1308,9 +1311,9 @@ test('native terminal refresh envelopes retire across independent and concurrent
         }
       }
       assert.equal(existsSync(sessionFile), false);
-      const independent = await loadDistModule<typeof import('../src/lib/supabase-session.js')>(
-        'src/lib/supabase-session.js',
-      );
+      const independent = await loadDistModule<
+        typeof import('../src/lib/auth/supabase-session.js')
+      >('src/lib/auth/supabase-session.js');
       await assert.rejects(
         independent.resolveSupabaseUserSession({ runtime: oauthRuntime, fetchImpl, now: NOW }),
         (error: unknown) => (error as CliError).code === 'SUPABASE_OAUTH_LOGIN_REQUIRED',

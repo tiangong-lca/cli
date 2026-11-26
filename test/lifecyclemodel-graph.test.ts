@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { __testInternals, runLifecyclemodelGraph } from '../src/lib/lifecyclemodel-graph.js';
+import { __testInternals, runLifecyclemodelGraph } from '../src/lib/model/graph.js';
 
 function writeJsonl(filePath: string, rows: unknown[]): void {
   writeFileSync(filePath, `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`, 'utf8');

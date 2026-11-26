@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadCliPackageVersion } from '../src/lib/package-version.js';
+import { loadCliPackageVersion } from '../src/lib/platform/package-version.js';
 
 test('loadCliPackageVersion resolves package.json relative to source modules', () => {
   const version = loadCliPackageVersion('file:///repo/src/cli.ts', (url) => {

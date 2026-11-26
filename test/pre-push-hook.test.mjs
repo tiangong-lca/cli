@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
   chmodSync,
+  closeSync,
   copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -92,15 +94,24 @@ function fixture(t, inheritedEnvironment = process.env) {
     },
     run(input, overrides = {}, remoteArgs = args) {
       writeFileSync(join(repo, '.fixture-trace'), '');
-      const result = spawnSync(shell, ['.githooks/pre-push', ...remoteArgs], {
-        cwd: repo,
-        env: { ...env, ...overrides },
-        input,
-        encoding: 'utf8',
-        timeout: fixtureTimeoutMs,
-      });
-      assert.ifError(result.error);
-      return { ...result, trace: readFileSync(join(repo, '.fixture-trace'), 'utf8') };
+      // A refusal may exit before reading stdin. A file descriptor preserves the exact
+      // wire bytes without a parent pipe-write race (EPIPE); real Git pipe IO is tested below.
+      const inputPath = join(repo, '.fixture-input');
+      writeFileSync(inputPath, input);
+      const inputFd = openSync(inputPath, 'r');
+      try {
+        const result = spawnSync(shell, ['.githooks/pre-push', ...remoteArgs], {
+          cwd: repo,
+          env: { ...env, ...overrides },
+          stdio: [inputFd, 'pipe', 'pipe'],
+          encoding: 'utf8',
+          timeout: fixtureTimeoutMs,
+        });
+        assert.ifError(result.error);
+        return { ...result, trace: readFileSync(join(repo, '.fixture-trace'), 'utf8') };
+      } finally {
+        closeSync(inputFd);
+      }
     },
   };
 }

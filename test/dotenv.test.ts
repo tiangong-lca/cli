@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { loadDotEnv } from '../src/lib/dotenv.js';
+import { loadDotEnv } from '../src/lib/config/dotenv.js';
 
 test('loadDotEnv returns missing result when no file exists', () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-dotenv-missing-'));

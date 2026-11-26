@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { executeRemoteCommand, getRemoteCommandHelp } from '../src/lib/remote.js';
+import { executeRemoteCommand, getRemoteCommandHelp } from '../src/lib/transport/remote.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,
@@ -18,14 +18,14 @@ function makeInputFile(content: string): { dir: string; filePath: string } {
 }
 
 test('getRemoteCommandHelp returns command-specific help text', () => {
-  assert.match(getRemoteCommandHelp('search:flow'), /search flow/u);
+  assert.match(getRemoteCommandHelp('admin:embedding-run'), /admin embedding-run/u);
 });
 
 test('executeRemoteCommand supports dry run and masks authorization', async () => {
   const { dir, filePath } = makeInputFile('{"query":"demo"}');
   try {
     const output = await executeRemoteCommand({
-      commandKey: 'search:flow',
+      commandKey: 'admin:embedding-run',
       inputPath: filePath,
       env: buildSupabaseTestEnv({
         TIANGONG_LCA_API_BASE_URL: 'https://example.com/functions/v1/',
@@ -39,7 +39,7 @@ test('executeRemoteCommand supports dry run and masks authorization', async () =
       },
     });
 
-    assert.match(output, /flow_hybrid_search/u);
+    assert.match(output, /embedding_ft/u);
     assert.match(output, /Bearer \*\*\*\*/u);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -94,7 +94,7 @@ test('executeRemoteCommand validates required API config and unsupported command
     await assert.rejects(
       () =>
         executeRemoteCommand({
-          commandKey: 'search:flow',
+          commandKey: 'admin:embedding-run',
           inputPath: filePath,
           env: buildSupabaseTestEnv({
             TIANGONG_LCA_API_BASE_URL: '',
@@ -113,7 +113,7 @@ test('executeRemoteCommand validates required API config and unsupported command
     await assert.rejects(
       () =>
         executeRemoteCommand({
-          commandKey: 'search:flow',
+          commandKey: 'admin:embedding-run',
           inputPath: filePath,
           env: buildSupabaseTestEnv({
             TIANGONG_LCA_API_BASE_URL: 'https://example.com',

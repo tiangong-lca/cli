@@ -7,8 +7,8 @@
       "src/lib/batch/canonical-contracts.ts",
       "src/lib/batch/engine.ts",
       "src/lib/batch/errors.ts",
-      "src/lib/batch/run-lock.ts",
-      "src/lib/batch/types.ts"
+      "src/lib/batch/types.ts",
+      "src/lib/locks/run-lock.ts"
     ]
   },
   "ordinary_module_hard_max_lines": 800,
@@ -16,25 +16,30 @@
     {
       "path": "src/lib/batch/types.ts",
       "max_lines": 251,
-      "allowed_internal_imports": []
+      "allowed_internal_imports": ["src/lib/locks/types.ts"]
     },
     {
       "path": "src/lib/batch/errors.ts",
       "max_lines": 110,
-      "allowed_internal_imports": []
+      "allowed_internal_imports": ["src/lib/locks/errors.ts"]
     },
     {
       "path": "src/lib/batch/canonical-contracts.ts",
       "max_lines": 244,
-      "allowed_internal_imports": ["src/lib/batch/errors.ts", "src/lib/batch/types.ts"]
+      "allowed_internal_imports": [
+        "src/lib/batch/errors.ts",
+        "src/lib/batch/types.ts",
+        "src/lib/locks/identity.ts"
+      ]
     },
     {
-      "path": "src/lib/batch/run-lock.ts",
+      "path": "src/lib/locks/run-lock.ts",
       "max_lines": 206,
       "allowed_internal_imports": [
-        "src/lib/batch/canonical-contracts.ts",
-        "src/lib/batch/errors.ts",
-        "src/lib/batch/types.ts"
+        "src/lib/locks/errors.ts",
+        "src/lib/locks/identity.ts",
+        "src/lib/locks/state-lock.ts",
+        "src/lib/locks/types.ts"
       ]
     },
     {
@@ -72,7 +77,32 @@
         "src/lib/batch/scheduler-runtime.ts",
         "src/lib/batch/types.ts"
       ]
+    },
+    {
+      "path": "src/lib/locks/identity.ts",
+      "max_lines": 91,
+      "allowed_internal_imports": ["src/lib/locks/errors.ts", "src/lib/locks/types.ts"]
+    },
+    {
+      "path": "src/lib/locks/errors.ts",
+      "max_lines": 52,
+      "allowed_internal_imports": []
+    },
+    {
+      "path": "src/lib/locks/types.ts",
+      "max_lines": 19,
+      "allowed_internal_imports": []
+    },
+    {
+      "path": "src/lib/locks/state-lock.ts",
+      "max_lines": 226,
+      "allowed_internal_imports": []
+    },
+    {
+      "path": "src/lib/locks/command-error.ts",
+      "max_lines": 17,
+      "allowed_internal_imports": ["src/lib/locks/errors.ts"]
     }
   ],
-  "forbidden_upward_imports": ["src/batch.ts", "src/cli.ts", "src/lib/dataset-save-draft-run.ts"]
+  "forbidden_upward_imports": ["src/batch.ts", "src/cli.ts"]
 }

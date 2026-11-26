@@ -9,6 +9,7 @@ import {
   ensureRuntimeComponents,
   inspectRuntimeComponents,
   pruneRuntimeComponents,
+  verifyRuntimeComponent,
 } from '../src/lib/runtime/manager.js';
 import { releaseRuntimeLease } from '../src/lib/runtime/leases.js';
 
@@ -252,6 +253,63 @@ test('default cache selection and component structure failures remain conservati
       if (old[key] === undefined) delete process.env[key];
       else process.env[key] = old[key];
     }
+    f.close();
+  }
+});
+
+test('component verification reuses private storage and rereads changed files on each walk', (t) => {
+  const f = runtimeComponentFixture();
+  const root = path.join(f.dir, 'component');
+  const chunkBytes = 1024 * 1024;
+  const sizes = [chunkBytes + 17, 31, 0, chunkBytes, chunkBytes - 1];
+  const component = {
+    ...f.manifest.components[0]!,
+    files: f.files.map((file, index) => {
+      const bytes = Buffer.alloc(sizes[index]!, index + 1);
+      const target = path.join(root, file.path);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, bytes, { mode: file.mode });
+      fs.chmodSync(target, file.mode);
+      return { ...file, bytes: bytes.length, sha256: hash(bytes) };
+    }),
+  };
+  const read = fs.readSync;
+  let buffers: Buffer[] = [],
+    counts: number[] = [];
+  t.mock.method(fs, 'readSync', (...args: unknown[]) => {
+    assert.ok(Buffer.isBuffer(args[1]));
+    buffers.push(args[1]);
+    const count = Reflect.apply(read, fs, args) as number;
+    counts.push(count);
+    return count;
+  });
+  const verifyWalk = () => {
+    buffers = [];
+    counts = [];
+    verifyRuntimeComponent(root, component, component.platform);
+    assert.equal(new Set(buffers).size, 1);
+    assert.equal(buffers[0]!.length, chunkBytes);
+    assert.equal(counts.filter((count) => count === 0).length, component.files.length);
+    assert.equal(
+      counts.reduce((total, count) => total + count, 0),
+      sizes.reduce((total, size) => total + size, 0),
+    );
+    return buffers[0]!;
+  };
+  try {
+    const first = verifyWalk();
+    assert.notEqual(verifyWalk(), first);
+    const changed = component.files.find((file) => file.path === 'metadata/license.txt')!;
+    const replacement = Buffer.alloc(changed.bytes, 99);
+    fs.writeFileSync(path.join(root, changed.path), replacement);
+    assert.throws(
+      () => verifyRuntimeComponent(root, component, component.platform),
+      /file bytes, digest/u,
+    );
+    changed.sha256 = hash(replacement);
+    assert.notEqual(verifyWalk(), first);
+  } finally {
+    t.mock.restoreAll();
     f.close();
   }
 });

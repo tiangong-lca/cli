@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { withBatchRunLock } from '../../batch.js';
+import { withBatchRunLock } from '../locks/run-lock.js';
 import { contentHash, runtimeError } from './files.js';
 import { array, exact, record, sha, text, unique } from './manifest-values.js';
 import { cachePath, readCacheJson, writeOnce } from './storage.js';

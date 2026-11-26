@@ -9,7 +9,7 @@ const { verify: verifySigstore } = require('sigstore');
 // Load the shared source policy as ESM; synchronous require under TS loaders
 // creates an additional CommonJS wrapper and a different module instance.
 async function repositoryIdentity(version) {
-  const { cliRepositoryIdentity } = await import('../../src/lib/cli-repository-identity.ts');
+  const { cliRepositoryIdentity } = await import('./repository-identity.ts');
   return cliRepositoryIdentity(version);
 }
 

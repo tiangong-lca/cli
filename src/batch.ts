@@ -21,7 +21,7 @@ export {
   BatchRunLockIdentityConflictError,
   BatchRunLockTimeoutError,
 } from './lib/batch/errors.js';
-export { batchRunLockPath, batchRunLockStatePath, withBatchRunLock } from './lib/batch/run-lock.js';
+export { batchRunLockPath, batchRunLockStatePath, withBatchRunLock } from './lib/locks/run-lock.js';
 export { MAX_BATCH_CONCURRENCY } from './lib/batch/types.js';
 export type {
   BatchAttemptedResumeItem,

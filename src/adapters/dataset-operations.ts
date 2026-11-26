@@ -1,0 +1,134 @@
+import { prepareModelInput, calculateLocalModel } from './model-calculation.js';
+import { loadModelInput } from './model-input.js';
+import { stageModelProcesses } from './model-process-inputs.js';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { object, type DatasetPorts, type JsonObject } from '../application/dataset-types.js';
+import { CommandInputError } from '../shared/command-result.js';
+import { runLifecyclemodelGraph } from '../lib/model/graph.js';
+import { runLifecyclemodelBuildResultingProcess } from '../lib/model/resulting-process.js';
+import { uploadSourceAttachments } from './source-attachments.js';
+import { processResults } from './process-results.js';
+import { processStatistics } from './process-statistics.js';
+import { runModelResultGroup } from './model-result-group.js';
+import type { RunLifecyclemodelResultingProcessOptions } from '../lib/model/result/base.js';
+import type { FetchLike } from '../lib/transport/http.js';
+
+export function datasetOperations(
+  env: NodeJS.ProcessEnv,
+  fetchImpl: FetchLike,
+): DatasetPorts['operations'] {
+  const run = async (
+    { type, action, request, inputPath }: Parameters<DatasetPorts['operations']>[0],
+    existing?: RunLifecyclemodelResultingProcessOptions['existing'],
+  ): Promise<JsonObject> => {
+    if (type === 'model' && action === 'result-group')
+      return runModelResultGroup(request, inputPath, env, fetchImpl, (generation, existing) =>
+        run(
+          { type: 'model', action: 'build-resulting-process', request: generation, inputPath },
+          existing,
+        ),
+      );
+    if (type === 'source' && action === 'upload-attachments')
+      return uploadSourceAttachments(request, inputPath, env, fetchImpl);
+    if (type === 'process' && action === 'statistics')
+      return processStatistics(request, env, fetchImpl);
+    if (type === 'process' && (action === 'results' || action === 'get-result'))
+      return processResults(request, action === 'results', env, fetchImpl);
+    if (type === 'model' && action === 'prepare')
+      return prepareModelInput(request, inputPath, env, fetchImpl);
+    if (type === 'model' && action === 'calculate') return calculateLocalModel(request, env);
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'tiangong-dataset-'));
+    const input = path.join(directory, 'input.json');
+    const read = (file: string) => JSON.parse(readFileSync(file, 'utf8'));
+    try {
+      if (type === 'model' && action === 'graph') {
+        const selected = await loadModelInput(request, inputPath, env, fetchImpl);
+        writeFileSync(input, JSON.stringify(selected.content));
+        const report = await runLifecyclemodelGraph({
+          inputPath: input,
+          rawInput: selected.content,
+          outDir: directory,
+          format: 'json',
+          checkConnections: true,
+        });
+        return {
+          status: report.status,
+          sourceContext: selected.sourceContext,
+          counts: report.counts,
+          findings: report.findings,
+          graphs: report.models.map((model) => read(model.files.graph_json!)),
+        };
+      }
+      if (type === 'model' && action === 'build-resulting-process') {
+        const source = object(request.source_model, 'source_model');
+        const sources = object(request.process_sources, 'process_sources');
+        if (request.publish !== undefined)
+          throw new CommandInputError(
+            'PUBLISH_UNSUPPORTED',
+            'Model result generation does not accept publish intent.',
+          );
+        const selected = await loadModelInput(
+          {
+            ...(source.json_ordered !== undefined ? { content: source.json_ordered } : {}),
+            ...(source.json_ordered_path !== undefined ? { file: source.json_ordered_path } : {}),
+            ...(source.remote !== undefined ? { remote: source.remote } : {}),
+          },
+          inputPath,
+          env,
+          fetchImpl,
+        );
+        const processes = await stageModelProcesses(
+          sources,
+          selected.content,
+          inputPath,
+          directory,
+          env,
+          fetchImpl,
+        );
+        const normalized = {
+          ...request,
+          source_model: { ...source, json_ordered: selected.content, json_ordered_path: null },
+          process_sources: {
+            process_json_files: processes.files,
+            process_json_dirs: [],
+            process_catalog_path: null,
+            run_dirs: [],
+            allow_remote_lookup: false,
+          },
+          publish: {
+            intent: 'prepare_only',
+            prepare_process_payloads: true,
+            prepare_relation_payloads: false,
+          },
+        };
+        writeFileSync(input, JSON.stringify(normalized));
+        const report = await runLifecyclemodelBuildResultingProcess({
+          existing,
+          inputPath: input,
+          readFlowNamesFromRemote: sources.allow_remote_lookup === true,
+          outDir: directory,
+          env,
+          fetchImpl,
+        });
+        return {
+          status: report.status,
+          qualification: report.qualification,
+          sourceContext: selected.sourceContext,
+          projectedProcessCount: report.projected_process_count,
+          inputBindings: processes.bindings,
+          projection: processes.sanitize(read(report.files.projection_report)),
+          bundle: processes.sanitize(read(report.files.process_projection_bundle)),
+        };
+      }
+      throw new CommandInputError(
+        'CAPABILITY_UNSUPPORTED',
+        'This operation has no supported adapter.',
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  };
+  return run;
+}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { cliRepositoryIdentity } from '../src/lib/cli-repository-identity.js';
+import { cliRepositoryIdentity } from '../scripts/ci/repository-identity.js';
 
 test('one immutable repository/owner profile is selected at the verified release boundary', () => {
   const legacy = cliRepositoryIdentity('0.1.14');
@@ -48,7 +48,7 @@ test('source identity rejects noncanonical, prerelease and unbounded version inp
 
 test('source policy loads through native Node ESM without a build or application imports', async () => {
   const { spawnSync } = await import('node:child_process');
-  const location = new URL('../src/lib/cli-repository-identity.ts', import.meta.url).href;
+  const location = new URL('../scripts/ci/repository-identity.ts', import.meta.url).href;
   const child = spawnSync(
     process.execPath,
     [

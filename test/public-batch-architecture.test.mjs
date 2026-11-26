@@ -140,7 +140,7 @@ test('public facade re-exports the exact internal runtime objects and class iden
     import('../src/lib/batch/canonical-contracts.js'),
     import('../src/lib/batch/engine.js'),
     import('../src/lib/batch/errors.js'),
-    import('../src/lib/batch/run-lock.js'),
+    import('../src/lib/locks/run-lock.js'),
     import('../src/lib/batch/types.js'),
   ]);
   const owners = { ...contracts, ...engine, ...errors, ...runLock, ...types };
@@ -171,12 +171,13 @@ test('public batch modules obey shrink-only LOC, dependency-direction, and SCC b
 
   const configured = [BUDGET.facade, ...BUDGET.modules];
   const expectedInternalPaths = BUDGET.modules.map(({ path }) => path).sort(compareText);
-  const actualInternalPaths = existsSync(join(REPOSITORY_ROOT, 'src', 'lib', 'batch'))
-    ? readdirSync(join(REPOSITORY_ROOT, 'src', 'lib', 'batch'))
+  const actualInternalPaths = ['batch', 'locks']
+    .flatMap((directory) =>
+      readdirSync(join(REPOSITORY_ROOT, 'src', 'lib', directory))
         .filter((entry) => entry.endsWith('.ts'))
-        .map((entry) => `src/lib/batch/${entry}`)
-        .sort(compareText)
-    : [];
+        .map((entry) => `src/lib/${directory}/${entry}`),
+    )
+    .sort(compareText);
   assert.deepEqual(actualInternalPaths, expectedInternalPaths, 'module inventory drifted');
 
   const graph = new Map();

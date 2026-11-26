@@ -1,0 +1,19 @@
+---
+title: 冲突回复模板
+docType: guide
+scope: repo
+status: active
+authoritative: false
+owner: cli
+language: zh-CN
+---
+
+# 状态或内容冲突
+
+说明冲突的对象、错误原因，以及服务允许公开的预期状态和当前观察。
+
+只报告已确认的效果，不能自行声称回滚完成或完全未产生影响。
+
+提供重新读取或预览的明确命令，说明哪些输入需要重新准备。
+
+不建议直接覆盖、切换创建与保存意图或自动缩小审核范围。

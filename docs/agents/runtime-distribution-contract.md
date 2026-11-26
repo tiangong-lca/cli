@@ -18,9 +18,9 @@ checkPaths:
   - scripts/bootstrap/**
   - test/runtime-*.test.ts
   - package.json
-lastReviewedAt: 2026-10-05
-lastReviewedCommit: 4fcbcebf2d18a08f201556db63e7faa7657ffac7
-lastReviewedNote: 'Reviewed CLI #401 separate PCR data cache and explicit installed-tool binding using existing download/CommandSpec boundaries; runtime trust anchors and managed Node authorization remain unchanged.'
+lastReviewedAt: 2026-11-20
+lastReviewedCommit: e3e5320df2e906de4b9e56c5b1e1b7f14850c196
+lastReviewedNote: 'CLI #543 reviewed private buffer reuse within a synchronous component inventory, fresh per-file digest and identity checks, and the existing package, coverage and release gates.'
 related:
   - docs/agents/repo-architecture.md
   - docs/agents/repo-validation.md
@@ -59,7 +59,7 @@ The compatibility manifest must bind exact component versions, archive/content d
 
 POSIX/PowerShell bootstrap scripts are generic C1 release assets and require no Node/pnpm. Their adjacent skill-delivered `bootstrap-lock.json` separately binds script bytes, bootstrap protocol and the already published product manifest URL/digest. C1 scripts must not embed an unpublished F1 digest. Neither task input nor an environment variable can replace the trust anchor. Rosetta selection requires actual Apple Silicon hardware proof and must select native arm64; Intel Mac, Windows arm64 and Linux musl do not receive a fallback.
 
-Full release qualification requires all four supported CI hosts, no-global-Node/pnpm copied bootstrap cases, interruption/concurrency/corruption tests, exact 100% source coverage and an independently verified public C1 package. Foundry F1/component/cold-start qualification follows in its owning repository and the workspace integration task. No local routine registry publish or new credential fallback is introduced.
+Full release qualification requires all four supported CI hosts, no-global-Node/pnpm copied bootstrap cases, interruption/locks/corruption tests, exact 100% source coverage and an independently verified public C1 package. Foundry F1/component/cold-start qualification follows in its owning repository and the workspace integration task. No local routine registry publish or new credential fallback is introduced.
 
 ## Managed components and execution
 
@@ -74,6 +74,8 @@ The canonical `tar-gzip-ustar-v1` interchange has only regular files, declared 0
 Download sources are HTTPS release assets on GitHub, versioned Node distributions or exact npm tarballs. Redirects are bounded and permit only those origins plus GitHub artifact delivery hosts; credentials and server error bodies are never forwarded or logged. The archive is incrementally hashed and must match exact size/SHA before decoding. Only classified connection, stream or transient HTTP reads may retry once. User cancellation and integrity failures do not replay. Failed cleanup may remove only the download file owned by that attempt; an existing destination is preserved.
 
 POSIX bootstrap extracts the already verified regular-file archive with permission preservation (`tar -xpzf`) while retaining `umask 077` for its private cache and staging directories. The installed files must keep the manifest-declared 0644/0755 modes; masking those modes to 0600/0700 makes later manager adoption fail. The cold-install regression checks every extracted file's size, digest and exact mode alongside the private 0700 cache boundary. Warm reuse and corruption rejection retain the same complete inventory checks.
+
+Each synchronous component verification allocates a private 1 MiB read buffer on first use and reuses it for the remaining files in that walk. Every file is opened and read through EOF with a fresh SHA-256 digest, and subsequent verifications repeat those observations.
 
 The owned cache marker is `tiangong-lca.runtime-cache.v1`. Component directories are keyed by the complete canonical component description, so changed metadata cannot reuse a different installation. Each contains `root/` and a final receipt. Separate initialization/component/lease locks use the existing public batch run-lock owner. An installation is assembled privately, checked completely and atomically renamed; partial or corrupt published directories are not overwritten. Bootstrap may publish a full tree before Node can write its receipt, but adoption rechecks every inventory byte/mode and rejects extra files first.
 

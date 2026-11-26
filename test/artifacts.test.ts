@@ -10,10 +10,12 @@ import {
   writeJsonArtifact,
   writeJsonLinesArtifact,
   writeTextArtifact,
-} from '../src/lib/artifacts.js';
+} from '../src/lib/platform/artifacts.js';
 
-async function loadDistArtifactsModule(): Promise<typeof import('../src/lib/artifacts.js')> {
-  return loadDistModule('src/lib/artifacts.js');
+async function loadDistArtifactsModule(): Promise<
+  typeof import('../src/lib/platform/artifacts.js')
+> {
+  return loadDistModule('src/lib/platform/artifacts.js');
 }
 
 test('writeTextArtifact writes plain text and creates parent directories', () => {

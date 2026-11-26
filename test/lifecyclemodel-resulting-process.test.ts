@@ -1,19 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadDistModule } from './helpers/load-dist-module.js';
-import { executeCli } from '../src/cli.js';
-import { CliError } from '../src/lib/errors.js';
-import type { FetchLike } from '../src/lib/http.js';
+import { CliError } from '../src/shared/errors.js';
+import type { FetchLike } from '../src/lib/transport/http.js';
 import {
   __testInternals,
-  normalizeLifecyclemodelResultingProcessRequest,
   runLifecyclemodelBuildResultingProcess,
-  type LifecyclemodelResultingProcessRequest,
-} from '../src/lib/lifecyclemodel-resulting-process.js';
+} from '../src/lib/model/resulting-process.js';
+import { normalizeLifecyclemodelResultingProcessRequest } from '../src/lib/model/result/request.js';
+import { type LifecyclemodelResultingProcessRequest } from '../src/lib/model/result/base.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,
@@ -26,9 +25,9 @@ type PublicationKey = 'publicationAndOwnership' | 'common:publicationAndOwnershi
 const VERSION = '00.00.001';
 
 async function loadDistLifecyclemodelModule(): Promise<
-  typeof import('../src/lib/lifecyclemodel-resulting-process.js')
+  typeof import('../src/lib/model/resulting-process.js')
 > {
-  return loadDistModule('src/lib/lifecyclemodel-resulting-process.js');
+  return loadDistModule('src/lib/model/resulting-process.js');
 }
 
 async function loadDistLifecyclemodelTestInternals(): Promise<typeof __testInternals> {
@@ -791,7 +790,15 @@ test('runLifecyclemodelBuildResultingProcess builds and aggregates a resulting p
       edge_count: 3,
     });
     assert.equal((technology.referenceToIncludedProcesses as JsonRecord[]).length, 3);
-    assert.equal((dataSetInformation['common:generalComment'] as JsonRecord[]).length, 3);
+    const comments = dataSetInformation['common:generalComment'] as JsonRecord[];
+    assert.deepEqual(
+      comments.map((entry) => entry['@xml:lang']),
+      ['en', 'zh'],
+    );
+    assert.match(
+      String(comments[0]?.['#text']),
+      /^Pack assembly comment\n\nLocal primary resulting process/,
+    );
     assert.equal(
       ((processDataSet.modellingAndValidation as JsonRecord).LCIMethodAndAllocation as JsonRecord)
         .typeOfDataSet,
@@ -865,7 +872,7 @@ test('runLifecyclemodelBuildResultingProcess auto-detects process dirs and write
       json_ordered_path: './tidas_bundle/lifecyclemodels/solo_model.json',
     },
     projection: {
-      mode: 'all-subproducts',
+      mode: 'primary-only',
     },
     process_sources: {
       allow_mcp_lookup: 'false',
@@ -903,10 +910,6 @@ test('runLifecyclemodelBuildResultingProcess auto-detects process dirs and write
       processDir,
     ]);
     assert.equal(projectionReport.status as string, 'projected_local_bundle');
-    assert.match(
-      (projectionReport.notes as string[])[2] as string,
-      /only carries submodel metadata/u,
-    );
 
     const projectedProcess = ((bundle.projected_processes as JsonRecord[])[0] as JsonRecord)
       .json_ordered as JsonRecord;
@@ -1654,7 +1657,7 @@ test('runLifecyclemodelBuildResultingProcess rejects projections without an exte
   }
 });
 
-test('executeCli can run lifecyclemodel build-resulting-process end to end', async () => {
+test('resulting-process operation creates its complete artifact set', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-lm-cli-e2e-'));
   const modelPath = path.join(dir, 'model.json');
   const processPath = path.join(dir, `proc-cli_${VERSION}.json`);
@@ -1711,33 +1714,13 @@ test('executeCli can run lifecyclemodel build-resulting-process end to end', asy
   });
 
   try {
-    const result = await executeCli(
-      ['lifecyclemodel', 'build-resulting-process', '--input', requestPath, '--json'],
-      {
-        env: process.env,
-        dotEnvStatus: {
-          loaded: false,
-          path: '/tmp/.env',
-          count: 0,
-        },
-        fetchImpl: async () => ({
-          ok: true,
-          status: 200,
-          headers: {
-            get: () => 'application/json',
-          },
-          text: async () => '{}',
-        }),
-      },
-    );
-
-    assert.equal(result.exitCode, 0);
-    assert.equal(result.stderr, '');
-
-    const payload = JSON.parse(result.stdout) as JsonRecord;
+    const payload = await runLifecyclemodelBuildResultingProcess({
+      inputPath: requestPath,
+      env: process.env,
+    });
     assert.equal(payload.status, 'prepared_local_bundle');
     assert.equal(payload.projected_process_count, 1);
-    assert.equal((payload.source_model as JsonRecord).reference_process_instance_id, 'cli-inst');
+    assert.equal(payload.source_model.reference_process_instance_id, 'cli-inst');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -2451,7 +2434,7 @@ test('lifecyclemodel internal builders cover fallback-only branches', async () =
           json_ordered: null,
         },
         projection: {
-          mode: 'all-subproducts',
+          mode: 'primary-only',
           process_id: null,
           process_version: null,
           metadata_overrides: {},
@@ -2487,10 +2470,6 @@ test('lifecyclemodel internal builders cover fallback-only branches', async () =
 
     const projectedProcess = (projection.bundle.projected_processes as JsonRecord[])[0];
     assert.equal(projectedProcess.id, `${projection.sourceModelSummary.id}-resulting-process`);
-    assert.match(
-      (projection.report.notes as string[])[2] as string,
-      /does not expose submodel topology metadata/u,
-    );
   } finally {
     rmSync(projectionDir, { recursive: true, force: true });
   }
@@ -2551,7 +2530,7 @@ test('buildProjectionBundle can fall back to process.env and global fetch for re
           json_ordered: null,
         },
         projection: {
-          mode: 'all-subproducts',
+          mode: 'primary-only',
           process_id: null,
           process_version: null,
           metadata_overrides: {},
@@ -2628,5 +2607,34 @@ test('buildProjectionBundle can fall back to process.env and global fetch for re
     } else {
       process.env.TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY = originalPublishableKey;
     }
+  }
+});
+
+test('all-subproducts with a missing Model does not look up dependencies or emit artifacts', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-lm-unsupported-'));
+  const inputPath = path.join(dir, 'request.json');
+  const outDir = path.join(dir, 'out');
+  writeJson(inputPath, {
+    source_model: { json_ordered_path: './missing-model.json' },
+    projection: { mode: 'all-subproducts' },
+    process_sources: { allow_remote_lookup: true },
+  });
+  let calls = 0;
+  try {
+    await assert.rejects(
+      runLifecyclemodelBuildResultingProcess({
+        inputPath,
+        outDir,
+        fetchImpl: async () => {
+          calls++;
+          throw new Error('must not fetch');
+        },
+      }),
+      { code: 'INPUT_NOT_FOUND' },
+    );
+    assert.equal(calls, 0);
+    assert.equal(existsSync(outDir), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

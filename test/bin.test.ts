@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { buildSupabaseTestEnv } from './helpers/supabase-auth.js';
 
 const maybeTest = process.env.TIANGONG_LCA_COVERAGE === '1' ? test.skip : test;
 
@@ -20,14 +21,14 @@ maybeTest('runFromBin executes when imported without direct auto-run', async () 
   }) as typeof process.stderr.write;
 
   try {
-    const exitCode = await runFromBin(['doctor', '--json'], {
-      TIANGONG_LCA_API_BASE_URL: 'https://example.com/functions/v1',
-      TIANGONG_LCA_ACCESS_TOKEN: 'secret-token',
-      TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test_key',
-    });
+    const exitCode = await runFromBin(['doctor', '--json'], buildSupabaseTestEnv());
 
     assert.equal(exitCode, 0);
-    assert.match(stdout, /"ok":true/u);
+    const value = JSON.parse(stdout);
+    assert.equal(value.operation, 'doctor');
+    assert.equal(value.status, 'completed');
+    assert.equal(value.data.configuration.ok, true);
+    assert.ok(value.completeness.notChecked.includes('service_connections'));
     assert.equal(stderr, '');
   } finally {
     process.stdout.write = originalStdoutWrite;

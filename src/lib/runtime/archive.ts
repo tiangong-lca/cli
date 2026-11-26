@@ -45,7 +45,7 @@ function readExact(fd: number, buffer: Buffer, position: number): void {
 export async function extractRuntimeArchive(
   archive: string,
   root: string,
-  component: RuntimeComponent,
+  component: Pick<RuntimeComponent, 'files'>,
   signal?: AbortSignal,
 ): Promise<void> {
   const decoded = `${root}.tar`;

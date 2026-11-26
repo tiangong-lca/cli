@@ -4,13 +4,13 @@ import { dirname, isAbsolute, join } from 'node:path';
 import { parseArgs, promisify } from 'node:util';
 import { chromium } from 'playwright';
 import { parseAuthIdentityReceipt } from '../../src/auth-identity-receipt.js';
-import { runAuthIdentityReceipt } from '../../src/lib/auth-identity-receipt.js';
-import { OFFICIAL_PRODUCTION_PROFILE } from '../../src/lib/env.js';
-import { requireSupabaseRestRuntime } from '../../src/lib/supabase-client.js';
+import { runAuthIdentityReceipt } from '../../src/lib/auth/auth-identity-receipt.js';
+import { OFFICIAL_PRODUCTION_PROFILE } from '../../src/lib/config/env.js';
+import { requireSupabaseRestRuntime } from '../../src/lib/transport/supabase-client.js';
 import {
   loginWithSupabaseOAuth,
   resolveSupabaseUserSession,
-} from '../../src/lib/supabase-session.js';
+} from '../../src/lib/auth/supabase-session.js';
 import {
   assertLoginOrigin,
   createPrivateCase,

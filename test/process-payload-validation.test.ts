@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as tidasSdk from '@tiangong-lca/tidas-sdk';
-import { sha256Json } from '../src/lib/dataset-maintenance-contract.js';
+import { sha256Json } from '../src/lib/platform/canonical-json-hash.js';
 import {
   __testInternals,
   summarizeProcessPayloadValidation,
   validateProcessPayload,
-} from '../src/lib/process-payload-validation.js';
+} from '../src/lib/validation/process-payload-validation.js';
 
 // Every report must carry the exact payload hash and all four layer statuses, so the layer
 // contract is asserted by name and value rather than by the shape of the whole report.
@@ -337,4 +337,15 @@ test('process payload validation rejects placeholder authoring content', () => {
       code: 'process_placeholder_content',
     },
   ]);
+});
+
+test('summary preserves a schema-only failure without claiming unavailable layers', () => {
+  const summary = summarizeProcessPayloadValidation({
+    ok: false,
+    validator: 'test',
+    issue_count: 1,
+    issues: [{ path: 'field', message: 'invalid', code: 'schema' }],
+  } as never);
+  assert.match(summary, /1 issue\(s\).*field: invalid/);
+  assert.doesNotMatch(summary, /schema: passed/);
 });

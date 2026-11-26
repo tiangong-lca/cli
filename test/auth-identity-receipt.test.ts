@@ -1,17 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { ResponseLike } from '../src/lib/http.js';
+import type { ResponseLike } from '../src/lib/transport/http.js';
 import {
   AUTH_IDENTITY_RECEIPT_SCHEMA,
   __testInternals as receiptInternals,
   parseAuthIdentityReceipt,
   runAuthIdentityReceipt,
   type AuthIdentityReceipt,
-} from '../src/lib/auth-identity-receipt.js';
+} from '../src/lib/auth/auth-identity-receipt.js';
 import {
   __testInternals as sessionInternals,
   type ResolvedSupabaseUserSession,
-} from '../src/lib/supabase-session.js';
+} from '../src/lib/auth/supabase-session.js';
 
 const NOW = new Date('2026-08-25T12:34:56.000Z');
 const SENSITIVE_SENTINEL = 'identity-sensitive-sentinel';
@@ -681,7 +681,7 @@ test('identity receipt sanitizes transport and session-resolution failures', asy
   await assert.rejects(
     successfulReceipt({
       resolveSessionImpl: async () => {
-        throw new (await import('../src/lib/errors.js')).CliError('safe', {
+        throw new (await import('../src/shared/errors.js')).CliError('safe', {
           code: 'KNOWN_SESSION_FAILURE',
         });
       },

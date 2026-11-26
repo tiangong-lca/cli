@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/tiangong-lca/platform",
+  "commit": "7f30060b07330b7ba44331e2ce822e1bb1eb21e3",
+  "entry": "src/services/lifeCycleModels/matrixCalculation/matrixWorker.ts",
+  "mlMatrix": "6.15.0",
+  "esbuild": "0.28.2",
+  "files": [
+    {
+      "path": "src/services/general/tidasScalarStorage.ts",
+      "sha256": "60e6ec6f145054c778b53b99b60cc65d1d81e00725ab4c0d0bb7f7f7fdc9bb24"
+    },
+    {
+      "path": "src/services/lifeCycleModels/matrixCalculation/assemble.ts",
+      "sha256": "7c2caef2892ffd398eebeb1e68b0e25d1437e0b41cb3781ccf85650b65753ad7"
+    },
+    {
+      "path": "src/services/lifeCycleModels/matrixCalculation/compile.ts",
+      "sha256": "12f3afa4281dacd0c81bc6bf6facf97ae4dd12e11d24a7928e5a790a2f7649c5"
+    },
+    {
+      "path": "src/services/lifeCycleModels/matrixCalculation/matrixWorker.ts",
+      "sha256": "27d4a933c85c5af797916062053b3cc3195ba4ff8be440b2d9398a8e646473c3"
+    },
+    {
+      "path": "src/services/lifeCycleModels/matrixCalculation/productSystem.ts",
+      "sha256": "99a4e19a59cf9440adf3a4a47d122e7fcb0bd9707f3d730e982700d40fa5bead"
+    },
+    {
+      "path": "src/services/lifeCycleModels/matrixCalculation/solve.ts",
+      "sha256": "3fca5eb2739fe78b6f30c9064fa465b32224a3c8bf22622fbe1e66b7b73e2430"
+    },
+    {
+      "path": "src/services/lifeCycleModels/matrixCalculation/types.ts",
+      "sha256": "c6e9c8148d86e0f34c5caac4c6ddbf1ba6cbddc5afbbbdaf2cc6792d35bada0e"
+    },
+    {
+      "path": "src/services/lifeCycleModels/matrixCalculation/validation.ts",
+      "sha256": "ef7cbac7e215b99981bfbe8ccf951c7e06fe41ed8c265242916ef896eab70adc"
+    },
+    {
+      "path": "src/services/processes/allocation.ts",
+      "sha256": "8af7789f0a9ad70d0afc53142b8928d967a89714cd35ad6a224ef1ddd779cdab"
+    }
+  ],
+  "sha256": "c103250bd64776914bf549985f81bcce318d0488437b9171b4c95a2f4b920861"
+}

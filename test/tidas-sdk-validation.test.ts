@@ -8,7 +8,22 @@ import {
   validationIssues,
   validationSucceeded,
   type SdkValidationFactory,
-} from '../src/lib/tidas-sdk-validation.js';
+} from '../src/lib/validation/tidas-sdk-validation.js';
+
+test('SDK issue projection keeps unlocated uniqueness diagnostics and expands a localized union finding', () => {
+  const unlocated = { code: 'custom', params: { jsonSchemaKeyword: 'uniqueItems' } };
+  const nested = {
+    code: 'custom',
+    path: [1, '@xml:lang'],
+    params: { validationCode: 'duplicate_language_entry' },
+  };
+  const union = { code: 'invalid_union', path: ['comments'], errors: [[nested]] };
+  assert.deepEqual(validationIssues({ error: { issues: [unlocated, union] } }), [
+    unlocated,
+    union,
+    { ...nested, code: 'duplicate_language_entry', path: ['comments', 1, '@xml:lang'] },
+  ]);
+});
 
 test('tidas sdk validation helpers keep schema success on the fast path', () => {
   let factoryCalls = 0;
@@ -183,4 +198,11 @@ test('tidas sdk validation helpers normalize issue paths and results', () => {
   assert.equal(normalizeIssuePath(undefined), '<root>');
   assert.equal(normalizeIssuePath([], '/'), '<root>');
   assert.equal(normalizeIssuePath(['a', 0, 'b'], '/'), 'a/0/b');
+});
+
+test('a missing deep validation API retains the actual fast failure', () => {
+  const failure = { success: false, issues: [{ message: 'real failure', path: ['content'] }] };
+  const result = validateEntityWithDeepFallback({}, ((_payload, options) =>
+    options?.deepValidation ? {} : { validate: () => failure }) as SdkValidationFactory);
+  assert.equal(result, failure);
 });

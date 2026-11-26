@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { CliError } from '../errors.js';
+import { CliError } from '../../shared/errors.js';
 import type { RuntimeFileFact } from './types.js';
 
 export function runtimeError(code: string, message: string): never {
@@ -12,8 +12,23 @@ export function contentHash(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
+/** Internal helper: a fresh closure belongs to one synchronous component walk. */
+export function createRuntimeWalkHasher(): (file: string, label: string) => RuntimeFileFact {
+  let scratch: Buffer | undefined;
+  const storage = (): Buffer => (scratch ??= Buffer.allocUnsafe(1024 * 1024));
+  return (file, label) => hashRuntimeFileWithStorage(file, label, storage);
+}
+
 /** Hash one descriptor without loading the whole executable or following a selected symlink. */
 export function hashRuntimeFile(file: string, label: string): RuntimeFileFact {
+  return hashRuntimeFileWithStorage(file, label, () => Buffer.allocUnsafe(1024 * 1024));
+}
+
+function hashRuntimeFileWithStorage(
+  file: string,
+  label: string,
+  storage: () => Buffer,
+): RuntimeFileFact {
   const before = fs.lstatSync(file, { bigint: true });
   if (before.isSymbolicLink() || !before.isFile() || before.size > 512 * 1024 * 1024) {
     runtimeError('RUNTIME_FILE_INVALID', 'Runtime files must be bounded regular files.');
@@ -25,7 +40,7 @@ export function hashRuntimeFile(file: string, label: string): RuntimeFileFact {
       runtimeError('RUNTIME_FILE_CHANGED', 'Runtime file changed before it could be inspected.');
     }
     const hash = createHash('sha256');
-    const buffer = Buffer.allocUnsafe(1024 * 1024);
+    const buffer = storage();
     let bytes = 0;
     while (true) {
       const read = fs.readSync(fd, buffer, 0, buffer.length, null);

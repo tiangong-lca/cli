@@ -29,6 +29,7 @@ assert.ok(values['out-dir'], 'Pass --out-dir with a new evidence directory.');
 assert.ok(['guarded', 'legacy'].includes(values.expect), '--expect must be guarded or legacy.');
 const outDir = path.resolve(values['out-dir']);
 assert.equal(existsSync(outDir), false, 'The evidence directory must not already exist.');
+const guarded = values.expect === 'guarded';
 const cliBin = realpathSync(values['cli-bin']);
 const cliRoot = path.dirname(path.dirname(cliBin));
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
@@ -61,7 +62,14 @@ const proof = {
     bin_sha256: sha256(readFileSync(cliBin)),
     built_main_sha256: sha256(readFileSync(path.join(cliRoot, 'dist/src/main.js'))),
     built_builder_sha256: sha256(
-      readFileSync(path.join(cliRoot, 'dist/src/lib/lifecyclemodel-resulting-process.js')),
+      readFileSync(
+        path.join(
+          cliRoot,
+          guarded
+            ? 'dist/src/lib/model/resulting-process.js'
+            : 'dist/src/lib/lifecyclemodel-resulting-process.js',
+        ),
+      ),
     ),
     proof_script_sha256: sha256(readFileSync(fileURLToPath(import.meta.url))),
   },
@@ -179,14 +187,32 @@ function runCase(name, data, expectedQuantities, errorCode) {
     writeJson(path.join(caseDir, file), payload);
     return file;
   });
+  if (guarded) {
+    const flow = readJson(path.join(repoRoot, 'test/fixtures/cli-business/flow.json'));
+    const flows = new Map();
+    for (const { payload } of data.sources) {
+      for (const { referenceToFlowDataSet: ref } of payload.processDataSet.exchanges.exchange) {
+        const document = structuredClone(flow);
+        document.flowDataSet.flowInformation.dataSetInformation['common:UUID'] =
+          ref['@refObjectId'];
+        document.flowDataSet.administrativeInformation.publicationAndOwnership[
+          'common:dataSetVersion'
+        ] = ref['@version'];
+        document.flowDataSet.modellingAndValidation.LCIMethod.typeOfDataSet = 'Product flow';
+        flows.set(JSON.stringify([ref['@refObjectId'], ref['@version']]), document);
+      }
+    }
+    data.request.semantic_context = { flow_documents: [...flows.values()] };
+  }
   writeJson(path.join(caseDir, 'input.json'), data.request);
   const argv = [
-    'lifecyclemodel',
+    ...(guarded ? ['dataset', 'model'] : ['lifecyclemodel']),
     'build-resulting-process',
     '--input',
     `${relative}/input.json`,
-    '--out-dir',
-    `${relative}/result`,
+    ...(guarded
+      ? ['--output', `${relative}/result/bundle.json`]
+      : ['--out-dir', `${relative}/result`]),
     '--json',
   ];
   const record = {
@@ -223,18 +249,22 @@ function runCase(name, data, expectedQuantities, errorCode) {
     assert.ifError(result.error);
     assert.equal(result.signal, null);
     if (errorCode && values.expect === 'guarded') {
-      record.error = JSON.parse(result.stderr).error;
+      record.error = JSON.parse(result.stdout).error;
       assert.equal(result.status, 2, `${name}: guarded exit code`);
       assert.equal(record.error.code, errorCode, `${name}: meaningful error`);
-      assert.equal(result.stdout, '');
+      assert.equal(result.stderr, '');
       assert.equal(record.output_directory_exists, false, `${name}: no output artifacts`);
       record.qualification = null;
     } else {
       assert.equal(result.status, 0, `${name}: ${sanitize(result.stderr)}`);
       assert.equal(result.stderr, '');
       const report = JSON.parse(result.stdout);
-      const projection = readJson(report.files.projection_report);
-      const bundle = readJson(report.files.process_projection_bundle);
+      const { projection, bundle } = guarded
+        ? readJson(path.join(caseDir, 'result/bundle.json'))
+        : {
+            projection: readJson(report.files.projection_report),
+            bundle: readJson(report.files.process_projection_bundle),
+          };
       const payload = bundle.projected_processes[0].json_ordered;
       record.qualification = projection.qualification;
       record.validation_ok = projection.validation.ok;

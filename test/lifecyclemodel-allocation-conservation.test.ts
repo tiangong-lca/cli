@@ -1,12 +1,11 @@
-import { executeCli } from '../src/cli.js';
 import { loadDistModule } from './helpers/load-dist-module.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { runLifecyclemodelBuildResultingProcess } from '../src/lib/lifecyclemodel-resulting-process.js';
-import { validateProcessPayload } from '../src/lib/process-payload-validation.js';
+import { runLifecyclemodelBuildResultingProcess } from '../src/lib/model/resulting-process.js';
+import { validateProcessPayload } from '../src/lib/validation/process-payload-validation.js';
 import { allocationFixture } from './helpers/process-allocation-fixture.js';
 
 type Json = Record<string, unknown>;
@@ -48,12 +47,7 @@ function setup(first = '60', second = '30') {
   });
   return { processes, context };
 }
-async function build(
-  options: ReturnType<typeof setup>,
-  reverse = false,
-  edge = false,
-  throughCli = false,
-) {
+async function build(options: ReturnType<typeof setup>, reverse = false, edge = false) {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'cli-allocation-conservation-'));
   try {
     const files = options.processes.map(({ id, payload }) => {
@@ -108,35 +102,10 @@ async function build(
       semantic_context: options.context,
     };
     writeFileSync(path.join(dir, 'request.json'), JSON.stringify(request));
-    const result = throughCli
-      ? await (async () => {
-          const command = await executeCli(
-            [
-              'lifecyclemodel',
-              'build-resulting-process',
-              '--input',
-              path.join(dir, 'request.json'),
-              '--out-dir',
-              path.join(dir, 'out'),
-              '--json',
-            ],
-            {
-              env: {},
-              dotEnvStatus: { loaded: false, path: '/private/tmp/.env', count: 0 },
-              fetchImpl: async () => {
-                throw new Error('offline command must not fetch');
-              },
-            },
-          );
-          assert.equal(command.exitCode, 0, command.stderr);
-          return JSON.parse(command.stdout) as Awaited<
-            ReturnType<typeof runLifecyclemodelBuildResultingProcess>
-          >;
-        })()
-      : await runLifecyclemodelBuildResultingProcess({
-          inputPath: path.join(dir, 'request.json'),
-          outDir: path.join(dir, 'out'),
-        });
+    const result = await runLifecyclemodelBuildResultingProcess({
+      inputPath: path.join(dir, 'request.json'),
+      outDir: path.join(dir, 'out'),
+    });
     const bundle = JSON.parse(readFileSync(result.files.process_projection_bundle, 'utf8')) as Json;
     const projected = (bundle.projected_processes as Json[])[0];
     const report = JSON.parse(readFileSync(result.files.projection_report, 'utf8')) as Json;
@@ -146,9 +115,9 @@ async function build(
   }
 }
 
-test('public generator conserves 10@60/40 + 20@30/70, provenance and real unchanged SDK validation', async () => {
+test('result generator conserves 10@60/40 + 20@30/70, provenance and real unchanged SDK validation', async () => {
   const fixture = setup();
-  const { projected, report } = await build(fixture, false, false, true);
+  const { projected, report } = await build(fixture);
   const payload = obj(projected.json_ordered);
   const exchanges = obj(obj(payload.processDataSet).exchanges).exchange as Json[];
   const inventory = exchanges.find((item) => item.exchangeDirection === 'Input')!;
@@ -164,14 +133,14 @@ test('public generator conserves 10@60/40 + 20@30/70, provenance and real unchan
   );
   assert.equal(obj(report.validation).ok, true);
   const builtJson =
-    await loadDistModule<typeof import('../src/lib/dataset-json.js')>('src/lib/dataset-json.js');
+    await loadDistModule<typeof import('../src/lib/dataset/json.js')>('src/lib/dataset/json.js');
   const cloned = builtJson.cloneJson(payload);
   assert.deepEqual(cloned, payload);
   obj(cloned.processDataSet)['synthetic:mutated'] = true;
   assert.equal(obj(payload.processDataSet)['synthetic:mutated'], undefined);
   const builtValidator = await loadDistModule<
-    typeof import('../src/lib/process-payload-validation.js')
-  >('src/lib/process-payload-validation.js');
+    typeof import('../src/lib/validation/process-payload-validation.js')
+  >('src/lib/validation/process-payload-validation.js');
   assert.equal(
     builtValidator.summarizeProcessPayloadValidation(
       builtValidator.validateProcessPayload(payload, undefined, undefined, fixture.context),
@@ -187,7 +156,7 @@ test('public generator conserves 10@60/40 + 20@30/70, provenance and real unchan
   assert.deepEqual(reverseItems, exchanges);
 });
 
-test('public generator rejects conflicting amount fields and already allocated inventory', async () => {
+test('result generator rejects conflicting amount fields and already allocated inventory', async () => {
   for (const mode of ['amount', 'allocated', 'zero', 'signed', 'malformed']) {
     const fixture = setup();
     const root = obj(fixture.processes[0].payload.processDataSet);
@@ -207,7 +176,7 @@ test('public generator rejects conflicting amount fields and already allocated i
   }
 });
 
-test('public generator consumes whole-inventory SDK legacy shares and rejects default-one sparse drift', async () => {
+test('result generator consumes whole-inventory SDK legacy shares and rejects default-one sparse drift', async () => {
   const fixture = setup();
   for (const [index, source] of fixture.processes.entries()) {
     const items = obj(obj(source.payload.processDataSet).exchanges).exchange as Json[];

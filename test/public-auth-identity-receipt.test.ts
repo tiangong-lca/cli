@@ -7,7 +7,7 @@ import {
   parseAuthIdentityReceipt,
   type AuthIdentityReceipt,
 } from '../src/auth-identity-receipt.js';
-import * as internal from '../src/lib/auth-identity-receipt.js';
+import * as internal from '../src/lib/auth/auth-identity-receipt.js';
 
 test('public auth identity receipt entry is a direct bounded semantic re-export', () => {
   assert.equal(AUTH_IDENTITY_RECEIPT_SCHEMA, 'tiangong-lca.auth-identity-receipt.v1');

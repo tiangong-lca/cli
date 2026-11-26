@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, rmSync, mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { FetchLike, ResponseLike } from '../src/lib/http.js';
-import type { DatasetCommandTransport } from '../src/lib/dataset-command.js';
+import type { FetchLike, ResponseLike } from '../src/lib/transport/http.js';
+import type { DatasetCommandTransport } from '../src/lib/dataset/command.js';
 import {
   __testInternals,
   runDatasetMaintenanceClearAccount,
-} from '../src/lib/dataset-maintenance-clear-account.js';
+} from '../src/lib/maintenance/clear-account.js';
 import {
   buildSupabaseTestEnv,
   isSupabaseAuthTokenUrl,

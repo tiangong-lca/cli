@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { AllocationGroup } from '../src/lib/resulting-process-allocation.js';
+import type { AllocationGroup } from '../src/lib/model/resulting-process-allocation.js';
 import {
   allocationAggregationKey,
   hasAllocationDeclaration,
   reconcileResultingAllocations,
-} from '../src/lib/resulting-process-allocation.js';
+} from '../src/lib/model/resulting-process-allocation.js';
 
 type Json = Record<string, unknown>;
 function exchange(id: string, allocations?: unknown, version = '00.00.001'): Json {

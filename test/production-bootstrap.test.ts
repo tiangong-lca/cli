@@ -1,14 +1,13 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { executeCli, type CliDeps } from '../src/cli.js';
-import { buildDoctorReport, readRuntimeEnv } from '../src/lib/env.js';
-import { CliError } from '../src/lib/errors.js';
-import { requireSupabaseRestRuntime } from '../src/lib/supabase-client.js';
-import { hasSupabaseRestRuntime } from '../src/lib/supabase-json-ordered-write.js';
-import { loginWithSupabaseOAuth } from '../src/lib/supabase-session.js';
+import { buildDoctorReport, readRuntimeEnv } from '../src/lib/config/env.js';
+import { CliError } from '../src/shared/errors.js';
+import { requireSupabaseRestRuntime } from '../src/lib/transport/supabase-client.js';
+import { loginWithSupabaseOAuth } from '../src/lib/auth/supabase-session.js';
 
 const PROJECT = 'https://qgzvkongdjqiiamzbbts.supabase.co';
 const CLIENT = '1837c6d3-3c9d-48e0-bbf7-b532b78f9f76';
@@ -40,8 +39,6 @@ test('an empty installation resolves one complete official Production OAuth prof
   ]) {
     assert.equal(doctor.checks.find((check) => check.key === key)?.source, 'default');
   }
-  // A default profile is not an opt-in for workflows that are local unless configured.
-  assert.equal(hasSupabaseRestRuntime({}), false);
 });
 
 test('official endpoint aliases and blank example values share the bundled profile', () => {
@@ -107,7 +104,7 @@ test('partial custom endpoints, identities, callbacks, and headless tokens never
   assert.equal(custom.oauthRedirectUri, 'http://127.0.0.1:55000/oauth/callback');
 });
 
-test('clean CLI auth and search use Production without repo env or a preexisting session', async () => {
+test('clean CLI auth uses Production without repo env or a preexisting session', async () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'tg-cli-production-bootstrap-'));
   const sessionFile = path.join(directory, 'private', 'session.json');
   const env = { TIANGONG_LCA_SESSION_FILE: sessionFile };
@@ -157,39 +154,10 @@ test('clean CLI auth and search use Production without repo env or a preexisting
     for (const command of ['status', 'doctor-auth']) {
       const result = await executeCli(['auth', command, '--json'], deps);
       assert.equal(result.exitCode, 1, result.stderr);
-      assert.equal(JSON.parse(result.stdout).status, 'login-required');
+      assert.equal(JSON.parse(result.stdout).data.receipt.status, 'login-required');
     }
     assert.equal(networkCalls, 0);
     assert.equal(existsSync(sessionFile), false);
-    const inputPath = path.join(directory, 'search.json');
-    writeFileSync(inputPath, JSON.stringify({ query: 'electricity' }));
-    for (const family of ['flow', 'process', 'lifecyclemodel']) {
-      const result = await executeCli(
-        ['search', family, '--input', inputPath, '--dry-run', '--json'],
-        deps,
-      );
-      assert.equal(result.exitCode, 0, result.stderr);
-      assert.equal(
-        JSON.parse(result.stdout).request.url,
-        `${PROJECT}/functions/v1/${family}_hybrid_search`,
-      );
-      assert.equal(JSON.parse(result.stdout).request.headers['x-region'], 'us-east-1');
-    }
-    const custom = await executeCli(
-      [
-        'search',
-        'flow',
-        '--base-url',
-        'https://dev.supabase.co',
-        '--input',
-        inputPath,
-        '--dry-run',
-        '--json',
-      ],
-      deps,
-    );
-    assert.equal(custom.exitCode, 2);
-    assert.equal(networkCalls, 0);
     const login = await executeCli(['auth', 'login', '--json'], deps);
     assert.equal(login.exitCode, 0, login.stderr);
     assert.equal(browserCalls, 1);
@@ -198,10 +166,10 @@ test('clean CLI auth and search use Production without repo env or a preexisting
     assert.equal(stored.auth_method, 'oauth');
     if (process.platform !== 'win32') assert.equal(statSync(sessionFile).mode & 0o777, 0o600);
     const status = await executeCli(['auth', 'status', '--json'], deps);
-    assert.equal(JSON.parse(status.stdout).status, 'ready');
+    assert.equal(JSON.parse(status.stdout).data.receipt.status, 'ready');
     const doctor = await executeCli(['auth', 'doctor-auth', '--json'], deps);
     assert.equal(doctor.exitCode, 0, doctor.stderr);
-    assert.equal(JSON.parse(doctor.stdout).status, 'passed');
+    assert.equal(JSON.parse(doctor.stdout).data.receipt.status, 'passed');
     assert.doesNotMatch(
       login.stdout + status.stdout + doctor.stdout,
       /private-(?:access-token|refresh-token|authorization-code|user@)/u,

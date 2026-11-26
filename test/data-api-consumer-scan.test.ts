@@ -38,15 +38,16 @@ test('consumer-zero scan inventories every active relation and api RPC without r
     'sources',
     'unitgroups',
   ]);
-  // The versioned (v2) protected lifecycle endpoints are approved surface: four additive names.
-  assert.equal(report.inventory.rpc_names.length, 20);
+  assert.equal(report.inventory.rpc_names.length, 8);
+  assert.ok(report.inventory.rpc_names.includes('qry_review_submit_receipt'));
+  assert.ok(report.inventory.rpc_names.includes('qry_review_get_comment_items'));
   for (const name of [
     'cmd_dataset_alias_execution_preflight_v2_guarded',
     'cmd_dataset_alias_execution_gate_v2_guarded',
     'cmd_dataset_alias_execution_admit_v2_guarded',
     'cmd_dataset_alias_execution_read_v2',
   ]) {
-    assert.equal(report.inventory.rpc_names.includes(name), true, name);
+    assert.equal(report.inventory.rpc_names.includes(name), false, name);
   }
   assert.equal(report.inventory.rpc_names.includes('cmd_dataset_alias_plan_guarded'), false);
   assert.equal(
