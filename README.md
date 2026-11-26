@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - README.md
   - src/commands/**
-lastReviewedAt: 2026-11-20
-lastReviewedCommit: 929d2f38595dbb261fa9cc4321dd3e4da7544977
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: 04a086bcf00512dcc6694c6817273d72810fadbd
 lastReviewedNote: 'CLI #545 reviewed the 0.4.5 version-only release, the preserved dependency graph and the existing package, four-platform, provenance and integration requirements.'
 ---
 
