@@ -215,7 +215,7 @@ Important constraints:
 - `ai-doc-lint` keeps the historical check identity, but its implementation should run `docpact`
 - `docpact` enforces that command-surface and release-gate changes also refresh or review the governed source docs
 - the merge-tag workflow is guarded so only the upstream repository can execute release tagging
-- CI bootstrap is pinned to `pnpm/setup` v3.1.2 with Node 24.19.0 and `pnpm install --frozen-lockfile`
+- CI bootstrap is pinned to `pnpm/setup` v3.2.0 with Node 24.19.0 and `pnpm install --frozen-lockfile`
 - the publish workflow releases from `cli-v<package.json version>` through native pnpm OIDC/provenance and supports manual dispatch for existing-tag recovery/backfill
 - routine npm releases must flow through an upstream `main` PR merge and GitHub Actions Trusted Publishing; local workstations may validate with `pnpm --filter @tiangong-lca/cli --fail-if-no-match pack --dry-run` but must not publish
 - the packed consumer surface is package-manager neutral and excludes pnpm workspace/lock metadata, TypeScript, Oxlint, tests, source-only tooling, and other repository internals; ESM, CJS dynamic-import, and TypeScript hosts exercise the explicit launcher, CommandSpec, batch, and run-lock exports while root/deep imports remain closed
