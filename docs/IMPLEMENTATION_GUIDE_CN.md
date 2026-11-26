@@ -108,3 +108,7 @@ Review 适配已有业务语义：一个起始对象、服务端默认关联、�
 `dataset process validate --checks schema` 检查结构。需要离线核对每条 exchange 的名称时，使用 `--checks schema,business --reference-documents flows.json`，文件内容为 `{"documents":[...]}`，每个 Flow 使用引用指向的 UUID 和版本。选择 `--checks references` 会读取当前账户可见的精确 Flow。 `flow_reference_names` 会报告每条 exchange 的覆盖状态和诊断路径。缺少精确文档时应补充证据。名称不一致时根据报告修正候选描述后重新验证。
 
 新生成的 resulting Process 使用 SDK 从精确 Flow 文档组装描述。本地生成请求可在 `semantic_context.flow_documents` 提供文档，也可通过 `process_sources.allow_remote_lookup` 指定远端来源。缺少文档的本地结果有待验证，且保存门禁会重新读取当前精确 Flow。旧数据可通过可审查的内容修改来修正。
+
+### Model 结果过程的本地输入
+
+`dataset model build-resulting-process` 在建立本地快照前核对标准文件名中的 Process UUID 和版本与正文一致，并逐端核对连接的 Flow 和版本。静态交换项的填报数值与计算用量发生冲突时，命令返回具体位置与原值。带变量的交换项需要先提供求值后的静态清单。详见[模型接口](interfaces/datasets/models.md)。

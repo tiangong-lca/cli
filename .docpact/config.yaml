@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-11-26"
-lastReviewedCommit: "04a086bcf00512dcc6694c6817273d72810fadbd"
-lastReviewedNote: 'CLI #545 reviewed the 0.4.5 version-only release, the preserved dependency graph and the existing package, four-platform, provenance and integration requirements.'
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: 4fd9ba2110ec6e9008771d5a78bcc3324e682f7e
+lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
 
 catalog:
   repos:

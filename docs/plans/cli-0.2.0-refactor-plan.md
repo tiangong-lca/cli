@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
-lastReviewedAt: 2026-11-18
-lastReviewedCommit: e84bae4ca3e79f59628a71977fa09822ce17ef3c
-lastReviewedNote: 'CLI #524 adds read-only review opinions and exact dataset-version lookup through the existing review RPCs.'
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: 4fd9ba2110ec6e9008771d5a78bcc3324e682f7e
+lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
 ---
 
 # CLI 0.2.0 重构实施计划

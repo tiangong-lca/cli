@@ -39,6 +39,8 @@ language: zh-CN
 
 ## 交换项与科学语义
 
+`dataset process validate` 对未引用变量的交换项按十进制数值比较 `meanAmount` 和 `resultingAmount`。`0.306` 与 `3.06e-1` 可以通过。若计算用量为 `306.0`，则返回 `process_exchange_amount_conflict`、具体交换项的 `resultingAmount` 路径和两个原值。引用有效变量时允许两个值不同。
+
 交换项身份只在所属 Process 内解释，同一 Flow 可被多个交换项引用。Flow 名称不能替代精确引用，数组位置不能替代稳定交换项身份。
 
 数量、单位、方向、参考输出和分配具有业务含义。缺少事实或证据时返回可定位问题，不填入未经选择的默认科学数值。显式字段补丁可以表达调用方决定，命令不产生该决定。

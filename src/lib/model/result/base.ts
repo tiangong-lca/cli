@@ -118,6 +118,10 @@ export type Edge = {
   to: string;
   exchange_id: string | null;
   flow_uuid: string | null;
+  upstream_flow_uuid?: unknown;
+  downstream_flow_uuid?: unknown;
+  upstream_flow_version?: unknown;
+  downstream_flow_version?: unknown;
 };
 
 export function isRecord(value: unknown): value is JsonObject {

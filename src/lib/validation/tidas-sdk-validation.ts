@@ -108,7 +108,14 @@ export function validationIssues(result: unknown): SafeParseIssue[] {
         duplicates.has(JSON.stringify([...(issue.path ?? []), '@xml:lang']))
       ),
   );
-  return [...otherIssues, ...duplicates.values()];
+  return [
+    ...otherIssues.map((issue) =>
+      issue.params?.validationCode === 'process_exchange_amount_conflict'
+        ? { ...issue, code: 'process_exchange_amount_conflict' }
+        : issue,
+    ),
+    ...duplicates.values(),
+  ];
 }
 
 export function normalizeIssuePath(

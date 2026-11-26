@@ -856,7 +856,7 @@ test('runLifecyclemodelBuildResultingProcess auto-detects process dirs and write
       id: 'proc-solo',
       referenceInternalId: '1',
       wrap: 'json',
-      includeAdministrative: false,
+      version: VERSION,
       includeModelling: false,
       exchanges: createExchange({
         internalId: '1',
@@ -1913,6 +1913,7 @@ test('lifecyclemodel internal helpers cover extraction, parsing, and discovery f
           to: 'downstream',
           exchange_id: null,
           flow_uuid: 'flow-edge',
+          upstream_flow_uuid: 'flow-edge',
         },
       ],
     );

@@ -1,3 +1,7 @@
+import {
+  assertStaticExchangeAmount,
+  hasAllocationDeclaration,
+} from '../resulting-process-allocation.js';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { CliError } from '../../../shared/errors.js';
@@ -205,6 +209,14 @@ export function extractEdges(model: JsonObject): Edge[] {
             downstream['@flowUUID'],
             exchange.flowUUID,
           ),
+          ...('@flowUUID' in exchange
+            ? { upstream_flow_uuid: exchange['@flowUUID'] }
+            : 'flowUUID' in exchange
+              ? { upstream_flow_uuid: exchange.flowUUID }
+              : {}),
+          ...('@flowUUID' in downstream ? { downstream_flow_uuid: downstream['@flowUUID'] } : {}),
+          ...('@version' in exchange ? { upstream_flow_version: exchange['@version'] } : {}),
+          ...('@version' in downstream ? { downstream_flow_version: downstream['@version'] } : {}),
         });
       });
     });
@@ -240,6 +252,7 @@ export function parseProcessRecord(
   options: {
     sourceLabel: string;
     sourcePath: string | null;
+    expectedIdentity?: { processId: string; version: string };
   },
 ): ProcessRecord {
   const dataset = processDatasetRoot(payload);
@@ -259,7 +272,25 @@ export function parseProcessRecord(
     });
   }
 
-  const version = firstNonEmpty(publication['common:dataSetVersion']) ?? DEFAULT_DATASET_VERSION;
+  const declaredVersion = firstNonEmpty(publication['common:dataSetVersion']);
+  if (
+    options.expectedIdentity &&
+    (processUuid !== options.expectedIdentity.processId ||
+      declaredVersion !== options.expectedIdentity.version)
+  )
+    throw new CliError(
+      `Local Process identity mismatch at ${options.sourcePath}: requested ${options.expectedIdentity.processId}@${options.expectedIdentity.version}, observed ${processUuid}@${declaredVersion ?? '(missing)'}.`,
+      {
+        code: 'LIFECYCLEMODEL_PROCESS_IDENTITY_MISMATCH',
+        exitCode: 2,
+        details: {
+          source_path: options.sourcePath,
+          requested: options.expectedIdentity,
+          observed: { processId: processUuid, version: declaredVersion },
+        },
+      },
+    );
+  const version = declaredVersion ?? DEFAULT_DATASET_VERSION;
   const quantitativeReference = isRecord(info.quantitativeReference)
     ? info.quantitativeReference
     : {};
@@ -283,7 +314,7 @@ export function parseProcessRecord(
   const inputAmounts: Record<string, number> = {};
   const outputAmounts: Record<string, number> = {};
 
-  exchanges.forEach((exchange) => {
+  exchanges.forEach((exchange, index) => {
     const flowRef = isRecord(exchange.referenceToFlowDataSet)
       ? exchange.referenceToFlowDataSet
       : {};
@@ -293,6 +324,11 @@ export function parseProcessRecord(
       return;
     }
 
+    assertStaticExchangeAmount(
+      exchange,
+      `${processUuid}@${version}/exchanges.exchange[${index}].resultingAmount`,
+      hasAllocationDeclaration(exchange),
+    );
     const amount = normalizeNumericOutput(
       toFiniteNumber(exchange.meanAmount ?? exchange.resultingAmount, 'exchange amount'),
     );
@@ -476,6 +512,7 @@ export async function resolveProcessRecords(
         {
           sourceLabel: path.dirname(localPath),
           sourcePath: localPath,
+          expectedIdentity: { processId: process_id, version },
         },
       );
       records[`${process_id}@${version}`] = record;

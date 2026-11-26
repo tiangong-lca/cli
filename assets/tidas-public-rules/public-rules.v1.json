@@ -67,21 +67,58 @@
       "id": "tidas.process.name.base-name.align-reference-flow",
       "dataset_type": "process",
       "normative_level": "requirement",
-      "statement": "The process base name follows the reference-flow naming structure and excludes geography and time qualifiers owned by dedicated metadata fields.",
+      "statement": "For a single reference Flow, the Process baseName equals the exact reference Flow baseName in each corresponding language; equality does not extend to the complete name object. Multiple-reference names identify all reference flows. Geography and time remain in dedicated metadata fields. Base-name equality alone does not establish Flow compatibility.",
       "locations": ["processDataSet.processInformation.dataSetInformation.name.baseName"],
-      "applicability": { "scope": "Every process dataset; multi-functional processes name each reference flow." },
+      "applicability": { "scope": "Process datasets with reference flows, including Unit processes, LCI results and partly terminated systems regardless of publication status. A Flow may be shared by multiple Processes. This is TIDAS field-scoped application of ILCD Rule 20, which recommends full-name alignment." },
       "source_refs": [{ "asset": "tidas_processes.yaml", "path": "processDataSet.processInformation.dataSetInformation.name.baseName.<rules>" }],
-      "cases": { "positive": ["A single-output process reuses the technical reference-flow name and stores geography separately."], "negative": ["A multi-functional process omits one reference flow or embeds a year in baseName."] }
+      "cases": {
+        "positive": [
+          "Two compatible Processes share the same exact Alternating current Flow and baseName; their treatmentStandardsRoutes name supported coal and wind technologies separately.",
+          "A Process uses the exact Diesel baseName and retains its supported petroleum-refining route in treatmentStandardsRoutes; geography remains metadata."
+        ],
+        "negative": [
+          "A multi-functional process omits one reference flow or embeds a year in baseName.",
+          "A Process keeps a different baseName for a single reference Flow, or copies the complete Flow name into baseName.",
+          "A generic Electricity label is substituted for Alternating current without an identity decision, or base-name equality is used to ignore incompatible Flow route/property qualifiers."
+        ]
+      }
     },
     {
       "id": "tidas.process.name.qualifiers.structured",
       "dataset_type": "process",
       "normative_level": "recommendation",
-      "statement": "Process-name qualifiers are separated into treatment/standards/routes, mix/location type, and quantitative-property segments according to their meaning.",
+      "statement": "Process-name qualifiers retain established production mix, consumption mix, technology-specific and at/to descriptions, supplemented where needed by evidenced grade/route, supply scope, delivery interface and quantitative specifications. Technology-specific is valid on its own and may coexist with a documented mix; enterprise procurement mix is an optional TIDAS extension. Production mix uses a documented weighting basis within a defined geographic and temporal scope. Retain the established availability/handover and transport-to-node meanings without inferring complete inventory coverage. Retain a verified upstream mix through delivery or a 1:1 adapter when its documented scope still applies; no new weighting is required, while the delivery boundary and losses remain evidence-bound. Delivery does not automatically turn production mix into consumption mix. Separate physical supply from contractual attributes. Preserve meaningful descriptors in every authored language; exclude functional-unit amounts, conversion boilerplate, footprint results and supplier weights. A Model-derived resulting Process retains the reviewed whole-Model name.",
       "locations": ["processDataSet.processInformation.dataSetInformation.name.treatmentStandardsRoutes", "processDataSet.processInformation.dataSetInformation.name.mixAndLocationTypes", "processDataSet.processInformation.dataSetInformation.name.functionalUnitFlowProperties"],
       "applicability": { "scope": "Process datasets that have the corresponding qualifier information." },
       "source_refs": [{ "asset": "tidas_processes.yaml", "path": "processDataSet.processInformation.dataSetInformation.name.treatmentStandardsRoutes.<rules>" }, { "asset": "tidas_processes.yaml", "path": "processDataSet.processInformation.dataSetInformation.name.mixAndLocationTypes.<rules>" }, { "asset": "tidas_processes.yaml", "path": "processDataSet.processInformation.dataSetInformation.name.functionalUnitFlowProperties.<rules>" }],
-      "cases": { "positive": ["A production mix qualifier is placed in mixAndLocationTypes and a grade standard in treatmentStandardsRoutes."], "negative": ["A location/mix qualifier is placed in treatmentStandardsRoutes or all qualifiers are flattened into baseName."] }
+      "cases": {
+        "positive": [
+          "A production mix qualifier is placed in mixAndLocationTypes and a grade standard in treatmentStandardsRoutes, each supported by the actual Process.",
+          "A supported 12-hour nitrate-storage descriptor is moved from baseName into treatmentStandardsRoutes without losing it in either authored language.",
+          "A Model combines compatible diesel supplies and transport to the consumer: its name reflects that whole supply boundary, and the resulting Process keeps that Model name instead of inheriting only a final refinery's route and plant-gate boundary.",
+          "A supported sulfur mass fraction distinguishes a diesel specification in functionalUnitFlowProperties; an absent optional quantitative qualifier stays empty.",
+          "Technology-specific remains a valid standalone mixAndLocationTypes descriptor; a documented technology-specific production mix can also combine it with Production mix, while the specific route remains in treatmentStandardsRoutes.",
+          "An electricity mapping adapter names its actually evidenced availability point without inferring consumption mix or a transport boundary; it does not require a to qualifier merely because the output reaches a user.",
+          "Where established descriptions are insufficient, an evidenced enterprise procurement mix is an optional TIDAS supplement; scope, supplier weights and contractual accounting are documented rather than placed in quantitative product properties.",
+          "Production mix, at plant; Consumption mix, to consumer; and Technology-specific, to wholesale remain valid established examples when their stated boundaries are supported. Chinese production mix may retain 生产组合 or 生产混合, and consumption mix may retain 消费组合 or 消费混合; none requires bulk terminology replacement. At wholesale and at point-of-sale also retain their availability/handover meaning; transport and inventory coverage are checked separately.",
+          "The S355 grade remains in treatmentStandardsRoutes despite its digits; an evidenced 30 % recycled material by mass of finished product belongs in functionalUnitFlowProperties with that basis.",
+          "A grid-delivery Process retains verified upstream Production mix with documented suppliers, shares, geography, period and scope. A downstream 1:1 voltage accounting adapter performs no new weighting and keeps Production mix, to consumer at the same evidenced delivered-consumer boundary; losses and delivery are separately documented, and the reviewed whole-Model name is retained by its resulting Process. 生产混合，至终端消费者 is retained in Chinese under the same evidence.",
+          "A verified upstream Consumption mix, to consumer remains Consumption mix, to consumer through a 1:1 voltage accounting adapter when the documented consumption and trade scope and delivered-consumer boundary still apply. No new downstream weighting is required; Chinese 消费混合，至终端消费者 preserves the same scope."
+        ],
+        "negative": [
+          "A location/mix qualifier is placed in treatmentStandardsRoutes or all qualifiers are flattened into baseName.",
+          "Generic shared-Flow qualifiers overwrite a supported Process route, or renaming silently loses a descriptor in one authored language.",
+          "An unreviewed production route or global average placeholder, a 1 kWh = 3.6 MJ conversion identity, or reference-amount scaling instructions are used as product qualifiers.",
+          "A Model with mixed supplies and transport is named after a narrower final Process without checking the whole-Model evidence.",
+          "Delivery to a consumer, a reference Flow labelled consumption mix, a grid-loss proxy or a mapping adapter is treated as sufficient evidence for consumption mix.",
+          "A supported Technology-specific descriptor is rejected, all Consumption mix names are forced to become Market consumption mix, or enterprise procurement mix is required universally or presented as an original ILCD class or market-representative supply without evidence.",
+          "At/to is universally redefined as before/after node processing, a to boundary is claimed without transport evidence, or a delivery node alone is used to claim complete cradle-to-node inventory coverage; a certificate is used to claim physical generation technology or zero impact.",
+          "A grade number is moved into quantitative properties, a supplier procurement share is called recycled-material content, or 1 kg, 1 kWh, a footprint result or supplier weights fill functionalUnitFlowProperties.",
+          "A verified upstream production or consumption mix is automatically deleted solely because downstream grid delivery or a 1:1 adapter performs no new weighting, despite its documented suppliers, shares, geography, period and scope still applying. 缺少下游新增加权并不授权自动删除有证据的上游组合.",
+          "Production mix is automatically relabelled Consumption mix merely because grid delivery or a 1:1 adapter reaches users, without evidence for the relevant consumption and trade scope; unverified representativeness is hidden instead of kept under review. 送达用户不自动证明消费与贸易代表性.",
+          "An inherited mix is asserted from a Flow label, a loss ratio or 1:1 topology alone; alternatively, the same evidenced delivered-consumer boundary is alternately named to consumer and at consumer receiving point as if the wording alone proved a new node, without documented transport or loss differences. 相同交付边界应沿用同一约定，不能用介词变化虚构新节点."
+        ]
+      }
     },
     {
       "id": "tidas.process.version.format",

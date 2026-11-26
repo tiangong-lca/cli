@@ -36,10 +36,10 @@ type PublicRuleProvider = (kind: PublicRuleDatasetType) => unknown;
 const EXPECTED_PUBLIC_SOURCE = {
   schema_version: 'tidas.public-rules-source.v1',
   repository: 'https://github.com/tiangong-lca/tidas-spec.git',
-  commit: '32e1ba38da7d5f4f6245c6c1927f83b326cd5404',
+  commit: '894bd1710c37dcfeffb19aee6a52a7cb941a9975',
   rules_version: '2026.09.20',
   status: 'released',
-  index_sha256: 'd8f1e90777fe0c675d1e24cbd7f1141ee776d3ebda9d8b24c91f714779540dec',
+  index_sha256: '462310e9e59b01484379ae2d9db8dd8c765acd03e291040249d3b856ebdea9a4',
   schema_sha256: '552a8c5fb87300dbe4ff5021d3d09a2b2d369999e887c223bc5c9738a99549f5',
 } as const satisfies PublicRuleSource;
 

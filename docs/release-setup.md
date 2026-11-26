@@ -24,9 +24,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-24
-lastReviewedCommit: 093565f156f7c289341adbeff7538e1c29b7a8eb
-lastReviewedNote: 'CLI #545 reviewed the 0.4.5 version-only release, the preserved dependency graph and the existing package, four-platform, provenance and integration requirements.'
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: 4fd9ba2110ec6e9008771d5a78bcc3324e682f7e
+lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

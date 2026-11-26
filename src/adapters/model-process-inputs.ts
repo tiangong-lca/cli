@@ -56,7 +56,7 @@ export async function stageModelProcesses(
     string,
     { id: string; version: string; digest: string; source: string; staged: string }
   >();
-  const stage = (value: unknown, source: string) => {
+  const stage = (value: unknown, source: string, filenameIdentity?: RegExpExecArray | null) => {
     const payload = requireContent('process', unwrapDatasetPayload(object(value, 'Process input')));
     const identity = datasetIdentity({}, payload, 'process');
     if (
@@ -68,6 +68,14 @@ export async function stageModelProcesses(
       throw new CommandInputError(
         'PROCESS_IDENTITY_INVALID',
         'Process content requires its own UUID and exact version.',
+      );
+    if (
+      filenameIdentity &&
+      (filenameIdentity[1] !== identity.id || filenameIdentity[2] !== identity.version)
+    )
+      throw new CommandInputError(
+        'LIFECYCLEMODEL_PROCESS_IDENTITY_MISMATCH',
+        `Local Process identity mismatch: filename selects ${filenameIdentity[1]}@${filenameIdentity[2]}, content declares ${identity.id}@${identity.version}.`,
       );
     const key = `${identity.id}@${identity.version}`;
     const digest = contentDigest(payload);
@@ -87,7 +95,11 @@ export async function stageModelProcesses(
   };
   const stageFile = (file: unknown, origin: string) => {
     const absolute = resolveRequestFile(file, origin);
-    stage(JSON.parse(readFileSync(absolute, 'utf8')), absolute);
+    const filenameIdentity =
+      /^([0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})_(\d{2}\.\d{2}\.\d{3})\.json$/iu.exec(
+        path.basename(absolute),
+      );
+    stage(JSON.parse(readFileSync(absolute, 'utf8')), absolute, filenameIdentity);
   };
   for (const file of files) stageFile(file, inputPath);
   for (const selected of directories) {

@@ -1,4 +1,7 @@
-import { ALLOCATION_SUM_TOLERANCE } from '@tiangong-lca/tidas-sdk';
+import {
+  ALLOCATION_SUM_TOLERANCE,
+  findProcessExchangeAmountConflict,
+} from '@tiangong-lca/tidas-sdk';
 import { CliError } from '../../shared/errors.js';
 
 type JsonObject = Record<string, unknown>;
@@ -55,6 +58,43 @@ export function hasAllocationDeclaration(exchange: JsonObject): boolean {
     value !== undefined &&
     !(value && !Array.isArray(value) && Object.keys(object(value)).length === 0)
   );
+}
+export function assertStaticExchangeAmount(
+  exchange: JsonObject,
+  source: string,
+  allocated: boolean,
+): void {
+  if (exchange.referenceToVariable != null && String(exchange.referenceToVariable).trim()) {
+    throw new CliError(
+      `Variable-dependent inventory is unsupported at ${source}; supply an explicitly evaluated static inventory.`,
+      {
+        code: 'LIFECYCLEMODEL_VARIABLE_INVENTORY_UNSUPPORTED',
+        exitCode: 2,
+      },
+    );
+  }
+  const conflict = findProcessExchangeAmountConflict(exchange);
+  if (
+    conflict ||
+    (allocated &&
+      exchange.resultingAmount !== undefined &&
+      Number(exchange.meanAmount) !== Number(exchange.resultingAmount))
+  ) {
+    throw new CliError(
+      `Conflicting quantity basis at ${source}: meanAmount=${String(exchange.meanAmount)}, resultingAmount=${String(exchange.resultingAmount)}`,
+      {
+        code: allocated
+          ? 'LIFECYCLEMODEL_ALLOCATION_QUANTITY_BASIS_CONFLICT'
+          : 'LIFECYCLEMODEL_QUANTITY_BASIS_CONFLICT',
+        exitCode: 2,
+        details: {
+          source,
+          meanAmount: exchange.meanAmount,
+          resultingAmount: exchange.resultingAmount,
+        },
+      },
+    );
+  }
 }
 /** Preserve explicit source identity before numbering; conserve allocated quantities through merges. */
 export function reconcileResultingAllocations(

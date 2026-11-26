@@ -32,8 +32,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-26
-lastReviewedCommit: 04a086bcf00512dcc6694c6817273d72810fadbd
-lastReviewedNote: 'CLI #545 reviewed the 0.4.5 version-only release, the preserved dependency graph and the existing package, four-platform, provenance and integration requirements.'
+lastReviewedCommit: 4fd9ba2110ec6e9008771d5a78bcc3324e682f7e
+lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -197,3 +197,7 @@ The annual-volume suite exercises both Platform projections through real schema/
 ### Process exchange Flow names
 
 Run the public Process validation and create/save commands against controlled transport evidence for a Process with no allocation and multiple references to the same Flow. Confirm an incorrect later occurrence reports its exact path and sends zero mutation requests. Check a valid Process spanning exact versions, missing or conflicting Flow evidence, ordinary maintenance and a multi-Process bundle that refuses before submission. Verify Model generation composes the selected Flow names and conserves quantities; a local build with missing documents must report unresolved qualification. The packed and installed CLI must resolve the published SDK name profile.
+
+`test/lifecyclemodel-input-guards.test.ts` must cover local filename/body UUID and version disagreement and missing local body version; retain the remote fallback tests in `test/lifecyclemodel-resulting-process.test.ts`. Connection cases must cover both declarations, Flow-version checks independent of Process versions, omitted legacy fields, disabled factor-zero edges, same-Flow dual dominance, and actionable rejection of schema-valid different-Flow mappings. Quantity cases must cover conflicts in allocated and unallocated active groups, variable-referenced exchanges requiring evaluated static inventory, and unused mathematical metadata remaining admissible. Retain successful static projection and existing exact-basis cancellation regressions.
+
+Run `node scripts/ci/prove-lifecyclemodel-input-guards.mjs --out-dir <evidence-dir>` against the candidate public launcher. For a separately selected legacy launcher, use `--cli-bin <launcher-path> --expect legacy`. This proof must use synthetic local inputs without source-module imports, credentials or network access, and retain actual command outputs, exit codes, runtime identity and artifact evidence. Inspect the emitted evidence before reporting a pass; the script's presence and unit-test assertions alone do not establish public-runtime qualification.

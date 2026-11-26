@@ -5,6 +5,7 @@ import {
 } from '../../validation/process-semantic-validation.js';
 import {
   allocationAggregationKey,
+  assertStaticExchangeAmount,
   hasAllocationDeclaration,
   reconcileResultingAllocations,
   type AllocationGroup,
@@ -304,7 +305,8 @@ export function buildResultingProcessPayload(
     group.amount = normalizeNumericOutput(
       group.contributions.reduce((sum, item) => sum + item.amount, 0),
     );
-    if (group.contributions.some((item) => hasAllocationDeclaration(item.exchange))) {
+    const allocated = group.contributions.some((item) => hasAllocationDeclaration(item.exchange));
+    if (allocated) {
       if (group.amount <= 0)
         throw new CliError(`Zero or signed allocated quantity basis at ${group.key}`, {
           code: 'LIFECYCLEMODEL_ALLOCATION_TRANSFORMATION_UNSUPPORTED',
@@ -319,15 +321,10 @@ export function buildResultingProcessPayload(
               exitCode: 2,
             },
           );
-        if (
-          item.exchange.resultingAmount !== undefined &&
-          Number(item.exchange.meanAmount) !== Number(item.exchange.resultingAmount)
-        )
-          throw new CliError(`Conflicting quantity basis at ${item.source}`, {
-            code: 'LIFECYCLEMODEL_ALLOCATION_QUANTITY_BASIS_CONFLICT',
-            exitCode: 2,
-          });
       }
+    }
+    for (const item of group.contributions) {
+      assertStaticExchangeAmount(item.exchange, item.source, allocated);
     }
   }
 
@@ -338,10 +335,6 @@ export function buildResultingProcessPayload(
     ),
   );
   connections.forEach((edge) => {
-    if (!edge.flow_uuid) {
-      return;
-    }
-
     const downstreamInstance = instanceById.get(edge.to);
     if (!downstreamInstance) {
       return;
@@ -351,6 +344,19 @@ export function buildResultingProcessPayload(
       instanceById.get(edge.from)?.multiplication_factor === 0
     )
       return;
+
+    for (const key of ['upstream_flow_uuid', 'downstream_flow_uuid'] as const) {
+      if (key in edge && (!firstNonEmpty(edge[key]) || firstNonEmpty(edge[key]) !== edge.flow_uuid))
+        throw new CliError(
+          `Unsupported connection Flow mapping at ${edge.edge_id}: ${key} does not match ${edge.flow_uuid ?? '(missing)'}. The builder requires the same exact Flow at both endpoints; display dominance does not define a numerical conversion.`,
+          {
+            code: 'LIFECYCLEMODEL_CONNECTION_MAPPING_UNSUPPORTED',
+            exitCode: 2,
+            details: { edge_id: edge.edge_id, endpoint: key, declared: edge[key] },
+          },
+        );
+    }
+    if (!edge.flow_uuid) return;
 
     const downstreamCandidates = [...totals.values()]
       .flatMap((group) => group.contributions.map((contribution) => ({ group, contribution })))
@@ -403,6 +409,28 @@ export function buildResultingProcessPayload(
           exitCode: 2,
         },
       );
+    }
+    for (const [endpoint, declaredVersion, contribution] of [
+      ['outputExchange', edge.upstream_flow_version, upstreamCandidates[0].contribution],
+      ['downstreamProcess', edge.downstream_flow_version, downstreamCandidates[0].contribution],
+    ] as const) {
+      const actualVersion = (contribution.exchange.referenceToFlowDataSet as JsonObject)[
+        '@version'
+      ];
+      if (
+        declaredVersion !== undefined &&
+        (typeof declaredVersion !== 'string' ||
+          !declaredVersion.trim() ||
+          declaredVersion !== actualVersion)
+      )
+        throw new CliError(
+          `Connection version mismatch at ${edge.edge_id}/${endpoint}: declared ${String(declaredVersion)}, inventory ${String(actualVersion)}.`,
+          {
+            code: 'LIFECYCLEMODEL_CONNECTION_VERSION_MISMATCH',
+            exitCode: 2,
+            details: { edge_id: edge.edge_id, endpoint, declaredVersion, actualVersion },
+          },
+        );
     }
     const internalAmount = Math.min(
       downstreamCandidates[0].contribution.amount,

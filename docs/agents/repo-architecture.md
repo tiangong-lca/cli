@@ -30,9 +30,9 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-24
-lastReviewedCommit: 093565f156f7c289341adbeff7538e1c29b7a8eb
-lastReviewedNote: 'CLI #545 reviewed the 0.4.5 version-only release, the preserved dependency graph and the existing package, four-platform, provenance and integration requirements.'
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: 4fd9ba2110ec6e9008771d5a78bcc3324e682f7e
+lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
 related:
   - ../../AGENTS.md
   - ../../.docpact/config.yaml
@@ -246,6 +246,10 @@ Task PCR content uses `src/commands/pcr.ts` and `src/lib/pcr/{contract,release,c
 Remote process create, save-draft and state-aware save/publish routes share `process-allocation-write-admission.ts`. Immediately before dispatch they read explicit target Flows through the existing current-user Supabase RLS boundary at exact UUID/version. Missing or ambiguous evidence blocks dispatch. Supplied local Flow bytes must match those reads; admission then recomputes semantics against fresh bytes. Local evidence alone cannot authorize a forged Product type for a remote Elementary Flow. These reads introduce no privileged credential or production mutation.
 
 `resulting-process-allocation.ts` conserves declared allocated quantities across compatible exchange groups: `sum(quantity * fraction) / sum(quantity)`. Keys include exact Flow version, direction and explicit quantity-basis fields; provenance keys include source process instance and source exchange ID. Final numbering maps those source identities to final exchanges, and compatible many-to-one targets add their fractions. Multipliers apply to quantities before aggregation; the builder does not apply allocation coefficients to inventory amounts. Conflicting mean/resulting amounts, signed or zero allocated contributions, already allocated inventory, eliminated targets and cancellation without unique exact endpoint lineage fail with an explicit diagnostic. Unique compatible cancellation updates the individual source contributions before reconciliation.
+
+`src/adapters/model-process-inputs.ts` verifies canonical filenames before snapshotting. The builder in `src/lib/model/result/sources.ts` verifies a resolved local Process body's UUID and explicit dataset version against the requested file identity; missing body versions cannot pass through a local default. Remote exact-or-latest resolution keeps its existing behavior. Connection edges retain both declared Flow UUIDs and versions. Active connections require any declared UUID to identify the same supported Flow and any declared version to match the actual endpoint Flow reference, independently of the Process version. Omitted legacy connection fields remain compatible, and factor-zero connections are disabled. Different-Flow mappings are schema-valid but unsupported by this builder; dominance selects connection properties such as display names and supplies no numerical conversion rule. Both endpoints may retain `dominant=true` for the same Flow.
+
+Every active contribution group rejects conflicting mean/resulting quantities, retaining the allocation conflict code for allocated groups and using `LIFECYCLEMODEL_QUANTITY_BASIS_CONFLICT` for unallocated groups. An active exchange carrying `referenceToVariable` is unsupported and requires explicitly evaluated static inventory. Mathematical metadata without an exchange reference remains admissible. These guards establish the existing static projection boundary without evaluating variables or converting Flow identities or quantity bases.
 
 The SDK owns compatibility interpretation. Whole-inventory legacy Output shares are projected uniformly before aggregation, including undeclared exchanges. A legacy share vector omitting the selected reference has Worker default-one semantics that an explicit sparse vector cannot conserve; that conversion is rejected. Mixing explicit declarations with undeclared inventory requires its verified unique reference fallback. The builder never chooses a new allocation recipient. Source lineage, contribution quantities and the final candidate hash are emitted alongside the unchanged payload; the projection report contains its real shared validation result.
 

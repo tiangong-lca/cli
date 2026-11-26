@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - AGENTS.md
   - src/lib/**
-lastReviewedAt: 2026-11-20
-lastReviewedCommit: e3e5320df2e906de4b9e56c5b1e1b7f14850c196
-lastReviewedNote: 'CLI #543 reviewed private buffer reuse within a synchronous component inventory, fresh per-file digest and identity checks, and the existing package, coverage and release gates.'
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: 4fd9ba2110ec6e9008771d5a78bcc3324e682f7e
+lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
 ---
 
 # Existing runtime safeguards
@@ -36,7 +36,7 @@ Read-side exact-reference verification follows `docs/agents/exact-reference-inte
 - Package manager: exact `pnpm@11.24.0`, with one root workspace and lockfile
 - Compiler and lint: `typescript@7.0.2` plus type-aware Oxlint; no TypeScript 5/6 or ESLint bridge
 - Node baseline: exact local/CI `24.19.0`; package engine range `>=24.19.0 <25`
-- Direct dependency baseline: Supabase JS `2.118.0`, exact published TIDAS SDK `0.8.0`, lint-staged `17.6.0`, Prettier `3.10.0`, and tsx `4.23.15`; `@types/node 24.19.2` remains on the compatible Node 24 line. `pnpm peers check` must pass before package and coverage proof.
+- Direct dependency baseline: Supabase JS `2.118.0`, exact published TIDAS SDK `0.9.0`, lint-staged `17.6.0`, Prettier `3.10.0`, and tsx `4.23.15`; `@types/node 24.19.2` remains on the compatible Node 24 line. `pnpm peers check` must pass before package and coverage proof.
 - Runtime style: TypeScript source, Node-native CLI, direct REST and Edge Function access only
 - Public library surface: `@tiangong-lca/cli/auth-identity-receipt`, `@tiangong-lca/cli/command-spec`, `@tiangong-lca/cli/batch`, and `@tiangong-lca/cli/runtime`; the package root and internal deep paths are intentionally not APIs. The auth entry exports only the strict parser/constants/types, while CommandSpec `display` remains non-authoritative, execution is shell-free, and bound artifacts are rehashed before spawn.
 - Public batch safety: all item identity/content/policy/resource projections validate before work and again before resumed acceptance or fresh claim; identity drift or getter failure has an explicit error/event and zero execution, and every in-flight worker drains before return. Escaping scheduler/event/stop infrastructure errors synchronously close new claims, drain only already-claimed workers through settled aggregation, and rethrow the first recorded cause. Exclusive keys must be runtime strings; per-resource FIFO cursors expose only the earliest ready heads through a private ordered min-heap, so same keys serialize, blocked keys remain unclaimed without occupying workers, later free keys retain bounded concurrency, and ordinary scheduling stays near `O(n log k)`. Mutation retry is rejected, incomplete attempts require explicit readback recovery, resume requires exact run/item contracts, every pre-claim result can trigger stop before its same-key successor becomes ready, and event delivery is monotonic plus awaited. Retry policy/backoff delays cannot exceed Node's timer maximum.
