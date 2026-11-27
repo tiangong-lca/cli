@@ -1,14 +1,13 @@
 import { spawn } from 'node:child_process';
 
 const isPrimary = process.argv.includes('--primary');
-const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
 function runStep(label, args, { buffer = false } = {}) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
-    const child = spawn(pnpmCommand, args, {
+    const child = spawn('pnpm', args, {
       stdio: buffer ? ['ignore', 'pipe', 'pipe'] : 'inherit',
-      shell: process.platform === 'win32',
+      shell: false,
       env: process.env,
     });
     let output = '';
