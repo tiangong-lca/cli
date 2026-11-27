@@ -747,10 +747,11 @@ maybePackTest(
       assertProductionBootstrap(installedBinPath, consumerRoot);
       assertModuleHostBehavior(consumerRoot, cleanRepository, installedManifest.version);
       rmSync(cleanRepository, { recursive: true, force: true });
-      stage('verify installed Study recovery');
-      await assertInstalledStudyRecovery(installedPackageRoot, consumerRoot);
-      stage('verify installed business operations');
-      await assertInstalledBusiness(installedPackageRoot, consumerRoot);
+      stage('verify installed Study recovery and business operations');
+      await Promise.all([
+        assertInstalledStudyRecovery(installedPackageRoot, consumerRoot),
+        assertInstalledBusiness(installedPackageRoot, consumerRoot),
+      ]);
       stage('verify installed report');
       assertInstalledReport(installedPackageRoot, consumerRoot);
 

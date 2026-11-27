@@ -22,6 +22,9 @@ on:
       - .nvmrc
       - .github/dependabot.yml
       - .github/workflows/**
+      - scripts/ci/run-quality-gate.mjs
+      - test/toolchain-contract.test.mjs
+      - test/helpers/cli-business-installed.ts
 
 permissions:
   contents: read
@@ -41,20 +44,23 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             arch: x64
+            primary: true
           - os: windows-latest
             platform: win32
             arch: x64
+            primary: false
           - os: macos-latest
             platform: darwin
             arch: arm64
+            primary: false
           - os: ubuntu-24.04-arm
             platform: linux
             arch: arm64
+            primary: false
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Set up pnpm and Node.js
@@ -74,5 +80,5 @@ jobs:
         if: runner.os == 'Windows'
         run: pnpm exec tsx --test test/runtime-bootstrap-http.test.ts
 
-      - name: Run canonical prepush gate
-        run: pnpm run prepush:gate
+      - name: Run quality gate
+        run: node ./scripts/ci/run-quality-gate.mjs ${{ matrix.primary && '--primary' || '' }}
