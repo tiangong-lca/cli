@@ -31,8 +31,8 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-26
-lastReviewedCommit: 4fd9ba2110ec6e9008771d5a78bcc3324e682f7e
+lastReviewedAt: 2026-11-27
+lastReviewedCommit: 19f26308b36d5b775369f0399dbc7cc73d6f7c8e
 lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
 related:
   - ../../AGENTS.md
