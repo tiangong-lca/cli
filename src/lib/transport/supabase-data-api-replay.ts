@@ -7,6 +7,7 @@ export const DATA_API_RPC_REPLAY_CLASSIFICATION = {
   qry_review_get_comment_items: { operation: 'read', authRefreshReplay: 'once-after-401-403' },
   qry_review_get_items: { operation: 'read', authRefreshReplay: 'once-after-401-403' },
   qry_review_submit_receipt: { operation: 'read', authRefreshReplay: 'never' },
+  qry_review_submit_scope: { operation: 'read', authRefreshReplay: 'once-after-401-403' },
   cmd_dataset_delete: { operation: 'mutation', authRefreshReplay: 'never' },
   cmd_dataset_derivative_rebuild_plan_guarded: {
     operation: 'mutation',

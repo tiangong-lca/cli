@@ -3,7 +3,11 @@ import {
   serviceRejection,
   type ServiceRejectionRules,
 } from './service-rejection.js';
-import { isReviewOAuthRouteDenial, reviewServiceDiagnostic } from './review-service-diagnostic.js';
+import {
+  isReviewOAuthRouteDenial,
+  ReviewReadServiceError,
+  reviewServiceDiagnostic,
+} from './review-service-diagnostic.js';
 import {
   datasetTables,
   editableTypes,
@@ -20,12 +24,30 @@ import { contentDigest } from './dataset-content.js';
 
 export type ReviewMutationAction = 'submit' | 'resubmit' | 'comment' | 'decide';
 
+export type ReviewScopeTarget = {
+  table: string;
+  id: string;
+  version: string;
+  is_root: boolean;
+  previous_state_code: number;
+  proposed_state_code: number;
+  owner_match: boolean;
+};
+
+export type ReviewSubmitScope = {
+  submissionMode: 'root' | 'reference_repair';
+  scopeDigest: string;
+  targets: ReviewScopeTarget[];
+};
+
 // Only refusals whose service branches precede durable writes qualify here.
 // Reference checks inside cmd_review_submit can follow reference creation.
 const submissionRefusals = {
   INVALID_DATASET_TABLE: { status: 400, category: 'input' },
   ROOT_DATASET_NOT_OWNED: { status: 403, category: 'authentication' },
   APPROVED_DATASET_IMMUTABLE: { status: 409, category: 'conflict' },
+  DATA_UNDER_REVIEW: { status: 409, category: 'conflict' },
+  REVIEW_SCOPE_DRIFT: { status: 409, category: 'conflict' },
 } satisfies ServiceRejectionRules;
 const reviewerRequired = { status: 403, category: 'authentication' } as const;
 const reviewRefusals: Record<ReviewMutationAction, ServiceRejectionRules> = {
@@ -43,7 +65,193 @@ const reviewRefusals: Record<ReviewMutationAction, ServiceRejectionRules> = {
   },
 };
 
+const reviewScopeTables = [
+  'contacts',
+  'sources',
+  'unitgroups',
+  'flowproperties',
+  'flows',
+  'processes',
+  'lifecyclemodels',
+] as const;
+
 type ReviewSubmissionTarget = { table: string; id: string; version: string };
+type NormalizedExpectedScopeTarget = {
+  table: string;
+  id: string;
+  version: string;
+  proposed_state_code?: number;
+};
+
+function normalizeExpectedScopeDigest(raw: unknown): string | undefined {
+  if (raw === undefined) return undefined;
+  if (typeof raw !== 'string' || !/^[0-9a-f]{64}$/iu.test(raw.trim()))
+    throw new CommandInputError(
+      'REVIEW_SCOPE_INVALID',
+      'expectedScopeDigest must be a 64-character hex digest.',
+    );
+  return raw.trim().toLowerCase();
+}
+
+function normalizeExpectedScopeTargets(raw: unknown): NormalizedExpectedScopeTarget[] | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw) || raw.length === 0)
+    throw new CommandInputError(
+      'REVIEW_SCOPE_INVALID',
+      'expectedScopeTargets must be a non-empty array.',
+    );
+  return raw.map((item) => {
+    if (!isObject(item))
+      throw new CommandInputError(
+        'REVIEW_SCOPE_INVALID',
+        'Each expectedScopeTargets item must be a JSON object.',
+      );
+    if (
+      Object.keys(item).some(
+        (key) => !['type', 'table', 'id', 'version', 'proposedStateCode'].includes(key),
+      )
+    )
+      throw new CommandInputError(
+        'REVIEW_SCOPE_INVALID',
+        'Unsupported field inside expectedScopeTargets.',
+      );
+    const typeTable =
+      typeof item.type === 'string' &&
+      Object.prototype.hasOwnProperty.call(datasetTables, item.type)
+        ? datasetTables[item.type as DatasetType]
+        : undefined;
+    const rawTable = typeof item.table === 'string' ? item.table.trim().toLowerCase() : undefined;
+    const table = rawTable ?? typeTable;
+    if (
+      (item.type !== undefined && !typeTable) ||
+      (typeTable && rawTable && typeTable !== rawTable) ||
+      !table ||
+      !reviewScopeTables.includes(table as never)
+    )
+      throw new CommandInputError(
+        'REVIEW_SCOPE_INVALID',
+        'Each expectedScopeTargets entry must identify a supported dataset table or type.',
+      );
+    if (
+      typeof item.id !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(item.id) ||
+      typeof item.version !== 'string' ||
+      !/^\d{2}\.\d{2}\.\d{3}$/u.test(item.version) ||
+      (item.proposedStateCode !== undefined && !Number.isInteger(item.proposedStateCode))
+    )
+      throw new CommandInputError(
+        'REVIEW_SCOPE_INVALID',
+        'Each expectedScopeTargets entry requires UUID id, 00.00.000 version, and integer proposedStateCode when given.',
+      );
+    return {
+      table,
+      id: item.id.toLowerCase(),
+      version: item.version,
+      ...(item.proposedStateCode !== undefined
+        ? { proposed_state_code: item.proposedStateCode as number }
+        : {}),
+    };
+  });
+}
+
+function parsePreviewScope(response: {
+  ok: boolean;
+  payload: unknown;
+  status?: number;
+}): ReviewSubmitScope {
+  const { ok, payload, status } = response;
+  if (!ok || !isObject(payload) || payload.ok !== true) {
+    const httpStatus =
+      isObject(payload) && typeof payload.status === 'number' ? payload.status : status;
+    const { message, serviceCode } = reviewServiceDiagnostic(payload, httpStatus);
+    const code =
+      serviceCode ??
+      (isObject(payload) && typeof payload.code === 'string'
+        ? payload.code
+        : 'REVIEW_SCOPE_PREVIEW_FAILED');
+    const oauthDenied = isReviewOAuthRouteDenial(message);
+    throw new ReviewReadServiceError({
+      code,
+      ...(httpStatus ? { httpStatus } : {}),
+      category:
+        oauthDenied || code === 'REFERENCE_ACCESS_DENIED'
+          ? 'authorization'
+          : code === 'AUTH_REQUIRED' || code === 'ROOT_DATASET_NOT_OWNED' || httpStatus === 401
+            ? 'authentication'
+            : code === 'DATA_UNDER_REVIEW' || code === 'APPROVED_DATASET_IMMUTABLE'
+              ? 'conflict'
+              : 'service',
+      message: message ?? 'Review submission scope preview failed.',
+    });
+  }
+  const data = payload.data;
+  if (
+    !isObject(data) ||
+    (data.submissionMode !== 'root' && data.submissionMode !== 'reference_repair') ||
+    typeof data.scopeDigest !== 'string' ||
+    !/^[0-9a-f]{64}$/iu.test(data.scopeDigest) ||
+    !Array.isArray(data.targets) ||
+    data.targets.length === 0 ||
+    data.targets.some(
+      (target) =>
+        !isObject(target) ||
+        typeof target.table !== 'string' ||
+        typeof target.id !== 'string' ||
+        typeof target.version !== 'string' ||
+        typeof target.is_root !== 'boolean' ||
+        !Number.isInteger(target.previous_state_code) ||
+        !Number.isInteger(target.proposed_state_code) ||
+        typeof target.owner_match !== 'boolean',
+    )
+  ) {
+    throw new ReviewReadServiceError({
+      code: 'REVIEW_SCOPE_INVALID_RESPONSE',
+      category: 'service',
+      message: 'Review submission scope preview returned an invalid response.',
+    });
+  }
+  return {
+    submissionMode: data.submissionMode,
+    scopeDigest: data.scopeDigest.toLowerCase(),
+    targets: data.targets as ReviewScopeTarget[],
+  };
+}
+
+function hasScopeDrift(
+  scope: ReviewSubmitScope,
+  expectedDigest?: string,
+  expectedTargets?: NormalizedExpectedScopeTarget[],
+): boolean {
+  if (expectedDigest !== undefined && expectedDigest !== scope.scopeDigest) return true;
+  if (expectedTargets === undefined) return false;
+  for (const expected of expectedTargets) {
+    const matched = scope.targets.find(
+      (actual) =>
+        actual.table === expected.table &&
+        actual.id === expected.id &&
+        actual.version === expected.version,
+    );
+    if (!matched) return true;
+    if (
+      expected.proposed_state_code !== undefined &&
+      expected.proposed_state_code !== matched.proposed_state_code
+    )
+      return true;
+  }
+  for (const actual of scope.targets) {
+    if (!actual.is_root && actual.previous_state_code >= 20) continue;
+    const matched = expectedTargets.find(
+      (expected) =>
+        expected.table === actual.table &&
+        expected.id === actual.id &&
+        expected.version === actual.version &&
+        (expected.proposed_state_code === undefined ||
+          expected.proposed_state_code === actual.proposed_state_code),
+    );
+    if (!matched) return true;
+  }
+  return false;
+}
 
 export type ReviewMutationIntent = {
   binding: JsonObject;
@@ -58,6 +266,9 @@ export type ReviewWritePorts = {
   identity(): Promise<{ environment: string; actor: { userId: string } }>;
   readReview: ReviewRead;
   readDataset: DatasetPorts['read'];
+  previewSubmissionScope(
+    target: ReviewSubmissionTarget,
+  ): Promise<{ ok: boolean; payload: unknown; status?: number }>;
   endpoint(action: ReviewMutationAction): string;
   dispatch(
     action: ReviewMutationAction,
@@ -82,6 +293,8 @@ export async function executeReviewWrite(
       ? [
           'targets',
           'includeRelated',
+          'expectedScopeDigest',
+          'expectedScopeTargets',
           ...(action === 'resubmit' ? ['reviewId', 'expectedState', 'changeSummary'] : []),
         ]
       : [
@@ -165,6 +378,12 @@ export async function executeReviewWrite(
       'Choose approve without reason, or reject with a nonempty reason of at most 1000 characters.',
     );
   if (action === 'comment') object(request.json, 'json');
+  const expectedScopeDigest = submitting
+    ? normalizeExpectedScopeDigest(request.expectedScopeDigest)
+    : undefined;
+  const expectedScopeTargets = submitting
+    ? normalizeExpectedScopeTargets(request.expectedScopeTargets)
+    : undefined;
   const { environment, actor } = await ports.identity();
   if (actor.userId !== expectedActor || environment !== expectedEnvironment)
     throw new CommandInputError(
@@ -179,6 +398,8 @@ export async function executeReviewWrite(
     effectiveInput: {
       ...(target ? { target } : { reviewId: id, expectedState: request.expectedState }),
       ...(submitting ? { includeRelated: true } : {}),
+      ...(expectedScopeDigest ? { expectedScopeDigest } : {}),
+      ...(expectedScopeTargets ? { expectedScopeTargets } : {}),
       ...(action === 'comment' ? { draftDigest: contentDigest(request.json) } : {}),
       ...(action === 'decide' ? { decision: request.decision } : {}),
     },
@@ -193,6 +414,8 @@ export async function executeReviewWrite(
       ...(action === 'submit' ? [] : ['server_expected_review_state_compare']),
     ],
   };
+  const submission = target ? { table: datasetTables[type!], id, version: version! } : undefined;
+  let previewedScope: ReviewSubmitScope | undefined;
   const preflight = async () => {
     if (action !== 'submit') {
       const reviewId = text(request.reviewId, 'reviewId');
@@ -231,10 +454,11 @@ export async function executeReviewWrite(
           'REVIEW_TARGET_CONFLICT',
           'Submission requires the exact owned draft dataset.',
         );
+      previewedScope = parsePreviewScope(await ports.previewSubmissionScope(submission!));
+      value.data.scope = previewedScope;
     }
   };
   const endpoint = ports.endpoint(action);
-  const submission = target ? { table: datasetTables[type!], id, version: version! } : undefined;
   const body =
     submission ??
     (action === 'comment'
@@ -251,18 +475,42 @@ export async function executeReviewWrite(
   };
   if (dryRun) {
     await preflight();
-    value.outcome = 'preview_completed';
-    value.summary =
-      'Readable preconditions checked without mutation. Related submission scope and final admission are evaluated by the server at dispatch.';
     value.completeness = {
       ...value.completeness,
       dryRun: true,
-      notChecked: [
-        ...(value.completeness.notChecked as string[]),
-        'server_write_time_admission',
-        ...(submitting ? ['server_related_scope'] : []),
-      ],
+      notChecked: [...(value.completeness.notChecked as string[]), 'server_write_time_admission'],
     };
+    if (
+      submitting &&
+      previewedScope &&
+      hasScopeDrift(previewedScope, expectedScopeDigest, expectedScopeTargets)
+    ) {
+      value.status = 'failed';
+      value.outcome = 'rejected';
+      value.summary = 'Related review submission scope does not match the authorized scope.';
+      value.error = {
+        httpStatus: 409,
+        code: 'REVIEW_SCOPE_DRIFT',
+        category: 'conflict',
+        message: value.summary,
+      };
+      value.data.receipt = {
+        ok: false,
+        code: 'REVIEW_SCOPE_DRIFT',
+        httpStatus: 409,
+        details: {
+          submissionMode: previewedScope.submissionMode,
+          expectedScopeDigest: expectedScopeDigest ?? null,
+          actualScopeDigest: previewedScope.scopeDigest,
+          actualTargets: previewedScope.targets,
+        },
+      };
+      return value;
+    }
+    value.outcome = 'preview_completed';
+    value.summary = submitting
+      ? 'Readable preconditions and server related scope checked without mutation. Final write-time admission and scope binding are enforced atomically by the server at dispatch.'
+      : 'Readable preconditions checked without mutation. Related submission scope and final admission are evaluated by the server at dispatch.';
     return value;
   }
   return ports.executeIntent({
@@ -273,9 +521,16 @@ export async function executeReviewWrite(
     preflight,
     ...(submission ? { recover: (key: string) => ports.recoverSubmission(submission, key) } : {}),
     dispatch: async (key) => {
+      const dispatchBody = submission
+        ? {
+            ...submission,
+            expectedScopeDigest: expectedScopeDigest ?? previewedScope?.scopeDigest,
+            ...(expectedScopeTargets ? { expectedScopeTargets } : {}),
+          }
+        : body;
       const { ok, payload, status } = await ports.dispatch(
         action,
-        body,
+        dispatchBody,
         submission ? key : undefined,
       );
       value.data.serviceResponse = reviewServiceDiagnostic(payload, status);
@@ -305,11 +560,18 @@ export async function executeReviewWrite(
           category: isReviewOAuthRouteDenial(message) ? 'authorization' : rejection.category,
           message: message ?? value.summary,
         };
+        const driftDetails =
+          rejection.code === 'REVIEW_SCOPE_DRIFT' &&
+          isObject(selected) &&
+          isObject(selected.details)
+            ? selected.details
+            : undefined;
         value.data.receipt = {
           ok: false,
           code: rejection.code,
           ...(httpStatus && { httpStatus }),
           ...(message && { message }),
+          ...(driftDetails ? { details: driftDetails } : {}),
         };
       } else {
         if (submitting) {
@@ -318,6 +580,10 @@ export async function executeReviewWrite(
           if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(reviewId))
             throw new Error('invalid review acknowledgement identity');
           value.data.reviewId = reviewId;
+          if (typeof data.submissionMode === 'string')
+            value.data.submissionMode = data.submissionMode;
+          if (Array.isArray(data.affectedDatasets))
+            value.data.affectedDatasets = data.affectedDatasets;
         }
         value.data.receipt = payload;
         value.status = submitting ? 'accepted' : 'completed';

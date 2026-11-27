@@ -70,10 +70,14 @@ test('data api manifest freezes the exact database contract and complete CLI inv
     'sources',
     'unitgroups',
   ]);
-  assert.equal(Object.keys(DATA_API_RPC_TARGETS).length, 8);
+  assert.equal(Object.keys(DATA_API_RPC_TARGETS).length, 9);
   assert.deepEqual(DATA_API_RPC_REPLAY_CLASSIFICATION.qry_review_submit_receipt, {
     operation: 'read',
     authRefreshReplay: 'never',
+  });
+  assert.deepEqual(DATA_API_RPC_REPLAY_CLASSIFICATION.qry_review_submit_scope, {
+    operation: 'read',
+    authRefreshReplay: 'once-after-401-403',
   });
   assert.deepEqual(
     Object.keys(DATA_API_RPC_REPLAY_CLASSIFICATION).sort(),

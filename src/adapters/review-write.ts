@@ -9,6 +9,7 @@ import {
   createSupabaseDataClient,
 } from '../lib/transport/supabase-client.js';
 import type { FetchLike } from '../lib/transport/http.js';
+import { reviewServiceDiagnostic } from '../application/review-service-diagnostic.js';
 import { datasetReader } from './dataset-read.js';
 import { reviewReader } from './review-read.js';
 import { runMutationIntent } from './mutation-intent.js';
@@ -44,6 +45,36 @@ export function reviewWriter(
       readDataset: datasetReader(env, fetchImpl),
       endpoint: (action) => endpoints[action],
       executeIntent: (options) => runMutationIntent({ directory, ...options }),
+      previewSubmissionScope: async ({ table, id, version }) => {
+        const { client } = createSupabaseDataClient(
+          {
+            apiBaseUrl: transport.functionsBaseUrl,
+            publishableKey: transport.publishableKey,
+            getAccessToken: async () => transport.accessToken,
+          },
+          fetchImpl,
+          10_000,
+        );
+        const { data, error, status } = await client.schema('api').rpc('qry_review_submit_scope', {
+          p_target_table: table,
+          p_target_id: id,
+          p_target_version: version,
+        });
+        if (error) {
+          const { message, ...diagnostic } = reviewServiceDiagnostic(error, status);
+          return {
+            ok: false,
+            status,
+            payload: {
+              ok: false,
+              code: diagnostic.serviceCode ?? 'REVIEW_SCOPE_PREVIEW_FAILED',
+              status,
+              ...(message ? { message } : {}),
+            },
+          };
+        }
+        return { ok: true, payload: data, status };
+      },
       recoverSubmission: async ({ table, id, version }, operationKey) => {
         const { client } = createSupabaseDataClient(
           {

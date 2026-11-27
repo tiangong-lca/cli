@@ -1,10 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import {
+  COMMISSIONER_FIELD,
   collectProcessPlaceholderIssues,
   collectProcessRequiredFieldIssues,
 } from '../src/lib/validation/process-required-fields.js';
+import { validateProcessPayload } from '../src/lib/validation/process-payload-validation.js';
 test('process required field issue collector detects missing and invalid annual volumes', () => {
+  const validAdministrativeInformation = {
+    'common:commissionerAndGoal': {
+      'common:referenceToCommissioner': {
+        '@type': 'contact data set',
+        '@refObjectId': '33333333-3333-4333-8333-333333333333',
+      },
+    },
+  };
   const validRequiredStructures = {
     validation: {
       review: {
@@ -70,6 +81,7 @@ test('process required field issue collector detects missing and invalid annual 
           ...validRequiredStructures,
           dataSourcesTreatmentAndRepresentativeness: {},
         },
+        administrativeInformation: validAdministrativeInformation,
       },
     }).map((issue) => issue.code),
     ['annual_supply_or_production_volume_missing'],
@@ -110,6 +122,7 @@ test('process required field issue collector detects missing and invalid annual 
             },
           },
         },
+        administrativeInformation: validAdministrativeInformation,
       },
     }).map((issue) => issue.code),
     ['annual_supply_or_production_volume_missing'],
@@ -128,6 +141,7 @@ test('process required field issue collector detects missing and invalid annual 
             ],
           },
         },
+        administrativeInformation: validAdministrativeInformation,
       },
     }).map((issue) => issue.code),
     ['annual_supply_or_production_volume_missing'],
@@ -141,6 +155,7 @@ test('process required field issue collector detects missing and invalid annual 
             annualSupplyOrProductionVolume: [{ '@xml:lang': 'en', '#text': 'not quantified' }],
           },
         },
+        administrativeInformation: validAdministrativeInformation,
       },
     }).map((issue) => issue.code),
     ['annual_supply_or_production_volume_invalid'],
@@ -156,6 +171,7 @@ test('process required field issue collector detects missing and invalid annual 
             ],
           },
         },
+        administrativeInformation: validAdministrativeInformation,
       },
     }).map((issue) => issue.code),
     ['annual_supply_or_production_volume_not_annualized'],
@@ -170,7 +186,11 @@ test('process required field issue collector detects missing and invalid annual 
         },
       },
     }).map((issue) => issue.code),
-    ['process_validation_review_missing', 'process_compliance_declaration_missing'],
+    [
+      'process_validation_review_missing',
+      'process_compliance_declaration_missing',
+      'process_commissioner_missing',
+    ],
   );
 });
 
@@ -280,5 +300,71 @@ test('malformed annual evidence and compliance never become invented valid value
     assert.ok(issues.some((issue) => issue.code.startsWith('annual_supply')));
     assert.ok(issues.some((issue) => issue.code === 'process_compliance_declaration_missing'));
     assert.deepEqual(payload, before);
+  }
+});
+
+test('process commissioner validation rejects missing, empty and malformed references (#518)', () => {
+  const fixture = JSON.parse(
+    readFileSync(
+      new URL('./fixtures/tidas-sdk/test-data/process-annual-volume.json', import.meta.url),
+      'utf8',
+    ),
+  ) as Record<string, unknown>;
+  const root = fixture.processDataSet as Record<string, unknown>;
+  const admin = root.administrativeInformation as Record<string, unknown>;
+  const goal = admin['common:commissionerAndGoal'] as Record<string, unknown>;
+
+  assert.equal(validateProcessPayload(fixture).ok, true);
+
+  const untypedValid = structuredClone(fixture);
+  const untypedGoal = (
+    (untypedValid.processDataSet as Record<string, unknown>).administrativeInformation as Record<
+      string,
+      unknown
+    >
+  )['common:commissionerAndGoal'] as Record<string, unknown>;
+  untypedGoal['common:referenceToCommissioner'] = [
+    { '@refObjectId': '33333333-3333-4333-8333-333333333333' },
+  ];
+  assert.deepEqual(collectProcessRequiredFieldIssues(untypedValid), []);
+
+  const emptyArrayPayload = structuredClone(fixture);
+  (
+    (emptyArrayPayload.processDataSet as Record<string, unknown>)
+      .administrativeInformation as Record<string, unknown>
+  )['common:commissionerAndGoal'] = {
+    ...goal,
+    'common:referenceToCommissioner': [],
+  };
+  const emptyResult = validateProcessPayload(emptyArrayPayload);
+  assert.equal(emptyResult.ok, false);
+  assert.ok(
+    emptyResult.issues.some(
+      (issue) => issue.code === 'process_commissioner_empty' && issue.path === COMMISSIONER_FIELD,
+    ),
+  );
+
+  for (const invalidValue of [
+    'not-an-object',
+    { '@type': 'contact data set', '@refObjectId': '  ' },
+    [{ '@type': 'flow data set', '@refObjectId': '33333333-3333-4333-8333-333333333333' }],
+  ]) {
+    const invalidPayload = structuredClone(fixture);
+    (
+      (invalidPayload.processDataSet as Record<string, unknown>)
+        .administrativeInformation as Record<string, unknown>
+    )['common:commissionerAndGoal'] = {
+      ...goal,
+      'common:referenceToCommissioner': invalidValue,
+    };
+    const invalidIssues = collectProcessRequiredFieldIssues(invalidPayload);
+    assert.deepEqual(invalidIssues, [
+      {
+        code: 'process_commissioner_invalid',
+        message:
+          'Process common:referenceToCommissioner entries must be contact data set references with non-empty @refObjectId.',
+        path: COMMISSIONER_FIELD,
+      },
+    ]);
   }
 });

@@ -6,6 +6,8 @@ export const ANNUAL_SUPPLY_FIELD =
   'processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume';
 const DATA_SOURCES_TREATMENT_FIELD =
   'processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness';
+export const COMMISSIONER_FIELD =
+  'processDataSet.administrativeInformation.common:commissionerAndGoal.common:referenceToCommissioner';
 const ANNUAL_SUPPLY_MISSING_DATA_SENTINEL_TEXT = '9999 missing-data-sentinel/year';
 const NUMERIC_TEXT_WITH_SUFFIX_PATTERN = /^[+-]?(\d+(\.\d*)?|\.\d+)([Ee][+-]?\d+)?\s+\S.*$/u;
 const ANNUAL_UNAVAILABLE_PATTERN =
@@ -96,6 +98,56 @@ function isValidComplianceDeclaration(value: unknown): boolean {
   });
 }
 
+function isValidCommissionerReference(item: unknown): boolean {
+  if (!isRecord(item) || !firstNonEmpty(item['@refObjectId'])) {
+    return false;
+  }
+  const refType = firstNonEmpty(item['@type']);
+  return refType === null || refType.toLowerCase() === 'contact data set';
+}
+
+function collectCommissionerIssue(root: JsonObject): ProcessRequiredFieldIssue | null {
+  const admin = isRecord(root.administrativeInformation) ? root.administrativeInformation : null;
+  const commissionerAndGoal =
+    admin && isRecord(admin['common:commissionerAndGoal'])
+      ? admin['common:commissionerAndGoal']
+      : null;
+  if (
+    !commissionerAndGoal ||
+    !Object.hasOwn(commissionerAndGoal, 'common:referenceToCommissioner') ||
+    commissionerAndGoal['common:referenceToCommissioner'] === undefined ||
+    commissionerAndGoal['common:referenceToCommissioner'] === null
+  ) {
+    return {
+      code: 'process_commissioner_missing',
+      message:
+        'Process payload must include administrativeInformation.common:commissionerAndGoal.common:referenceToCommissioner.',
+      path: COMMISSIONER_FIELD,
+    };
+  }
+
+  const value = commissionerAndGoal['common:referenceToCommissioner'];
+  if (Array.isArray(value) && value.length === 0) {
+    return {
+      code: 'process_commissioner_empty',
+      message:
+        'Process payload must include at least one non-empty contact reference in common:referenceToCommissioner.',
+      path: COMMISSIONER_FIELD,
+    };
+  }
+
+  if (!asList(value).every(isValidCommissionerReference)) {
+    return {
+      code: 'process_commissioner_invalid',
+      message:
+        'Process common:referenceToCommissioner entries must be contact data set references with non-empty @refObjectId.',
+      path: COMMISSIONER_FIELD,
+    };
+  }
+
+  return null;
+}
+
 export function collectProcessRequiredFieldIssues(
   payload: JsonObject,
 ): ProcessRequiredFieldIssue[] {
@@ -134,6 +186,11 @@ export function collectProcessRequiredFieldIssues(
         'Process payload must include modellingAndValidation.complianceDeclarations.compliance.',
       path: 'processDataSet.modellingAndValidation.complianceDeclarations.compliance',
     });
+  }
+
+  const commissionerIssue = collectCommissionerIssue(root);
+  if (commissionerIssue) {
+    issues.push(commissionerIssue);
   }
 
   const annualSupply = dataSources.annualSupplyOrProductionVolume;
@@ -261,11 +318,13 @@ export function collectProcessPlaceholderIssues(payload: JsonObject): ProcessReq
 export const __testInternals = {
   annualSupplyItems,
   asList,
+  collectCommissionerIssue,
   collectPlaceholderIssuesFromValue,
   collectProcessPlaceholderIssues,
   collectProcessRequiredFieldIssues,
   isUnknownAnnualSupplyValue,
   isValidAnnualSupplyVolume,
+  isValidCommissionerReference,
   isValidComplianceDeclaration,
   isValidReview,
   issuePath,

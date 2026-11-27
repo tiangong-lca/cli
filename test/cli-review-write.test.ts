@@ -1,4 +1,8 @@
-import type { ReviewMutationAction } from '../src/application/review-write.js';
+import {
+  executeReviewWrite,
+  type ReviewMutationAction,
+  type ReviewWritePorts,
+} from '../src/application/review-write.js';
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 import {
@@ -28,6 +32,18 @@ const actor = '00000000-0000-4000-8000-000000000001';
 const id = '00000000-0000-4000-8000-000000000002';
 const reviewId = '00000000-0000-4000-8000-000000000003';
 const version = '00.00.001';
+const defaultScopeDigest = 'a'.repeat(64);
+const defaultScopeTargets = [
+  {
+    table: 'contacts',
+    id,
+    version,
+    is_root: true,
+    previous_state_code: 0,
+    proposed_state_code: 20,
+    owner_match: true,
+  },
+];
 const env = buildSupabaseTestEnv({ TIANGONG_LCA_AUTH_MODE: 'access-token' });
 const content = { contactDataSet: {} };
 const base = {
@@ -50,6 +66,7 @@ function setup(
     targetVersion?: string;
     reviewMissing?: boolean;
     recoveryResponse?: () => Response;
+    scopeResponse?: () => Response;
   } = {},
 ) {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'review-write-'));
@@ -61,6 +78,19 @@ function setup(
     if (url.includes('/rpc/qry_review_submit_receipt')) {
       lookups.push({ url: new URL(url), method: init?.method });
       return options.recoveryResponse?.() ?? Response.json(null);
+    }
+    if (url.includes('/rpc/qry_review_submit_scope')) {
+      return (
+        options.scopeResponse?.() ??
+        Response.json({
+          ok: true,
+          data: {
+            submissionMode: 'root',
+            scopeDigest: defaultScopeDigest,
+            targets: defaultScopeTargets,
+          },
+        })
+      );
     }
     if (url.includes('/functions/v1/')) {
       calls.push({
@@ -120,7 +150,12 @@ test('existing submission binds actor, defaults related data and journals one ac
   const preview = await fixture.writer('submit', submit, true);
   assert.equal(preview.outcome, 'preview_completed');
   assert.deepEqual(preview.context.defaultedInputs, { includeRelated: true });
-  assert.ok((preview.completeness.notChecked as string[]).includes('server_related_scope'));
+  assert.ok(!(preview.completeness.notChecked as string[]).includes('server_related_scope'));
+  assert.deepEqual(preview.data.scope, {
+    submissionMode: 'root',
+    scopeDigest: defaultScopeDigest,
+    targets: defaultScopeTargets,
+  });
   assert.deepEqual(readdirSync(fixture.directory), []);
   assert.equal(fixture.calls.length, 0);
   const responses = await Promise.all([
@@ -130,7 +165,12 @@ test('existing submission binds actor, defaults related data and journals one ac
   assert.equal(fixture.calls.length, 1);
   assert.equal(responses[0]!.status, 'accepted');
   assert.equal(responses[1]!.outcome, 'original_result_returned');
-  assert.deepEqual(fixture.calls[0]!.body, { table: 'contacts', id, version });
+  assert.deepEqual(fixture.calls[0]!.body, {
+    table: 'contacts',
+    id,
+    version,
+    expectedScopeDigest: defaultScopeDigest,
+  });
   const input = path.join(fixture.directory, 'request.json');
   writeFileSync(input, JSON.stringify(submit));
   const presented = await runReviewCommand(
@@ -173,7 +213,12 @@ test('resubmit records the rejected predecessor without claiming a backend round
     (response.data.previousReview as JsonObject).association,
     'caller_observed_not_server_round_link',
   );
-  assert.deepEqual(fixture.calls[0]!.body, { table: 'contacts', id, version });
+  assert.deepEqual(fixture.calls[0]!.body, {
+    table: 'contacts',
+    id,
+    version,
+    expectedScopeDigest: defaultScopeDigest,
+  });
   const mismatch = setup(t, { state: -1, targetVersion: '00.00.002' });
   await assert.rejects(mismatch.writer('resubmit', request, false), /identify the rejected/);
   assert.equal(mismatch.calls.length, 0);
@@ -619,4 +664,363 @@ test('a failing recovery port leaves the dispatched journal unchanged', async (t
   });
   assert.equal(second.status, 'unknown');
   assert.equal(readFileSync(journal, 'utf8'), before);
+});
+
+test('#548 covers isolated root, approved dependency, unexpected draft, mid-flight drift and resubmit recovery', async (t) => {
+  const refContactId = '00000000-0000-4000-8000-000000000010';
+  const refDraftFlowId = '00000000-0000-4000-8000-000000000020';
+  const isolatedAndApprovedDigest = 'b'.repeat(64);
+  const withDraftDigest = 'c'.repeat(64);
+
+  // 1. Isolated root + approved dependency preview & bound submission
+  const approvedFixture = setup(t, {
+    payload: {
+      ok: true,
+      data: {
+        reviewId,
+        submissionMode: 'root',
+        affectedDatasets: [
+          { table: 'contacts', id, version, previous_state_code: 0, state_code: 20 },
+          {
+            table: 'contacts',
+            id: refContactId,
+            version,
+            previous_state_code: 100,
+            state_code: 100,
+          },
+        ],
+      },
+    },
+    scopeResponse: () =>
+      Response.json({
+        ok: true,
+        data: {
+          submissionMode: 'root',
+          scopeDigest: isolatedAndApprovedDigest,
+          targets: [
+            {
+              table: 'contacts',
+              id,
+              version,
+              is_root: true,
+              previous_state_code: 0,
+              proposed_state_code: 20,
+              owner_match: true,
+            },
+            {
+              table: 'contacts',
+              id: refContactId,
+              version,
+              is_root: false,
+              previous_state_code: 100,
+              proposed_state_code: 100,
+              owner_match: false,
+            },
+          ],
+        },
+      }),
+  });
+  const approvedDryRun = await approvedFixture.writer(
+    'submit',
+    {
+      ...submit,
+      expectedScopeDigest: isolatedAndApprovedDigest.toUpperCase(),
+      expectedScopeTargets: [{ type: 'contact', id, version, proposedStateCode: 20 }],
+    },
+    true,
+  );
+  assert.equal(approvedDryRun.outcome, 'preview_completed');
+  assert.ok(!(approvedDryRun.completeness.notChecked as string[]).includes('server_related_scope'));
+  const approvedSubmit = await approvedFixture.writer(
+    'submit',
+    {
+      ...submit,
+      expectedScopeDigest: isolatedAndApprovedDigest,
+      expectedScopeTargets: [{ table: 'contacts', id, version, proposedStateCode: 20 }],
+    },
+    false,
+  );
+  assert.equal(approvedSubmit.status, 'accepted');
+  assert.equal(approvedSubmit.data.reviewId, reviewId);
+  assert.equal(approvedSubmit.data.submissionMode, 'root');
+  assert.equal((approvedSubmit.data.affectedDatasets as unknown[]).length, 2);
+  assert.deepEqual(approvedFixture.calls[0]!.body, {
+    table: 'contacts',
+    id,
+    version,
+    expectedScopeDigest: isolatedAndApprovedDigest,
+    expectedScopeTargets: [{ table: 'contacts', id, version, proposed_state_code: 20 }],
+  });
+
+  // 2. Unexpected related draft caught on dry-run & rejected atomically on dispatch
+  const unexpectedDraftScope = {
+    submissionMode: 'root',
+    scopeDigest: withDraftDigest,
+    targets: [
+      {
+        table: 'contacts',
+        id,
+        version,
+        is_root: true,
+        previous_state_code: 0,
+        proposed_state_code: 20,
+        owner_match: true,
+      },
+      {
+        table: 'flows',
+        id: refDraftFlowId,
+        version,
+        is_root: false,
+        previous_state_code: 0,
+        proposed_state_code: 20,
+        owner_match: true,
+      },
+    ],
+  };
+  const draftDryRunFixture = setup(t, {
+    scopeResponse: () => Response.json({ ok: true, data: unexpectedDraftScope }),
+  });
+  const dryRunDrift = await draftDryRunFixture.writer(
+    'submit',
+    {
+      ...submit,
+      expectedScopeTargets: [{ type: 'contact', id, version }],
+    },
+    true,
+  );
+  assert.equal(dryRunDrift.status, 'failed');
+  assert.equal(dryRunDrift.outcome, 'rejected');
+  assert.equal(dryRunDrift.error?.code, 'REVIEW_SCOPE_DRIFT');
+  assert.equal(draftDryRunFixture.calls.length, 0);
+
+  // Also test unmatched expected entry & mismatched proposedStateCode in dry-run hasScopeDrift
+  assert.equal(
+    (
+      await draftDryRunFixture.writer(
+        'submit',
+        {
+          ...submit,
+          requestId: 'extra-target',
+          expectedScopeTargets: [
+            { table: 'contacts', id, version, proposedStateCode: 20 },
+            { table: 'flows', id: refDraftFlowId, version, proposedStateCode: 20 },
+            { table: 'sources', id: refContactId, version },
+          ],
+        },
+        true,
+      )
+    ).error?.code,
+    'REVIEW_SCOPE_DRIFT',
+  );
+  assert.equal(
+    (
+      await draftDryRunFixture.writer(
+        'submit',
+        {
+          ...submit,
+          requestId: 'wrong-state',
+          expectedScopeTargets: [{ table: 'contacts', id, version, proposedStateCode: 100 }],
+        },
+        true,
+      )
+    ).error?.code,
+    'REVIEW_SCOPE_DRIFT',
+  );
+  assert.equal(
+    (
+      await draftDryRunFixture.writer(
+        'submit',
+        { ...submit, requestId: 'stale-digest', expectedScopeDigest: 'f'.repeat(64) },
+        true,
+      )
+    ).error?.code,
+    'REVIEW_SCOPE_DRIFT',
+  );
+
+  // 3. Mid-flight dependency drift between preview and dispatch -> 409 REVIEW_SCOPE_DRIFT with details/data
+  for (const driftPayload of [
+    {
+      ok: false,
+      code: 'REVIEW_SCOPE_DRIFT',
+      message: 'Related review submission scope does not match the authorized scope',
+      details: {
+        submissionMode: 'root',
+        expectedScopeDigest: isolatedAndApprovedDigest,
+        actualScopeDigest: withDraftDigest,
+        actualTargets: unexpectedDraftScope.targets,
+      },
+    },
+    {
+      ok: false,
+      code: 'REVIEW_SCOPE_DRIFT',
+      message: 'Related review submission scope does not match the authorized scope',
+    },
+  ]) {
+    const midFlight = setup(t, { httpStatus: 409, payload: driftPayload });
+    const rejected = await midFlight.writer(
+      'submit',
+      { ...submit, expectedScopeDigest: defaultScopeDigest },
+      false,
+    );
+    assert.equal(rejected.status, 'failed');
+    assert.equal(rejected.outcome, 'service_rejected');
+    assert.equal(rejected.error?.code, 'REVIEW_SCOPE_DRIFT');
+    if ('details' in driftPayload) {
+      assert.deepEqual((rejected.data.receipt as JsonObject).details, driftPayload.details);
+    }
+  }
+
+  // 4. Resubmit after return binds scope and preserves affectedDatasets
+  const resubmitScope = setup(t, {
+    state: -1,
+    payload: {
+      ok: true,
+      data: {
+        reviewId,
+        submissionMode: 'reference_repair',
+        affectedDatasets: [
+          { table: 'contacts', id, version, previous_state_code: 0, state_code: 20 },
+        ],
+      },
+    },
+    scopeResponse: () =>
+      Response.json({
+        ok: true,
+        data: {
+          submissionMode: 'reference_repair',
+          scopeDigest: defaultScopeDigest,
+          targets: defaultScopeTargets,
+        },
+      }),
+  });
+  const resubmitted = await resubmitScope.writer(
+    'resubmit',
+    {
+      ...submit,
+      reviewId,
+      expectedState: -1,
+      changeSummary: 'Corrected reference',
+      expectedScopeDigest: defaultScopeDigest,
+    },
+    false,
+  );
+  assert.equal(resubmitted.status, 'accepted');
+  assert.equal(resubmitted.data.submissionMode, 'reference_repair');
+  assert.equal((resubmitted.data.affectedDatasets as unknown[]).length, 1);
+});
+
+test('#548 scope validation and preview service failures fail closed', async (t) => {
+  const fixture = setup(t);
+  for (const invalid of [
+    { expectedScopeDigest: 'not-hex' },
+    { expectedScopeDigest: 123 },
+    { expectedScopeTargets: [] },
+    { expectedScopeTargets: 'bad' },
+    { expectedScopeTargets: [null] },
+    { expectedScopeTargets: [{ type: 'contact', id, version, extra: 1 }] },
+    { expectedScopeTargets: [{ id, version }] },
+    { expectedScopeTargets: [{ type: 'lciamethod', id, version }] },
+    { expectedScopeTargets: [{ type: 'contact', table: 'flows', id, version }] },
+    { expectedScopeTargets: [{ table: 'contacts', id: 'bad', version }] },
+    { expectedScopeTargets: [{ table: 'contacts', id, version: 'bad' }] },
+    { expectedScopeTargets: [{ table: 'contacts', id, version, proposedStateCode: 1.5 }] },
+  ]) {
+    await assert.rejects(
+      fixture.writer('submit', { ...submit, ...invalid }, true),
+      (err: unknown) =>
+        err instanceof Error && 'code' in err && err.code === 'REVIEW_SCOPE_INVALID',
+    );
+  }
+
+  for (const [scopeResponse, expectedCode, expectedCategory] of [
+    [
+      () =>
+        Response.json(
+          {
+            ok: false,
+            code: '42501',
+            message: 'OAuth client is not authorized for this API route',
+          },
+          { status: 403 },
+        ),
+      '42501',
+      'authorization',
+    ],
+    [
+      () => Response.json({ ok: false, code: 'AUTH_REQUIRED', status: 401 }),
+      'AUTH_REQUIRED',
+      'authentication',
+    ],
+    [
+      () => Response.json({ ok: false, code: 'REFERENCE_ACCESS_DENIED', status: 403 }),
+      'REFERENCE_ACCESS_DENIED',
+      'authorization',
+    ],
+    [
+      () => Response.json({ ok: false, code: 'DATA_UNDER_REVIEW', status: 409 }),
+      'DATA_UNDER_REVIEW',
+      'conflict',
+    ],
+    [() => Response.json({ ok: false }), 'REVIEW_SCOPE_PREVIEW_FAILED', 'service'],
+    [() => new Response(null, { status: 500 }), 'REVIEW_SCOPE_PREVIEW_FAILED', 'service'],
+    [
+      () =>
+        Response.json({
+          ok: true,
+          data: { submissionMode: 'root', scopeDigest: 'bad', targets: [] },
+        }),
+      'REVIEW_SCOPE_INVALID_RESPONSE',
+      'service',
+    ],
+  ] as const) {
+    const failedPreview = setup(t, { scopeResponse });
+    const input = path.join(failedPreview.directory, 'request.json');
+    writeFileSync(input, JSON.stringify(submit));
+    const reply = await runReviewCommand(
+      ['submit', '--input', input, '--dry-run', '--json'],
+      async () => ({ records: [], total: 0, environment: 'test', actor }),
+      { mutate: failedPreview.writer, materials: async () => ({}) },
+    );
+    assert.equal(reply.exitCode, 1);
+    const parsed = JSON.parse(reply.stdout);
+    assert.equal(parsed.error.code, expectedCode);
+    assert.equal(parsed.error.category, expectedCategory);
+  }
+
+  const noStatusPorts: ReviewWritePorts = {
+    identity: async () => ({
+      environment: 'https://example.supabase.co',
+      actor: { userId: actor },
+    }),
+    readReview: async () => ({ environment: '', actor, total: 0, records: [] }),
+    readDataset: async () => ({
+      environment: '',
+      actor,
+      total: 1,
+      records: [
+        {
+          type: 'contact',
+          id,
+          version,
+          stateCode: 0,
+          owner: actor,
+          modifiedAt: null,
+          name: null,
+          json: content,
+        } as never,
+      ],
+    }),
+    endpoint: () => 'app_dataset_submit_review',
+    previewSubmissionScope: async () => ({ ok: false, payload: null }),
+    dispatch: async () => ({ ok: true, payload: null }),
+    recoverSubmission: async () => null,
+    executeIntent: async (options) => options.dispatch('op-key'),
+  };
+  await assert.rejects(
+    executeReviewWrite('submit', submit, true, noStatusPorts),
+    (err: unknown) =>
+      err instanceof Error &&
+      'diagnostic' in err &&
+      (err.diagnostic as JsonObject).httpStatus === undefined,
+  );
 });

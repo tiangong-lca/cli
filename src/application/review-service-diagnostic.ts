@@ -8,11 +8,15 @@ const safeServiceReasons: Readonly<Record<string, readonly string[]>> = {
   '401/AUTH_REQUIRED': ['Authentication required'],
   '400/INVALID_DATASET_TABLE': ['Unsupported dataset table for review submission'],
   '403/ROOT_DATASET_NOT_OWNED': ['Only the dataset owner can submit review'],
+  '403/REFERENCE_ACCESS_DENIED': ['A referenced dataset is not accessible'],
   '409/APPROVED_DATASET_IMMUTABLE': ['Only a Draft dataset can be submitted'],
   '409/DATA_UNDER_REVIEW': [
     'Only a Draft dataset can be submitted',
     'An active Root Review already exists',
   ],
+  '409/ROOT_OWNER_UNRESOLVED': ['Dataset owner could not be resolved'],
+  '409/REFERENCE_OWNER_UNRESOLVED': ['Dataset owner could not be resolved'],
+  '409/REVIEW_SCOPE_DRIFT': ['Related review submission scope does not match the authorized scope'],
 };
 
 export function reviewServiceDiagnostic(payload: unknown, status?: number) {
