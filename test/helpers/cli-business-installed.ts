@@ -221,24 +221,32 @@ export async function assertInstalledBusiness(installedPackageRoot: string, cons
     assert.equal((saved.data as Json).status, 'completed');
     const scores = await invoke(['calculation', 'result', '--dir', savedRun]);
     assert.deepEqual((scores.data as Json).items, [{ methodId: 'method', amount: 0 }]);
-    for (const command of ['search', 'flow', 'process', 'lifecyclemodel', 'qa', 'publish']) {
-      await invoke([command, '--help'], businessActor, 2, 'UNKNOWN_COMMAND');
-    }
-    for (const command of [
-      'contract',
-      'context-pack',
-      'curation-queue',
-      'author',
-      'patch',
-      'save-draft',
-      'validate',
-      'support-cache',
-      'verify-remote',
-      'bilingual',
-      'evidence-search',
-      'references',
-    ]) {
-      await invoke(['dataset', command, '--help'], businessActor, 2, 'UNKNOWN_COMMAND');
+    const retiredInvocations: string[][] = [
+      ...['search', 'flow', 'process', 'lifecyclemodel', 'qa', 'publish'].map((command) => [
+        command,
+        '--help',
+      ]),
+      ...[
+        'contract',
+        'context-pack',
+        'curation-queue',
+        'author',
+        'patch',
+        'save-draft',
+        'validate',
+        'support-cache',
+        'verify-remote',
+        'bilingual',
+        'evidence-search',
+        'references',
+      ].map((command) => ['dataset', command, '--help']),
+    ];
+    for (let index = 0; index < retiredInvocations.length; index += 4) {
+      await Promise.all(
+        retiredInvocations
+          .slice(index, index + 4)
+          .map((argv) => invoke(argv, businessActor, 2, 'UNKNOWN_COMMAND')),
+      );
     }
     assert.equal(backend.calls.length, 0, 'Retired paths must not contact the backend');
     const stdinReferences = await invoke(

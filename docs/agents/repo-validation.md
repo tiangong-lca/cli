@@ -59,7 +59,7 @@ pnpm test
 pnpm prepush:gate
 ```
 
-The complete gate verifies bundled public rules, lint/typecheck and Data API consumers, peers, the independent package lane, independent launcher/entrypoint tests, full-source coverage and its exact 100% assertion. Never add coverage exclusions, ignore pragmas or weaker assertions to pass a refactor. Only the existing Windows-native and explicitly enabled service lanes may use their documented environment gates.
+The complete gate verifies bundled public rules, lint/typecheck and Data API consumers, peers, the independent package lane, independent launcher/entrypoint tests, full-source coverage and its exact 100% assertion. Never add coverage exclusions, ignore pragmas or weaker assertions to pass a refactor. Only the existing Windows-native and explicitly enabled service lanes may use their documented environment gates. In four-platform CI (`.github/workflows/quality-gate.yml`), `scripts/ci/run-quality-gate.mjs` runs OS-independent static lint on the primary `ubuntu-latest/x64` tuple while keeping full `typecheck`, `peers:check`, `test:package`, `test:entrypoints`, `test:coverage`, and `test:coverage:assert-full` on all four required platform tuples, executing the isolated `test:package` lane concurrently with `test:entrypoints` + `test:coverage`.
 
 `pnpm test:entrypoints` runs outside coverage instrumentation so native launcher and process IO remain independently exercised. `pnpm test:package` likewise runs independently; its source-free installed CLI uses native Node and production dependencies. The repository-only tsx loader orchestrates tests and is not a consumer runtime requirement.
 

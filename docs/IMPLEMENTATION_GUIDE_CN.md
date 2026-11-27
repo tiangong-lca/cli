@@ -21,8 +21,8 @@ checkPaths:
   - .oxlintrc.json
   - src/**
   - test/**
-lastReviewedAt: 2026-11-26
-lastReviewedCommit: 04a086bcf00512dcc6694c6817273d72810fadbd
+lastReviewedAt: 2026-11-27
+lastReviewedCommit: f9a1137b77c3ca14021c65006ea53c0a9059ac32
 lastReviewedNote: 'CLI #545 reviewed the 0.4.5 version-only release, the preserved dependency graph and the existing package, four-platform, provenance and integration requirements.'
 related:
   - ../AGENTS.md
