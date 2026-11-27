@@ -1,5 +1,11 @@
 import { copyJson, isRecord, type JsonObject } from './base.js';
 
+const modelInfoFields = [
+  'common:generalComment',
+  'classificationInformation',
+  'referenceToExternalDocumentation',
+] as const;
+
 const rightsFields = [
   'common:referenceToOwnershipOfDataSet',
   'common:copyright',
@@ -12,14 +18,23 @@ function record(value: unknown): JsonObject {
 }
 
 /** Project whole-system declarations before adding generated provenance. */
-export function applyModelDeclarations(model: JsonObject, process: JsonObject): void {
+export function applyModelDeclarations(
+  model: JsonObject,
+  process: JsonObject,
+  preserveExistingComment = false,
+): void {
   const modelInfo = record(record(model.lifeCycleModelInformation).dataSetInformation);
   const processInfo = record(process.processInformation);
   const dataInfo = record(processInfo.dataSetInformation);
-  if (Object.hasOwn(modelInfo, 'common:generalComment')) {
-    process.processInformation = processInfo;
-    processInfo.dataSetInformation = dataInfo;
-    dataInfo['common:generalComment'] = copyJson(modelInfo['common:generalComment']);
+  for (const key of modelInfoFields) {
+    if (Object.hasOwn(modelInfo, key)) {
+      process.processInformation = processInfo;
+      processInfo.dataSetInformation = dataInfo;
+      dataInfo[key] = copyJson(modelInfo[key]);
+    }
+  }
+  if (!Object.hasOwn(modelInfo, 'common:generalComment') && !preserveExistingComment) {
+    delete dataInfo['common:generalComment'];
   }
 
   const modelTreatment = record(record(model.modellingAndValidation).dataSourcesTreatmentEtc);

@@ -76,6 +76,7 @@ export function createDatasetPorts(env: NodeJS.ProcessEnv, fetchImpl: FetchLike)
         checks,
         local,
         references,
+        warnings: references.warnings,
         ...(flowReferenceNames ? { flow_reference_names: flowReferenceNames } : {}),
         notChecked: [
           ...(local

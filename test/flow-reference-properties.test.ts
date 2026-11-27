@@ -190,23 +190,23 @@ test('Current Flow create/save and direct dispatch refuse invalid content withou
   const content = businessFlowReferenceFixture('0.45');
   const identity = businessIdentity('flow', content);
   for (const action of ['create', 'save'] as const) {
-    await assert.rejects(
-      () =>
-        mutate(
-          'flow',
-          action,
-          {
-            ...identity,
-            content,
-            ...(action === 'save' ? { expectedContent: businessFlowReferenceFixture() } : {}),
-            requestId: `invalid-${action}`,
-            expectedActor: businessActor,
-            expectedEnvironment: 'https://example.supabase.co',
-          },
-          false,
-        ),
-      { code: 'VALIDATION_REQUIRED' },
+    const failure = await mutate(
+      'flow',
+      action,
+      {
+        ...identity,
+        content,
+        ...(action === 'save' ? { expectedContent: businessFlowReferenceFixture() } : {}),
+        requestId: `invalid-${action}`,
+        expectedActor: businessActor,
+        expectedEnvironment: 'https://example.supabase.co',
+      },
+      false,
     );
+    assert.equal(failure.status, 'failed');
+    assert.equal(failure.error?.code, 'VALIDATION_REQUIRED');
+    assert.equal(failure.data.stage, 'preflight');
+    assert.equal(failure.data.acknowledged, false);
   }
   assert.equal(backend.calls.filter((call) => call.path.startsWith('/functions/')).length, 0);
   let dispatches = 0;

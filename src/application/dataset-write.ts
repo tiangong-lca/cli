@@ -10,7 +10,7 @@ import {
   type JsonObject,
 } from './dataset-types.js';
 import { result, CommandInputError, type CommandResult } from '../shared/command-result.js';
-import type { MutationJournal } from './operation-ports.js';
+import type { MutationDiagnostic, MutationEvidence, MutationJournal } from './operation-ports.js';
 
 export type WritableDatasetType = Exclude<DatasetType, 'lciamethod' | 'flowproperty' | 'unitgroup'>;
 export type DatasetMutationAction = 'create' | 'save' | 'delete';
@@ -31,7 +31,12 @@ export type DatasetWritePorts = {
     type: WritableDatasetType,
   ): { id: string | null; version: string | null };
   read: DatasetPorts['read'];
-  qualify(type: DatasetType, content: JsonObject): Promise<void>;
+  qualify(
+    type: DatasetType,
+    content: JsonObject,
+  ): Promise<void | Array<{ code: string; message: string }>>;
+  describeFailure?(error: unknown): MutationDiagnostic;
+  failureData?(error: unknown): JsonObject;
   withJournal<T>(
     requestId: string,
     target: JsonObject,
@@ -116,8 +121,41 @@ export async function executeDatasetWrite(
   const lookup = async () =>
     (await read(type, { id, version, limit: 1, offset: 0 })).records[0] ?? null;
   let previousGraph: Record<string, unknown> | undefined;
+  let evidence: MutationEvidence = {
+    stage: 'preflight',
+    acknowledged: false,
+    readback: { available: false, contentMatchesIntent: false },
+  };
+  const diagnose = (error: unknown): MutationDiagnostic => {
+    if (ports.describeFailure) return ports.describeFailure(error);
+    if (error instanceof CommandInputError)
+      return {
+        category: error.category,
+        code: error.code,
+        message: 'Dataset write preconditions failed. Inspect the reported code and details.',
+      };
+    return {
+      category: 'service',
+      code: 'DATASET_WRITE_FAILED',
+      message: 'Dataset write failed. Inspect the exact target and recovery evidence.',
+    };
+  };
+  const failed = (error: unknown) => {
+    evidence.diagnostic = diagnose(error);
+    value.status = 'failed';
+    value.error = evidence.diagnostic;
+    value.outcome = evidence.diagnostic.category;
+    value.summary = evidence.diagnostic.message;
+    value.data = { ...value.data, ...evidence, ...ports.failureData?.(error) };
+    if (error instanceof CommandInputError && 'details' in error)
+      value.data.details = error.details;
+    return value;
+  };
   const preflight = async () => {
-    if (action !== 'delete') await ports.qualify(type, content);
+    if (action !== 'delete') {
+      const warnings = await ports.qualify(type, content);
+      if (warnings) value.warnings.push(...warnings);
+    }
     const current = await lookup();
     previousGraph = current?.modelGraph;
     if (action === 'create' && current)
@@ -138,7 +176,12 @@ export async function executeDatasetWrite(
       );
   };
   if (dryRun) {
-    await preflight();
+    value.completeness.dryRun = true;
+    try {
+      await preflight();
+    } catch (error) {
+      return failed(error);
+    }
     value.outcome = 'preview_completed';
     value.summary =
       'Readable write preconditions checked; no mutation or request record was created.';
@@ -153,128 +196,205 @@ export async function executeDatasetWrite(
     return value;
   }
   const binding = contentDigest({ action, type, request, actor: actor.userId, environment });
-  return ports.withJournal(requestId, { type, id, version, environment }, async (store) => {
-    const journal = store.path;
-    const persist = (state: string, response?: unknown) =>
-      store.write({
-        schemaVersion: 1,
-        binding,
-        action,
-        type,
-        requestId,
-        id,
-        version,
-        actor: actor.userId,
-        environment,
-        state,
-        contentDigest: contentDigest(content),
-        intent: request,
-        response: response ?? null,
-      });
-    const unknown = async () => {
-      value.status = 'unknown';
-      value.error = {
-        category: 'service',
-        code: 'WRITE_OUTCOME_UNKNOWN',
-        message: 'The original mutation outcome could not be established. Do not replay.',
-      };
-      value.outcome = 'write_outcome_unknown';
-      value.summary =
-        'Original write outcome is unconfirmed. This request will not be dispatched again.';
-      value.data.recovery = { journal, requestId, replayAllowed: false };
-      const current = await lookup().catch(() => null);
-      value.data.readback = {
-        available: current !== null,
-        contentMatchesIntent: current !== null && isDeepStrictEqual(current.content, content),
-        establishesRequestOutcome: false,
-      };
-      return value;
-    };
-    const previous = store.read();
-    if (previous) {
-      if (previous.binding !== binding)
-        throw new CommandInputError(
-          'REQUEST_CONFLICT',
-          'requestId is already bound to different content, intent, actor or environment.',
-        );
-      if (previous.state === 'rejected') {
-        const original = object(previous.response, 'original rejection') as CommandResult;
-        return { ...original, outcome: 'service_rejected' };
-      }
-      if (previous.state === 'completed') {
-        value.outcome = 'original_result_returned';
+  return ports.withJournal(
+    requestId,
+    { type, id, version, environment, actor: actor.userId },
+    async (store) => {
+      const journal = store.path;
+      const persist = (state: string, response?: unknown) =>
+        store.write({
+          schemaVersion: 1,
+          binding,
+          action,
+          type,
+          requestId,
+          id,
+          version,
+          actor: actor.userId,
+          environment,
+          state,
+          contentDigest: contentDigest(content),
+          intent: request,
+          response: response ?? evidence.acknowledgement ?? null,
+          ...evidence,
+        });
+      const unknown = async (original = { path: journal, requestId }) => {
+        value.status = 'unknown';
+        value.error = {
+          category: 'service',
+          code: 'WRITE_OUTCOME_UNKNOWN',
+          message: 'The original mutation outcome could not be established. Do not replay.',
+        };
+        value.outcome = 'write_outcome_unknown';
         value.summary =
-          'Returned the locally recorded original successful result; no mutation repeated.';
-        value.data.originalResult = previous.response;
+          'Original write outcome is unconfirmed. This request will not be dispatched again.';
+        value.data = {
+          ...value.data,
+          ...evidence,
+          recovery: { journal: original.path, requestId: original.requestId, replayAllowed: false },
+          readback: { ...evidence.readback, establishesRequestOutcome: false },
+        };
         return value;
-      }
-      return unknown();
-    }
-    await preflight();
-    // The exact intent is durable before the helper reaches its single transport dispatch.
-    let dispatched = false;
-    const beforeDispatch = () => {
-      persist('dispatched');
-      dispatched = true;
-    };
-    let acknowledged = false;
-    try {
-      const response = await ports.dispatch({
-        type,
-        action,
-        id,
-        version,
-        content,
-        expected,
-        previousGraph,
-        beforeDispatch,
-      });
-      acknowledged = true;
-      const current = await lookup();
-      if (
-        action === 'delete'
-          ? current !== null
-          : !current || !isDeepStrictEqual(current.content, content)
-      ) {
-        persist('unknown');
+      };
+      const previous = store.read();
+      if (previous) {
+        if (previous.binding !== binding)
+          throw new CommandInputError(
+            'REQUEST_CONFLICT',
+            'requestId is already bound to different content, intent, actor or environment.',
+          );
+        if (previous.state === 'rejected') {
+          const original = object(previous.response, 'original rejection') as CommandResult;
+          return { ...original, outcome: 'service_rejected' };
+        }
+        if (previous.state === 'completed') {
+          value.outcome = 'original_result_returned';
+          value.summary =
+            'Returned the locally recorded original successful result; no mutation repeated.';
+          value.data.originalResult = previous.response;
+          return value;
+        }
+        evidence = previous as unknown as MutationEvidence;
+        const current = await lookup().catch(() => null);
+        evidence = {
+          stage: evidence.stage ?? 'dispatch',
+          acknowledged: evidence.acknowledged ?? false,
+          ...(evidence.acknowledgement ? { acknowledgement: evidence.acknowledgement } : {}),
+          ...(evidence.diagnostic ? { diagnostic: evidence.diagnostic } : {}),
+          readback: evidence.readback ?? {
+            available: current !== null,
+            contentMatchesIntent: current !== null && isDeepStrictEqual(current.content, content),
+          },
+        };
         return unknown();
       }
-      persist('completed', response);
-      value.data.readback = {
-        ...(action === 'delete' ? { targetAbsent: true } : { contentMatchesIntent: true }),
-        subject: { type, id, version },
+      const unresolved = store.findTargetRecord?.(['unknown', 'dispatched']);
+      if (unresolved) {
+        const record = unresolved.record;
+        evidence = {
+          stage: (record.stage as MutationEvidence['stage'] | undefined) ?? 'dispatch',
+          acknowledged: record.acknowledged === true,
+          ...(record.acknowledgement
+            ? { acknowledgement: record.acknowledgement as JsonObject }
+            : {}),
+          ...(record.diagnostic ? { diagnostic: record.diagnostic as MutationDiagnostic } : {}),
+          readback: (record.readback as MutationEvidence['readback'] | undefined) ?? {
+            available: false,
+            contentMatchesIntent: false,
+          },
+        };
+        return unknown({ path: unresolved.path, requestId: record.requestId as string });
+      }
+      // The exact intent is durable before the helper reaches its single transport dispatch.
+      let dispatched = false;
+      let readbackAttempted = false;
+      const beforeDispatch = () => {
+        evidence.stage = 'dispatch';
+        persist('dispatched');
+        dispatched = true;
       };
-      value.outcome = action === 'delete' ? 'dataset_deleted' : 'dataset_written';
-      value.summary =
-        action === 'delete'
-          ? 'Draft deletion acknowledged and target absence independently observed.'
-          : 'Dataset write acknowledged and exact content independently read back.';
-      return value;
-    } catch (error) {
-      if (!dispatched) throw error;
-      if (!acknowledged && error instanceof ServiceRejectedError) {
-        applyServiceRejection(value, error.receipt);
+      try {
+        await preflight();
+        const response = await ports.dispatch({
+          type,
+          action,
+          id,
+          version,
+          content,
+          expected,
+          previousGraph,
+          beforeDispatch,
+        });
+        evidence.acknowledged = true;
+        // Retain only acknowledgement facts; arbitrary service fields may contain credentials.
+        const ack = response as JsonObject | null;
+        const data = ack?.data as JsonObject | undefined;
+        evidence.acknowledgement = {
+          received: true,
+          ...(typeof ack?.ok === 'boolean' ? { ok: ack.ok } : {}),
+          ...(ack?.modelId === id ? { modelId: id } : {}),
+          ...(ack?.version === version ? { version } : {}),
+          ...(data?.id === id && data.version === version ? { data: { id, version } } : {}),
+        };
+        evidence.stage = 'readback';
+        evidence.diagnostic = {
+          category: 'service',
+          code: 'WRITE_READBACK_PENDING',
+          message: 'The write was acknowledged; independent readback has not completed.',
+        };
+        // Preserve the service acknowledgement before attempting independent readback.
+        persist('unknown');
+        readbackAttempted = true;
+        const current = await lookup();
+        evidence.readback = {
+          available: current !== null,
+          contentMatchesIntent: current !== null && isDeepStrictEqual(current.content, content),
+        };
+        if (
+          action === 'delete'
+            ? current !== null
+            : !current || !isDeepStrictEqual(current.content, content)
+        ) {
+          evidence.diagnostic = {
+            category: 'conflict',
+            code: 'WRITE_READBACK_MISMATCH',
+            message: 'Exact target readback did not match the acknowledged write intent.',
+          };
+          persist('unknown');
+          return unknown();
+        }
+        delete evidence.diagnostic;
+        persist('completed');
+        Object.assign(value.data, evidence);
+        value.data.readback = {
+          ...(action === 'delete' ? { targetAbsent: true } : { contentMatchesIntent: true }),
+          subject: { type, id, version },
+        };
+        value.outcome = action === 'delete' ? 'dataset_deleted' : 'dataset_written';
+        value.summary =
+          action === 'delete'
+            ? 'Draft deletion acknowledged and target absence independently observed.'
+            : 'Dataset write acknowledged and exact content independently read back.';
+        return value;
+      } catch (error) {
+        if (!dispatched) {
+          evidence.stage = 'preflight';
+          failed(error);
+          return value;
+        }
+        evidence.diagnostic = diagnose(error);
+        if (!evidence.acknowledged && error instanceof ServiceRejectedError) {
+          applyServiceRejection(value, error.receipt);
+          Object.assign(value.data, evidence);
+          try {
+            persist('rejected', value);
+          } catch {
+            value.warnings.push({
+              code: 'JOURNAL_UPDATE_UNAVAILABLE',
+              message:
+                'The refusal was observed, but its durable result could not be saved. The original request remains non-replayable.',
+            });
+          }
+          return value;
+        }
         try {
-          persist('rejected', value);
+          if (!readbackAttempted) {
+            const current = await lookup().catch(() => null);
+            evidence.readback = {
+              available: current !== null,
+              contentMatchesIntent: current !== null && isDeepStrictEqual(current.content, content),
+            };
+          }
+          persist('unknown');
         } catch {
           value.warnings.push({
             code: 'JOURNAL_UPDATE_UNAVAILABLE',
             message:
-              'The refusal was observed, but its durable result could not be saved. The original request remains non-replayable.',
+              'The original pre-dispatch record remains the recovery basis; do not replay this write.',
           });
         }
-        return value;
+        return unknown();
       }
-      try {
-        persist('unknown');
-      } catch {
-        value.warnings.push({
-          code: 'JOURNAL_UPDATE_UNAVAILABLE',
-          message:
-            'The original pre-dispatch record remains the recovery basis; do not replay this write.',
-        });
-      }
-      return unknown();
-    }
-  });
+    },
+  );
 }

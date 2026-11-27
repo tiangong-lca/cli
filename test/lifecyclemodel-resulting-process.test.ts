@@ -797,7 +797,15 @@ test('runLifecyclemodelBuildResultingProcess builds and aggregates a resulting p
     );
     assert.match(
       String(comments[0]?.['#text']),
-      /^Pack assembly comment\n\nLocal primary resulting process/,
+      /^Local primary resulting process generated from lifecycle model /,
+    );
+    assert.equal(dataSetInformation.generatedFromLifecycleModel, undefined);
+    assert.equal(
+      (
+        (processDataSet.administrativeInformation as JsonRecord)
+          .publicationAndOwnership as JsonRecord
+      )['common:permanentDataSetURI'],
+      `https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=proc-demo-battery-pack-primary&version=${VERSION}`,
     );
     assert.equal(
       ((processDataSet.modellingAndValidation as JsonRecord).LCIMethodAndAllocation as JsonRecord)

@@ -17,6 +17,7 @@ export async function checkDatasetReferences(
       rawInput: content,
       outDir: directory,
       rootPolicy: 'candidate',
+      outdatedReferencePolicy: 'advisory',
       env,
       fetchImpl,
     });
@@ -26,6 +27,7 @@ export async function checkDatasetReferences(
       observedAt: report.generated_at_utc,
       counts: report.counts,
       blockers: report.blockers,
+      warnings: report.warnings!,
       checks: readFileSync(report.files.checks, 'utf8')
         .split('\n')
         .filter(Boolean)
