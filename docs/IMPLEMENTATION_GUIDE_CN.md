@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-11-27
-lastReviewedCommit: 52012e4a617b71792577240d73a2e23e90e7c6a3
-lastReviewedNote: 'CLI #545 reviewed the 0.4.5 version-only release, the preserved dependency graph and the existing package, four-platform, provenance and integration requirements.'
+lastReviewedCommit: a1a47ca815d7d028115099ca94bdac5224131d4e
+lastReviewedNote: 'CLI #568 reviewed published-only reference policy (#504), write evidence and unresolved target guards (#517), and canonical resulting-process metadata (#505).'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

@@ -17,9 +17,9 @@ checkPaths:
   - src/lib/dataset/command.ts
   - src/cli.ts
   - test/dataset-exact-reference-intent.test.ts
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 188b901c08aea4787090e8f3ad5e6df757920b61
-lastReviewedNote: 'Reviewed capability directories and repair retirement; retained command, public-library and historical evidence boundaries remain explicit.'
+lastReviewedAt: 2026-11-27
+lastReviewedCommit: a1a47ca815d7d028115099ca94bdac5224131d4e
+lastReviewedNote: 'CLI #568 reviewed published-only reference policy (#504): default latest lookup tracks published rows (state_code=100), exempts predecessor links, and surfaces outdated checks as advisory warnings in dataset validation and write preflight.'
 related:
   - ../../AGENTS.md
   - ./repo-validation.md
