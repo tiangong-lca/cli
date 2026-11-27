@@ -44,15 +44,23 @@ async function main() {
   await runStep('peers:check', ['run', 'peers:check']);
 
   // test:package runs inside an isolated temp directory while entrypoints + coverage
-  // operate on the repository dist/ and coverage/ outputs; run both lanes concurrently.
-  await Promise.all([
-    runStep('test:package', ['run', 'test:package'], { buffer: true }),
-    (async () => {
-      await runStep('test:entrypoints', ['run', 'test:entrypoints']);
-      await runStep('test:coverage', ['run', 'test:coverage']);
-      await runStep('test:coverage:assert-full', ['run', 'test:coverage:assert-full']);
-    })(),
-  ]);
+  // operate on the repository dist/ and coverage/ outputs. Run both lanes concurrently
+  // on POSIX runners; run sequentially on Windows so heavy NTFS/CPU contention does not
+  // push test:package past its 300s per-test timeout.
+  const runCoverageLane = async () => {
+    await runStep('test:entrypoints', ['run', 'test:entrypoints']);
+    await runStep('test:coverage', ['run', 'test:coverage']);
+    await runStep('test:coverage:assert-full', ['run', 'test:coverage:assert-full']);
+  };
+  if (process.platform === 'win32') {
+    await runStep('test:package', ['run', 'test:package']);
+    await runCoverageLane();
+  } else {
+    await Promise.all([
+      runStep('test:package', ['run', 'test:package'], { buffer: true }),
+      runCoverageLane(),
+    ]);
+  }
 }
 
 main().catch((error) => {
