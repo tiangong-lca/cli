@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
-lastReviewedAt: 2026-11-26
-lastReviewedCommit: 4fd9ba2110ec6e9008771d5a78bcc3324e682f7e
-lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
+lastReviewedAt: 2026-11-28
+lastReviewedCommit: 5531f0c79c2e289cd04ff3601c62717e6f01e4bf
+lastReviewedNote: 'Reviewed stdin error boundaries (#536), new Dataset UUID admission (#551), exact Flow lookup diagnostics (#552), and exact Model result-group readback (#445).'
 ---
 
 # CLI 0.2.0 重构实施计划

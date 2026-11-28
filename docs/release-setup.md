@@ -25,8 +25,8 @@ checkPaths:
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
 lastReviewedAt: 2026-11-28
-lastReviewedCommit: 4ec8e36fe2067a823c3850beb042d16e994bea30
-lastReviewedNote: 'CLI #568 reviewed published-only reference policy (#504), write evidence and unresolved target guards (#517), and canonical resulting-process metadata (#505).'
+lastReviewedCommit: 5531f0c79c2e289cd04ff3601c62717e6f01e4bf
+lastReviewedNote: 'Reviewed stdin error boundaries (#536), new Dataset UUID admission (#551), exact Flow lookup diagnostics (#552), and exact Model result-group readback (#445).'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
