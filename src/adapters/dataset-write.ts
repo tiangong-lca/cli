@@ -19,7 +19,10 @@ import type { FetchLike } from '../lib/transport/http.js';
 import { datasetReader } from './dataset-read.js';
 import { qualifyDatasetWrite } from './dataset-write-checks.js';
 import { writeModelDraft } from './model-write.js';
-import { ProcessFlowNameAdmissionError } from '../lib/validation/process-flow-reference-names.js';
+import {
+  ProcessFlowNameAdmissionError,
+  ProcessFlowNameLookupError,
+} from '../lib/validation/process-flow-reference-names.js';
 
 export function datasetWriter(
   env: NodeJS.ProcessEnv,
@@ -51,7 +54,9 @@ export function datasetWriter(
       failureData: (error) =>
         error instanceof ProcessFlowNameAdmissionError
           ? { validation: { flow_reference_names: error.report } }
-          : {},
+          : error instanceof ProcessFlowNameLookupError
+            ? { validation: error.validation }
+            : {},
       describeFailure: (error) => {
         const failure = commandFailure(error, 'DATASET_WRITE_FAILED');
         const receipt = error instanceof ServiceRejectedError ? error.receipt : null;

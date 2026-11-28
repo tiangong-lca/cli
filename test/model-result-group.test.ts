@@ -27,8 +27,8 @@ const env = buildSupabaseTestEnv({
 const target = { modelId, version };
 const binding = { expectedActor: actorId, expectedEnvironment: environment };
 const protocol = 'model-bundle.v1';
-const primary = { id: primaryId, version, type: 'primary' };
-const secondary = { id: secondaryId, version, type: 'secondary' };
+const primary = { id: primaryId, version: '01.00.003', type: 'primary' };
+const secondary = { id: secondaryId, version: '01.00.007', type: 'allocated' };
 const contents = {
   lifeCycleModelDataSet: {
     lifeCycleModelInformation: {
@@ -70,13 +70,16 @@ const snapshot = {
   members: [primary, secondary],
   processes: [
     { ...primary, model_id: modelId, model_version: version },
-    { ...secondary, model_id: modelId, model_version: null },
+    { ...secondary, model_id: modelId, model_version: version },
   ],
   model: {
     id: modelId,
     version,
     state_code: 0,
-    json_tg: { xflow: { nodes: [{ id: 'existing-graph-node', x: 321, data: { index: '0' } }] } },
+    json_tg: {
+      submodels: [primary, secondary],
+      xflow: { nodes: [{ id: 'existing-graph-node', x: 321, data: { index: '0' } }] },
+    },
   },
 };
 const qualified = {
@@ -92,7 +95,7 @@ const qualified = {
 const ok = (value: JsonObject) => Response.json({ ok: true, protocol, ...value });
 const observe = (value: unknown) => ok({ status: 'observed', snapshot: value });
 const committed = (id: unknown) =>
-  ok({ ...target, operationId: id, status: 'committed', revision });
+  ok({ ...target, operationId: id, status: 'committed', revision, members: [secondary, primary] });
 
 function fixture(t: TestContext) {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'model-result-group-test-'));
@@ -206,16 +209,23 @@ test('Process reads preserve actual Model columns and distinguish null from unav
   const rows = [
     { id: primaryId, version, json: source, model_id: modelId, model_version: '02.00.000' },
     { id: secondaryId, version, json: source, model_id: null, model_version: null },
-    { id: actorId, version, json: source, model_id: '', model_version: '' },
+    { id: actorId, version, json: source },
   ];
-  const reader = datasetReader(env, async (url) => {
+  const reads: URL[] = [];
+  const fetch: FetchLike = async (url) => {
     if (new URL(url).pathname === '/auth/v1/user') {
       return Response.json({ id: actorId, email: 'fixture@example.test', role: 'authenticated' });
     }
-    assert.match(new URL(url).searchParams.get('select')!, /model_id,model_version/);
-    return Response.json(rows, { headers: { 'content-range': '0-2/3' } });
-  });
-  const page = await reader('process', { offset: 0, limit: 10 });
+    const query = new URL(url);
+    reads.push(query);
+    assert.match(query.searchParams.get('select')!, /model_id,model_version/);
+    const id = query.searchParams.get('id');
+    const selected = rows.filter((row) => !id || id === 'eq.' + row.id);
+    return Response.json(selected, {
+      headers: { 'content-range': `0-${selected.length - 1}/${selected.length}` },
+    });
+  };
+  const page = await datasetReader(env, fetch)('process', { offset: 0, limit: 10 });
   assert.deepEqual(
     page.records.map(({ model_id, model_version }) => [model_id, model_version]),
     [
@@ -224,6 +234,36 @@ test('Process reads preserve actual Model columns and distinguish null from unav
       [undefined, undefined],
     ],
   );
+  const ports = createDatasetPorts(env, fetch);
+  const list = await runDatasetCommand(
+    ['process', 'list', '--limit', '3', '--fields', 'model_id,model_version', '--json'],
+    ports,
+  );
+  assert.deepEqual(JSON.parse(list.stdout).data.items, [
+    { type: 'process', id: primaryId, version, model_id: modelId, model_version: '02.00.000' },
+    { type: 'process', id: secondaryId, version, model_id: null, model_version: null },
+    { type: 'process', id: actorId, version },
+  ]);
+  const get = await runDatasetCommand(
+    [
+      'process',
+      'get',
+      '--id',
+      primaryId,
+      '--version',
+      version,
+      '--fields',
+      'model_id,model_version,content',
+      '--json',
+    ],
+    ports,
+  );
+  const got = JSON.parse(get.stdout);
+  assert.equal(got.data.subject.model_version, '02.00.000');
+  assert.deepEqual(got.data.content, source);
+  assert.equal(reads.length, 3);
+  assert(reads.every((query) => query.pathname.endsWith('/processes')));
+  assert.equal(reads.at(-1)?.searchParams.get('version'), 'eq.' + version);
 });
 
 test('result group inspects complete exact links and refuses drift, missing members or mismatched identity', async (t) => {
@@ -242,6 +282,21 @@ test('result group inspects complete exact links and refuses drift, missing memb
     { ...snapshot, members: [primary, primary] },
     { ...snapshot, processes: [snapshot.processes[0], snapshot.processes[0]] },
     { ...snapshot, processes: [] },
+    { ...snapshot, processes: [snapshot.processes[0], { ...secondary, id: actorId }] },
+    { ...snapshot, members: [{ ...primary, version: 'latest' }, secondary] },
+    { ...snapshot, members: [{ ...primary, id: null }, secondary] },
+    { ...snapshot, members: [{ ...primary, id: 'broken' }, secondary] },
+    { ...snapshot, members: [{ ...primary, version: null }, secondary] },
+    { ...snapshot, members: [{ id: primaryId, version: primary.version }, secondary] },
+    { ...snapshot, members: [{ ...primary, type: 'component' }, secondary] },
+    { ...snapshot, members: [{ ...primary, type: 'secondary' }, secondary] },
+    {
+      ...snapshot,
+      model: {
+        ...snapshot.model,
+        json_tg: { submodels: [primary, { ...secondary, type: 'secondary' }] },
+      },
+    },
     {
       ...snapshot,
       processes: [{ ...snapshot.processes[0], model_id: primaryId }, snapshot.processes[1]],
@@ -253,7 +308,7 @@ test('result group inspects complete exact links and refuses drift, missing memb
   ]) {
     await assert.rejects(
       run({ action: 'inspect' }, () => observe(value)),
-      /snapshot|members/i,
+      { code: 'MODEL_RESULT_GROUP_INVALID' },
     );
   }
   await assert.rejects(
@@ -264,6 +319,60 @@ test('result group inspects complete exact links and refuses drift, missing memb
     run({ action: 'inspect' }, () => Response.json({ ok: true })),
     /acknowledge/,
   );
+});
+
+test('legacy membership requires a real exact association and preserves the canonical primary fallback', async (t) => {
+  const { run } = fixture(t);
+  const member = { ...primary, version };
+  const canonical = (reference: unknown) => ({
+    lifeCycleModelDataSet: {
+      lifeCycleModelInformation: { dataSetInformation: { referenceToResultingProcess: reference } },
+    },
+  });
+  const reference = { '@refObjectId': member.id, '@version': member.version };
+  const legacy = {
+    ...snapshot,
+    model: { ...snapshot.model, json_tg: null, json_ordered: canonical(reference) },
+    members: [member],
+    processes: [{ ...member, model_id: modelId, model_version: version }],
+  };
+  assert.equal((await run({ action: 'inspect' }, () => observe(legacy))).status, 'observed');
+  assert.equal(
+    (
+      await run({ action: 'inspect' }, () =>
+        observe({
+          ...legacy,
+          model: { ...legacy.model, json_ordered: null },
+          members: [],
+          processes: [],
+        }),
+      )
+    ).status,
+    'observed',
+  );
+  for (const wrong of [
+    { ...legacy, processes: [{ ...member, model_id: modelId, model_version: null }] },
+    { ...legacy, processes: [{ ...member, model_id: modelId }] },
+  ]) {
+    await assert.rejects(
+      run({ action: 'inspect' }, () => observe(wrong)),
+      /lacks the expected persisted association/,
+    );
+  }
+  for (const refs of [[reference, reference], 'malformed']) {
+    await assert.rejects(
+      run({ action: 'inspect' }, () =>
+        observe({ ...legacy, model: { ...legacy.model, json_ordered: canonical(refs) } }),
+      ),
+      /single exact primary/,
+    );
+  }
+
+  const recovery = await run({ action: 'recover', ...binding, operationId }, (body) =>
+    body.action === 'inspect' ? observe(legacy) : committed(operationId),
+  );
+  assert.equal(recovery.status, 'committed_readback_unverified');
+  assert.deepEqual((recovery.receipt as JsonObject).members, [secondary, primary]);
 });
 
 test('result group keeps the original revision and exact member mutations on update', async (t) => {

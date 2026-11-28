@@ -202,7 +202,7 @@ export async function runReviewCommand(
             description: 'Use --output to save complete current material.',
           });
       } else {
-        const request = readCommandInput(text(flags.input, '--input'));
+        const request = await readCommandInput(text(flags.input, '--input'));
         if (flags.output)
           assertSeparateCommandFiles(text(flags.output, '--output'), text(flags.input, '--input'));
         value = await operations.mutate(

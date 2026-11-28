@@ -2,7 +2,7 @@ import { statisticsSelection } from '../application/process-statistics.js';
 import { readCommandInput } from '../shared/command-files.js';
 import { CommandInputError } from '../shared/command-result.js';
 
-export function statisticsRequest(values: Record<string, string | boolean | undefined>) {
+export async function statisticsRequest(values: Record<string, string | boolean | undefined>) {
   const selectionFlags = ['scope', 'owner', 'state', 'group-by', 'max-rows'];
   if (values.input !== undefined && selectionFlags.some((key) => values[key] !== undefined))
     throw new CommandInputError(
@@ -11,7 +11,7 @@ export function statisticsRequest(values: Record<string, string | boolean | unde
     );
   const request =
     values.input !== undefined
-      ? readCommandInput(String(values.input))
+      ? await readCommandInput(String(values.input))
       : {
           ...(values.scope === undefined ? {} : { scope: values.scope }),
           ...(values.owner === undefined ? {} : { owner: values.owner }),

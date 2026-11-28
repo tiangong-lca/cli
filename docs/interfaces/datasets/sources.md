@@ -27,6 +27,8 @@ language: zh-CN
 
 共同操作遵循 [Dataset](README.md) 和[数据处理](processing.md)。
 
+创建预览与创建操作都先检查请求的 `id` 是否符合创建服务的 UUID 规则，并核对正文身份。精确读取按服务实际返回的标识和版本保留历史记录。
+
 ## 附件上传
 
 `upload-attachments --input <request> --output <result>` 的输入包含文件路径、大小、内容摘要、目标存储范围和 Source 内待替换的引用位置。文件变化、引用位置不匹配或上传失败必须逐项报告。外部 URL 不自动下载、上传或重写。

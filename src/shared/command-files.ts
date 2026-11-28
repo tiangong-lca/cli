@@ -1,26 +1,37 @@
 import {
   linkSync,
   mkdirSync,
-  readFileSync,
   realpathSync,
   renameSync,
   rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { stdin } from 'node:process';
 import { randomUUID } from 'node:crypto';
 import { CommandInputError } from './command-result.js';
 
-export function readCommandInput(file: string): Record<string, unknown> {
+export async function readCommandInput(file: string): Promise<Record<string, unknown>> {
+  let bytes: Buffer;
+  try {
+    if (file === '-') {
+      const chunks: Buffer[] = [];
+      for await (const chunk of stdin) chunks.push(chunk);
+      bytes = Buffer.concat(chunks);
+    } else {
+      bytes = await readFile(path.resolve(file));
+    }
+  } catch {
+    throw new CommandInputError('INPUT_READ_FAILED', 'Could not read the input file or stdin.');
+  }
+
   let value: unknown;
   try {
-    value = JSON.parse(readFileSync(file === '-' ? 0 : path.resolve(file), 'utf8'));
+    value = JSON.parse(bytes.toString('utf8'));
   } catch {
-    throw new CommandInputError(
-      'INPUT_INVALID_JSON',
-      'Input must be a readable JSON file or JSON on stdin.',
-    );
+    throw new CommandInputError('INPUT_INVALID_JSON', 'Input must contain valid JSON.');
   }
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new CommandInputError('INPUT_OBJECT_REQUIRED', 'Input must be one JSON object.');

@@ -430,7 +430,7 @@ test('report command performs exclusive HTML output, protects input aliases and 
     const before = readFileSync(input, 'utf8');
     const args = ['render', '--input', input, '--output', output, '--json'];
     const run = () => runReportCommand(args, writeResearchReport);
-    const success = run();
+    const success = await run();
     assert.equal(success.exitCode, 0, success.stdout);
     const value = JSON.parse(success.stdout);
     assert.equal(value.operation, 'report render');
@@ -440,19 +440,19 @@ test('report command performs exclusive HTML output, protects input aliases and 
     assert.ok(value.replyTemplate.endsWith('.md'));
     assert.ok(success.stdout.length < 2500);
     const html = readFileSync(output, 'utf8');
-    assert.equal(run().exitCode, 1);
+    assert.equal((await run()).exitCode, 1);
     assert.equal(readFileSync(output, 'utf8'), html);
-    assert.equal(runReportCommand([...args, '--force'], writeResearchReport).exitCode, 0);
+    assert.equal((await runReportCommand([...args, '--force'], writeResearchReport)).exitCode, 0);
     for (const target of [input, path.join(dir, 'alias.json')]) {
       if (target !== input) linkSync(input, target);
-      const refused = runReportCommand(
+      const refused = await runReportCommand(
         ['render', '--input', input, '--output', target, '--force', '--json'],
         writeResearchReport,
       );
       assert.equal(JSON.parse(refused.stdout).error.code, 'OUTPUT_IS_INPUT');
       assert.equal(readFileSync(input, 'utf8'), before);
     }
-    const failure = runReportCommand(
+    const failure = await runReportCommand(
       ['render', '--input', input, '--output', path.join(input, 'not-a-directory.html'), '--json'],
       writeResearchReport,
     );
@@ -490,12 +490,12 @@ test('report command performs exclusive HTML output, protects input aliases and 
   }
 });
 
-test('help and invalid arguments never invoke the renderer; arbitrary render failures remain failures', () => {
+test('help and invalid arguments never invoke the renderer; arbitrary render failures remain failures', async () => {
   const noWrite = () => {
     throw new Error('must not dispatch');
   };
   for (const args of [[], ['--json'], ['render', '--help'], ['render', '--help', '--json']])
-    assert.equal(runReportCommand(args, noWrite).exitCode, 0);
+    assert.equal((await runReportCommand(args, noWrite)).exitCode, 0);
   for (const args of [
     ['render'],
     ['render', '--input', 'x'],
@@ -505,9 +505,9 @@ test('help and invalid arguments never invoke the renderer; arbitrary render fai
     ['bad'],
     ['render', '--input', 'missing', '--output', 'x'],
   ])
-    assert.equal(runReportCommand(args, noWrite).exitCode, 2);
+    assert.equal((await runReportCommand(args, noWrite)).exitCode, 2);
   const source = fileURLToPath(new URL('../assets/report/example.json', import.meta.url));
-  const failure = runReportCommand(
+  const failure = await runReportCommand(
     ['render', '--input', source, '--output', 'x', '--json'],
     noWrite,
   );

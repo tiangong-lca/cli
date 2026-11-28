@@ -23,9 +23,14 @@ export function createDatasetPorts(env: NodeJS.ProcessEnv, fetchImpl: FetchLike)
     search: datasetSearcher(env, fetchImpl),
     contract: datasetContract,
     validate: async (type, content, checks, referenceDocuments) => {
+      const suppliedNames = suppliedFlowNameEvidence(referenceDocuments ?? []);
       const remoteFlowEvidence =
         type === 'process' && checks.includes('references')
-          ? await readExactFlowNameEvidence([content], flowNameReadContext(env, fetchImpl))
+          ? await readExactFlowNameEvidence(
+              [content],
+              flowNameReadContext(env, fetchImpl),
+              suppliedNames,
+            )
           : null;
       const observedFlowEvidence = remoteFlowEvidence ?? [];
       const flowReferenceNames =
@@ -33,10 +38,7 @@ export function createDatasetPorts(env: NodeJS.ProcessEnv, fetchImpl: FetchLike)
           ? null
           : processFlowNameReport(
               content,
-              bindCurrentFlowNameEvidence(
-                remoteFlowEvidence,
-                suppliedFlowNameEvidence(referenceDocuments ?? []),
-              ),
+              bindCurrentFlowNameEvidence(remoteFlowEvidence, suppliedNames),
             );
       const evidence =
         type === 'process' && checks.includes('business') && checks.includes('references')
