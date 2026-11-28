@@ -5687,7 +5687,7 @@ var buildProductSystem = (compilation, solution) => {
 };
 
 // src/services/lifeCycleModels/matrixCalculation/assemble.ts
-var computeGroupActivities = (compilation, edges, members, rootView, targetAmount) => {
+var computeGroupActivities = (compilation, edges, members, finalDemand) => {
   const memberIndex = new Map(members.map((view, index) => [view.id, index]));
   const entries = [];
   for (const edge of edges) {
@@ -5702,11 +5702,11 @@ var computeGroupActivities = (compilation, edges, members, rootView, targetAmoun
     ...compilation,
     views: members.map((view, columnIndex) => ({ ...view, columnIndex })),
     entries,
-    demand: members.map((view) => view.id === rootView.id ? targetAmount : 0)
+    demand: members.map((view) => finalDemand.get(view.id) ?? 0)
   });
   return new Map(members.map((view, index) => [view.id, x[index]]));
 };
-var assembleResult = (compilation, solution) => {
+var assembleResult = (compilation, solution, primaryOnly = false) => {
   const { views, viewById, instanceByIndex, edges } = compilation;
   const activityOf = (view) => solution[view.columnIndex];
   const deliveredBySupplierView = /* @__PURE__ */ new Map();
@@ -5762,10 +5762,10 @@ var assembleResult = (compilation, solution) => {
     const key = `${edge.connection.downstreamIndex}\0${edge.connection.inputFlowId}`;
     supplierViewByConsumerInput.set(key, edge.supplierViewId);
   }
-  const buildGroup = (rootView, type, targetAmount) => {
+  const buildGroup = (rootView, type, finalDemand) => {
     const memberIds = [];
-    const visited = /* @__PURE__ */ new Set([rootView.id]);
-    const queue = [rootView];
+    const visited = new Set(finalDemand.keys());
+    const queue = [...visited].map((id) => viewById.get(id));
     while (queue.length > 0) {
       const view = queue.shift();
       memberIds.push(view.id);
@@ -5780,13 +5780,7 @@ var assembleResult = (compilation, solution) => {
     }
     const members = memberIds.map((id) => viewById.get(id)).filter((view) => !!view);
     const memberSet = new Set(memberIds);
-    const groupActivity = computeGroupActivities(
-      compilation,
-      edges,
-      members,
-      rootView,
-      targetAmount
-    );
+    const groupActivity = computeGroupActivities(compilation, edges, members, finalDemand);
     const scenarioActivityOf = (view) => groupActivity.get(view.id);
     const aggregated = /* @__PURE__ */ new Map();
     const order = [];
@@ -5854,7 +5848,7 @@ var assembleResult = (compilation, solution) => {
       refExchange.quantitativeReference = true;
     }
     if (type === "primary" && rootView.pivotDirection === "OUTPUT") {
-      const target = targetAmount;
+      const target = [...finalDemand.values()].reduce((total, amount) => total + amount, 0);
       const tolerance = CALCULATION_TOLERANCES.residual * Math.max(1, Math.abs(target));
       if (!refExchange || refExchange.direction !== rootView.pivotDirection || refExchange.flowId !== rootView.pivotFlowId || refExchange.amount < target - tolerance) {
         throw new CalculationError("NUMERIC_RESULT_INVALID", [
@@ -5890,10 +5884,16 @@ var assembleResult = (compilation, solution) => {
   };
   const groups = [];
   const refView = viewById.get(compilation.refViewId);
-  groups.push(buildGroup(refView, "primary", compilation.demand[refView.columnIndex]));
+  const primaryDemand = /* @__PURE__ */ new Map([[refView.id, compilation.demand[refView.columnIndex]]]);
   for (const view of views) {
+    if (compilation.demand[view.columnIndex] > 0) {
+      primaryDemand.set(view.id, compilation.demand[view.columnIndex]);
+    }
+  }
+  groups.push(buildGroup(refView, "primary", primaryDemand));
+  for (const view of primaryOnly ? [] : views) {
     if (view.isReference) continue;
-    groups.push(buildGroup(view, "secondary", view.pivotAmount));
+    groups.push(buildGroup(view, "secondary", /* @__PURE__ */ new Map([[view.id, view.pivotAmount]])));
   }
   return {
     productSystem: buildProductSystem(compilation, solution),
@@ -5903,6 +5903,85 @@ var assembleResult = (compilation, solution) => {
     balancedEdgeIds: Object.keys(edgeAmounts),
     groups
   };
+};
+
+// src/services/lifeCycleModels/matrixCalculation/authoredDemand.ts
+var equalActivity = (left, right) => Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) <= CALCULATION_TOLERANCES.residual * Math.max(Math.abs(left), Math.abs(right));
+var flowVersion = (exchange) => exchange?.raw?.referenceToFlowDataSet?.["@version"];
+var pivotVersion = (compiled, view) => flowVersion(
+  compiled.instanceByIndex.get(view.instanceIndex)?.exchangeById.get(view.pivotExchangeId)?.payload
+);
+var authoredBranchError = (compiled, excluded) => new CalculationError(
+  "NUMERIC_RESULT_INVALID",
+  excluded.map((view) => ({
+    code: "NUMERIC_RESULT_INVALID",
+    reason: "AUTHORED_BRANCH_EXCLUDED",
+    instanceIndex: view.instanceIndex,
+    nodeId: compiled.instanceByIndex.get(view.instanceIndex).nodeId,
+    flowId: view.pivotFlowId
+  }))
+);
+var compileAuthoredDemand = (compiled, primarySolution, payload) => {
+  const factors = new Map(
+    payload.instances.map((instance) => [
+      instance.instanceIndex,
+      instance.authoredMultiplicationFactor
+    ])
+  );
+  const activeSources = new Set(
+    compiled.views.filter((view) => primarySolution[view.columnIndex] > 0).map((view) => view.instanceIndex)
+  );
+  const excluded = compiled.views.filter(
+    (view) => (factors.get(view.instanceIndex) ?? 0) > 0 && !activeSources.has(view.instanceIndex)
+  );
+  if (excluded.length === 0) return void 0;
+  const fail = () => {
+    throw authoredBranchError(compiled, excluded);
+  };
+  const ref = compiled.viewById.get(compiled.refViewId);
+  const version = pivotVersion(compiled, ref);
+  if (!payload.preserveAuthoredBranches || ref.pivotDirection !== "OUTPUT" || !version) fail();
+  const countBySource = /* @__PURE__ */ new Map();
+  for (const view of compiled.views) {
+    countBySource.set(view.instanceIndex, (countBySource.get(view.instanceIndex) ?? 0) + 1);
+  }
+  for (const view of compiled.views) {
+    if (primarySolution[view.columnIndex] <= 0) continue;
+    const existing = factors.get(view.instanceIndex);
+    if (countBySource.get(view.instanceIndex) !== 1 || existing === void 0 || !equalActivity(existing * view.pivotAmount, primarySolution[view.columnIndex]))
+      fail();
+  }
+  const detached = new Set(excluded.map((view) => view.columnIndex));
+  if (compiled.entries.some(
+    ({ row, col, value }) => value !== 0 && detached.has(row) !== detached.has(col)
+  )) {
+    fail();
+  }
+  const expected = [...primarySolution];
+  for (const view of excluded) {
+    const factor = factors.get(view.instanceIndex);
+    if (countBySource.get(view.instanceIndex) !== 1 || !Number.isFinite(factor)) fail();
+    expected[view.columnIndex] = factor * view.pivotAmount;
+  }
+  const required = new Array(expected.length).fill(0);
+  for (const { row, col, value } of compiled.entries) {
+    required[row] += value * expected[col];
+  }
+  const suppliers = new Set(compiled.edges.map((edge) => edge.supplierViewId));
+  const demand = [...compiled.demand];
+  for (const view of excluded) {
+    const activity = expected[view.columnIndex];
+    const consumption = required[view.columnIndex];
+    if (equalActivity(activity, consumption)) continue;
+    if (activity < consumption || suppliers.has(view.id) || view.pivotDirection !== ref.pivotDirection || view.pivotFlowId !== ref.pivotFlowId || pivotVersion(compiled, view) !== version)
+      fail();
+    demand[view.columnIndex] = activity - consumption;
+  }
+  return { demand, expected, excluded };
+};
+var verifyAuthoredDemand = (compiled, actual, prepared) => {
+  if (actual.every((value, index) => equalActivity(value, prepared.expected[index]))) return;
+  throw authoredBranchError(compiled, prepared.excluded);
 };
 
 // src/services/lifeCycleModels/matrixCalculation/validation.ts
@@ -6014,8 +6093,12 @@ var runMatrixCalculation = (request) => {
   try {
     assertCalculationPayloadValid(request.payload);
     const compilation = compileModel(request.payload);
-    const { x } = solveCompiledSystem(compilation);
-    const result = assembleResult(compilation, x);
+    const initial = solveCompiledSystem(compilation).x;
+    const authored = compileAuthoredDemand(compilation, initial, request.payload);
+    if (authored) compilation.demand = authored.demand;
+    const solution = authored ? solveCompiledSystem(compilation).x : initial;
+    if (authored) verifyAuthoredDemand(compilation, solution, authored);
+    const result = assembleResult(compilation, solution, request.payload.primaryOnly);
     return { type: "result", runId: request.runId, ok: true, result };
   } catch (error) {
     if (error instanceof CalculationError) {

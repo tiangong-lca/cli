@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - docs/plans/cli-0.2.0-refactor-plan.md
   - src/commands/**
-lastReviewedAt: 2026-11-26
-lastReviewedCommit: 4fd9ba2110ec6e9008771d5a78bcc3324e682f7e
-lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
+lastReviewedAt: 2026-11-28
+lastReviewedCommit: 29428f9a9317111038c930c310c6b0bca573b751
+lastReviewedNote: 'Platform #1519 preserves the distinct local calculation and result-group persistence operations.'
 ---
 
 # CLI 0.2.0 重构实施计划

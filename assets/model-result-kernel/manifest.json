@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "https://github.com/tiangong-lca/platform",
-  "commit": "7f30060b07330b7ba44331e2ce822e1bb1eb21e3",
+  "commit": "300fca4542d0d99e312b2931c4902f4fc5fdadb7",
   "entry": "src/services/lifeCycleModels/matrixCalculation/matrixWorker.ts",
   "mlMatrix": "6.15.0",
   "esbuild": "0.28.2",
@@ -12,7 +12,11 @@
     },
     {
       "path": "src/services/lifeCycleModels/matrixCalculation/assemble.ts",
-      "sha256": "7c2caef2892ffd398eebeb1e68b0e25d1437e0b41cb3781ccf85650b65753ad7"
+      "sha256": "8846ba6d08cf3c96eafc207e3bf3322aa9386e7c40f67e396f4b095591323d54"
+    },
+    {
+      "path": "src/services/lifeCycleModels/matrixCalculation/authoredDemand.ts",
+      "sha256": "333c9bac9971796a4c28276b0affff911837db7df94884b0492f0b83c7093713"
     },
     {
       "path": "src/services/lifeCycleModels/matrixCalculation/compile.ts",
@@ -20,7 +24,7 @@
     },
     {
       "path": "src/services/lifeCycleModels/matrixCalculation/matrixWorker.ts",
-      "sha256": "27d4a933c85c5af797916062053b3cc3195ba4ff8be440b2d9398a8e646473c3"
+      "sha256": "3a5e95412b289e4ad8a54f8bcde931a5a430be923891dacf64bae9bbfb2eae4f"
     },
     {
       "path": "src/services/lifeCycleModels/matrixCalculation/productSystem.ts",
@@ -32,7 +36,7 @@
     },
     {
       "path": "src/services/lifeCycleModels/matrixCalculation/types.ts",
-      "sha256": "c6e9c8148d86e0f34c5caac4c6ddbf1ba6cbddc5afbbbdaf2cc6792d35bada0e"
+      "sha256": "9aa202606a098a1d6829febcc1d3592f25b42a1345396fb22c482cd2c3ca9d05"
     },
     {
       "path": "src/services/lifeCycleModels/matrixCalculation/validation.ts",
@@ -43,5 +47,5 @@
       "sha256": "8af7789f0a9ad70d0afc53142b8928d967a89714cd35ad6a224ef1ddd779cdab"
     }
   ],
-  "sha256": "c103250bd64776914bf549985f81bcce318d0488437b9171b4c95a2f4b920861"
+  "sha256": "c6430e34d84c0368822a13e0376ede9fcd7d845ea682c441cdb688f4ce5fc739"
 }
