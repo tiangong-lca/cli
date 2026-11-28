@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import os from 'node:os';
@@ -6,6 +7,7 @@ import path from 'node:path';
 import { createDatasetPorts } from '../src/adapters/dataset.js';
 import { datasetWriter } from '../src/adapters/dataset-write.js';
 import { runDatasetCommand } from '../src/commands/dataset.js';
+import type { JsonObject } from '../src/application/dataset-types.js';
 import { contentDigest } from '../src/application/dataset-content.js';
 import { datasetValidation } from '../src/adapters/dataset-local.js';
 import { createBusinessBackend } from './helpers/cli-business-backend.js';
@@ -144,3 +146,78 @@ for (const type of writableTypes) {
     }
   });
 }
+
+test('Source creation checks the target UUID before I/O while historical exact reads preserve it', async (t) => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'cli-source-uuid-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const backend = createBusinessBackend();
+  const env = buildSupabaseTestEnv({
+    TIANGONG_LCA_AUTH_MODE: 'access-token',
+    TIANGONG_LCA_ACCESS_TOKEN: 'submitter-token',
+  });
+  const id = randomUUID();
+  const historicalId = id.slice(0, 19) + 'c' + id.slice(20);
+  const body = (uuid: string) => {
+    const content = businessFixture('source');
+    const root = content.sourceDataSet as JsonObject;
+    const info = root.sourceInformation as JsonObject;
+    (info.dataSetInformation as JsonObject)['common:UUID'] = uuid;
+    return content;
+  };
+  const historical = body(historicalId);
+  const version = businessIdentity('source', historical).version;
+  const reads: string[] = [];
+  const ports = createDatasetPorts(env, async (url, init) => {
+    const query = new URL(url);
+    if (
+      query.pathname.endsWith('/sources') &&
+      query.searchParams.get('id') === `eq.${historicalId}`
+    ) {
+      reads.push(String(query.searchParams.get('version')));
+      return Response.json([{ id: historicalId, version, json: historical }]);
+    }
+    return backend.fetchImpl(url, init);
+  });
+  const input = path.join(directory, 'source.json');
+  const run = async (args: string[]) => {
+    const reply = await runDatasetCommand(['source', ...args, '--json'], ports);
+    return { reply, value: JSON.parse(reply.stdout) };
+  };
+  const preview = async (targetId: string, content: JsonObject, dryRun = true) => {
+    writeFileSync(
+      input,
+      JSON.stringify({
+        id: targetId,
+        version,
+        content,
+        requestId: 'source-create',
+        expectedActor: businessActor,
+        expectedEnvironment: 'https://example.supabase.co',
+      }),
+    );
+    return run(['create', '--input', input, ...(dryRun ? ['--dry-run'] : [])]);
+  };
+
+  writeFileSync(input, JSON.stringify(historical));
+  assert.equal(
+    (await run(['validate', '--input', input, '--checks', 'schema,business'])).value.outcome,
+    'validation_passed',
+  );
+  for (const dryRun of [true, false]) {
+    const rejected = await preview(historicalId, historical, dryRun);
+    assert.equal(rejected.reply.exitCode, 2);
+    assert.equal(rejected.value.error.code, 'IDENTITY_INVALID');
+    assert.match(rejected.value.error.message, /^id must be a UUID/u);
+  }
+  assert.equal((await preview(id, historical)).value.error.code, 'IDENTITY_MISMATCH');
+  assert.deepEqual(backend.calls, []);
+  assert.deepEqual(reads, []);
+  assert.equal((await preview(id, body(id))).value.outcome, 'preview_completed');
+
+  const exact = await run(['get', '--id', historicalId, '--version', version]);
+  assert.equal(exact.reply.exitCode, 0);
+  assert.equal(exact.value.data.subject.id, historicalId);
+  assert.equal(exact.value.data.subject.version, version);
+  assert.deepEqual(exact.value.data.content, historical);
+  assert.deepEqual(reads, [`eq.${version}`]);
+});

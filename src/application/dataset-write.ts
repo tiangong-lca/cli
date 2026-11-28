@@ -45,6 +45,10 @@ export type DatasetWritePorts = {
   dispatch(input: DatasetWriteDispatch): Promise<unknown>;
 };
 
+// app_dataset_create validates the target with Zod's generic UUID schema.
+const createIdPattern =
+  /^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/u;
+
 export async function executeDatasetWrite(
   type: DatasetType,
   action: DatasetMutationAction,
@@ -92,6 +96,11 @@ export async function executeDatasetWrite(
     throw new CommandInputError(
       'IDENTITY_MISMATCH',
       'Content identity must equal the explicit target id and version.',
+    );
+  if (action === 'create' && type !== 'model' && !createIdPattern.test(id))
+    throw new CommandInputError(
+      'IDENTITY_INVALID',
+      'id must be a UUID accepted by the create service. Generate a standard UUID for a new dataset.',
     );
   const expected = action !== 'create' ? object(request.expectedContent, 'expectedContent') : null;
   const { environment, actor } = await ports.identity();

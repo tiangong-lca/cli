@@ -16,7 +16,12 @@ import {
   isSupabaseAuthTokenUrl,
   buildSupabaseTestEnv,
 } from './helpers/supabase-auth.js';
-import { bindCurrentFlowNameEvidence } from '../src/lib/validation/process-flow-reference-names.js';
+import {
+  bindCurrentFlowNameEvidence,
+  flowNameReadContext,
+  readExactFlowNameEvidence,
+  ProcessFlowNameLookupError,
+} from '../src/lib/validation/process-flow-reference-names.js';
 import { loadDistModule } from './helpers/load-dist-module.js';
 import {
   allocationFixture,
@@ -443,4 +448,133 @@ test('missing, ambiguous and conflicting Flow observations cannot qualify a dire
     /Could not read the selected Flow/u,
   );
   assert.deepEqual(remoteError.writes, []);
+});
+
+test('mixed exact-name reads preserve exchange positions, local evidence, and safe service diagnostics', async (t) => {
+  const file = files(t);
+  const { content } = processFixture();
+  const { exchange } = object(object(content.processDataSet).exchanges) as { exchange: Json[] };
+  const missingId = '33333333-3333-4333-8333-333333333333';
+  const refusedId = '44444444-4444-4444-8444-444444444444';
+  const refused = structuredClone(exchange[1]!);
+  exchange.push(refused);
+  for (const [index, id] of [flowId, missingId, refusedId].entries()) {
+    const item = exchange[index]!;
+    item['@dataSetInternalID'] = String((index + 1) * 101);
+    object(item.referenceToFlowDataSet)['@refObjectId'] = id;
+  }
+  const documents = [flowId, missingId, refusedId].map((id) => {
+    const document = flowDocument(v1);
+    document.flowDataSet.flowInformation.dataSetInformation['common:UUID'] = id;
+    return document;
+  });
+  let refusal: 'response' | 'disconnect' | 'bad-reply' = 'response';
+  const calls: string[] = [];
+  const fetch: FetchLike = async (url) => {
+    const query = new URL(url);
+    if (query.pathname.endsWith('/auth/v1/user')) {
+      return Response.json({ id: actor, email: 'fixture@example.test', role: 'authenticated' });
+    }
+    assert.equal(query.searchParams.get('select'), 'id,version,json_ordered');
+    assert.equal(query.searchParams.get('version'), `eq.${v1}`);
+    const id = query.searchParams.get('id')!.slice(3);
+    calls.push(id);
+    if (id === refusedId) {
+      if (refusal === 'disconnect') throw new Error('Bearer private-upstream-secret');
+      if (refusal === 'bad-reply') return Response.json({ private: 'private-upstream-secret' });
+      return Response.json(
+        {
+          code: '42501',
+          message: 'Bearer private-upstream-secret',
+          details: 'private-upstream-secret',
+        },
+        { status: 403 },
+      );
+    }
+    return Response.json(id === missingId ? [] : [{ id, version: v1, json_ordered: documents[0] }]);
+  };
+  const input = file('mixed.json', content);
+  const refs = file('references.json', { documents });
+  const ports = createDatasetPorts(env, fetch);
+  const reply = await runDatasetCommand(
+    [
+      'process',
+      'validate',
+      '--input',
+      input,
+      '--checks',
+      'business,references',
+      '--reference-documents',
+      refs,
+      '--json',
+    ],
+    ports,
+  );
+  assert.equal(reply.exitCode, 1);
+  assert.doesNotMatch(reply.stdout + reply.stderr, /private-upstream-secret/u);
+  const value = JSON.parse(reply.stdout);
+  assert.equal(value.error.code, 'PROCESS_FLOW_NAME_EVIDENCE_LOOKUP_FAILED');
+  assert.match(value.error.message, new RegExp(refusedId, 'u'));
+  const report = value.data.validation;
+  const lookup = {
+    uuid: refusedId,
+    version: v1,
+    stage: 'exact_flow_name_read',
+    occurrences: [
+      { candidateIndex: 0, path: 'processDataSet.exchanges.exchange.2.referenceToFlowDataSet' },
+    ],
+  };
+  assert.deepEqual(report.lookup_failures, [{ ...lookup, httpStatus: 403, serviceCode: '42501' }]);
+  assert.deepEqual(
+    report.flow_reference_names.coverage.map(({ status }: Json) => status),
+    ['passed', 'unresolved', 'unresolved'],
+  );
+  assert.deepEqual(
+    report.flow_reference_names.issues.map(({ code }: Json) => code),
+    ['flow_reference_evidence_unavailable', 'flow_reference_evidence_lookup_failed'],
+  );
+  assert.equal(report.local_flow_reference_names[0].status, 'passed');
+  assert.deepEqual(calls, [flowId, missingId, refusedId]);
+
+  for (const kind of ['disconnect', 'bad-reply'] as const) {
+    refusal = kind;
+    const candidates = [content, content];
+    await assert.rejects(
+      readExactFlowNameEvidence(candidates, flowNameReadContext(env, fetch)),
+      (error) => {
+        assert(error instanceof ProcessFlowNameLookupError);
+        assert.doesNotMatch(JSON.stringify(error), /private-upstream-secret/u);
+        assert.deepEqual(error.validation.lookup_failures, [
+          {
+            ...lookup,
+            occurrences: [...lookup.occurrences, { ...lookup.occurrences[0], candidateIndex: 1 }],
+            ...(kind === 'bad-reply' ? { httpStatus: 200 } : {}),
+          },
+        ]);
+        assert.equal((error.validation.candidate_flow_reference_names as unknown[]).length, 2);
+        return true;
+      },
+    );
+  }
+
+  refusal = 'response';
+  const target = processFixture();
+  const write = file('preview.json', {
+    id: target.id,
+    version: target.version,
+    content,
+    requestId: 'flow-name-failure',
+    expectedActor: actor,
+    expectedEnvironment: environment,
+  });
+  const preview = await runDatasetCommand(
+    ['process', 'create', '--input', write, '--dry-run', '--json'],
+    ports,
+  );
+  const blocked = JSON.parse(preview.stdout);
+  assert.equal(preview.exitCode, 1);
+  assert.equal(blocked.error.code, 'PROCESS_FLOW_NAME_EVIDENCE_LOOKUP_FAILED');
+  assert.deepEqual(blocked.data.validation.lookup_failures, [
+    { ...lookup, httpStatus: 403, serviceCode: '42501' },
+  ]);
 });

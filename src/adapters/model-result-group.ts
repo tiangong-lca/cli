@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { object, isObject, text, type JsonObject } from '../application/dataset-types.js';
 import { fetchCurrentUser } from '../lib/auth/auth-identity-receipt.js';
 import { resolveDatasetCommandTransport } from '../lib/dataset/command.js';
@@ -28,6 +29,8 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}
 const versionPattern = /^\d{2}\.\d{2}\.\d{3}$/u;
 const digestPattern = /^[0-9a-f]{64}$/u;
 const key = (row: JsonObject) => String(row.id) + '@' + String(row.version);
+const memberIdPattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
+const memberRoles = new Set(['primary', 'secondary', 'allocated']);
 
 function invalid(message: string): never {
   throw new CommandInputError('MODEL_RESULT_GROUP_INVALID', message);
@@ -37,6 +40,66 @@ function readObjects(value: unknown, field: string): JsonObject[] {
   if (!Array.isArray(value) || !value.every(isObject))
     invalid(field + ' is not a complete record set.');
   return value;
+}
+
+function sortedMembers(members: JsonObject[]) {
+  return members.toSorted((left, right) => key(left).localeCompare(key(right)));
+}
+
+function canonicalResultReferences(model: JsonObject): JsonObject[] {
+  let value = model;
+  for (const field of [
+    'json_ordered',
+    'lifeCycleModelDataSet',
+    'lifeCycleModelInformation',
+    'dataSetInformation',
+  ]) {
+    const next = value[field];
+    if (!isObject(next)) return [];
+    value = next;
+  }
+  const references = value.referenceToResultingProcess;
+  return readObjects(
+    references == null ? [] : [references].flat(),
+    'Canonical Model result references',
+  );
+}
+
+function verifyMemberDeclarations(model: JsonObject, members: JsonObject[]) {
+  const references = canonicalResultReferences(model);
+  const graph = isObject(model.json_tg) ? model.json_tg : {};
+  let declared = readObjects(
+    graph.submodels === undefined ? [] : graph.submodels,
+    'Model submodels',
+  );
+  const referencedKeys = new Set<string>();
+  const memberRolesByKey = new Map(members.map((member) => [key(member), member.type]));
+  for (const [index, reference] of references.entries()) {
+    const exact = { id: reference['@refObjectId'], version: reference['@version'] };
+    if (typeof exact.id !== 'string' || typeof exact.version !== 'string')
+      invalid(`Canonical Model result reference at index ${index} needs a Process ID and version.`);
+    const resultKey = key(exact);
+    const role = memberRolesByKey.get(resultKey);
+    if (referencedKeys.has(resultKey))
+      invalid(`Canonical Model result reference at index ${index} duplicates an exact result.`);
+    if (role !== 'primary' && role !== 'secondary')
+      invalid(
+        `Canonical Model result reference at index ${index} does not identify a declared primary or secondary member.`,
+      );
+    referencedKeys.add(resultKey);
+  }
+
+  // The server permits one legacy canonical primary when no graph submodels exist.
+  if (!declared.length && references.length === 1) {
+    const reference = references[0]!;
+    declared = [{ id: reference['@refObjectId'], version: reference['@version'], type: 'primary' }];
+  }
+  const primary = members.filter((member) => member.type === 'primary');
+  if (
+    (members.length && (primary.length !== 1 || !referencedKeys.has(key(primary[0]!)))) ||
+    !isDeepStrictEqual(sortedMembers(members), sortedMembers(declared))
+  )
+    invalid('The stored Model members or their roles disagree with the Model declarations.');
 }
 
 function snapshotOf(reply: JsonObject, target: Targets): Snapshot | null {
@@ -53,21 +116,38 @@ function snapshotOf(reply: JsonObject, target: Targets): Snapshot | null {
     invalid('The snapshot identity or revision is invalid.');
   const members = readObjects(observed.members, 'members');
   const processes = readObjects(observed.processes, 'processes');
+  const processByKey = new Map(processes.map((process) => [key(process), process]));
   if (
     new Set(members.map(key)).size !== members.length ||
-    new Set(processes.map(key)).size !== processes.length ||
-    members.length !== processes.length ||
-    members.some(
-      (member) =>
-        !processes.some(
-          (process) =>
-            key(process) === key(member) &&
-            process.model_id === target.modelId &&
-            (process.model_version ?? process.version) === target.version,
-        ),
-    )
+    processByKey.size !== processes.length ||
+    members.length !== processes.length
   )
-    invalid('The stored Model and result members cannot be verified.');
+    invalid('The stored Model member set contains missing, extra, or duplicate identities.');
+
+  for (const member of members) {
+    const { id, version, type } = member;
+    if (
+      typeof id !== 'string' ||
+      !memberIdPattern.test(id) ||
+      typeof version !== 'string' ||
+      !versionPattern.test(version) ||
+      typeof type !== 'string' ||
+      !memberRoles.has(type)
+    )
+      invalid('The stored Model members must have exact Process identities and recognized roles.');
+    const process = processByKey.get(key(member));
+    if (
+      !process ||
+      process.id !== id ||
+      process.version !== version ||
+      process.model_id !== target.modelId ||
+      process.model_version !== target.version
+    )
+      invalid(
+        `Model member ${key(member)} lacks the expected persisted association to ${target.modelId}@${target.version}.`,
+      );
+  }
+  verifyMemberDeclarations(model, members);
   return { revision, model, members, processes };
 }
 
@@ -170,7 +250,13 @@ export async function runModelResultGroup(
     };
     try {
       const current = await inspect();
-      if (current?.revision === receipt.revision)
+      if (
+        current?.revision === receipt.revision &&
+        isDeepStrictEqual(
+          sortedMembers(current.members),
+          sortedMembers(readObjects(receipt.members, 'receipt members')),
+        )
+      )
         return { status: 'verified', ...target, receipt, snapshot: current };
     } catch {
       // The original receipt remains valid if current readback is unavailable.
@@ -191,7 +277,7 @@ export async function runModelResultGroup(
 
   const baselinePath =
     request.baseline === null ? null : resolveRequestFile(request.baseline, inputPath);
-  const base = baselinePath ? readCommandInput(baselinePath) : null;
+  const base = baselinePath ? await readCommandInput(baselinePath) : null;
   const current = await inspect();
   if (base) {
     if (

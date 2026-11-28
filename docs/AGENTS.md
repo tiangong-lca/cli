@@ -15,8 +15,8 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-28
-lastReviewedCommit: 92962a8d5515c198275db9993f2fb0fc5be6e321
-lastReviewedNote: 'CLI #568 reviewed published-only reference policy (#504), write evidence and unresolved target guards (#517), and canonical resulting-process metadata (#505).'
+lastReviewedCommit: 5531f0c79c2e289cd04ff3601c62717e6f01e4bf
+lastReviewedNote: 'Reviewed stdin error boundaries, new Dataset UUID admission, exact Flow lookup diagnostics, and exact Model result-group readback.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

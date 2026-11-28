@@ -5,7 +5,7 @@ import { CommandInputError, result, type CommandIO } from '../shared/command-res
 import { commandFailure } from '../shared/command-errors.js';
 import { attachReplyTemplate, renderResult } from '../shared/command-presentation.js';
 
-export function runReportCommand(args: string[], write: ReportPort): CommandIO {
+export async function runReportCommand(args: string[], write: ReportPort): Promise<CommandIO> {
   const value = result('report render');
   const json = args.includes('--json');
   try {
@@ -84,7 +84,7 @@ export function runReportCommand(args: string[], write: ReportPort): CommandIO {
         'ARGUMENTS_INVALID',
         'report render requires --input and --output.',
       );
-    const report = parseResearchReport(readCommandInput(flags.input));
+    const report = parseResearchReport(await readCommandInput(flags.input));
     value.artifacts = [write(report, flags.output, flags.force === true, flags.input)];
     value.data = {
       sections: report.sections.length,

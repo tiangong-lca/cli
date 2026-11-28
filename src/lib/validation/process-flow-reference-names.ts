@@ -7,7 +7,6 @@ import type { FetchLike } from '../transport/http.js';
 import {
   createSupabaseDataClient,
   requireSupabaseRestRuntime,
-  runSupabaseArrayQuery,
   type SupabaseDataRuntime,
 } from '../transport/supabase-client.js';
 import { createSupabaseDataRuntime } from '../auth/supabase-session.js';
@@ -100,53 +99,120 @@ export class ProcessFlowNameAdmissionError extends CliError {
   }
 }
 
+type FlowNameLookupFailure = {
+  uuid: string;
+  version: string;
+  stage: 'exact_flow_name_read';
+  occurrences: Array<{ candidateIndex: number; path: string }>;
+  httpStatus?: number;
+  serviceCode?: string;
+};
+
+export class ProcessFlowNameLookupError extends CliError {
+  readonly validation: Json;
+
+  constructor(
+    failures: readonly FlowNameLookupFailure[],
+    candidates: readonly Json[],
+    evidence: readonly ExactFlowNameEvidence[],
+    supplied: readonly ExactFlowNameEvidence[],
+  ) {
+    const first = failures[0]!;
+    super(
+      `Could not read the selected Flow ${first.uuid}@${first.version} for exchange name verification.`,
+      {
+        code: 'PROCESS_FLOW_NAME_EVIDENCE_LOOKUP_FAILED',
+        details: { uuid: first.uuid, version: first.version, lookup_failures: failures },
+      },
+    );
+    const bound = bindCurrentFlowNameEvidence(evidence, supplied);
+    const failed = new Set(failures.map(({ uuid, version }) => key(uuid, version)));
+    const reports = candidates.map((candidate) => {
+      const report = processFlowNameReport(candidate, bound);
+      return {
+        ...report,
+        issues: report.issues.map((issue) =>
+          failed.has(key(String(issue.params?.uuid), String(issue.params?.version)))
+            ? {
+                ...issue,
+                code: 'flow_reference_evidence_lookup_failed',
+                message: 'The exact Flow name evidence request failed.',
+              }
+            : issue,
+        ),
+      };
+    });
+    this.validation = {
+      status: 'failed',
+      lookup_failures: failures,
+      flow_reference_names: reports[0],
+      ...(reports.length > 1 ? { candidate_flow_reference_names: reports } : {}),
+      ...(supplied.length
+        ? {
+            local_flow_reference_names: candidates.map((candidate) =>
+              processFlowNameReport(candidate, supplied),
+            ),
+          }
+        : {}),
+    };
+  }
+}
+
 /** Each candidate occurrence is checked; the current actor reads each exact identity once. */
 export async function readExactFlowNameEvidence(
   candidates: readonly Json[],
   context: FlowNameReadContext,
+  supplied: readonly ExactFlowNameEvidence[] = [],
 ): Promise<ExactFlowNameEvidence[]> {
-  const exact = new Map<string, ExactFlowNameEvidence>();
-  for (const candidate of candidates) {
+  const exact = new Map<string, Pick<FlowNameLookupFailure, 'uuid' | 'version' | 'occurrences'>>();
+  for (const [candidateIndex, candidate] of candidates.entries()) {
     const unchecked = analyzeProcessFlowReferences(candidate);
-    for (const { status, uuid, version } of unchecked.coverage) {
-      if (status === 'unresolved') exact.set(key(uuid, version), { uuid, version, document: null });
+    for (const { status, uuid, version, path } of unchecked.coverage) {
+      if (status !== 'unresolved') continue;
+      const identity = key(uuid, version);
+      const binding = exact.get(identity) ?? { uuid, version, occurrences: [] };
+      binding.occurrences.push({ candidateIndex, path: normalizeIssuePath(path) });
+      exact.set(identity, binding);
     }
   }
   if (exact.size === 0) return [];
 
-  const { client, restBaseUrl } = createSupabaseDataClient(
+  const { client } = createSupabaseDataClient(
     context.runtime,
     context.fetchImpl,
     context.timeoutMs,
   );
   const requests = [...exact.values()];
   const evidence: ExactFlowNameEvidence[] = [];
+  const failures: FlowNameLookupFailure[] = [];
   const concurrency = 20;
   for (let offset = 0; offset < requests.length; offset += concurrency) {
     const results = await Promise.all(
       requests.slice(offset, offset + concurrency).map(async (binding) => {
         const { uuid, version } = binding;
-        const rows = await runSupabaseArrayQuery<Json>(
-          client
-            .from('flows')
-            .select('id,version,json_ordered')
-            .eq('id', uuid)
-            .eq('version', version)
-            .limit(2),
-          `${restBaseUrl}/flows`,
-        ).catch(() => {
-          throw new CliError(
-            `Could not read the selected Flow ${uuid}@${version}. Verify access, then retry validation.`,
-            {
-              code: 'PROCESS_FLOW_NAME_EVIDENCE_LOOKUP_FAILED',
-              details: { uuid, version },
-            },
-          );
-        });
-        if (!rows.length) return [];
+        const response = await client
+          .from('flows')
+          .select('id,version,json_ordered')
+          .eq('id', uuid)
+          .eq('version', version)
+          .limit(2);
+        const rows = response.data;
+        if (response.error || !Array.isArray(rows)) {
+          const serviceCode = response.error?.code ?? '';
+          const failure: FlowNameLookupFailure = {
+            ...binding,
+            stage: 'exact_flow_name_read',
+            ...(response.status > 0 ? { httpStatus: response.status } : {}),
+            ...(/^(?:[0-9A-Z]{2}[0-9]{3}|PGRST[0-9]{3})$/u.test(serviceCode)
+              ? { serviceCode }
+              : {}),
+          };
+          return { failure };
+        }
+        if (!rows.length) return {};
         const row = rows[0];
-        return [
-          {
+        return {
+          document: {
             uuid,
             version,
             document:
@@ -154,11 +220,16 @@ export async function readExactFlowNameEvidence(
                 ? (row.json_ordered ?? null)
                 : null,
           },
-        ];
+        };
       }),
     );
-    evidence.push(...results.flat());
+    for (const result of results) {
+      if (result.failure) failures.push(result.failure);
+      if (result.document) evidence.push(result.document);
+    }
   }
+  if (failures.length)
+    throw new ProcessFlowNameLookupError(failures, candidates, evidence, supplied);
   return evidence;
 }
 
@@ -176,7 +247,7 @@ export async function assertProcessFlowNameWriteAdmission(
   context: FlowNameReadContext,
   supplied: readonly ExactFlowNameEvidence[] = [],
 ): Promise<ExactFlowNameEvidence[]> {
-  const remote = await readExactFlowNameEvidence(candidates, context);
+  const remote = await readExactFlowNameEvidence(candidates, context, supplied);
   const flows = bindCurrentFlowNameEvidence(remote, supplied);
   for (const [candidateIndex, candidate] of candidates.entries()) {
     const report = processFlowNameReport(candidate, flows);

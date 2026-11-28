@@ -64,21 +64,23 @@ test('file IO never overwrites input or existing output without explicit force',
   );
   assert.equal(saved.exitCode, 0);
   assert.equal(data(saved).data.content, undefined);
-  assert.deepEqual(readCommandInput(output), content);
+  assert.deepEqual(await readCommandInput(output), content);
   assert.throws(() => writeCommandOutput(output, {}, false), /Could not write/);
   writeCommandOutput(output, { replaced: true }, true);
-  assert.equal(readCommandInput(output).replaced, true);
+  assert.equal((await readCommandInput(output)).replaced, true);
   assert.throws(() => writeCommandOutput(input, {}, true, input), /must not replace/);
   const hardlink = path.join(dir, 'hardlink.json');
   linkSync(input, hardlink);
   assert.throws(() => writeCommandOutput(hardlink, {}, true, input), /must not replace/);
   writeCommandOutput(path.join(dir, 'other.json'), {}, false, input);
   writeCommandOutput(path.join(dir, 'stdin-output.json'), {}, false, '-');
-  assert.throws(() => readCommandInput(path.join(dir, 'missing')), /readable JSON/);
+  await assert.rejects(readCommandInput(path.join(dir, 'missing')), { code: 'INPUT_READ_FAILED' });
   for (const value of ['broken', 'null', '[]', '"string"']) {
     const invalid = path.join(dir, 'invalid.json');
     writeFileSync(invalid, value);
-    assert.throws(() => readCommandInput(invalid));
+    await assert.rejects(readCommandInput(invalid), {
+      code: value === 'broken' ? 'INPUT_INVALID_JSON' : 'INPUT_OBJECT_REQUIRED',
+    });
   }
   const stdinReader = (input: string) =>
     spawnSync(
@@ -88,7 +90,7 @@ test('file IO never overwrites input or existing output without explicit force',
         'tsx',
         '--input-type=module',
         '--eval',
-        "import { readCommandInput } from './src/shared/command-files.ts'; process.stdout.write(JSON.stringify(readCommandInput('-')));",
+        "import { readCommandInput } from './src/shared/command-files.ts'; process.stdout.write(JSON.stringify(await readCommandInput('-')));",
       ],
       { input, encoding: 'utf8' },
     );

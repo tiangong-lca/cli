@@ -29,7 +29,7 @@ language: zh-CN
 
 共同操作遵循 [Dataset](README.md) 和[数据处理](processing.md)。交换项不建立独立远程保存入口：调用方直接编辑本地候选内容或应用通用补丁，再使用完整内容与前置修订保存 Process。
 
-`get` 的对象摘要和 `list` 的各条记录包含服务返回的 `model_id`、`model_version`。字段为 null 表示实际存储的空值，字段缺失表示服务未提供可用值。关联列只表达持久化关系，结果角色和当前成员范围由关联 Model 的精确版本决定。
+`get` 的对象摘要和 `list` 的各条记录包含服务返回的 `model_id`、`model_version`。字段为 null 表示实际存储的空值，字段缺失表示服务未提供可用值。关联列只表达持久化关系，结果角色和当前成员范围由关联 Model 的精确版本决定。 可以用 `--fields model_id,model_version` 显式选择这两列。
 
 `statistics` 接收与列表一致的范围过滤和 `--group-by` 维度；只支持命令契约声明的分组。输入范围或扫描不完整时返回部分结果，不将统计覆盖率解释为数据质量或生产任务完成率。
 
@@ -113,3 +113,5 @@ tiangong-lca dataset process validate --input process.json --reference-documents
 参考文件只作为验证上下文，不写入 Process。缺少必需参考证据时结果为 `incomplete`，命令以非零状态退出。存在其他已确定的校验错误时仍为失败。启用 `--checks schema,business,references` 后，CLI 读取当前账号可见的精确引用链；同时提供本地证据时必须与这些读取一致。此检查不自动选择最新版本。
 
 `dataset process save --dry-run` 和实际保存前检复用同一校验及当前精确参考读取；dry-run 不创建写入意图或发送变更。年度量结果中的 `annual_volume` 记录候选内容、单位链文档及方法学文本的绑定。其他 schema、分配、引用、账号、草稿状态、完整前像和读回要求仍独立生效。过去的通过报告不授予后续保存权限。
+
+线上 Flow 名称读取失败时，`PROCESS_FLOW_NAME_EVIDENCE_LOOKUP_FAILED` 附带 `data.validation.lookup_failures`。该字段列出精确引用、交换路径、检查阶段及可安全返回的 HTTP 状态和服务错误码。已通过的比较和无可读行的引用保留在 `flow_reference_names`。调用方提供的 Flow 文件可在 `local_flow_reference_names` 中看到单独的比较结果。线上准入仍要求服务返回可读的精确正文。

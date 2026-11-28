@@ -14,8 +14,8 @@ checkPaths:
   - README.md
   - src/commands/**
 lastReviewedAt: 2026-11-28
-lastReviewedCommit: 4ec8e36fe2067a823c3850beb042d16e994bea30
-lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
+lastReviewedCommit: 5531f0c79c2e289cd04ff3601c62717e6f01e4bf
+lastReviewedNote: 'Reviewed stdin error boundaries (#536), new Dataset UUID admission (#551), exact Flow lookup diagnostics (#552), and exact Model result-group readback (#445).'
 ---
 
 # TianGong LCA CLI

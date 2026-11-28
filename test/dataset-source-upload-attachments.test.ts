@@ -584,7 +584,7 @@ test('new Source entry requires a readable structured input', async () => {
     makeDeps(),
   );
   assert.equal(noDocs.exitCode, 2);
-  assert.equal(JSON.parse(noDocs.stdout).error.code, 'INPUT_INVALID_JSON');
+  assert.equal(JSON.parse(noDocs.stdout).error.code, 'INPUT_READ_FAILED');
 });
 
 test('new Source entry rejects legacy directory and commit flags', async () => {

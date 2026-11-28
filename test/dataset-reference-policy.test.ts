@@ -21,10 +21,18 @@ import {
 } from './helpers/supabase-auth.js';
 
 const actor = '00000000-0000-4000-8000-000000000002';
-const id = '11111111-1111-1111-1111-111111111111';
+const id = '11111111-1111-4111-8111-111111111111';
 const version = '00.00.001';
 const env = buildSupabaseTestEnv({ TIANGONG_LCA_AUTH_MODE: 'access-token' });
 const occurrence = '/flowDataSet/flowProperties/flowProperty/referenceToFlowPropertyDataSet';
+
+function candidateFlow() {
+  const content = makeFlow();
+  const flow = content.flowDataSet as JsonObject;
+  const information = (flow.flowInformation as JsonObject).dataSetInformation as JsonObject;
+  information['common:UUID'] = id;
+  return content;
+}
 
 function transport(content: JsonObject | null, missing = false) {
   return async (url: string, init?: RequestInit) => {
@@ -49,7 +57,7 @@ function transport(content: JsonObject | null, missing = false) {
 test('older published references pass local/reference validation and create/save previews with occurrence advisories', async (t) => {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'reference-policy-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  const content = makeFlow();
+  const content = candidateFlow();
   const validated = await createDatasetPorts(env, transport(null)).validate('flow', content, [
     'schema',
     'business',
@@ -90,7 +98,7 @@ test('older published references pass local/reference validation and create/save
 test('missing exact versions retain occurrence/version evidence in qualification errors and public preview/write failures', async (t) => {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'reference-failure-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  const content = makeFlow();
+  const content = candidateFlow();
   const fetchImpl = transport(null, true);
   await assert.rejects(qualifyDatasetWrite('flow', content, env, fetchImpl), (error: unknown) => {
     const failure = error as Error & { code: string; details: { references: JsonObject[] } };

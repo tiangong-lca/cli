@@ -1,4 +1,7 @@
-import { ProcessFlowNameAdmissionError } from '../lib/validation/process-flow-reference-names.js';
+import {
+  ProcessFlowNameAdmissionError,
+  ProcessFlowNameLookupError,
+} from '../lib/validation/process-flow-reference-names.js';
 import {
   type DatasetAction,
   type CanonicalDatasetAction,
@@ -72,7 +75,7 @@ export function csv(value: string, supported: string[], label: string) {
 export async function runDatasetCommand(
   args: string[],
   ports: DatasetPorts,
-  readInput: typeof readCommandInput = readCommandInput,
+  readInput: (file: string) => JsonObject | Promise<JsonObject> = readCommandInput,
 ): Promise<CommandIO> {
   const type = args[0] as DatasetType;
   let action = args[1] as DatasetAction | undefined;
@@ -179,6 +182,7 @@ export async function runDatasetCommand(
                 'stateCode',
                 'owner',
                 'content',
+                ...(type === 'process' ? ['model_id', 'model_version'] : []),
                 ...(type === 'process' && action === 'get' ? ['exchanges'] : []),
               ],
               '--fields',
@@ -321,9 +325,9 @@ export async function runDatasetCommand(
         inputPath,
         request:
           action === 'prepare'
-            ? readInput(inputPath)
+            ? await readInput(inputPath)
             : {
-                content: readInput(inputPath),
+                content: await readInput(inputPath),
                 engine: string('engine'),
                 staticCache: string('static-cache'),
                 outputDir: text(values['output-dir'], '--output-dir'),
@@ -411,7 +415,8 @@ export async function runDatasetCommand(
         );
       let content: JsonObject;
       value = local;
-      if (values.input) content = requireContent(type, readInput(text(values.input, '--input')));
+      if (values.input)
+        content = requireContent(type, await readInput(text(values.input, '--input')));
       else {
         const id = text(values.id, '--id');
         const version = text(values.version, '--version');
@@ -479,7 +484,8 @@ export async function runDatasetCommand(
     } else {
       const inputPath =
         action === 'statistics' && values.input === undefined ? '-' : text(values.input, '--input');
-      const request = action === 'statistics' ? statisticsRequest(values) : readInput(inputPath);
+      const request =
+        action === 'statistics' ? await statisticsRequest(values) : await readInput(inputPath);
       value = local;
       if (action === 'validate') {
         const checks = csv(
@@ -499,8 +505,8 @@ export async function runDatasetCommand(
               String(values.output),
               String(values['reference-documents']),
             );
-          const supplied = readInput(
-            text(values['reference-documents'], '--reference-documents'),
+          const supplied = (
+            await readInput(text(values['reference-documents'], '--reference-documents'))
           ).documents;
           if (
             type !== 'process' ||
@@ -754,6 +760,10 @@ export async function runDatasetCommand(
       value.summary = error.message;
       value.error.message = error.message;
       value.data.validation = { flow_reference_names: validationSummary(error.report) };
+    } else if (error instanceof ProcessFlowNameLookupError) {
+      value.summary = error.message;
+      value.error.message = error.message;
+      value.data.validation = validationSummary(error.validation);
     }
     value.nextActions.push({
       description: 'Inspect the command contract.',
