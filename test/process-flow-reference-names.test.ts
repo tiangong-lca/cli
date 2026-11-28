@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test, { type TestContext } from 'node:test';
 import { createDatasetPorts } from '../src/adapters/dataset.js';
+import { datasetWriter } from '../src/adapters/dataset-write.js';
+import { qualifyDatasetWrite } from '../src/adapters/dataset-write-checks.js';
 import { runDatasetCommand } from '../src/commands/dataset.js';
 import { createDatasetRecord, saveDraftDatasetRecord } from '../src/lib/dataset/command.js';
 import { saveDraftMaintenanceRow } from '../src/lib/maintenance/remote.js';
@@ -230,6 +232,9 @@ test('public create and save reject the later non-allocation occurrence before a
   const candidate = processFixture('Steel');
   const io = transport();
   const ports = createDatasetPorts(env, io.fetchImpl);
+  const stateDirectory = mkdtempSync(path.join(os.tmpdir(), 'cli-flow-name-journals-'));
+  t.after(() => rmSync(stateDirectory, { recursive: true, force: true }));
+  ports.mutate = datasetWriter(env, io.fetchImpl, stateDirectory);
   for (const action of ['create', 'save']) {
     const input = file(action + '.json', {
       ...candidate,
@@ -251,6 +256,32 @@ test('public create and save reject the later non-allocation occurrence before a
     assert.equal(findings.issues[0].params.expected, plant);
   }
   assert.deepEqual(io.reads, [v1, v1]);
+  assert.deepEqual(io.writes, []);
+});
+
+test('qualification errors remain usable by callers that present the original thrown admission error', async (t) => {
+  const file = files(t);
+  const candidate = processFixture('Steel');
+  const io = transport();
+  let failure: unknown;
+  try {
+    await qualifyDatasetWrite('process', candidate.content, env, io.fetchImpl);
+  } catch (error) {
+    failure = error;
+  }
+  assert.ok(failure instanceof Error);
+  const ports = createDatasetPorts(env, io.fetchImpl);
+  ports.mutate = async () => {
+    throw failure;
+  };
+  const result = await runDatasetCommand(
+    ['process', 'create', '--input', file('request.json', candidate), '--json'],
+    ports,
+  );
+  const value = JSON.parse(result.stdout);
+  assert.equal(result.exitCode, 1);
+  assert.equal(value.error.code, 'PROCESS_FLOW_NAME_ADMISSION_BLOCKED');
+  assert.equal(value.data.validation.flow_reference_names.issues[0].path, expectedPath);
   assert.deepEqual(io.writes, []);
 });
 

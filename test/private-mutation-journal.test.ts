@@ -59,3 +59,30 @@ test('canonical object hashes and newline-bound artifact hashes remain byte-dist
   );
   assert.notEqual(contentDigest(value), sha256Json(value));
 });
+
+test('findTargetRecord skips unreadable or corrupt unrelated journals in sorted order', async (t) => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'cli-journal-scan-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const target = {
+    type: 'contact',
+    id: 'id-target',
+    version: '00.00.001',
+    environment: 'https://example.test',
+    actor: 'actor-1',
+  };
+  writeFileSync(path.join(directory, `${'0'.repeat(64)}.json`), '{corrupt-json', { mode: 0o600 });
+  writeFileSync(path.join(directory, 'ignored-non-journal.json'), '{}', { mode: 0o600 });
+  const matchPath = path.join(directory, `${'a'.repeat(64)}.json`);
+  const matched = {
+    schemaVersion: 1,
+    binding: 'b1',
+    state: 'unknown',
+    ...target,
+  };
+  writeFileSync(matchPath, JSON.stringify(matched), { mode: 0o600 });
+  const found = await withMutationJournal(
+    { directory, requestId: 'new-request', target, scope: 'dataset' },
+    async (store) => store.findTargetRecord?.(['unknown']),
+  );
+  assert.deepEqual(found, { path: matchPath, record: matched });
+});

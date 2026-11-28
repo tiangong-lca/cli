@@ -141,9 +141,10 @@ test('create and guarded save keep distinct intent, exact content readback and o
   assert.equal(response.status, 'completed');
   assert.deepEqual(saved.bodies[0]!.expectedJsonOrdered, before);
   assert.equal(saved.writes(), 1);
-  await assert.rejects(
-    saved.writer('contact', 'create', { ...request, requestId: 'different' }, false),
-    /already exists/,
+  assert.equal(
+    (await saved.writer('contact', 'create', { ...request, requestId: 'different' }, false)).error
+      ?.code,
+    'CREATE_CONFLICT',
   );
   assert.equal(saved.writes(), 1);
 });
@@ -162,9 +163,10 @@ test('model create uses the existing atomic service with no generated mutations 
   assert.deepEqual(created.bodies[0]!.processMutations, []);
   assert.equal(created.bodies[0]!.modelId, id);
   assert.deepEqual((created.bodies[0]!.parent as JsonObject).jsonOrdered, model);
-  await assert.rejects(
-    created.writer('model', 'create', { ...modelRequest, requestId: 'conflict' }, false),
-    /already exists/,
+  assert.equal(
+    (await created.writer('model', 'create', { ...modelRequest, requestId: 'conflict' }, false))
+      .error?.code,
+    'CREATE_CONFLICT',
   );
   assert.equal(created.writes(), 1);
   await assert.rejects(created.writer('model', 'save', modelRequest, false), /expectedContent/);
@@ -242,16 +244,18 @@ test('writes reject missing identities, wrong actor/environment and stale save w
   ])
     await assert.rejects(instance.writer('contact', 'create', { ...request, ...changed }, false));
   await assert.rejects(instance.writer('contact', 'save', request, false), /expectedContent/);
-  await assert.rejects(
-    instance.writer('contact', 'save', { ...request, expectedContent: content }, false),
-    /must match/,
+  assert.equal(
+    (await instance.writer('contact', 'save', { ...request, expectedContent: content }, false))
+      .error?.code,
+    'SAVE_CONFLICT',
   );
   await assert.rejects(instance.writer('contact', 'delete', request, false), /content/);
   await assert.rejects(instance.writer('unitgroup', 'create', request, false), /read-only/);
   const absent = fixture(t);
-  await assert.rejects(
-    absent.writer('contact', 'save', { ...request, expectedContent: before }, false),
-    /Existing owner draft/,
+  assert.equal(
+    (await absent.writer('contact', 'save', { ...request, expectedContent: before }, false)).error
+      ?.code,
+    'SAVE_CONFLICT',
   );
   assert.equal(instance.writes(), 0);
   await assert.rejects(
@@ -290,10 +294,10 @@ test('write dispatch is blocked if the intent cannot be persisted after prefligh
       mkdirSync(path.join(directory, `${contentDigest(request.requestId)}.json`));
     },
   );
-  await assert.rejects(
-    writer('contact', 'create', request, false),
-    /blocked before request dispatch/,
-  );
+  const failure = await writer('contact', 'create', request, false);
+  assert.equal(failure.status, 'failed');
+  assert.equal(failure.error?.code, 'DATASET_COMMAND_BEFORE_DISPATCH_FAILED');
+  assert.match(failure.error.message, /blocked before request dispatch/);
   assert.equal(writes, 0);
 });
 
@@ -382,10 +386,10 @@ test('native dataset writer rejects SDK duplicate language findings before dispa
     },
     directory,
   );
-  await assert.rejects(
-    writer('contact', 'create', { ...request, content: duplicate }, false),
-    /failed or incomplete local checks/u,
-  );
+  const failure = await writer('contact', 'create', { ...request, content: duplicate }, false);
+  assert.equal(failure.status, 'failed');
+  assert.equal(failure.error?.code, 'VALIDATION_REQUIRED');
+  assert.match(failure.error.message, /failed or incomplete local checks/u);
 });
 
 test('existing model save and draft delete retain distinct service semantics and disclose preflight-only content checks', async (t) => {
@@ -406,10 +410,15 @@ test('existing model save and draft delete retain distinct service semantics and
   );
   assert.equal(deleted.writes(), 1);
   const conflict = fixture(t, before);
-  await assert.rejects(
-    conflict.writer('contact', 'delete', { ...request, expectedContent: content }, false),
-    /must match current content/,
+  const failure = await conflict.writer(
+    'contact',
+    'delete',
+    { ...request, expectedContent: content },
+    false,
   );
+  assert.equal(failure.status, 'failed');
+  assert.equal(failure.error?.code, 'DELETE_CONFLICT');
+  assert.match(failure.error.message, /must match current content/);
   assert.equal(conflict.writes(), 0);
   const model = {
     lifeCycleModelDataSet: {

@@ -811,7 +811,7 @@ test('dataset remote verify internals normalize table, versions, and REST lookup
   ]);
   assert.equal(
     __testInternals.buildRemoteUrl('https://example.supabase.co/rest/v1/', 'flows', 'flow-1', null),
-    'https://example.supabase.co/rest/v1/flows?id=eq.flow-1&order=version.desc&limit=1',
+    'https://example.supabase.co/rest/v1/flows?id=eq.flow-1&state_code=eq.100&order=version.desc&limit=1',
   );
 
   const lookupResult = await __testInternals.lookupRemoteDataset({

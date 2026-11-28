@@ -140,6 +140,11 @@ export type RemoteVerificationBlocker = {
   path: string;
 };
 
+export type RemoteVerificationWarning = Omit<RemoteVerificationBlocker, 'code' | 'severity'> & {
+  code: 'version_outdated';
+  severity: 'warning';
+};
+
 export type DatasetRemoteVerificationReport = {
   reference_intent?: LoadedExactReferenceIntent;
   schema_version: 1;
@@ -159,6 +164,7 @@ export type DatasetRemoteVerificationReport = {
     by_table: Record<RemoteDatasetTable, number>;
   };
   blockers: RemoteVerificationBlocker[];
+  warnings?: RemoteVerificationWarning[];
   files: {
     report: string;
     checks: string;
@@ -175,6 +181,7 @@ export type RunDatasetRemoteVerifyOptions = {
   inputPath: string;
   outDir: string;
   rootPolicy?: RemoteVerificationRootPolicy;
+  outdatedReferencePolicy?: 'error' | 'advisory';
   compareRootPayload?: boolean;
   targetUserId?: string | null;
   stateCode?: number | null;
@@ -571,6 +578,7 @@ function buildRemoteUrl(
   if (version) {
     url.searchParams.set('version', `eq.${version}`);
   } else {
+    url.searchParams.set('state_code', 'eq.100');
     url.searchParams.set('order', 'version.desc');
     url.searchParams.set('limit', '1');
   }
@@ -668,6 +676,7 @@ export async function lookupRemoteDataset(options: {
         .from(options.request.table)
         .select('id,version')
         .eq('id', options.request.id)
+        .eq('state_code', 100)
         .order('version', { ascending: false })
         .limit(1),
       latestSourceUrl,
@@ -754,6 +763,12 @@ export function classifyCheck(
     status = 'lookup_failed';
   } else if (!reference.version) {
     status = 'version_missing';
+  } else if (
+    reference.role === 'reference' &&
+    /(?:^|[./:])referenceToPrecedingDataSetVersion(?:\/\d+)?$/u.test(reference.path) &&
+    lookup?.exact
+  ) {
+    status = 'ok';
   } else if (reference.role === 'root' && rootPolicy === 'candidate') {
     if (!lookup?.latest) {
       status = 'ok';
@@ -767,11 +782,11 @@ export function classifyCheck(
     } else if (compareVersions(lookup.latest.version, reference.version) > 0) {
       status = 'version_outdated';
     }
-  } else if (!lookup?.latest) {
+  } else if (!lookup?.latest && !lookup?.exact) {
     status = 'missing_dataset';
-  } else if (!lookup.exact) {
+  } else if (!lookup?.exact) {
     status = 'missing_version';
-  } else if (compareVersions(lookup.latest.version, reference.version) > 0) {
+  } else if (compareVersions(lookup.latest?.version ?? null, reference.version) > 0) {
     status = 'version_outdated';
   }
   return {
@@ -1210,9 +1225,20 @@ export async function runDatasetRemoteVerify(
     }
   }
 
-  const blockers = checks
-    .map(blockerFromCheck)
-    .filter((blocker): blocker is RemoteVerificationBlocker => blocker !== null);
+  const blockers: RemoteVerificationBlocker[] = [];
+  const warnings: RemoteVerificationWarning[] = [];
+  for (const check of checks) {
+    const blocker = blockerFromCheck(check);
+    if (!blocker) continue;
+    if (
+      options.outdatedReferencePolicy === 'advisory' &&
+      check.role === 'reference' &&
+      check.status === 'version_outdated' &&
+      check.exact_version !== null
+    ) {
+      warnings.push({ ...blocker, code: 'version_outdated', severity: 'warning' });
+    } else blockers.push(blocker);
+  }
   const byStatus = { ...EMPTY_STATUS_COUNTS };
   const byTable = { ...EMPTY_TABLE_COUNTS };
   checks.forEach((check) => {
@@ -1254,6 +1280,7 @@ export async function runDatasetRemoteVerify(
       by_table: byTable,
     },
     blockers,
+    ...(options.outdatedReferencePolicy === 'advisory' ? { warnings } : {}),
     files,
   };
 

@@ -38,8 +38,12 @@ export async function qualifyDatasetWrite(
     );
   const references = await checkDatasetReferences(content, env, fetchImpl);
   if (references.status !== 'passed_remote_verification')
-    throw new CommandInputError(
-      'REFERENCE_CHECK_FAILED',
-      'Candidate reference admission failed; no mutation was dispatched.',
+    throw Object.assign(
+      new CommandInputError(
+        'REFERENCE_CHECK_FAILED',
+        'Candidate reference admission failed; no mutation was dispatched.',
+      ),
+      { details: { references: references.blockers } },
     );
+  return references.warnings;
 }

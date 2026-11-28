@@ -119,6 +119,7 @@ export function cloneExchangeWithAmount(
 
 type ResultIdentity = {
   sourceModel?: JsonObject;
+  retainedSource?: boolean;
   sourceModelId: string;
   sourceModelVersion: string;
   sourceModelName: string;
@@ -553,7 +554,8 @@ export function materializeResultProcess(
 ): JsonObject {
   const finalProcess = copyJson(source);
   const finalDataset = processDatasetRoot(finalProcess);
-  if (options.sourceModel) applyModelDeclarations(options.sourceModel, finalDataset);
+  if (options.sourceModel)
+    applyModelDeclarations(options.sourceModel, finalDataset, Boolean(options.retainedSource));
   const processInformation = isRecord(finalDataset.processInformation)
     ? (finalDataset.processInformation as JsonObject)
     : {};
@@ -564,31 +566,21 @@ export function materializeResultProcess(
   processInformation.dataSetInformation = dataInfo;
   dataInfo['common:UUID'] = options.processId;
   dataInfo.name = copyJson(options.sourceModelNameInfo);
-  const generalComment = [...ensureList<unknown>(dataInfo['common:generalComment'])];
-  const provenance =
-    options.role === 'primary'
-      ? multilangFromText(
-          `Local ${options.role} resulting process generated from lifecycle model ${options.sourceModelId}; exchanges are aggregated from included processes with internal linked flows cancelled.`,
-          `本地为生命周期模型 ${options.sourceModelId} 生成的 ${options.role} resulting process；其 exchanges 由包含过程聚合并抵消内部连接 flow 后得到。`,
-        )
-      : multilangFromText(
-          `Local ${options.role} process generated from lifecycle model ${options.sourceModelId}.`,
-          `为生命周期模型 ${options.sourceModelId} 生成的 ${options.role} 过程。`,
-        );
-  for (const entry of provenance) {
-    const original = generalComment.find(
-      (item) =>
-        isRecord(item) &&
-        item['@xml:lang'] === entry['@xml:lang'] &&
-        typeof item['#text'] === 'string',
-    );
-    if (isRecord(original)) {
-      original['#text'] = `${original['#text']}\n\n${entry['#text']}`;
-    } else {
-      generalComment.push(entry);
-    }
+  const hasGeneralComment = ensureList<unknown>(dataInfo['common:generalComment']).some(
+    (item) => isRecord(item) && firstNonEmpty(item['#text']) !== null,
+  );
+  if (!hasGeneralComment) {
+    dataInfo['common:generalComment'] =
+      options.role === 'primary'
+        ? multilangFromText(
+            `Local ${options.role} resulting process generated from lifecycle model ${options.sourceModelId}; exchanges are aggregated from included processes with internal linked flows cancelled.`,
+            `本地为生命周期模型 ${options.sourceModelId} 生成的 ${options.role} resulting process；其 exchanges 由包含过程聚合并抵消内部连接 flow 后得到。`,
+          )
+        : multilangFromText(
+            `Local ${options.role} process generated from lifecycle model ${options.sourceModelId}.`,
+            `为生命周期模型 ${options.sourceModelId} 生成的 ${options.role} 过程。`,
+          );
   }
-  dataInfo['common:generalComment'] = generalComment;
 
   const quantitativeReference = isRecord(processInformation.quantitativeReference)
     ? (processInformation.quantitativeReference as JsonObject)
@@ -619,8 +611,15 @@ export function materializeResultProcess(
     : {};
   administrative.publicationAndOwnership = publication;
   publication['common:dataSetVersion'] = options.processVersion;
+  const existingUri = firstNonEmpty(publication['common:permanentDataSetURI']);
+  const canonicalUri = `https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=${options.processId}&version=${options.processVersion}`;
   publication['common:permanentDataSetURI'] =
-    `https://local.tiangong.invalid/processes/${options.processId}?version=${options.processVersion}`;
+    existingUri &&
+    !existingUri.includes('local.tiangong.invalid') &&
+    existingUri.includes(options.processId) &&
+    (!existingUri.includes('version=') || existingUri.includes(`version=${options.processVersion}`))
+      ? existingUri
+      : canonicalUri;
 
   const modellingAndValidation = isRecord(finalDataset.modellingAndValidation)
     ? (finalDataset.modellingAndValidation as JsonObject)
@@ -633,13 +632,6 @@ export function materializeResultProcess(
   const typeOfDataSet =
     firstNonEmpty(options.metadataOverrides.type_of_data_set) ?? 'Partly terminated system';
   lciMethod.typeOfDataSet = typeOfDataSet;
-
-  dataInfo.generatedFromLifecycleModel = {
-    '@type': 'life cycle model data set',
-    id: options.sourceModelId,
-    version: options.sourceModelVersion,
-    role: options.role,
-  };
 
   const metadata: JsonObject = {
     generated_from_lifecyclemodel_id: options.sourceModelId,

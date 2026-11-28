@@ -324,6 +324,7 @@ export async function buildSolvedResultGroup(options: {
       string(pivot['@dataSetInternalID']),
       {
         ...(type !== 'allocated' ? { sourceModel: options.model } : {}),
+        retainedSource: isRecord(retained) && type !== 'allocated',
         sourceModelId: identity.id,
         sourceModelVersion: identity.version,
         sourceModelName: identity.name,

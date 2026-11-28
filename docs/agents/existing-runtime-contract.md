@@ -13,9 +13,9 @@ whenToUpdate:
 checkPaths:
   - AGENTS.md
   - src/lib/**
-lastReviewedAt: 2026-11-26
-lastReviewedCommit: 4fd9ba2110ec6e9008771d5a78bcc3324e682f7e
-lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
+lastReviewedAt: 2026-11-27
+lastReviewedCommit: a1a47ca815d7d028115099ca94bdac5224131d4e
+lastReviewedNote: 'CLI #568 reviewed published-only reference policy (#504), write evidence and unresolved target guards (#517), and canonical resulting-process metadata (#505).'
 ---
 
 # Existing runtime safeguards

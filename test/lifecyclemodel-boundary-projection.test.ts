@@ -71,6 +71,7 @@ function setup(supply = '2', demand = '5') {
     reference: 1 as unknown,
     overrides: {} as Json,
     modelDeclarations: {} as Json,
+    modelDataInfo: {} as Json,
     modelComment: undefined as unknown,
     projectionMode: 'primary-only',
     targetAmount: undefined as number | undefined,
@@ -98,6 +99,7 @@ async function run(
           obj(obj(fixture.processes[0].processDataSet).processInformation).dataSetInformation,
         ).name,
         'common:generalComment': fixture.modelComment,
+        ...fixture.modelDataInfo,
       },
       quantitativeReference:
         fixture.reference === undefined ? {} : { referenceToReferenceProcess: fixture.reference },
@@ -407,17 +409,11 @@ test('authored Model declarations reach the qualified candidate without changing
   );
   assert.deepEqual(resultIdentity, baselineIdentity);
   assert.notDeepEqual(comment, sourceComment);
-  assert.deepEqual(
-    (comment as Json[]).map((entry) => [
-      entry['@xml:lang'],
-      String(entry['#text']).split('\n\n')[0],
-    ]),
-    [
-      ['en', 'Whole-system declaration'],
-      ['zh', '全系统声明'],
-    ],
+  assert.deepEqual(comment, localized);
+  assert.equal(
+    obj(obj(projected.processInformation).dataSetInformation).generatedFromLifecycleModel,
+    undefined,
   );
-  assert.match(String((comment as Json[])[0]['#text']), /generated from lifecycle model/);
   const projectedAdmin = obj(projected.administrativeInformation);
   assert.deepEqual(projectedAdmin['common:commissionerAndGoal'], modelGoal);
   const publication = obj(projectedAdmin.publicationAndOwnership);
@@ -425,10 +421,45 @@ test('authored Model declarations reach the qualified candidate without changing
     assert.deepEqual(publication[field], value);
   }
   assert.equal(publication['common:dataSetVersion'], VERSION);
+  assert.equal(
+    publication['common:permanentDataSetURI'],
+    `https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=88888888-8888-4888-8888-888888888888&version=${VERSION}`,
+  );
   assert.deepEqual(treatment(projected), {
     ...treatment(original),
     useAdviceForDataSet: localized,
   });
+
+  const modelClassification = {
+    'common:classification': {
+      'common:class': [{ '@level': '0', '@classId': 'C', '#text': 'Manufacturing' }],
+    },
+  };
+  const modelExternalDoc = {
+    '@type': 'source data set',
+    '@refObjectId': 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    '@version': VERSION,
+    '@uri': '../sources/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.xml',
+    'common:shortDescription': { '@xml:lang': 'en', '#text': 'External report' },
+  };
+  fixture.modelDataInfo = {
+    classificationInformation: modelClassification,
+    referenceToExternalDocumentation: modelExternalDoc,
+  };
+  fixture.modelComment = [null, { '@xml:lang': 'en', '#text': '   ' }];
+  const withDataInfo = await run(fixture);
+  assert.equal(withDataInfo.validation!.exitCode, 0);
+  const withDataInfoSet = obj(
+    obj(obj(withDataInfo.payload!.processDataSet).processInformation).dataSetInformation,
+  );
+  assert.deepEqual(withDataInfoSet.classificationInformation, modelClassification);
+  assert.deepEqual(withDataInfoSet.referenceToExternalDocumentation, modelExternalDoc);
+  assert.match(
+    String((withDataInfoSet['common:generalComment'] as Json[])[0]['#text']),
+    /^Local primary resulting process generated from lifecycle model /,
+  );
+  fixture.modelDataInfo = {};
+  fixture.modelComment = localized;
 
   modelRights['common:accessRestrictions'] = [];
   obj(
@@ -581,6 +612,14 @@ test('all-subproducts keeps independent saved result versions and fails on ambig
   const initial = await run(fixture);
   assert.equal(initial.result.exitCode, 0, initial.result.stderr);
   const candidates = initial.bundle!.projected_processes as Json[];
+  const secondary = candidates.find((item) => item.role === 'secondary')!;
+  const secondaryComments = obj(obj(obj(secondary.json_ordered).processDataSet).processInformation);
+  assert.match(
+    String(
+      (obj(secondaryComments.dataSetInformation)['common:generalComment'] as Json[])[0]['#text'],
+    ),
+    /^Local secondary process generated from lifecycle model /,
+  );
   const members = candidates.map(({ id, role, finalId }) => ({
     id,
     version: '02.00.000',
@@ -590,17 +629,72 @@ test('all-subproducts keeps independent saved result versions and fails on ambig
   const processes = candidates.map(({ id, json_ordered }) => ({
     id,
     version: '02.00.000',
-    json_ordered,
+    json_ordered: structuredClone(json_ordered),
   }));
+  obj(
+    obj(obj(processes[0].json_ordered as Json).processDataSet).processInformation,
+  ).dataSetInformation = {
+    ...(obj(obj(obj(processes[0].json_ordered as Json).processDataSet).processInformation)
+      .dataSetInformation as Json),
+    'common:generalComment': [{ '@xml:lang': 'en', '#text': 'Authored retained note' }],
+  };
   const retained = await run(fixture, true, { members, processes });
   assert.equal(retained.result.exitCode, 0, retained.result.stderr);
   assert.deepEqual(
     (retained.bundle!.projected_processes as Json[]).map(({ id, version }) => [id, version]),
     members.map(({ id, version }) => [id, version]),
   );
+  const retainedRoot = obj(retained.payload!.processDataSet);
+  assert.deepEqual(
+    obj(obj(retainedRoot.processInformation).dataSetInformation)['common:generalComment'],
+    [{ '@xml:lang': 'en', '#text': 'Authored retained note' }],
+  );
+  assert.equal(
+    obj(obj(retainedRoot.administrativeInformation).publicationAndOwnership)[
+      'common:permanentDataSetURI'
+    ],
+    'https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=88888888-8888-4888-8888-888888888888&version=02.00.000',
+  );
+  const retainedSameVersion = await run(fixture, true, {
+    members,
+    processes: (retained.bundle!.projected_processes as Json[]).map(
+      ({ id, version, json_ordered }) => ({
+        id,
+        version,
+        json_ordered,
+      }),
+    ),
+  });
+  assert.equal(retainedSameVersion.result.exitCode, 0, retainedSameVersion.result.stderr);
+  assert.equal(
+    obj(
+      obj(obj(retainedSameVersion.payload!.processDataSet).administrativeInformation)
+        .publicationAndOwnership,
+    )['common:permanentDataSetURI'],
+    'https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=88888888-8888-4888-8888-888888888888&version=02.00.000',
+  );
+  const customUriProcesses = structuredClone(processes);
+  obj(
+    obj(obj(obj(customUriProcesses[0].json_ordered).processDataSet).administrativeInformation)
+      .publicationAndOwnership,
+  )['common:permanentDataSetURI'] =
+    'https://data.tiangong.earth/processes/88888888-8888-4888-8888-888888888888.xml';
+  const preservedCustomUri = await run(fixture, true, { members, processes: customUriProcesses });
+  assert.equal(preservedCustomUri.result.exitCode, 0, preservedCustomUri.result.stderr);
+  assert.equal(
+    obj(
+      obj(obj(preservedCustomUri.payload!.processDataSet).administrativeInformation)
+        .publicationAndOwnership,
+    )['common:permanentDataSetURI'],
+    'https://data.tiangong.earth/processes/88888888-8888-4888-8888-888888888888.xml',
+  );
   const authored = structuredClone(processes);
   const processRoot = obj(obj(authored[0].json_ordered).processDataSet);
   delete obj(obj(processRoot.processInformation).dataSetInformation).classificationInformation;
+  obj(obj(processRoot.administrativeInformation).publicationAndOwnership)[
+    'common:permanentDataSetURI'
+  ] =
+    'https://local.tiangong.invalid/processes/88888888-8888-4888-8888-888888888888?version=02.00.000';
   const modelling = obj(processRoot.modellingAndValidation);
   obj(modelling.dataSourcesTreatmentAndRepresentativeness).annualSupplyOrProductionVolume = {
     '@xml:lang': 'en',
@@ -610,6 +704,12 @@ test('all-subproducts keeps independent saved result versions and fails on ambig
   assert.equal(edited.result.exitCode, 0, edited.result.stderr);
   assert.equal(obj(edited.projection!.qualification).draft_ready, true);
   assert.equal(obj(edited.projection!.qualification).publish_ready, false);
+  assert.equal(
+    obj(obj(obj(edited.payload!.processDataSet).administrativeInformation).publicationAndOwnership)[
+      'common:permanentDataSetURI'
+    ],
+    'https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=88888888-8888-4888-8888-888888888888&version=02.00.000',
+  );
 
   const missing = await run(fixture, true, { members, processes: [] });
   assert.match(missing.result.stderr, /no verified stored payload/);
