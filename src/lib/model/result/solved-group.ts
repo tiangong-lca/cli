@@ -69,8 +69,8 @@ type Member = {
 };
 type ResultProcess = Member & { json_ordered: JsonObject };
 
-const kernelDigest = 'c103250bd64776914bf549985f81bcce318d0488437b9171b4c95a2f4b920861';
-const kernelCommit = '7f30060b07330b7ba44331e2ce822e1bb1eb21e3';
+const kernelDigest = 'c6430e34d84c0368822a13e0376ede9fcd7d845ea682c441cdb688f4ce5fc739';
+const kernelCommit = '300fca4542d0d99e312b2931c4902f4fc5fdadb7';
 
 function fail(message: string, details?: unknown): never {
   throw new CliError(message, {
@@ -255,13 +255,19 @@ export async function buildSolvedResultGroup(options: {
   if (!reference) fail('Select an exact reference instance before calculating all results.');
   const targetAmount =
     options.targetAmount ?? sourceFor(reference).referenceAmount * reference.multiplication_factor;
+  // An explicit target requests a new solve; the default reproduces the canonical activities.
+  const preserveAuthoredBranches = options.targetAmount === undefined;
   const result = await calculate({
     refInstanceIndex: reference.instance_id,
     targetAmount,
+    preserveAuthoredBranches,
     instances: instances.map((instance) => {
       const source = sourceFor(instance);
       return {
         instanceIndex: instance.instance_id,
+        ...(preserveAuthoredBranches
+          ? { authoredMultiplicationFactor: instance.multiplication_factor }
+          : {}),
         processId: instance.process_id,
         processVersion: instance.process_version,
         process: {

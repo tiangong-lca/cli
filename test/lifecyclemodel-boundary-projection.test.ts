@@ -828,3 +828,54 @@ test('default and supported override serialize untouched schema-valid output; un
   assert.equal(obj(layers.schema).status, 'passed');
   assert.equal(obj(layers.authoring_evidence).status, 'failed');
 });
+
+test('all-subproducts reproduces balanced authored branches at the same exact product version', async () => {
+  const fixture = setup('2', '4');
+  fixture.projectionMode = 'all-subproducts';
+  const [provider, product] = fixture.instances;
+  provider!['@multiplicationFactor'] = '0.5';
+  product!['@multiplicationFactor'] = '0.25';
+  const detachedProvider = structuredClone(provider!);
+  detachedProvider['@dataSetInternalID'] = '2';
+  detachedProvider['@multiplicationFactor'] = '1.5';
+  obj(obj(obj(detachedProvider.connections).outputExchange).downstreamProcess)['@id'] = '3';
+  const detachedProduct = structuredClone(product!);
+  detachedProduct['@dataSetInternalID'] = '3';
+  detachedProduct['@multiplicationFactor'] = '0.75';
+  fixture.instances.push(detachedProvider, detachedProduct);
+
+  const result = await run(fixture);
+  assert.equal(result.result.exitCode, 0, result.result.stderr);
+  assert.deepEqual(quantities(result.payload!), [[PRODUCT, 'Output', '1']]);
+  const model = obj(obj(result.bundle!.model_candidate).lifeCycleModelDataSet);
+  const modelTechnology = obj(obj(model.lifeCycleModelInformation).technology);
+  const instances = obj(modelTechnology.processes).processInstance as Json[];
+  assert.deepEqual(
+    instances.map((instance) => Number(instance['@multiplicationFactor'])),
+    [0.5, 0.25, 1.5, 0.75],
+  );
+
+  fixture.targetAmount = 2;
+  const fresh = await run(fixture);
+  assert.equal(fresh.result.exitCode, 0, fresh.result.stderr);
+  assert.deepEqual(quantities(fresh.payload!), [[PRODUCT, 'Output', '2']]);
+
+  fixture.targetAmount = undefined;
+  detachedProvider['@multiplicationFactor'] = '1.25';
+  const imbalanced = await run(fixture);
+  assert.equal(imbalanced.result.exitCode, 2);
+  assert.match(imbalanced.result.stderr, /AUTHORED_BRANCH_EXCLUDED/u);
+
+  detachedProvider['@multiplicationFactor'] = '1.5';
+  const exactOtherSource = structuredClone(fixture.processes[1]!);
+  const otherId = '99999999-9999-4999-8999-999999999999';
+  const root = obj(exactOtherSource.processDataSet);
+  obj(obj(root.processInformation).dataSetInformation)['common:UUID'] = otherId;
+  obj((obj(root.exchanges).exchange as Json[])[1]!.referenceToFlowDataSet)['@version'] =
+    '01.00.002';
+  obj(detachedProduct.referenceToProcess)['@refObjectId'] = otherId;
+  fixture.processes.push(exactOtherSource);
+  const differentVersion = await run(fixture);
+  assert.equal(differentVersion.result.exitCode, 2);
+  assert.match(differentVersion.result.stderr, /AUTHORED_BRANCH_EXCLUDED/u);
+});
