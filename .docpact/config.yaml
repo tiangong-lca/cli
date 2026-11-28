@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: '2026-11-28'
-lastReviewedCommit: '4ec8e36fe2067a823c3850beb042d16e994bea30'
-lastReviewedNote: 'CLI #568 reviewed published-only reference policy (#504), write evidence and unresolved target guards (#517), and canonical resulting-process metadata (#505).'
+lastReviewedAt: 2026-11-28
+lastReviewedCommit: '29428f9a9317111038c930c310c6b0bca573b751'
+lastReviewedNote: 'Platform #1519 kernel, runtime, test, and interface paths use the existing CLI review routes.'
 
 catalog:
   repos:

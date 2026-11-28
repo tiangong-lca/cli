@@ -22,8 +22,8 @@ checkPaths:
   - src/**
   - test/**
 lastReviewedAt: 2026-11-28
-lastReviewedCommit: 4ec8e36fe2067a823c3850beb042d16e994bea30
-lastReviewedNote: 'CLI #568 reviewed published-only reference policy (#504), write evidence and unresolved target guards (#517), and canonical resulting-process metadata (#505).'
+lastReviewedCommit: 29428f9a9317111038c930c310c6b0bca573b751
+lastReviewedNote: 'Platform #1519 keeps Model generation in the exact-input CLI path and delegates branch demand to the Platform kernel.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml

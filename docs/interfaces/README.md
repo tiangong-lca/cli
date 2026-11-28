@@ -12,9 +12,9 @@ whenToUpdate:
   - when the documented scope or behavior changes
 checkPaths:
   - docs/interfaces/**
-lastReviewedAt: 2026-11-26
-lastReviewedCommit: 4fd9ba2110ec6e9008771d5a78bcc3324e682f7e
-lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
+lastReviewedAt: 2026-11-28
+lastReviewedCommit: 29428f9a9317111038c930c310c6b0bca573b751
+lastReviewedNote: 'Platform #1519 retains Model command ownership and routes default authored-activity behavior through the Model interface.'
 ---
 
 # CLI 目标接口设计
