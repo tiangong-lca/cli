@@ -1,7 +1,7 @@
 // Controlled protocol fixture, not a replacement for Database/Edge qualification.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { JsonObject, DatasetType } from '../../src/application/dataset-types.js';
 import type { FetchLike } from '../../src/lib/transport/http.js';
@@ -130,6 +130,50 @@ export function createBusinessBackend() {
         },
         refusal.status,
       );
+    if (url.pathname === '/rest/v1/rpc/qry_review_submit_scope') {
+      assert.equal(new Headers(init?.headers).get('content-profile'), 'api');
+      const targetTable = String(body.p_target_table ?? '');
+      const targetId = String(body.p_target_id ?? '');
+      const targetVersion = String(body.p_target_version ?? '');
+      const row = rows.get(key(targetTable, targetId, targetVersion));
+      if (!row)
+        return json({
+          ok: false,
+          code: 'DATASET_NOT_FOUND',
+          status: 404,
+          message: 'Dataset not found',
+        });
+      if (row.user_id !== actor)
+        return json({
+          ok: false,
+          code: 'ROOT_DATASET_NOT_OWNED',
+          status: 403,
+          message: 'Only the dataset owner can submit review',
+        });
+      if (row.state_code !== 0)
+        return json({
+          ok: false,
+          code: row.state_code === 100 ? 'APPROVED_DATASET_IMMUTABLE' : 'DATA_UNDER_REVIEW',
+          status: 409,
+          message: 'Only a Draft dataset can be submitted',
+        });
+      const targets = [
+        {
+          table: targetTable,
+          id: targetId,
+          version: targetVersion,
+          is_root: true,
+          previous_state_code: row.state_code,
+          proposed_state_code: 20,
+          owner_match: true,
+        },
+      ];
+      const scopeDigest = createHash('sha256').update(JSON.stringify(targets)).digest('hex');
+      return json({
+        ok: true,
+        data: { submissionMode: 'root', scopeDigest, targets },
+      });
+    }
     if (url.pathname === '/rest/v1/rpc/qry_review_get_items') {
       assert.equal(new Headers(init?.headers).get('content-profile'), 'api');
       if (url.searchParams.has('reviewer_id'))
@@ -237,6 +281,36 @@ export function createBusinessBackend() {
           },
           409,
         );
+      const targets = [
+        {
+          table: String(body.table),
+          id: String(body.id),
+          version: String(body.version),
+          is_root: true,
+          previous_state_code: row.state_code,
+          proposed_state_code: 20,
+          owner_match: true,
+        },
+      ];
+      const actualScopeDigest = createHash('sha256').update(JSON.stringify(targets)).digest('hex');
+      if (
+        typeof body.expectedScopeDigest === 'string' &&
+        body.expectedScopeDigest !== actualScopeDigest
+      )
+        return json(
+          {
+            ok: false,
+            code: 'REVIEW_SCOPE_DRIFT',
+            message: 'Related review submission scope does not match the authorized scope',
+            details: {
+              submissionMode: 'root',
+              expectedScopeDigest: body.expectedScopeDigest,
+              actualScopeDigest,
+              actualTargets: targets,
+            },
+          },
+          409,
+        );
       const reviewId = randomUUID();
       reviews.set(reviewId, {
         id: reviewId,
@@ -248,7 +322,23 @@ export function createBusinessBackend() {
         },
       });
       row.state_code = 20;
-      response = json({ ok: true, data: { reviewId, mode: 'created' } });
+      response = json({
+        ok: true,
+        data: {
+          reviewId,
+          mode: 'created',
+          submissionMode: 'root',
+          affectedDatasets: [
+            {
+              table: String(body.table),
+              id: String(body.id),
+              version: String(body.version),
+              previous_state_code: 0,
+              state_code: 20,
+            },
+          ],
+        },
+      });
     } else if (
       endpoint === 'app_review_save_comment_draft' ||
       endpoint === 'app_review_batch_decision'

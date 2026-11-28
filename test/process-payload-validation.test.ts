@@ -63,6 +63,14 @@ function validProcessPayload(overrides: Record<string, unknown> = {}) {
           },
         },
       },
+      administrativeInformation: {
+        'common:commissionerAndGoal': {
+          'common:referenceToCommissioner': {
+            '@type': 'contact data set',
+            '@refObjectId': '33333333-3333-4333-8333-333333333333',
+          },
+        },
+      },
     },
     ...overrides,
   };
@@ -252,6 +260,14 @@ test('process payload validation enforces annual supply authoring fields beyond 
           },
           dataSourcesTreatmentAndRepresentativeness: {},
         },
+        administrativeInformation: {
+          'common:commissionerAndGoal': {
+            'common:referenceToCommissioner': {
+              '@type': 'contact data set',
+              '@refObjectId': '33333333-3333-4333-8333-333333333333',
+            },
+          },
+        },
       },
     },
     {
@@ -313,6 +329,14 @@ test('process payload validation rejects placeholder authoring content', () => {
               'common:reviewCompliance': 'Not defined',
               'common:documentationCompliance': 'Not defined',
               'common:qualityCompliance': 'Not defined',
+            },
+          },
+        },
+        administrativeInformation: {
+          'common:commissionerAndGoal': {
+            'common:referenceToCommissioner': {
+              '@type': 'contact data set',
+              '@refObjectId': '33333333-3333-4333-8333-333333333333',
             },
           },
         },

@@ -113,7 +113,7 @@ export async function runReviewCommand(
       implementedActions: actions.filter((name) => name !== 'withdraw'),
       limitations: {
         submit:
-          'One starting object; related business data is always included. Explicit multi-root packages and includeRelated:false are deferred.',
+          'One starting object; related business data is always included. Server-computed related scope is previewed read-only and bound atomically on dispatch. Explicit multi-root packages and includeRelated:false are deferred.',
         resubmit:
           'Rejected review and same exact dataset; the server determines the actual new or reused review. No server round link is claimed.',
         comment:
@@ -131,6 +131,9 @@ export async function runReviewCommand(
             { type: 'flow|process|model|source|contact', id: 'UUID', version: '00.00.000' },
           ],
           includeRelated: 'true, default true',
+          expectedScopeDigest: 'optional 64-hex server scope digest for atomic drift rejection',
+          expectedScopeTargets:
+            'optional allow-set of { type|table, id, version, proposedStateCode? }',
         },
         resubmit: 'submit fields plus reviewId, expectedState:-1, changeSummary',
         comment:
@@ -144,7 +147,7 @@ export async function runReviewCommand(
         materials: '--id <review UUID> [--output <file>]',
       },
       effects:
-        'Submit/resubmit create or reuse the actual review; comment saves a reviewer draft; decide records the current assigned reviewer decision. --dry-run checks readable preconditions without effects, not server final admission.',
+        'Submit/resubmit preview related submission scope read-only, bind it atomically at dispatch, and create or reuse the actual review; comment saves a reviewer draft; decide records the current assigned reviewer decision. --dry-run checks readable preconditions and server-related scope without effects.',
       recovery:
         'After an unknown submit or resubmit result, use the original input again to look up its Review ID without repeating the write. Missing evidence remains unknown.',
     };

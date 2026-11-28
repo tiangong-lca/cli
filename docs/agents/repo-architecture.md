@@ -30,8 +30,8 @@ checkPaths:
   - scripts/docpact
   - scripts/docpact-gate.sh
   - scripts/install-git-hooks.sh
-lastReviewedAt: 2026-11-27
-lastReviewedCommit: a1a47ca815d7d028115099ca94bdac5224131d4e
+lastReviewedAt: 2026-11-28
+lastReviewedCommit: 4ec8e36fe2067a823c3850beb042d16e994bea30
 lastReviewedNote: 'CLI #568 reviewed published-only reference policy (#504), write evidence and unresolved target guards (#517), and canonical resulting-process metadata (#505).'
 related:
   - ../../AGENTS.md
