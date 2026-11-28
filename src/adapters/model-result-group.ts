@@ -46,24 +46,60 @@ function sortedMembers(members: JsonObject[]) {
   return members.toSorted((left, right) => key(left).localeCompare(key(right)));
 }
 
-function declaredMembers(model: JsonObject): JsonObject[] {
+function canonicalResultReferences(model: JsonObject): JsonObject[] {
+  let value = model;
+  for (const field of [
+    'json_ordered',
+    'lifeCycleModelDataSet',
+    'lifeCycleModelInformation',
+    'dataSetInformation',
+  ]) {
+    const next = value[field];
+    if (!isObject(next)) return [];
+    value = next;
+  }
+  const references = value.referenceToResultingProcess;
+  return readObjects(
+    references == null ? [] : [references].flat(),
+    'Canonical Model result references',
+  );
+}
+
+function verifyMemberDeclarations(model: JsonObject, members: JsonObject[]) {
+  const references = canonicalResultReferences(model);
   const graph = isObject(model.json_tg) ? model.json_tg : {};
-  const declared = readObjects(
+  let declared = readObjects(
     graph.submodels === undefined ? [] : graph.submodels,
     'Model submodels',
   );
-  if (declared.length) return declared;
+  const referencedKeys = new Set<string>();
+  const memberRolesByKey = new Map(members.map((member) => [key(member), member.type]));
+  for (const [index, reference] of references.entries()) {
+    const exact = { id: reference['@refObjectId'], version: reference['@version'] };
+    if (typeof exact.id !== 'string' || typeof exact.version !== 'string')
+      invalid(`Canonical Model result reference at index ${index} needs a Process ID and version.`);
+    const resultKey = key(exact);
+    const role = memberRolesByKey.get(resultKey);
+    if (referencedKeys.has(resultKey))
+      invalid(`Canonical Model result reference at index ${index} duplicates an exact result.`);
+    if (role !== 'primary' && role !== 'secondary')
+      invalid(
+        `Canonical Model result reference at index ${index} does not identify a declared primary or secondary member.`,
+      );
+    referencedKeys.add(resultKey);
+  }
 
-  // The guarded service derives a single legacy primary from the canonical Model declaration.
-  const payload = isObject(model.json_ordered) ? model.json_ordered : {};
-  const root = isObject(payload.lifeCycleModelDataSet) ? payload.lifeCycleModelDataSet : {};
-  const info = isObject(root.lifeCycleModelInformation) ? root.lifeCycleModelInformation : {};
-  const dataset = isObject(info.dataSetInformation) ? info.dataSetInformation : {};
-  const refs = [dataset.referenceToResultingProcess].flat().filter((ref) => ref != null);
-  if (!refs.length) return [];
-  if (refs.length !== 1 || !isObject(refs[0]))
-    invalid('The legacy Model member declaration does not identify a single exact primary result.');
-  return [{ id: refs[0]['@refObjectId'], version: refs[0]['@version'], type: 'primary' }];
+  // The server permits one legacy canonical primary when no graph submodels exist.
+  if (!declared.length && references.length === 1) {
+    const reference = references[0]!;
+    declared = [{ id: reference['@refObjectId'], version: reference['@version'], type: 'primary' }];
+  }
+  const primary = members.filter((member) => member.type === 'primary');
+  if (
+    (members.length && (primary.length !== 1 || !referencedKeys.has(key(primary[0]!)))) ||
+    !isDeepStrictEqual(sortedMembers(members), sortedMembers(declared))
+  )
+    invalid('The stored Model members or their roles disagree with the Model declarations.');
 }
 
 function snapshotOf(reply: JsonObject, target: Targets): Snapshot | null {
@@ -100,16 +136,18 @@ function snapshotOf(reply: JsonObject, target: Targets): Snapshot | null {
     )
       invalid('The stored Model members must have exact Process identities and recognized roles.');
     const process = processByKey.get(key(member));
-    if (!process || process.model_id !== target.modelId || process.model_version !== target.version)
+    if (
+      !process ||
+      process.id !== id ||
+      process.version !== version ||
+      process.model_id !== target.modelId ||
+      process.model_version !== target.version
+    )
       invalid(
         `Model member ${key(member)} lacks the expected persisted association to ${target.modelId}@${target.version}.`,
       );
   }
-  if (
-    (members.length && members.filter((member) => member.type === 'primary').length !== 1) ||
-    !isDeepStrictEqual(sortedMembers(members), sortedMembers(declaredMembers(model)))
-  )
-    invalid('The stored Model members or their roles disagree with the Model declaration.');
+  verifyMemberDeclarations(model, members);
   return { revision, model, members, processes };
 }
 

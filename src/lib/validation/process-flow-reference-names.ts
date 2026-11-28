@@ -120,7 +120,10 @@ export class ProcessFlowNameLookupError extends CliError {
     const first = failures[0]!;
     super(
       `Could not read the selected Flow ${first.uuid}@${first.version} for exchange name verification.`,
-      { code: 'PROCESS_FLOW_NAME_EVIDENCE_LOOKUP_FAILED', details: { lookup_failures: failures } },
+      {
+        code: 'PROCESS_FLOW_NAME_EVIDENCE_LOOKUP_FAILED',
+        details: { uuid: first.uuid, version: first.version, lookup_failures: failures },
+      },
     );
     const bound = bindCurrentFlowNameEvidence(evidence, supplied);
     const failed = new Set(failures.map(({ uuid, version }) => key(uuid, version)));

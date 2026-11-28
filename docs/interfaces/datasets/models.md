@@ -54,7 +54,7 @@ language: zh-CN
 
 `dataset model result-group --input request.json --json` 使用精确 `modelId` 和 `version`。已有草稿先用 `action: inspect` 和 `--output baseline.json` 保存读取依据。编辑后用 `action: save`，在 `baseline` 指向该文件，在 `generation` 提供生成请求和编辑后的 Model。创建新 Model 时使用 `baseline: null`。保存绑定 `expectedActor` 和 `expectedEnvironment`，这两个字段来自检查输出或当前身份确认。
 
-快照中的每个 Process 必须存有指向所选 Model 精确版本的关联。CLI 核对成员集合及角色与 Model 声明一致。缺失或空的关联版本需要先核实。原提交已确认时，如果回执和当前成员不一致，返回 `committed_readback_unverified` 并保留原回执。
+快照中的每个 Process 必须存有指向所选 Model 精确版本的关联。CLI 核对成员集合及角色与 Model 图一致。正文的结果引用必须各自指向唯一的主结果或副产品结果，并且包含组的主结果。普通组件引用和 allocated 成员继续按各自的来源记录表达。缺失或空的关联版本需要先核实。原提交已确认时，如果回执和当前成员不一致，返回 `committed_readback_unverified` 并保留原回执。
 
 完整保存会计算、验证并提交整组，再用回执核对当前快照。CLI 在派发前保留原操作的恢复输入。断线时会查询该操作，后续核查可使用报告给出的原恢复输入。结果 `verified` 证明回执和当前组一致，`committed_readback_unverified` 只确认原提交，`unknown` 表示原提交尚未确认。编辑依据变化时拒绝当前保存；重新检查后按用户编辑意图处理变化。
 

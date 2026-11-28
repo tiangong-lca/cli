@@ -65,6 +65,19 @@ const contents = {
     administrativeInformation: { publicationAndOwnership: { 'common:dataSetVersion': version } },
   },
 };
+const canonical = (ref: unknown) => ({
+  lifeCycleModelDataSet: {
+    lifeCycleModelInformation: {
+      ...contents.lifeCycleModelDataSet.lifeCycleModelInformation,
+      dataSetInformation: { 'common:UUID': modelId, referenceToResultingProcess: ref },
+    },
+  },
+});
+const referenceTo = (member: { id: string; version: string }) => ({
+  '@refObjectId': member.id,
+  '@version': member.version,
+});
+
 const snapshot = {
   revision,
   members: [primary, secondary],
@@ -76,6 +89,7 @@ const snapshot = {
     id: modelId,
     version,
     state_code: 0,
+    json_ordered: canonical(referenceTo(primary)),
     json_tg: {
       submodels: [primary, secondary],
       xflow: { nodes: [{ id: 'existing-graph-node', x: 321, data: { index: '0' } }] },
@@ -283,6 +297,14 @@ test('result group inspects complete exact links and refuses drift, missing memb
     { ...snapshot, processes: [snapshot.processes[0], snapshot.processes[0]] },
     { ...snapshot, processes: [] },
     { ...snapshot, processes: [snapshot.processes[0], { ...secondary, id: actorId }] },
+    {
+      ...snapshot,
+      processes: [{ ...snapshot.processes[0], id: [primary.id] }, snapshot.processes[1]],
+    },
+    {
+      ...snapshot,
+      processes: [{ ...snapshot.processes[0], version: [primary.version] }, snapshot.processes[1]],
+    },
     { ...snapshot, members: [{ ...primary, version: 'latest' }, secondary] },
     { ...snapshot, members: [{ ...primary, id: null }, secondary] },
     { ...snapshot, members: [{ ...primary, id: 'broken' }, secondary] },
@@ -324,12 +346,7 @@ test('result group inspects complete exact links and refuses drift, missing memb
 test('legacy membership requires a real exact association and preserves the canonical primary fallback', async (t) => {
   const { run } = fixture(t);
   const member = { ...primary, version };
-  const canonical = (reference: unknown) => ({
-    lifeCycleModelDataSet: {
-      lifeCycleModelInformation: { dataSetInformation: { referenceToResultingProcess: reference } },
-    },
-  });
-  const reference = { '@refObjectId': member.id, '@version': member.version };
+  const reference = referenceTo(member);
   const legacy = {
     ...snapshot,
     model: { ...snapshot.model, json_tg: null, json_ordered: canonical(reference) },
@@ -350,6 +367,13 @@ test('legacy membership requires a real exact association and preserves the cano
     ).status,
     'observed',
   );
+  const empty = {
+    ...legacy,
+    model: { ...legacy.model, json_ordered: canonical(null) },
+    members: [],
+    processes: [],
+  };
+  assert.equal((await run({ action: 'inspect' }, () => observe(empty))).status, 'observed');
   for (const wrong of [
     { ...legacy, processes: [{ ...member, model_id: modelId, model_version: null }] },
     { ...legacy, processes: [{ ...member, model_id: modelId }] },
@@ -364,7 +388,7 @@ test('legacy membership requires a real exact association and preserves the cano
       run({ action: 'inspect' }, () =>
         observe({ ...legacy, model: { ...legacy.model, json_ordered: canonical(refs) } }),
       ),
-      /single exact primary/,
+      { code: 'MODEL_RESULT_GROUP_INVALID' },
     );
   }
 
@@ -373,6 +397,85 @@ test('legacy membership requires a real exact association and preserves the cano
   );
   assert.equal(recovery.status, 'committed_readback_unverified');
   assert.deepEqual((recovery.receipt as JsonObject).members, [secondary, primary]);
+});
+
+test('public result-group inspection requires exact canonical result references under the declared roles', async (t) => {
+  const { input, run, dispatch } = fixture(t);
+  writeFileSync(input, JSON.stringify({ ...target, action: 'inspect' }));
+  let observed: unknown = snapshot;
+  const fetch: FetchLike = async (url, init) => {
+    if (new URL(url).pathname === '/auth/v1/user') {
+      return Response.json({ id: actorId, email: 'fixture@example.test', role: 'authenticated' });
+    }
+    assert.deepEqual(JSON.parse(String(init?.body)), { ...target, protocol, action: 'inspect' });
+    return observe(observed);
+  };
+  const ports = createDatasetPorts(env, fetch);
+  const inspect = () =>
+    runDatasetCommand(['model', 'result-group', '--input', input, '--json'], ports);
+  const valid = JSON.parse((await inspect()).stdout);
+  assert.equal(valid.outcome, 'observed');
+  // The allocated member and the Model's ordinary component references are independent of
+  // the sole canonical product result reference.
+  assert.deepEqual(valid.data.snapshot.members, [primary, secondary]);
+
+  const exactPrimary = referenceTo(primary);
+  for (const [ref, message] of [
+    [referenceTo(secondary), /primary or secondary member/],
+    [referenceTo({ ...primary, id: actorId }), /primary or secondary member/],
+    [{ ...exactPrimary, '@version': version }, /primary or secondary member/],
+    [[exactPrimary, exactPrimary], /duplicates an exact result/],
+    [[exactPrimary, null], /Canonical Model result references/],
+    [{ ...exactPrimary, '@refObjectId': [primary.id] }, /needs a Process ID and version/],
+    [{ ...exactPrimary, '@version': [primary.version] }, /needs a Process ID and version/],
+    [[], /roles disagree with the Model declarations/],
+  ] as const) {
+    observed = { ...snapshot, model: { ...snapshot.model, json_ordered: canonical(ref) } };
+    const result = await inspect();
+    assert.equal(result.exitCode, 2);
+    const value = JSON.parse(result.stdout);
+    assert.equal(value.error.code, 'MODEL_RESULT_GROUP_INVALID');
+    assert.match(value.error.message, message);
+  }
+
+  const coproduct = { ...secondary, type: 'secondary' };
+  observed = {
+    ...snapshot,
+    members: [primary, coproduct],
+    model: {
+      ...snapshot.model,
+      json_tg: { submodels: [coproduct, primary] },
+      json_ordered: canonical([referenceTo(coproduct), exactPrimary]),
+    },
+  };
+  assert.equal(JSON.parse((await inspect()).stdout).outcome, 'observed');
+  observed = {
+    ...snapshot,
+    members: [primary, coproduct],
+    model: {
+      ...snapshot.model,
+      json_tg: { submodels: [coproduct, primary] },
+      json_ordered: canonical(referenceTo(coproduct)),
+    },
+  };
+  assert.match(
+    JSON.parse((await inspect()).stdout).error.message,
+    /roles disagree with the Model declarations/,
+  );
+  const recovered = await run({ action: 'recover', ...binding, operationId }, (body) =>
+    body.action === 'inspect' ? observe(observed) : committed(operationId),
+  );
+  assert.equal(recovered.status, 'committed_readback_unverified');
+  assert.deepEqual(recovered.receipt, {
+    operationId,
+    revision,
+    savedAt: undefined,
+    members: [secondary, primary],
+  });
+  assert.deepEqual(
+    dispatch.map((body) => body.action),
+    ['recover', 'inspect'],
+  );
 });
 
 test('result group keeps the original revision and exact member mutations on update', async (t) => {
