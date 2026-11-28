@@ -14,8 +14,8 @@ checkPaths:
   - docs/**
   - AGENTS.md
   - .docpact/config.yaml
-lastReviewedAt: 2026-11-27
-lastReviewedCommit: a1a47ca815d7d028115099ca94bdac5224131d4e
+lastReviewedAt: 2026-11-28
+lastReviewedCommit: 92962a8d5515c198275db9993f2fb0fc5be6e321
 lastReviewedNote: 'CLI #568 reviewed published-only reference policy (#504), write evidence and unresolved target guards (#517), and canonical resulting-process metadata (#505).'
 related:
   - ../AGENTS.md

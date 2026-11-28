@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - README.md
   - src/commands/**
-lastReviewedAt: 2026-11-27
-lastReviewedCommit: f9a1137b77c3ca14021c65006ea53c0a9059ac32
+lastReviewedAt: 2026-11-28
+lastReviewedCommit: 4ec8e36fe2067a823c3850beb042d16e994bea30
 lastReviewedNote: 'CLI #425 reviewed the installed SDK amount diagnostic, the static inventory guard before projection, and adoption of the released public rules.'
 ---
 
