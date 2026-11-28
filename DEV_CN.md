@@ -23,8 +23,8 @@ checkPaths:
   - scripts/**
   - .github/workflows/**
 lastReviewedAt: 2026-11-28
-lastReviewedCommit: 4ec8e36fe2067a823c3850beb042d16e994bea30
-lastReviewedNote: 'CLI #568 reviewed published-only reference policy (#504), write evidence and unresolved target guards (#517), and canonical resulting-process metadata (#505).'
+lastReviewedCommit: 29428f9a9317111038c930c310c6b0bca573b751
+lastReviewedNote: 'Platform #1519 uses the existing Node launcher and frozen dependency and verification workflow.'
 related:
   - AGENTS.md
   - .docpact/config.yaml

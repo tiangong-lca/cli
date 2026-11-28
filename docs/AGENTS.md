@@ -15,8 +15,8 @@ checkPaths:
   - AGENTS.md
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-28
-lastReviewedCommit: 92962a8d5515c198275db9993f2fb0fc5be6e321
-lastReviewedNote: 'CLI #568 reviewed published-only reference policy (#504), write evidence and unresolved target guards (#517), and canonical resulting-process metadata (#505).'
+lastReviewedCommit: 29428f9a9317111038c930c310c6b0bca573b751
+lastReviewedNote: 'Platform #1519 records the behavior in the Model interface and the verification with the implementation review.'
 related:
   - ../AGENTS.md
   - ../.docpact/config.yaml
